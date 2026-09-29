@@ -1,8 +1,8 @@
 USE [master]
 GO
-CREATE DATABASE [UTETeaDB]
+CREATE DATABASE [UTETra]
 GO
-USE [UTETeaDB]
+USE [UTETra]
 GO
 /****** Object:  Table [dbo].[Branches]    Script Date: 29/09/2026 6:18:45 PM ******/
 SET ANSI_NULLS ON
@@ -245,8 +245,8 @@ PRIMARY KEY CLUSTERED
 GO
 SET IDENTITY_INSERT [dbo].[Branches] ON 
 
-INSERT [dbo].[Branches] ([id], [name], [address], [phone], [is_active]) VALUES (1, N'UTETea Võ Văn Ngân', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM', N'0281234567', 1)
-INSERT [dbo].[Branches] ([id], [name], [address], [phone], [is_active]) VALUES (2, N'UTETea Quận 1', N'12 Nguyễn Huệ, Quận 1, TP.HCM', N'0287654321', 1)
+INSERT [dbo].[Branches] ([id], [name], [address], [phone], [is_active]) VALUES (1, N'UTETra Võ Văn Ngân', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM', N'0281234567', 1)
+INSERT [dbo].[Branches] ([id], [name], [address], [phone], [is_active]) VALUES (2, N'UTETra Quận 1', N'12 Nguyễn Huệ, Quận 1, TP.HCM', N'0287654321', 1)
 SET IDENTITY_INSERT [dbo].[Branches] OFF
 GO
 SET IDENTITY_INSERT [dbo].[BranchProducts] ON 
@@ -268,7 +268,7 @@ SET IDENTITY_INSERT [dbo].[Categories] OFF
 GO
 SET IDENTITY_INSERT [dbo].[Notifications] ON 
 
-INSERT [dbo].[Notifications] ([id], [user_id], [order_id], [title], [content], [is_read], [created_at]) VALUES (1, 4, 1, N'Đơn hàng #1 đã giao thành công', N'Cảm ơn bạn đã mua hàng tại UTETea!', 0, CAST(N'2026-09-29T18:10:55.6533388' AS DateTime2))
+INSERT [dbo].[Notifications] ([id], [user_id], [order_id], [title], [content], [is_read], [created_at]) VALUES (1, 4, 1, N'Đơn hàng #1 đã giao thành công', N'Cảm ơn bạn đã mua hàng tại UTETra!', 0, CAST(N'2026-09-29T18:10:55.6533388' AS DateTime2))
 SET IDENTITY_INSERT [dbo].[Notifications] OFF
 GO
 SET IDENTITY_INSERT [dbo].[OrderDetails] ON 
@@ -326,9 +326,9 @@ SET IDENTITY_INSERT [dbo].[Toppings] OFF
 GO
 SET IDENTITY_INSERT [dbo].[Users] ON 
 
-INSERT [dbo].[Users] ([id], [username], [password], [full_name], [email], [phone], [avatar_cloudinary_id], [role_id], [branch_id], [is_active], [created_at]) VALUES (1, N'admin', N'$2a$10$REPLACE_WITH_BCRYPT_HASH', N'Quản trị viên', N'admin@utetea.vn', N'0900000001', NULL, 1, NULL, 1, CAST(N'2026-09-29T18:10:55.6488263' AS DateTime2))
-INSERT [dbo].[Users] ([id], [username], [password], [full_name], [email], [phone], [avatar_cloudinary_id], [role_id], [branch_id], [is_active], [created_at]) VALUES (2, N'manager1', N'$2a$10$REPLACE_WITH_BCRYPT_HASH', N'Quản lý chi nhánh', N'manager1@utetea.vn', N'0900000002', NULL, 2, 1, 1, CAST(N'2026-09-29T18:10:55.6488263' AS DateTime2))
-INSERT [dbo].[Users] ([id], [username], [password], [full_name], [email], [phone], [avatar_cloudinary_id], [role_id], [branch_id], [is_active], [created_at]) VALUES (3, N'shipper1', N'$2a$10$REPLACE_WITH_BCRYPT_HASH', N'Nguyễn Văn Giao', N'shipper1@utetea.vn', N'0900000003', NULL, 4, 1, 1, CAST(N'2026-09-29T18:10:55.6488263' AS DateTime2))
+INSERT [dbo].[Users] ([id], [username], [password], [full_name], [email], [phone], [avatar_cloudinary_id], [role_id], [branch_id], [is_active], [created_at]) VALUES (1, N'admin', N'$2a$10$REPLACE_WITH_BCRYPT_HASH', N'Quản trị viên', N'admin@utetra.vn', N'0900000001', NULL, 1, NULL, 1, CAST(N'2026-09-29T18:10:55.6488263' AS DateTime2))
+INSERT [dbo].[Users] ([id], [username], [password], [full_name], [email], [phone], [avatar_cloudinary_id], [role_id], [branch_id], [is_active], [created_at]) VALUES (2, N'manager1', N'$2a$10$REPLACE_WITH_BCRYPT_HASH', N'Quản lý chi nhánh', N'manager1@utetra.vn', N'0900000002', NULL, 2, 1, 1, CAST(N'2026-09-29T18:10:55.6488263' AS DateTime2))
+INSERT [dbo].[Users] ([id], [username], [password], [full_name], [email], [phone], [avatar_cloudinary_id], [role_id], [branch_id], [is_active], [created_at]) VALUES (3, N'shipper1', N'$2a$10$REPLACE_WITH_BCRYPT_HASH', N'Nguyễn Văn Giao', N'shipper1@utetra.vn', N'0900000003', NULL, 4, 1, 1, CAST(N'2026-09-29T18:10:55.6488263' AS DateTime2))
 INSERT [dbo].[Users] ([id], [username], [password], [full_name], [email], [phone], [avatar_cloudinary_id], [role_id], [branch_id], [is_active], [created_at]) VALUES (4, N'khach1', N'$2a$10$REPLACE_WITH_BCRYPT_HASH', N'Trần Thị Khách', N'khach1@gmail.com', N'0900000004', NULL, 5, NULL, 1, CAST(N'2026-09-29T18:10:55.6488263' AS DateTime2))
 SET IDENTITY_INSERT [dbo].[Users] OFF
 GO
@@ -626,5 +626,5 @@ ALTER TABLE [dbo].[Toppings]  WITH CHECK ADD CHECK  (([price]>=(0)))
 GO
 USE [master]
 GO
-ALTER DATABASE [UTETeaDB] SET  READ_WRITE 
+ALTER DATABASE [UTETra] SET  READ_WRITE 
 GO
