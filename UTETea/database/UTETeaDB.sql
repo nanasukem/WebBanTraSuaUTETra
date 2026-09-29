@@ -1,8 +1,3 @@
-/* =========================================================
-   UTETeaDB - script day du (cau truc + du lieu)
-   Chay bang SSMS: mo file -> F5.
-   Neu may da co UTETeaDB thi DB cu se bi xoa va tao lai.
-   ========================================================= */
 USE [master]
 GO
 IF DB_ID(N'UTETeaDB') IS NOT NULL
