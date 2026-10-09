@@ -15,5 +15,5 @@ public class Role {
 	private Integer id;
 
 	@Column(nullable = false, length = 30, unique = true)
-	private String name; // ADMIN, MANAGER, STAFF, SHIPPER, CUSTOMER
+	private String name; // ADMIN, MANAGER, VENDOR, SHIPPER, USER
 }
