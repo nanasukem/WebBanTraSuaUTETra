@@ -24,7 +24,7 @@ public class User {
 	@Column(name = "full_name", length = 100)
 	private String fullName;
 
-	@Column(length = 100, unique = true)
+	@Column(nullable = false, length = 100, unique = true)
 	private String email;
 
 	@Column(length = 15)
@@ -37,8 +37,12 @@ public class User {
 	@JoinColumn(name = "role_id", nullable = false)
 	private Role role;
 
-	@Column(name = "branch_id")
-	private Integer branchId;
+	@ManyToOne
+	@JoinColumn(name = "carrier_id")
+	private Carrier carrier;
+
+	@Column(name = "is_verified", nullable = false)
+	private Boolean isVerified = false;
 
 	@Column(name = "is_active", nullable = false)
 	private Boolean isActive = true;
