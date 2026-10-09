@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản lý chi nhánh - UTETra</title>
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+	rel="stylesheet">
+</head>
+<body class="bg-light">
+
+	<main class="container-fluid py-4 px-3 px-lg-4">
+		<div
+			class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+			<h1 class="h4 mb-0">
+				<i class="bi bi-shop me-2"></i>Quản lý chi nhánh
+			</h1>
+			<a th:href="@{/admin/branches/create}" class="btn btn-primary"> <i
+				class="bi bi-plus-lg"></i> Thêm chi nhánh
+			</a>
+		</div>
+
+		<!-- Thông báo -->
+		<div th:if="${success}"
+			class="alert alert-success alert-dismissible fade show" role="alert">
+			<span th:text="${success}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+		<div th:if="${error}"
+			class="alert alert-danger alert-dismissible fade show" role="alert">
+			<span th:text="${error}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+
+		<!-- Tìm kiếm + lọc -->
+		<form th:action="@{/admin/branches}" method="get"
+			class="card card-body mb-3">
+			<div class="row g-2">
+				<div class="col-12 col-md-6">
+					<input type="text" name="keyword" th:value="${keyword}"
+						class="form-control" placeholder="Tìm theo tên hoặc địa chỉ...">
+				</div>
+				<div class="col-8 col-md-4">
+					<select name="status" class="form-select">
+						<option value="">-- Tất cả trạng thái --</option>
+						<option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"
+							th:selected="${s == status}"></option>
+					</select>
+				</div>
+				<div class="col-4 col-md-2 d-grid">
+					<button class="btn btn-outline-secondary">
+						<i class="bi bi-search"></i> Lọc
+					</button>
+				</div>
+			</div>
+		</form>
+
+		<!-- Bảng -->
+		<div class="card">
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0">
+					<thead class="table-light">
+						<tr>
+							<th>#</th>
+							<th>Tên chi nhánh</th>
+							<th class="d-none d-md-table-cell">Địa chỉ</th>
+							<th class="d-none d-lg-table-cell">Chủ shop</th>
+							<th class="text-end">Chiết khấu</th>
+							<th>Trạng thái</th>
+							<th class="text-end">Thao tác</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr th:if="${#lists.isEmpty(branches)}">
+							<td colspan="7" class="text-center text-muted py-4">Không có
+								chi nhánh nào</td>
+						</tr>
+						<tr th:each="b : ${branches}">
+							<td th:text="${b.id}"></td>
+							<td>
+								<div class="fw-semibold" th:text="${b.name}"></div> <small
+								class="text-muted" th:text="${b.phone}"></small>
+							</td>
+							<td class="d-none d-md-table-cell" th:text="${b.address}"></td>
+							<td class="d-none d-lg-table-cell" th:text="${b.owner.fullName}"></td>
+							<td class="text-end" th:text="${b.commissionRate} + '%'"></td>
+							<td><span class="badge"
+								th:classappend="${b.status.name() == 'APPROVED'} ? 'text-bg-success'
+                                            : (${b.status.name() == 'PENDING'} ? 'text-bg-warning'
+                                            : (${b.status.name() == 'REJECTED'} ? 'text-bg-danger' : 'text-bg-secondary'))"
+								th:text="${b.status}"></span></td>
+							<td class="text-end text-nowrap"><a
+								th:href="@{/admin/branches/{id}/edit(id=${b.id})}"
+								class="btn btn-sm btn-outline-primary" title="Sửa"><i
+									class="bi bi-pencil"></i></a> <!-- Duyệt: khi PENDING / REJECTED / SUSPENDED -->
+								<form th:if="${b.status.name() != 'APPROVED'}" class="d-inline"
+									method="post"
+									th:action="@{/admin/branches/{id}/status(id=${b.id}, value='APPROVED')}">
+									<button class="btn btn-sm btn-outline-success"
+										title="Duyệt / mở lại">
+										<i class="bi bi-check-lg"></i>
+									</button>
+								</form> <!-- Từ chối: khi PENDING -->
+								<form th:if="${b.status.name() == 'PENDING'}" class="d-inline"
+									method="post"
+									th:action="@{/admin/branches/{id}/status(id=${b.id}, value='REJECTED')}">
+									<button class="btn btn-sm btn-outline-danger" title="Từ chối"
+										onclick="return confirm('Từ chối chi nhánh này?')">
+										<i class="bi bi-x-lg"></i>
+									</button>
+								</form> <!-- Tạm ngưng: khi APPROVED -->
+								<form th:if="${b.status.name() == 'APPROVED'}" class="d-inline"
+									method="post"
+									th:action="@{/admin/branches/{id}/status(id=${b.id}, value='SUSPENDED')}">
+									<button class="btn btn-sm btn-outline-secondary"
+										title="Tạm ngưng"
+										onclick="return confirm('Tạm ngưng chi nhánh này?')">
+										<i class="bi bi-pause-fill"></i>
+									</button>
+								</form></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</main>
+
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

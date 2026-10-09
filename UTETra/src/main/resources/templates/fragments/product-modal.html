@@ -1,0 +1,78 @@
+<!--
+  Modal chọn món: Size / % đường / % đá / Topping / số lượng.
+  CÁCH DÙNG trong trang menu:
+  1) Controller đưa topping vào model:  model.addAttribute("toppings", ...danh sách topping...);
+  2) Chèn modal ở cuối <body>:  <div th:replace="~{fragments/product-modal :: productModal}"></div>
+  3) Mỗi món có 1 nút mở modal (xem ví dụ ở Bước 8)
+  4) Nạp script:  <script th:src="@{/js/cart.js}"></script>
+-->
+<div th:fragment="productModal" class="modal fade" id="productModal" tabindex="-1" aria-labelledby="pmName" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pmName">Tên món</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <img id="pmImage" src="" alt="" class="img-fluid rounded w-100 object-fit-cover" style="max-height: 280px">
+                        <p class="text-muted small mt-2 mb-0"><i class="bi bi-shop"></i> <span id="pmBranch"></span></p>
+                        <p class="fs-5 fw-semibold text-danger mb-0" id="pmBasePrice"></p>
+                    </div>
+
+                    <div class="col-md-7">
+                        <h6 class="fw-semibold">Chọn size</h6>
+                        <div class="d-flex flex-wrap gap-2 mb-3" id="pmSizes"></div>
+
+                        <h6 class="fw-semibold">Lượng đường</h6>
+                        <div class="btn-group flex-wrap mb-3" role="group">
+                            <th:block th:each="lv : ${ {0, 30, 50, 70, 100} }">
+                                <input type="radio" class="btn-check" name="pmSugar" th:id="'sugar' + ${lv}"
+                                       th:value="${lv}" th:checked="${lv == 100}">
+                                <label class="btn btn-outline-secondary btn-sm" th:for="'sugar' + ${lv}" th:text="${lv} + '%'"></label>
+                            </th:block>
+                        </div>
+
+                        <h6 class="fw-semibold">Lượng đá</h6>
+                        <div class="btn-group flex-wrap mb-3" role="group">
+                            <th:block th:each="lv : ${ {0, 30, 50, 70, 100} }">
+                                <input type="radio" class="btn-check" name="pmIce" th:id="'ice' + ${lv}"
+                                       th:value="${lv}" th:checked="${lv == 100}">
+                                <label class="btn btn-outline-secondary btn-sm" th:for="'ice' + ${lv}" th:text="${lv} + '%'"></label>
+                            </th:block>
+                        </div>
+
+                        <h6 class="fw-semibold">Topping</h6>
+                        <div class="mb-3" id="pmToppings">
+                            <div th:if="${toppings == null or #lists.isEmpty(toppings)}" class="text-muted small">Chưa có topping</div>
+                            <div class="form-check d-flex justify-content-between" th:each="t : ${toppings}">
+                                <div>
+                                    <input class="form-check-input pm-topping" type="checkbox" th:id="'top' + ${t.id}"
+                                           th:value="${t.id}" th:data-name="${t.name}" th:data-price="${t.price}">
+                                    <label class="form-check-label" th:for="'top' + ${t.id}" th:text="${t.name}"></label>
+                                </div>
+                                <small class="text-muted" th:text="'+' + ${#numbers.formatInteger(t.price, 0, 'POINT')} + 'đ'"></small>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-semibold">Số lượng</h6>
+                        <div class="input-group" style="max-width: 150px">
+                            <button class="btn btn-outline-secondary" type="button" id="pmMinus">−</button>
+                            <input type="number" class="form-control text-center" id="pmQty" value="1" min="1" max="50">
+                            <button class="btn btn-outline-secondary" type="button" id="pmPlus">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer justify-content-between">
+                <div>Tạm tính: <span class="fs-5 fw-bold text-danger" id="pmTotal">0đ</span></div>
+                <button type="button" class="btn btn-primary" id="pmAddToCart">
+                    <i class="bi bi-cart-plus"></i> Thêm vào giỏ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
