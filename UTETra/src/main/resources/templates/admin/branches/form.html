@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title
+	th:text="${branchId == null} ? 'Thêm chi nhánh - UTETra' : 'Sửa chi nhánh - UTETra'"></title>
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+	rel="stylesheet">
+</head>
+<body class="bg-light">
+
+	<main class="container py-4" style="max-width: 760px">
+		<a th:href="@{/admin/branches}" class="text-decoration-none"><i
+			class="bi bi-arrow-left"></i> Danh sách chi nhánh</a>
+		<h1 class="h4 my-3"
+			th:text="${branchId == null} ? 'Thêm chi nhánh' : 'Sửa chi nhánh #' + ${branchId}"></h1>
+
+		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+		<!-- Cùng 1 form cho Thêm và Sửa -->
+		<form th:object="${branchReq}" method="post" novalidate
+			class="card card-body"
+			th:action="${branchId == null} ? @{/admin/branches/create} : @{/admin/branches/{id}/edit(id=${branchId})}">
+
+			<div class="mb-3">
+				<label class="form-label">Tên chi nhánh <span
+					class="text-danger">*</span></label> <input type="text" th:field="*{name}"
+					class="form-control" th:errorclass="is-invalid">
+				<div class="invalid-feedback" th:errors="*{name}"></div>
+			</div>
+
+			<div class="mb-3">
+				<label class="form-label">Địa chỉ <span class="text-danger">*</span></label>
+				<input type="text" th:field="*{address}" class="form-control"
+					th:errorclass="is-invalid">
+				<div class="invalid-feedback" th:errors="*{address}"></div>
+			</div>
+
+			<div class="row g-3 mb-3">
+				<div class="col-md-6">
+					<label class="form-label">Số điện thoại</label> <input type="tel"
+						th:field="*{phone}" class="form-control"
+						th:errorclass="is-invalid">
+					<div class="invalid-feedback" th:errors="*{phone}"></div>
+				</div>
+				<div class="col-md-6">
+					<label class="form-label">Chiết khấu app (%) <span
+						class="text-danger">*</span></label> <input type="number" step="0.01"
+						min="0" max="100" th:field="*{commissionRate}"
+						class="form-control" th:errorclass="is-invalid">
+					<div class="invalid-feedback" th:errors="*{commissionRate}"></div>
+				</div>
+			</div>
+
+			<div class="mb-3">
+				<label class="form-label">Chủ shop (Vendor) <span
+					class="text-danger">*</span></label> <select th:field="*{ownerId}"
+					class="form-select" th:errorclass="is-invalid">
+					<option value="">-- Chọn tài khoản Vendor --</option>
+					<option th:each="v : ${vendors}" th:value="${v.id}"
+						th:text="${v.fullName} + ' (' + ${v.username} + ')'"></option>
+				</select>
+				<div class="invalid-feedback" th:errors="*{ownerId}"></div>
+			</div>
+
+			<div class="mb-4">
+				<label class="form-label">Mô tả</label>
+				<textarea th:field="*{description}" rows="3" class="form-control"
+					th:errorclass="is-invalid"></textarea>
+				<div class="invalid-feedback" th:errors="*{description}"></div>
+			</div>
+
+			<div class="d-flex gap-2">
+				<button class="btn btn-primary">
+					<i class="bi bi-save"></i> Lưu
+				</button>
+				<a th:href="@{/admin/branches}" class="btn btn-outline-secondary">Huỷ</a>
+			</div>
+		</form>
+	</main>
+
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
