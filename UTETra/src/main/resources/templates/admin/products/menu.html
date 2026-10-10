@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thực đơn Trà Sữa - UTETra</title>
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+</head>
+<body class="bg-light">
+	<!-- Navbar -->
+	<nav
+		class="navbar navbar-expand-lg navbar-dark bg-success sticky-top shadow-sm">
+		<div class="container">
+			<a class="navbar-brand fw-bold fs-4" th:href="@{/menu}">🍃 UTETra</a>
+			<div class="d-flex align-items-center">
+				<div th:if="${session.currentUser != null}" class="text-white me-3">
+					<span>Xin chào, <b
+						th:text="${session.currentUser.fullName != null ? session.currentUser.fullName : session.currentUser.username}">User</b></span>
+					<a th:href="@{/auth/logout}"
+						class="btn btn-outline-light btn-sm ms-2 rounded-pill">Đăng
+						xuất</a>
+				</div>
+				<div th:if="${session.currentUser == null}">
+					<a th:href="@{/auth/login}"
+						class="btn btn-light btn-sm fw-bold rounded-pill px-3 me-2">Đăng
+						nhập</a> <a th:href="@{/auth/register}"
+						class="btn btn-outline-light btn-sm fw-bold rounded-pill px-3">Đăng
+						ký</a>
+				</div>
+			</div>
+		</div>
+	</nav>
+
+	<!-- Main Content -->
+	<div class="container my-4">
+		<!-- Bộ Lọc & Tìm Kiếm -->
+		<div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
+			<form th:action="@{/menu}" method="get"
+				class="row g-2 align-items-center">
+				<div class="col-md-5">
+					<input type="text" name="keyword" th:value="${keyword}"
+						class="form-control"
+						placeholder="Tìm tên món (vd: Trà sữa, Bạc xỉu...)">
+				</div>
+				<div class="col-md-4">
+					<select name="categoryId" class="form-select">
+						<option value="">-- Tất cả danh mục --</option>
+						<option th:each="cat : ${categories}" th:value="${cat.id}"
+							th:text="${cat.name}" th:selected="${cat.id == selectedCategory}">
+						</option>
+					</select>
+				</div>
+				<div class="col-md-3">
+					<button type="submit"
+						class="btn btn-success w-100 fw-bold rounded-3">Tìm kiếm
+						& Lọc</button>
+				</div>
+			</form>
+		</div>
+
+		<!-- Danh Sách Sản Phẩm Grid -->
+		<div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+			<div class="col" th:each="product : ${products}">
+				<div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+					<img
+						th:src="${product.imageCloudinaryId != null ? product.imageCloudinaryId : 'https://via.placeholder.com/300x200?text=UTETra'}"
+						class="card-img-top" style="height: 190px; object-fit: cover;"
+						alt="Product Image">
+					<div class="card-body d-flex flex-column">
+						<h6 class="card-title fw-bold text-dark" th:text="${product.name}">Tên
+							sản phẩm</h6>
+						<p class="card-text text-muted small flex-grow-1"
+							th:text="${product.description}">Mô tả ngắn</p>
+						<div
+							class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+							<span class="text-danger fw-bold fs-6"
+								th:text="${#numbers.formatDecimal(product.basePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'"></span>
+							<button class="btn btn-success btn-sm rounded-circle fw-bold"
+								title="Thêm vào giỏ">+</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
