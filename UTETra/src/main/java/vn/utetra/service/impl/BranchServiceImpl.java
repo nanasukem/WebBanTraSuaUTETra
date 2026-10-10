@@ -30,8 +30,13 @@ public class BranchServiceImpl implements BranchService {
 
 	@Override
 	public List<Branch> search(String keyword, BranchStatus status) {
-		String kw = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
-		return branchRepository.search(kw, status);
+		String kw = null;
+		if (keyword != null && !keyword.isBlank()) {
+			// Chuẩn hoá Unicode: "a + dấu" (tổ hợp) -> "ậ" (dựng sẵn), giống dữ liệu trong
+			// DB
+			kw = java.text.Normalizer.normalize(keyword.trim(), java.text.Normalizer.Form.NFC);
+		}
+		return branchRepository.search(kw, status == null ? null : status.name());
 	}
 
 	@Override
