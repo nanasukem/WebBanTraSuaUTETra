@@ -23,12 +23,17 @@ public class ApplicationConfiguration {
 		this.userRepository = userRepository;
 	}
 
+	/**
+	 * Cho phép đăng nhập bằng username HOẶC email. Định danh trong JWT (sub) luôn
+	 * là username.
+	 */
 	@Bean
 	public UserDetailsService userDetailsService() {
-		return username -> userRepository.findByUsername(username)
+		return login -> userRepository.findByUsernameOrEmail(login, login)
 				.map(user -> new org.springframework.security.core.userdetails.User(user.getUsername(),
-						user.getPassword(), user.getIsActive(), true, true, true,
-						Collections.singletonList(() -> "ROLE_" + user.getRole().getName())))
+						user.getPassword(), Boolean.TRUE.equals(user.getIsActive()), // tránh NullPointerException nếu
+																						// isActive = null
+						true, true, true, Collections.singletonList(() -> "ROLE_" + user.getRole().getName())))
 				.orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy người dùng!"));
 	}
 

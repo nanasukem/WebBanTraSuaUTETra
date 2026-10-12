@@ -42,6 +42,15 @@ body {
 			<div th:if="${error}" class="alert alert-danger py-2 small"
 				th:text="${error}"></div>
 
+			<!-- Chưa kích hoạt: nút gửi lại OTP + chuyển sang trang kích hoạt -->
+			<form th:if="${unverifiedEmail}" th:action="@{/auth/resend-otp}"
+				method="post" class="text-center mb-3">
+				<input type="hidden" name="email" th:value="${unverifiedEmail}">
+				<button type="submit"
+					class="btn btn-outline-success btn-sm rounded-pill px-4 fw-semibold">
+					Kích hoạt OTP ngay →</button>
+			</form>
+
 			<form th:action="@{/auth/login}" th:object="${loginRequest}"
 				method="post">
 				<div class="mb-3 text-start">

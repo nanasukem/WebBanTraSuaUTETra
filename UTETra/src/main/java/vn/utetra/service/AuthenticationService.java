@@ -1,7 +1,9 @@
 package vn.utetra.service;
 
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import vn.utetra.dto.request.LoginRequest;
@@ -9,15 +11,20 @@ import vn.utetra.dto.request.RegisterRequest;
 import vn.utetra.entity.OtpCode;
 import vn.utetra.entity.Role;
 import vn.utetra.entity.User;
+import vn.utetra.exception.AccountNotVerifiedException;
 import vn.utetra.repository.OtpCodeRepository;
 import vn.utetra.repository.RoleRepository;
 import vn.utetra.repository.UserRepository;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Random;
 
 @Service
 public class AuthenticationService {
+
+	private static final SecureRandom RANDOM = new SecureRandom();
+	private static final int OTP_EXPIRE_MINUTES = 5;
+	private static final int RESEND_COOLDOWN_SECONDS = 60;
 
 	private final UserRepository userRepository;
 	private final RoleRepository roleRepository;
@@ -35,6 +42,24 @@ public class AuthenticationService {
 		this.passwordEncoder = passwordEncoder;
 		this.authenticationManager = authenticationManager;
 		this.emailService = emailService;
+	}
+
+	/** Sinh mã OTP 6 chữ số (000000 - 999999) */
+	private String generateOtp() {
+		return String.format("%06d", RANDOM.nextInt(1_000_000));
+	}
+
+	/** Tạo, lưu và gửi OTP qua email */
+	private void createAndSendOtp(String email, String purpose) {
+		String otp = generateOtp();
+		OtpCode otpCode = new OtpCode();
+		otpCode.setEmail(email);
+		otpCode.setCode(otp);
+		otpCode.setPurpose(purpose); // 'REGISTER' hoặc 'RESET_PASSWORD' theo CHECK constraint CSDL
+		otpCode.setExpiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRE_MINUTES));
+		otpCodeRepository.save(otpCode);
+
+		emailService.sendOtpEmail(email, otp);
 	}
 
 	// 1. Đăng ký -> Mục đích: 'REGISTER'
@@ -61,15 +86,7 @@ public class AuthenticationService {
 
 		User savedUser = userRepository.save(user);
 
-		String otp = String.format("%06d", new Random().nextInt(999999));
-		OtpCode otpCode = new OtpCode();
-		otpCode.setEmail(savedUser.getEmail());
-		otpCode.setCode(otp);
-		otpCode.setPurpose("REGISTER");
-		otpCode.setExpiresAt(LocalDateTime.now().plusMinutes(5));
-		otpCodeRepository.save(otpCode);
-
-		emailService.sendOtpEmail(savedUser.getEmail(), otp);
+		createAndSendOtp(savedUser.getEmail(), "REGISTER");
 
 		return savedUser;
 	}
@@ -98,17 +115,27 @@ public class AuthenticationService {
 		return true;
 	}
 
-	// 3. Đăng nhập
+	// 3. Đăng nhập bằng username HOẶC email
 	public User authenticate(LoginRequest input) {
-		User user = userRepository.findByUsername(input.getUsername())
+		String login = input.getUsername() == null ? "" : input.getUsername().trim();
+
+		User user = userRepository.findByUsernameOrEmail(login, login)
 				.orElseThrow(() -> new RuntimeException("Tài khoản hoặc mật khẩu không chính xác!"));
 
-		if (!user.getIsVerified()) {
-			throw new RuntimeException("Tài khoản chưa kích hoạt OTP! Vui lòng kiểm tra Email.");
+		// Kiểm tra mật khẩu TRƯỚC, sai mật khẩu thì không tiết lộ trạng thái tài khoản
+		try {
+			authenticationManager.authenticate(
+					new UsernamePasswordAuthenticationToken(user.getUsername(), input.getPassword()));
+		} catch (DisabledException e) {
+			throw new RuntimeException("Tài khoản của bạn hiện đang bị khóa!");
+		} catch (AuthenticationException e) {
+			throw new RuntimeException("Tài khoản hoặc mật khẩu không chính xác!");
 		}
 
-		authenticationManager
-				.authenticate(new UsernamePasswordAuthenticationToken(input.getUsername(), input.getPassword()));
+		// Đúng mật khẩu nhưng chưa kích hoạt -> báo riêng kèm email
+		if (!Boolean.TRUE.equals(user.getIsVerified())) {
+			throw new AccountNotVerifiedException(user.getEmail());
+		}
 
 		return user;
 	}
@@ -118,19 +145,11 @@ public class AuthenticationService {
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new RuntimeException("Email chưa được đăng ký trong hệ thống!"));
 
-		if (!user.getIsActive()) {
+		if (!Boolean.TRUE.equals(user.getIsActive())) {
 			throw new RuntimeException("Tài khoản của bạn hiện đang bị khóa!");
 		}
 
-		String otp = String.format("%06d", new Random().nextInt(999999));
-		OtpCode otpCode = new OtpCode();
-		otpCode.setEmail(email);
-		otpCode.setCode(otp);
-		otpCode.setPurpose("RESET_PASSWORD"); // Chuẩn theo CHECK constraint CSDL
-		otpCode.setExpiresAt(LocalDateTime.now().plusMinutes(5));
-		otpCodeRepository.save(otpCode);
-
-		emailService.sendOtpEmail(email, otp);
+		createAndSendOtp(email, "RESET_PASSWORD");
 	}
 
 	// 5. Đặt lại mật khẩu mới -> Tìm theo: 'RESET_PASSWORD'
@@ -155,6 +174,30 @@ public class AuthenticationService {
 		user.setPassword(passwordEncoder.encode(newPassword));
 		userRepository.save(user);
 
+		return true;
+	}
+
+	// 6. Gửi lại OTP kích hoạt tài khoản
+	// Trả về true nếu đã gửi mã mới, false nếu mã cũ vừa gửi chưa quá 60 giây (vẫn dùng được)
+	public boolean resendRegisterOtp(String email) {
+		User user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new RuntimeException("Email chưa được đăng ký trong hệ thống!"));
+
+		if (Boolean.TRUE.equals(user.getIsVerified())) {
+			throw new RuntimeException("Tài khoản đã được kích hoạt, vui lòng đăng nhập!");
+		}
+
+		boolean recentlySent = otpCodeRepository
+				.findTopByEmailAndPurposeAndUsedFalseOrderByCreatedAtDesc(email, "REGISTER")
+				.map(o -> o.getCreatedAt() != null
+						&& o.getCreatedAt().isAfter(LocalDateTime.now().minusSeconds(RESEND_COOLDOWN_SECONDS)))
+				.orElse(false);
+
+		if (recentlySent) {
+			return false;
+		}
+
+		createAndSendOtp(email, "REGISTER");
 		return true;
 	}
 }
