@@ -2,6 +2,7 @@ package vn.utetra.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,21 +31,27 @@ public class SecurityConfiguration {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-		return httpSecurity.cors(Customizer.withDefaults()).csrf(csrf -> csrf.disable())
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/", "/menu/**", "/auth/**", "/api/auth/**", // <--
-																													// Bổ
-																													// sung
-																													// cho
-																													// API
-																													// Auth
-																													// (Login,
-																													// Register,
-																													// OTP,
-																													// Reset
-																													// Pass)
-						"/login/**", "/images/**", "/js/**", "/css/**").permitAll().anyRequest().authenticated())
-				.sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+		return http.cors(Customizer.withDefaults()).csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
+				// Trang lỗi - để thấy lỗi thật thay vì 403
+				.requestMatchers("/error").permitAll()
+
+				// Trang công khai + Auth (Login, Register, OTP, Reset Pass)
+				.requestMatchers("/", "/menu/**", "/auth/**", "/api/auth/**", "/login/**").permitAll()
+
+				// Tài nguyên tĩnh
+				.requestMatchers("/images/**", "/js/**", "/css/**", "/favicon.ico").permitAll()
+
+				// Khách được XEM sản phẩm, danh mục, topping (chỉ GET)
+				.requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/toppings/**")
+				.permitAll()
+
+				// Chỉ ADMIN
+				.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
+
+				// Còn lại: phải đăng nhập
+				.anyRequest().authenticated())
+				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authenticationProvider(authenticationProvider)
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class).build();
 	}
@@ -59,7 +66,6 @@ public class SecurityConfiguration {
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", configuration);
-
 		return source;
 	}
 }

@@ -10,9 +10,11 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import vn.utetra.dto.request.LoginRequest;
 import vn.utetra.dto.request.RegisterRequest;
 import vn.utetra.entity.User;
+import vn.utetra.exception.AccountNotVerifiedException;
 import vn.utetra.service.AuthenticationService;
 import vn.utetra.service.JwtService;
 
@@ -58,10 +60,30 @@ public class AuthController {
 			session.setAttribute("currentUser", authenticatedUser);
 
 			return "redirect:/menu";
+		} catch (AccountNotVerifiedException e) {
+			// Đúng mật khẩu nhưng chưa kích hoạt -> hiện nút "Kích hoạt OTP ngay"
+			model.addAttribute("error", e.getMessage());
+			model.addAttribute("unverifiedEmail", e.getEmail());
+			return "auth/login";
 		} catch (Exception e) {
 			model.addAttribute("error", e.getMessage());
 			return "auth/login";
 		}
+	}
+
+	// 1b. GỬI LẠI OTP KÍCH HOẠT (từ trang đăng nhập)
+	@PostMapping("/resend-otp")
+	public String handleResendOtp(@RequestParam("email") String email, RedirectAttributes redirectAttributes) {
+		try {
+			boolean sent = authenticationService.resendRegisterOtp(email);
+			redirectAttributes.addFlashAttribute("success", sent
+					? "Đã gửi mã OTP mới tới email của bạn!"
+					: "Mã OTP vừa được gửi, vui lòng kiểm tra email (kể cả mục Spam).");
+		} catch (Exception e) {
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		}
+		redirectAttributes.addAttribute("email", email); // tự mã hóa email trên URL
+		return "redirect:/auth/verify-otp";
 	}
 
 	// 2. ĐĂNG KÝ
@@ -72,10 +94,12 @@ public class AuthController {
 	}
 
 	@PostMapping("/register")
-	public String handleRegister(@ModelAttribute("registerRequest") RegisterRequest registerRequest, Model model) {
+	public String handleRegister(@ModelAttribute("registerRequest") RegisterRequest registerRequest, Model model,
+			RedirectAttributes redirectAttributes) {
 		try {
 			User user = authenticationService.signup(registerRequest);
-			return "redirect:/auth/verify-otp?email=" + user.getEmail();
+			redirectAttributes.addAttribute("email", user.getEmail());
+			return "redirect:/auth/verify-otp";
 		} catch (Exception e) {
 			model.addAttribute("error", e.getMessage());
 			return "auth/register";
@@ -110,10 +134,12 @@ public class AuthController {
 	}
 
 	@PostMapping("/forgot-password")
-	public String handleForgotPassword(@RequestParam("email") String email, Model model) {
+	public String handleForgotPassword(@RequestParam("email") String email, Model model,
+			RedirectAttributes redirectAttributes) {
 		try {
 			authenticationService.processForgotPassword(email);
-			return "redirect:/auth/reset-password?email=" + email;
+			redirectAttributes.addAttribute("email", email);
+			return "redirect:/auth/reset-password";
 		} catch (Exception e) {
 			model.addAttribute("error", e.getMessage());
 			return "auth/forgot-password";
@@ -145,19 +171,16 @@ public class AuthController {
 	// 6. ĐĂNG XUẤT (Xóa Cookie JWT & Hủy Session)
 	@GetMapping("/logout")
 	public String logout(HttpServletRequest request, HttpServletResponse response, HttpSession session) {
-		// Xóa Cookie JWT_TOKEN
 		Cookie jwtCookie = new Cookie("JWT_TOKEN", null);
 		jwtCookie.setPath("/");
 		jwtCookie.setHttpOnly(true);
 		jwtCookie.setMaxAge(0);
 		response.addCookie(jwtCookie);
 
-		// Hủy Session
 		if (session != null) {
 			session.invalidate();
 		}
 
-		// Xóa Security Context
 		SecurityContextHolder.clearContext();
 
 		return "redirect:/auth/login?logout=true";
