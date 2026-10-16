@@ -3,7 +3,8 @@ package vn.utetra.controller.api;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.utetra.entity.Product;
-import vn.utetra.service.ProductService;
+import vn.utetra.service.AdminProductService;
+import vn.utetra.service.GuestHomeService;
 
 import java.util.List;
 
@@ -11,18 +12,29 @@ import java.util.List;
 @RequestMapping("/api/products")
 public class ProductApiController {
 
-	private final ProductService productService;
+	private final AdminProductService adminProductService;
+	private final GuestHomeService guestHomeService;
 
-	public ProductApiController(ProductService productService) {
-		this.productService = productService;
+	public ProductApiController(AdminProductService adminProductService, GuestHomeService guestHomeService) {
+		this.adminProductService = adminProductService;
+		this.guestHomeService = guestHomeService;
 	}
 
-	// 1. Lấy danh sách sản phẩm (có lọc keyword, categoryId, sortBy)
-	// GET /api/products?keyword=Tra&categoryId=1&sortBy=price_asc
+	// GET /api/products
 	@GetMapping
-	public ResponseEntity<List<Product>> getProducts(@RequestParam(required = false) String keyword,
-			@RequestParam(required = false) Integer categoryId, @RequestParam(required = false) String sortBy) {
-		List<Product> products = productService.filterProducts(keyword, categoryId, sortBy);
-		return ResponseEntity.ok(products);
+	public ResponseEntity<List<Product>> getAllProducts() {
+		return ResponseEntity.ok(adminProductService.getAllProducts());
+	}
+
+	// GET /api/products/best-sellers (Sản phẩm bán > 10 ly cho trang chủ Guest)
+	@GetMapping("/best-sellers")
+	public ResponseEntity<List<Product>> getBestSellers() {
+		return ResponseEntity.ok(guestHomeService.getBestSellerProducts());
+	}
+
+	// GET /api/products/{id}
+	@GetMapping("/{id}")
+	public ResponseEntity<Product> getProductById(@PathVariable Integer id) {
+		return ResponseEntity.ok(adminProductService.getProductById(id));
 	}
 }

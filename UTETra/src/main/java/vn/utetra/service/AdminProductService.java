@@ -2,18 +2,15 @@ package vn.utetra.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.utetra.dto.request.ProductRequest;
+import org.springframework.web.multipart.MultipartFile;
+import vn.utetra.dto.ProductFormDto;
 import vn.utetra.entity.Category;
 import vn.utetra.entity.Product;
 import vn.utetra.repository.CategoryRepository;
 import vn.utetra.repository.ProductRepository;
 
-import java.io.IOException;
 import java.util.List;
 
-/**
- * Admin quản lý menu chung của cả chuỗi (món không thuộc riêng chi nhánh nào)
- */
 @Service
 public class AdminProductService {
 
@@ -34,56 +31,32 @@ public class AdminProductService {
 
 	public Product getProductById(Integer id) {
 		return productRepository.findById(id)
-				.orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm với ID: " + id));
+				.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy món ăn ID: " + id));
 	}
 
 	@Transactional
-	public Product createProduct(ProductRequest request) throws IOException {
-		Product product = new Product();
-		product.setName(request.getName());
-		product.setBasePrice(request.getBasePrice());
-		product.setDescription(request.getDescription());
-		product.setIsAvailable(request.getIsAvailable() != null ? request.getIsAvailable() : true);
-		product.setSoldCount(0);
+	public Product saveProduct(ProductFormDto form) {
+		Category category = categoryRepository.findById(form.getCategoryId())
+				.orElseThrow(() -> new IllegalArgumentException("Danh mục không tồn tại"));
 
-		Category category = categoryRepository.findById(request.getCategoryId())
-				.orElseThrow(() -> new RuntimeException("Danh mục không tồn tại!"));
-		product.setCategory(category);
-
-		// Menu chung: món mới tự động có ở tất cả chi nhánh (chưa có dòng
-		// BranchProducts = đang bán)
-
-		// Upload ảnh lên Cloudinary nếu người dùng có chọn file
-		if (request.getImageFile() != null && !request.getImageFile().isEmpty()) {
-			String imageUrl = cloudinaryService.uploadImage(request.getImageFile(), "products");
-			product.setImageCloudinaryId(imageUrl);
+		Product product;
+		if (form.getId() != null) {
+			product = getProductById(form.getId());
+		} else {
+			product = new Product();
 		}
 
-		return productRepository.save(product);
-	}
-
-	@Transactional
-	public Product updateProduct(Integer id, ProductRequest request) throws IOException {
-		Product product = getProductById(id);
-		product.setName(request.getName());
-		product.setBasePrice(request.getBasePrice());
-		product.setDescription(request.getDescription());
-		if (request.getIsAvailable() != null) {
-			product.setIsAvailable(request.getIsAvailable());
-		}
-
-		Category category = categoryRepository.findById(request.getCategoryId())
-				.orElseThrow(() -> new RuntimeException("Danh mục không tồn tại!"));
+		product.setName(form.getName());
 		product.setCategory(category);
+		product.setBasePrice(form.getBasePrice());
+		product.setDescription(form.getDescription());
 
-		// Nâng cấp ảnh mới trên Cloudinary nếu có upload lại
-		if (request.getImageFile() != null && !request.getImageFile().isEmpty()) {
-			// Xóa ảnh cũ
+		MultipartFile imageFile = form.getImageFile();
+		if (imageFile != null && !imageFile.isEmpty()) {
 			if (product.getImageCloudinaryId() != null) {
 				cloudinaryService.deleteImage(product.getImageCloudinaryId());
 			}
-			// Upload ảnh mới
-			String imageUrl = cloudinaryService.uploadImage(request.getImageFile(), "products");
+			String imageUrl = cloudinaryService.uploadImage(imageFile, "products");
 			product.setImageCloudinaryId(imageUrl);
 		}
 
@@ -93,10 +66,26 @@ public class AdminProductService {
 	@Transactional
 	public void deleteProduct(Integer id) {
 		Product product = getProductById(id);
-		// Xóa ảnh trên Cloudinary
 		if (product.getImageCloudinaryId() != null) {
 			cloudinaryService.deleteImage(product.getImageCloudinaryId());
 		}
-		productRepository.delete(product);
+		productRepository.deleteById(id);
+	}
+
+	public List<Category> getAllCategories() {
+		return categoryRepository.findAll();
+	}
+
+	@Transactional
+	public Category saveCategory(String name, MultipartFile imageFile) {
+		Category category = new Category();
+		category.setName(name);
+
+		if (imageFile != null && !imageFile.isEmpty()) {
+			String imageUrl = cloudinaryService.uploadImage(imageFile, "categories");
+			category.setImageCloudinaryId(imageUrl);
+		}
+
+		return categoryRepository.save(category);
 	}
 }

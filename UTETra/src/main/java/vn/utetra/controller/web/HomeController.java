@@ -1,54 +1,70 @@
 package vn.utetra.controller.web;
 
 import jakarta.servlet.http.HttpSession;
+
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+
 import vn.utetra.entity.User;
 import vn.utetra.repository.UserRepository;
-import vn.utetra.service.ProductService;
-
-import java.util.Optional;
 
 @Controller
 public class HomeController {
 
 	@Autowired
-	private ProductService productService;
-
-	@Autowired
 	private UserRepository userRepository;
 
-	@GetMapping({ "/", "/menu" })
-	public String viewMenu(Model model, HttpSession session, @RequestParam(required = false) String keyword,
-			@RequestParam(required = false) Integer categoryId, @RequestParam(required = false) String sortBy) {
+	@GetMapping("/")
+    public String index(HttpSession session) {
 
-		// Xử lý thông tin người dùng đăng nhập
-		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-		if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-			String username = auth.getName();
-			Optional<User> userOpt = userRepository.findByUsername(username);
-			if (userOpt.isPresent()) {
-				model.addAttribute("currentUser", userOpt.get());
-				session.setAttribute("user", userOpt.get());
-			}
-		} else {
-			User sessionUser = (User) session.getAttribute("user");
-			if (sessionUser != null) {
-				model.addAttribute("currentUser", sessionUser);
-			}
-		}
+        Authentication auth = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
 
-		model.addAttribute("categories", productService.getAllCategories());
-		model.addAttribute("products", productService.filterProducts(keyword, categoryId, sortBy));
-		model.addAttribute("selectedCategory", categoryId);
-		model.addAttribute("keyword", keyword);
-		model.addAttribute("sortBy", sortBy);
+        // Kiểm tra người dùng đã đăng nhập hay chưa
+        if (auth != null
+                && auth.isAuthenticated()
+                && !"anonymousUser".equals(auth.getName())) {
 
-		return "admin/products/menu";
-	}
+            String username = auth.getName();
+
+            Optional<User> userOpt =
+                    userRepository.findByUsername(username);
+
+            if (userOpt.isPresent()) {
+
+                User user = userOpt.get();
+
+                // Lưu thông tin người dùng vào Session
+                session.setAttribute("user", user);
+
+                if (user.getRole() != null
+                        && user.getRole().getName() != null) {
+
+                    String roleName =
+                            user.getRole().getName().toUpperCase();
+
+                    // ADMIN và MANAGER
+                    if ("ADMIN".equals(roleName)
+                            || "MANAGER".equals(roleName)) {
+                        return "redirect:/admin/products";
+                    }
+
+                    // VENDOR
+                    if ("VENDOR".equals(roleName)) {
+                        return "redirect:/vendor/menu";
+                    }
+                }
+            }
+        }
+
+        // Khách chưa đăng nhập hoặc USER thông thường
+        // Chuyển sang trang thực đơn công khai
+        return "redirect:/menu";
+    }
 }

@@ -2,12 +2,16 @@ package vn.utetra.dto.request;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
+import vn.utetra.entity.enums.BranchStatus;
 
 import java.math.BigDecimal;
 
 /** Dữ liệu form Thêm/Sửa chi nhánh (Admin/Manager) */
 @Data
 public class BranchReq {
+
+	private Integer id;
 
 	@NotBlank(message = "Tên chi nhánh không được để trống")
 	@Size(max = 100, message = "Tên tối đa 100 ký tự")
@@ -30,4 +34,10 @@ public class BranchReq {
 	@DecimalMin(value = "0", message = "Chiết khấu không được âm")
 	@DecimalMax(value = "100", message = "Chiết khấu tối đa 100%")
 	private BigDecimal commissionRate = new BigDecimal("5.00");
+
+	private BranchStatus status;
+
+	private String imageCloudinaryId;
+
+	private MultipartFile imageFile;
 }
