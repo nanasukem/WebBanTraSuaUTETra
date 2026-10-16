@@ -14,7 +14,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import vn.utetra.entity.User;
 import vn.utetra.repository.UserRepository;
 import vn.utetra.service.JwtService;
 
@@ -32,6 +31,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		this.jwtService = jwtService;
 		this.userDetailsService = userDetailsService;
 		this.userRepository = userRepository;
+	}
+
+	/**
+	 * Bỏ qua lọc JWT cho các tài nguyên tĩnh và các đường dẫn công khai giúp trang
+	 * Thymeleaf tự do tải CSS/JS và hiển thị giao diện đầy đủ.
+	 */
+	@Override
+	protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
+		String path = request.getServletPath();
+		return path.startsWith("/css/") || path.startsWith("/js/") || path.startsWith("/images/")
+				|| path.startsWith("/webjars/") || path.equals("/favicon.ico") || path.equals("/")
+				|| path.startsWith("/menu") || path.startsWith("/auth/");
 	}
 
 	@Override

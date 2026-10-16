@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="sidebar(activePage)"
+	class="d-flex flex-column flex-shrink-0 p-3 bg-white border-end shadow-sm"
+	style="width: 250px; min-height: 88vh;">
+
+	<!-- KHU VỰC ADMIN / MANAGER -->
+	<div class="mb-3 px-2">
+		<span class="fs-6 fw-bold text-uppercase text-muted"> Quản trị
+			Hệ thống </span>
+	</div>
+
+	<ul class="nav nav-pills flex-column mb-auto">
+
+		<li class="nav-item mb-1"><a th:href="@{/admin/products}"
+			th:classappend="${activePage == 'products' ? ' active bg-success text-white' : ''}"
+			class="nav-link text-dark fw-semibold"> <i
+				class="bi bi-cup-straw me-2 fs-5"></i> Menu toàn chuỗi
+		</a></li>
+
+		<li class="nav-item mb-1"><a th:href="@{/admin/categories}"
+			th:classappend="${activePage == 'categories' ? ' active bg-success text-white' : ''}"
+			class="nav-link text-dark fw-semibold"> <i
+				class="bi bi-tags me-2 fs-5"></i> Danh mục sản phẩm
+		</a></li>
+
+		<hr class="my-3">
+
+		<!-- KHU VỰC VENDOR CHI NHÁNH -->
+		<div class="mb-2 px-2">
+			<span class="fs-6 fw-bold text-uppercase text-muted"> Cửa hàng
+				Vendor </span>
+		</div>
+
+		<li class="nav-item mb-1"><a th:href="@{/vendor/menu}"
+			th:classappend="${activePage == 'vendor-menu' ? ' active bg-success text-white' : ''}"
+			class="nav-link text-dark fw-semibold"> <i
+				class="bi bi-shop me-2 fs-5"></i> Trạng thái kho hàng
+		</a></li>
+
+	</ul>
+</div>
+
+</html>

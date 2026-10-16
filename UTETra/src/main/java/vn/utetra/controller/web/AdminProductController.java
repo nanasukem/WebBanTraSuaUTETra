@@ -3,84 +3,48 @@ package vn.utetra.controller.web;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import vn.utetra.dto.request.ProductRequest;
+import org.springframework.web.multipart.MultipartFile;
+import vn.utetra.dto.ProductFormDto;
 import vn.utetra.service.AdminProductService;
-import vn.utetra.repository.CategoryRepository;
 
 @Controller
-@RequestMapping("/admin/products")
+@RequestMapping("/admin")
 public class AdminProductController {
 
 	private final AdminProductService adminProductService;
-	private final CategoryRepository categoryRepository;
 
-	public AdminProductController(AdminProductService adminProductService, CategoryRepository categoryRepository) {
+	public AdminProductController(AdminProductService adminProductService) {
 		this.adminProductService = adminProductService;
-		this.categoryRepository = categoryRepository;
 	}
 
-	@GetMapping
+	@GetMapping("/products")
 	public String listProducts(Model model) {
 		model.addAttribute("products", adminProductService.getAllProducts());
-		return "admin/products/list";
+		model.addAttribute("categories", adminProductService.getAllCategories());
+		return "admin/products/index";
 	}
 
-	@GetMapping("/create")
-	public String showCreateForm(Model model) {
-		model.addAttribute("productRequest", new ProductRequest());
-		model.addAttribute("categories", categoryRepository.findAll());
-		return "admin/products/form";
-	}
-
-	@PostMapping("/create")
-	public String createProduct(@ModelAttribute ProductRequest productRequest, RedirectAttributes redirectAttributes) {
-		try {
-			adminProductService.createProduct(productRequest);
-			redirectAttributes.addFlashAttribute("successMsg", "Thêm sản phẩm vào Menu thành công!");
-		} catch (Exception e) {
-			redirectAttributes.addFlashAttribute("errorMsg", "Lỗi: " + e.getMessage());
-		}
+	@PostMapping("/products/save")
+	public String saveProduct(@ModelAttribute ProductFormDto form) {
+		adminProductService.saveProduct(form);
 		return "redirect:/admin/products";
 	}
 
-	@GetMapping("/edit/{id}")
-	public String showEditForm(@PathVariable Integer id, Model model) {
-		var product = adminProductService.getProductById(id);
-		ProductRequest request = new ProductRequest();
-		request.setName(product.getName());
-		request.setBasePrice(product.getBasePrice());
-		request.setDescription(product.getDescription());
-		request.setCategoryId(product.getCategory().getId());
-		request.setIsAvailable(product.getIsAvailable());
-
-		model.addAttribute("productRequest", request);
-		model.addAttribute("productId", id);
-		model.addAttribute("currentImage", product.getImageCloudinaryId());
-		model.addAttribute("categories", categoryRepository.findAll());
-		return "admin/products/form";
-	}
-
-	@PostMapping("/edit/{id}")
-	public String updateProduct(@PathVariable Integer id, @ModelAttribute ProductRequest productRequest,
-			RedirectAttributes redirectAttributes) {
-		try {
-			adminProductService.updateProduct(id, productRequest);
-			redirectAttributes.addFlashAttribute("successMsg", "Cập nhật sản phẩm thành công!");
-		} catch (Exception e) {
-			redirectAttributes.addFlashAttribute("errorMsg", "Lỗi: " + e.getMessage());
-		}
+	@GetMapping("/products/delete/{id}")
+	public String deleteProduct(@PathVariable Integer id) {
+		adminProductService.deleteProduct(id);
 		return "redirect:/admin/products";
 	}
 
-	@GetMapping("/delete/{id}")
-	public String deleteProduct(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
-		try {
-			adminProductService.deleteProduct(id);
-			redirectAttributes.addFlashAttribute("successMsg", "Xóa sản phẩm thành công!");
-		} catch (Exception e) {
-			redirectAttributes.addFlashAttribute("errorMsg", "Lỗi: " + e.getMessage());
-		}
-		return "redirect:/admin/products";
+	@GetMapping("/categories")
+	public String listCategories(Model model) {
+		model.addAttribute("categories", adminProductService.getAllCategories());
+		return "admin/categories/index";
+	}
+
+	@PostMapping("/categories/save")
+	public String saveCategory(@RequestParam String name, @RequestParam MultipartFile imageFile) {
+		adminProductService.saveCategory(name, imageFile);
+		return "redirect:/admin/categories";
 	}
 }

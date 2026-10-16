@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+	th:fragment="main(title, activePage, content)">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title th:text="${title} + ' - Quản trị UTETra'">Quản trị System
+</title>
+
+<!-- Bootstrap CSS -->
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+
+<!-- Bootstrap Icons -->
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
+	rel="stylesheet">
+</head>
+
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+	<!-- Header dùng chung -->
+	<div th:replace="~{fragments/header :: header}"></div>
+
+	<!-- Sidebar + nội dung chính -->
+	<div class="d-flex flex-grow-1">
+
+		<!-- Sidebar -->
+		<div th:replace="~{fragments/sidebar :: sidebar(${activePage})}"></div>
+
+		<!-- Nội dung trang -->
+		<main class="flex-grow-1 p-4 overflow-auto">
+			<div th:replace="${content}"></div>
+		</main>
+
+	</div>
+
+	<!-- Footer dùng chung -->
+	<div th:replace="~{fragments/footer :: footer}"></div>
+
+	<!-- Bootstrap JS -->
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

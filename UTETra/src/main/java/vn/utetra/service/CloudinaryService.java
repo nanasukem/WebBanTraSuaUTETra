@@ -17,41 +17,37 @@ public class CloudinaryService {
 		this.cloudinary = cloudinary;
 	}
 
-	// Upload ảnh lên Cloudinary và trả về URL public
-	public String uploadImage(MultipartFile file, String folderName) throws IOException {
-		if (file == null || file.isEmpty()) {
+	public String uploadImage(MultipartFile file, String folderName) {
+		if (file == null || file.isEmpty())
 			return null;
+		try {
+			Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
+					ObjectUtils.asMap("folder", "utetra/" + folderName));
+			return uploadResult.get("secure_url").toString();
+		} catch (IOException e) {
+			throw new RuntimeException("Lỗi upload ảnh lên Cloudinary: " + e.getMessage());
 		}
-		Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
-				ObjectUtils.asMap("folder", "UTETra/" + folderName));
-		return uploadResult.get("secure_url").toString();
 	}
 
-	// Xóa ảnh trên Cloudinary theo Public ID / URL
 	public void deleteImage(String imageUrl) {
-		if (imageUrl == null || imageUrl.isEmpty())
+		if (imageUrl == null || !imageUrl.contains("cloudinary"))
 			return;
 		try {
-			// Tách public_id từ URL
 			String publicId = extractPublicId(imageUrl);
 			if (publicId != null) {
 				cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (Exception ignored) {
 		}
 	}
 
 	private String extractPublicId(String imageUrl) {
 		try {
-			int folderIdx = imageUrl.indexOf("UTETra/");
-			int lastDotIdx = imageUrl.lastIndexOf(".");
-			if (folderIdx != -1 && lastDotIdx > folderIdx) {
-				return imageUrl.substring(folderIdx, lastDotIdx);
-			}
+			int start = imageUrl.indexOf("utetra/");
+			int end = imageUrl.lastIndexOf(".");
+			return imageUrl.substring(start, end);
 		} catch (Exception e) {
 			return null;
 		}
-		return null;
 	}
 }

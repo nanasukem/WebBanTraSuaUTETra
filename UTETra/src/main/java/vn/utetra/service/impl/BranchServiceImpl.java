@@ -1,65 +1,70 @@
 package vn.utetra.service.impl;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.utetra.dto.request.BranchReq;
 import vn.utetra.entity.Branch;
 import vn.utetra.entity.User;
 import vn.utetra.entity.enums.BranchStatus;
-import vn.utetra.exception.BusinessException;
-import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.BranchRepository;
 import vn.utetra.repository.UserRepository;
 import vn.utetra.service.BranchService;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import vn.utetra.service.CloudinaryService;
 
 import java.util.List;
 
 @Service
-@Transactional(readOnly = true)
 public class BranchServiceImpl implements BranchService {
-
-	private static final String ROLE_VENDOR = "VENDOR";
 
 	private final BranchRepository branchRepository;
 	private final UserRepository userRepository;
+	private final CloudinaryService cloudinaryService;
 
-	public BranchServiceImpl(BranchRepository branchRepository, UserRepository userRepository) {
+	public BranchServiceImpl(BranchRepository branchRepository, UserRepository userRepository,
+			CloudinaryService cloudinaryService) {
 		this.branchRepository = branchRepository;
 		this.userRepository = userRepository;
+		this.cloudinaryService = cloudinaryService;
 	}
 
 	@Override
 	public List<Branch> search(String keyword, BranchStatus status) {
-		String kw = null;
-		if (keyword != null && !keyword.isBlank()) {
-			// Chuẩn hoá Unicode: "a + dấu" (tổ hợp) -> "ậ" (dựng sẵn), giống dữ liệu trong
-			// DB
-			kw = java.text.Normalizer.normalize(keyword.trim(), java.text.Normalizer.Form.NFC);
-		}
-		return branchRepository.search(kw, status == null ? null : status.name());
+		String searchKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+		return branchRepository.searchBranches(searchKeyword, status);
 	}
 
 	@Override
 	public List<Branch> findApproved() {
-		return branchRepository.findByStatusOrderByNameAsc(BranchStatus.APPROVED);
+		return branchRepository.findByStatus(BranchStatus.APPROVED);
 	}
 
 	@Override
 	public Branch findById(Integer id) {
 		return branchRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi nhánh #" + id));
+				.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chi nhánh với ID: " + id));
 	}
 
 	@Override
 	@Transactional
 	public Branch create(BranchReq req) {
-		String name = req.getName().trim();
-		if (branchRepository.existsByNameIgnoreCase(name)) {
-			throw new BusinessException("Tên chi nhánh \"" + name + "\" đã tồn tại");
-		}
+		User owner = userRepository.findById(req.getOwnerId())
+				.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng Vendor sở hữu"));
+
 		Branch branch = new Branch();
-		copy(req, branch);
-		branch.setStatus(BranchStatus.APPROVED); // Admin/Manager tạo thì duyệt luôn
+		branch.setOwner(owner);
+		branch.setName(req.getName());
+		branch.setAddress(req.getAddress());
+		branch.setPhone(req.getPhone());
+		branch.setDescription(req.getDescription());
+		branch.setCommissionRate(
+				req.getCommissionRate() != null ? req.getCommissionRate() : new java.math.BigDecimal("5.00"));
+		branch.setStatus(req.getStatus() != null ? req.getStatus() : BranchStatus.PENDING);
+
+		if (req.getImageFile() != null && !req.getImageFile().isEmpty()) {
+			String imageUrl = cloudinaryService.uploadImage(req.getImageFile(), "branches");
+			branch.setImageCloudinaryId(imageUrl);
+		}
+
 		return branchRepository.save(branch);
 	}
 
@@ -67,11 +72,32 @@ public class BranchServiceImpl implements BranchService {
 	@Transactional
 	public Branch update(Integer id, BranchReq req) {
 		Branch branch = findById(id);
-		String name = req.getName().trim();
-		if (branchRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
-			throw new BusinessException("Tên chi nhánh \"" + name + "\" đã tồn tại");
+
+		if (req.getOwnerId() != null && !req.getOwnerId().equals(branch.getOwner().getId())) {
+			User newOwner = userRepository.findById(req.getOwnerId())
+					.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng Vendor sở hữu"));
+			branch.setOwner(newOwner);
 		}
-		copy(req, branch);
+
+		branch.setName(req.getName());
+		branch.setAddress(req.getAddress());
+		branch.setPhone(req.getPhone());
+		branch.setDescription(req.getDescription());
+		if (req.getCommissionRate() != null) {
+			branch.setCommissionRate(req.getCommissionRate());
+		}
+		if (req.getStatus() != null) {
+			branch.setStatus(req.getStatus());
+		}
+
+		if (req.getImageFile() != null && !req.getImageFile().isEmpty()) {
+			if (branch.getImageCloudinaryId() != null) {
+				cloudinaryService.deleteImage(branch.getImageCloudinaryId());
+			}
+			String imageUrl = cloudinaryService.uploadImage(req.getImageFile(), "branches");
+			branch.setImageCloudinaryId(imageUrl);
+		}
+
 		return branchRepository.save(branch);
 	}
 
@@ -79,51 +105,27 @@ public class BranchServiceImpl implements BranchService {
 	@Transactional
 	public void changeStatus(Integer id, BranchStatus newStatus) {
 		Branch branch = findById(id);
-		BranchStatus current = branch.getStatus();
-
-		// Chỉ cho phép các bước chuyển hợp lệ
-		boolean allowed = switch (newStatus) {
-		case APPROVED ->
-			current == BranchStatus.PENDING || current == BranchStatus.SUSPENDED || current == BranchStatus.REJECTED;
-		case REJECTED -> current == BranchStatus.PENDING;
-		case SUSPENDED -> current == BranchStatus.APPROVED;
-		case PENDING -> false;
-		};
-		if (!allowed) {
-			throw new BusinessException("Không thể chuyển chi nhánh từ " + current + " sang " + newStatus);
-		}
 		branch.setStatus(newStatus);
+		branchRepository.save(branch);
 	}
 
 	@Override
-	public BranchReq toReq(Branch b) {
+	public BranchReq toReq(Branch branch) {
 		BranchReq req = new BranchReq();
-		req.setName(b.getName());
-		req.setAddress(b.getAddress());
-		req.setPhone(b.getPhone());
-		req.setDescription(b.getDescription());
-		req.setOwnerId(b.getOwner().getId());
-		req.setCommissionRate(b.getCommissionRate());
+		req.setId(branch.getId());
+		req.setOwnerId(branch.getOwner() != null ? branch.getOwner().getId() : null);
+		req.setName(branch.getName());
+		req.setAddress(branch.getAddress());
+		req.setPhone(branch.getPhone());
+		req.setDescription(branch.getDescription());
+		req.setCommissionRate(branch.getCommissionRate());
+		req.setStatus(branch.getStatus());
+		req.setImageCloudinaryId(branch.getImageCloudinaryId());
 		return req;
 	}
 
 	@Override
 	public List<User> findVendors() {
-		return userRepository.findByRole_Name(ROLE_VENDOR);
-	}
-
-	/** Chép dữ liệu form sang entity + kiểm tra chủ shop phải là VENDOR */
-	private void copy(BranchReq req, Branch branch) {
-		User owner = userRepository.findById(req.getOwnerId())
-				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản #" + req.getOwnerId()));
-		if (!ROLE_VENDOR.equals(owner.getRole().getName())) {
-			throw new BusinessException("Chủ shop phải là tài khoản có vai trò VENDOR");
-		}
-		branch.setOwner(owner);
-		branch.setName(req.getName().trim());
-		branch.setAddress(req.getAddress().trim());
-		branch.setPhone(req.getPhone() == null || req.getPhone().isBlank() ? null : req.getPhone().trim());
-		branch.setDescription(req.getDescription());
-		branch.setCommissionRate(req.getCommissionRate());
+		return userRepository.findByRole_Name("VENDOR");
 	}
 }

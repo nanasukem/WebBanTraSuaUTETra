@@ -25,31 +25,26 @@ public class VendorBranchService {
 		this.productRepository = productRepository;
 	}
 
-	// 1. Toggle bật/tắt món tại 1 chi nhánh
 	@Transactional
 	public boolean toggleProductAvailability(Integer branchId, Integer productId, boolean isAvailable) {
-		var existing = branchProductRepository.findByBranch_IdAndProduct_Id(branchId, productId);
-
-		if (existing.isPresent()) {
-			BranchProduct bp = existing.get();
-			bp.setIsAvailable(isAvailable);
-			branchProductRepository.save(bp);
-		} else {
+		BranchProduct bp = branchProductRepository.findByBranch_IdAndProduct_Id(branchId, productId).orElseGet(() -> {
 			Branch branch = branchRepository.findById(branchId)
-					.orElseThrow(() -> new RuntimeException("Không tìm thấy chi nhánh!"));
+					.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chi nhánh theo ID: " + branchId));
 			Product product = productRepository.findById(productId)
-					.orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm!"));
+					.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm theo ID: " + productId));
 
-			BranchProduct bp = new BranchProduct();
-			bp.setBranch(branch);
-			bp.setProduct(product);
-			bp.setIsAvailable(isAvailable);
-			branchProductRepository.save(bp);
-		}
+			BranchProduct newBp = new BranchProduct();
+			newBp.setBranch(branch);
+			newBp.setProduct(product);
+			return newBp;
+		});
+
+		bp.setIsAvailable(isAvailable);
+		branchProductRepository.save(bp);
 		return isAvailable;
 	}
 
-	// 2. Lấy danh sách ID món hết hàng tại chi nhánh (để lọc giao diện Menu)
+	@Transactional(readOnly = true)
 	public List<Integer> getUnavailableProductIds(Integer branchId) {
 		return branchProductRepository.findUnavailableProductIds(branchId);
 	}
