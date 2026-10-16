@@ -6,15 +6,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import vn.utetra.dto.request.BranchReq;
+import vn.utetra.dto.request.VoucherReq;
 import vn.utetra.entity.Branch;
 import vn.utetra.entity.Order;
+import vn.utetra.entity.User;
 import vn.utetra.entity.Voucher;
 import vn.utetra.entity.enums.BranchStatus;
+import vn.utetra.entity.enums.DiscountType;
 import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.entity.enums.PaymentMethod;
+import vn.utetra.entity.enums.VoucherApplyTo;
 import vn.utetra.exception.BusinessException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -159,5 +164,109 @@ class Week1ServiceTest {
 		voucherService.toggleActive(v.getId());
 		assertThrows(BusinessException.class,
 				() -> voucherService.calculateDiscount("UTETRA20", 1, vnd(100000), vnd(15000)));
+	}
+
+	// ================= BỔ SUNG: BRANCH =================
+	@Test
+	void branch_capNhat_doiTen() {
+		BranchReq req = branchService.toReq(branchService.findById(2));
+		req.setName("UTETra Đổi Tên JUnit");
+		branchService.update(2, req);
+		assertEquals("UTETra Đổi Tên JUnit", branchService.findById(2).getName());
+	}
+
+	@Test
+	void branch_findApproved_anShopBiTamNgung() {
+		assertTrue(branchService.findApproved().stream().allMatch(b -> b.getStatus() == BranchStatus.APPROVED));
+		branchService.changeStatus(2, BranchStatus.SUSPENDED);
+		assertTrue(branchService.findApproved().stream().noneMatch(b -> b.getId().equals(2)),
+				"Shop bị tạm ngưng không được hiện cho khách");
+	}
+
+	@Test
+	void branch_findVendors_chiLayVendor() {
+		List<Integer> ids = branchService.findVendors().stream().map(User::getId).toList();
+		assertTrue(ids.contains(3), "vendor1 (id 3) phải có trong danh sách");
+		assertFalse(ids.contains(6), "user1 (id 6) không phải vendor");
+	}
+
+	// ================= BỔ SUNG: VOUCHER =================
+	private VoucherReq voucherReq(String code) {
+		VoucherReq r = new VoucherReq();
+		r.setCode(code);
+		r.setName("Voucher test JUnit");
+		r.setBranchId(null); // voucher của app
+		r.setApplyTo(VoucherApplyTo.PRODUCT);
+		r.setDiscountType(DiscountType.AMOUNT);
+		r.setDiscountValue(vnd(10000));
+		r.setMinOrderValue(vnd(0));
+		r.setQuantity(5);
+		r.setStartDate(LocalDateTime.now().minusDays(1));
+		r.setEndDate(LocalDateTime.now().plusDays(7));
+		return r;
+	}
+
+	@Test
+	void voucher_taoMoi_dungDuocNgay() {
+		Voucher v = voucherService.create(voucherReq("JUNITNEW1"));
+		assertNotNull(v.getId());
+		assertEquals(0, v.getUsedCount());
+		assertTrue(voucherService.findAppVouchers().stream().anyMatch(x -> x.getId().equals(v.getId())));
+		assertMoney(10000, voucherService.calculateDiscount("JUNITNEW1", 1, vnd(100000), vnd(15000)));
+	}
+
+	@Test
+	void voucher_trungMa_baoLoi() {
+		assertThrows(BusinessException.class, () -> voucherService.create(voucherReq("FREESHIP10K")));
+	}
+
+	@Test
+	void voucher_cuaShop_khongLanVaoVoucherApp() {
+		VoucherReq req = voucherReq("JUNITSHOP1");
+		req.setBranchId(1);
+		Voucher v = voucherService.create(req);
+		assertTrue(voucherService.findByBranch(1).stream().anyMatch(x -> x.getId().equals(v.getId())));
+		assertTrue(voucherService.findAppVouchers().stream().noneMatch(x -> x.getId().equals(v.getId())));
+	}
+
+	@Test
+	void voucher_hetHan_baoLoi() {
+		Voucher v = voucherService.create(voucherReq("JUNITEXP1"));
+		v.setEndDate(LocalDateTime.now().minusMinutes(1));
+		em.flush();
+		assertThrows(BusinessException.class,
+				() -> voucherService.calculateDiscount("JUNITEXP1", 1, vnd(100000), vnd(15000)));
+	}
+
+	@Test
+	void voucher_markUsed_tangLuot_vaHetLuotThiBaoLoi() {
+		VoucherReq req = voucherReq("JUNITQTY1");
+		req.setQuantity(1);
+		Voucher v = voucherService.create(req);
+		voucherService.markUsed(v.getId());
+		em.flush();
+		em.clear();
+		assertEquals(1, voucherService.findById(v.getId()).getUsedCount());
+		assertThrows(BusinessException.class,
+				() -> voucherService.calculateDiscount("JUNITQTY1", 1, vnd(100000), vnd(15000)));
+	}
+
+	@Test
+	void voucher_xoa_chuaAiDung_thiXoaHan() {
+		Voucher v = voucherService.create(voucherReq("JUNITDEL1"));
+		voucherService.delete(v.getId());
+		em.flush();
+		assertThrows(RuntimeException.class, () -> voucherService.findById(v.getId()));
+	}
+
+	@Test
+	void voucher_xoa_daCoNguoiDung_thiChiTat() {
+		Voucher v = voucherService.create(voucherReq("JUNITDEL2"));
+		voucherService.markUsed(v.getId());
+		voucherService.delete(v.getId());
+		em.flush();
+		em.clear();
+		Voucher sauXoa = voucherService.findById(v.getId());
+		assertFalse(sauXoa.getIsActive(), "Voucher đã dùng chỉ được tắt, không xoá");
 	}
 }

@@ -24,62 +24,68 @@ body {
 }
 </style>
 </head>
-<body class="d-flex align-items-center vh-100">
-	<div class="container">
-		<div class="card auth-card shadow-sm mx-auto p-4">
-			<div class="text-center mb-4">
-				<h3 class="fw-bold text-success">🍃 UTETra</h3>
-				<p class="text-muted small">Đăng nhập tài khoản của bạn</p>
-			</div>
+<body class="d-flex flex-column min-vh-100">
 
-			<!-- Thông báo thành công -->
-			<div th:if="${success}" class="alert alert-success py-2 small"
-				th:text="${success}"></div>
-			<div th:if="${param.logout}" class="alert alert-info py-2 small">Bạn
-				đã đăng xuất thành công!</div>
+	<div th:replace="~{fragments/auth-header :: authHeader('Đăng nhập')}"></div>
 
-			<!-- Thông báo lỗi -->
-			<div th:if="${error}" class="alert alert-danger py-2 small"
-				th:text="${error}"></div>
-
-			<!-- Chưa kích hoạt: nút gửi lại OTP + chuyển sang trang kích hoạt -->
-			<form th:if="${unverifiedEmail}" th:action="@{/auth/resend-otp}"
-				method="post" class="text-center mb-3">
-				<input type="hidden" name="email" th:value="${unverifiedEmail}">
-				<button type="submit"
-					class="btn btn-outline-success btn-sm rounded-pill px-4 fw-semibold">
-					Kích hoạt OTP ngay →</button>
-			</form>
-
-			<form th:action="@{/auth/login}" th:object="${loginRequest}"
-				method="post">
-				<div class="mb-3 text-start">
-					<label class="form-label small fw-bold">Tên đăng nhập</label> <input
-						type="text" th:field="*{username}" class="form-control"
-						placeholder="Nhập tên đăng nhập" required autofocus>
+	<main class="flex-grow-1 d-flex align-items-center py-4">
+		<div class="container">
+			<div class="card auth-card shadow-sm mx-auto p-4">
+				<div class="text-center mb-4">
+					<h4 class="fw-bold text-success mb-1">Chào mừng trở lại!</h4>
+					<p class="text-muted small mb-0">Đăng nhập tài khoản của bạn</p>
 				</div>
-				<div class="mb-3 text-start">
-					<div class="d-flex justify-content-between align-items-center">
-						<label class="form-label small fw-bold mb-0">Mật khẩu</label> <a
-							th:href="@{/auth/forgot-password}"
-							class="text-decoration-none small text-success">Quên mật
-							khẩu?</a>
+
+				<!-- Thông báo thành công -->
+				<div th:if="${success}" class="alert alert-success py-2 small"
+					th:text="${success}"></div>
+				<div th:if="${param.logout}" class="alert alert-info py-2 small">Bạn
+					đã đăng xuất thành công!</div>
+
+				<!-- Thông báo lỗi -->
+				<div th:if="${error}" class="alert alert-danger py-2 small"
+					th:text="${error}"></div>
+
+				<!-- Chưa kích hoạt: nút gửi lại OTP + chuyển sang trang kích hoạt -->
+				<form th:if="${unverifiedEmail}" th:action="@{/auth/resend-otp}"
+					method="post" class="text-center mb-3">
+					<input type="hidden" name="email" th:value="${unverifiedEmail}">
+					<button type="submit"
+						class="btn btn-outline-success btn-sm rounded-pill px-4 fw-semibold">
+						Kích hoạt OTP ngay →</button>
+				</form>
+
+				<form th:action="@{/auth/login}" th:object="${loginRequest}"
+					method="post">
+					<div class="mb-3 text-start">
+						<label class="form-label small fw-bold">Tên đăng nhập</label> <input
+							type="text" th:field="*{username}" class="form-control"
+							placeholder="Nhập tên đăng nhập" required autofocus>
 					</div>
-					<input type="password" th:field="*{password}"
-						class="form-control mt-1" placeholder="••••••••" required>
-				</div>
-				<button type="submit"
-					class="btn btn-success w-100 rounded-pill py-2 fw-bold mt-2">Đăng
-					nhập</button>
-			</form>
+					<div class="mb-3 text-start">
+						<div class="d-flex justify-content-between align-items-center">
+							<label class="form-label small fw-bold mb-0">Mật khẩu</label> <a
+								th:href="@{/auth/forgot-password}"
+								class="text-decoration-none small text-success">Quên mật
+								khẩu?</a>
+						</div>
+						<input type="password" th:field="*{password}"
+							class="form-control mt-1" placeholder="••••••••" required>
+					</div>
+					<button type="submit"
+						class="btn btn-success w-100 rounded-pill py-2 fw-bold mt-2">Đăng
+						nhập</button>
+				</form>
 
-			<div class="text-center mt-4">
-				<p class="small text-muted mb-0">
-					Chưa có tài khoản? <a th:href="@{/auth/register}"
-						class="text-success fw-bold text-decoration-none">Đăng ký ngay</a>
-				</p>
+				<div class="text-center mt-4">
+					<p class="small text-muted mb-0">
+						Chưa có tài khoản? <a th:href="@{/auth/register}"
+							class="text-success fw-bold text-decoration-none">Đăng ký
+							ngay</a>
+					</p>
+				</div>
 			</div>
 		</div>
-	</div>
+	</main>
 </body>
 </html>

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+	<!-- Header tối giản cho các trang đăng nhập / đăng ký / OTP / quên mật khẩu -->
+	<nav th:fragment="authHeader(title)"
+		class="navbar bg-white border-bottom shadow-sm mb-4">
+		<div class="container">
+			<div class="d-flex align-items-center gap-3">
+				<a th:href="@{/menu}"
+					class="navbar-brand fw-bold fs-4 text-success mb-0">🍃 UTETra</a> <span
+					class="fs-5 text-muted border-start ps-3" th:text="${title}">Đăng
+					nhập</span>
+			</div>
+			<a th:href="@{/menu}" class="text-decoration-none small text-muted">←
+				Về trang chủ</a>
+		</div>
+	</nav>
+</body>
+</html>
