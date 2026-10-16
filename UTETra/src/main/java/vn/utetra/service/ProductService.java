@@ -1,33 +1,30 @@
 package vn.utetra.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import vn.utetra.entity.Category;
 import vn.utetra.entity.Product;
 import vn.utetra.repository.CategoryRepository;
 import vn.utetra.repository.ProductRepository;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class ProductService {
 
-	@Autowired
-	private ProductRepository productRepository;
+	private final ProductRepository productRepository;
+	private final CategoryRepository categoryRepository;
 
-	@Autowired
-	private CategoryRepository categoryRepository;
+	public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository) {
+		this.productRepository = productRepository;
+		this.categoryRepository = categoryRepository;
+	}
 
 	public List<Category> getAllCategories() {
 		return categoryRepository.findAll();
 	}
 
-	public List<Product> filterProducts(String keyword, Integer categoryId, BigDecimal minPrice, BigDecimal maxPrice) {
-		return productRepository.filterProducts(keyword, categoryId, minPrice, maxPrice);
-	}
-
-	public Product getProductById(Integer id) {
-		return productRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm!"));
+	public List<Product> filterProducts(String keyword, Integer categoryId, String sortBy) {
+		String searchKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+		return productRepository.filterProducts(searchKeyword, categoryId, sortBy);
 	}
 }

@@ -4,9 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.math.BigDecimal;
 
-/** Form Thêm/Sửa món trong menu chung (không gắn chi nhánh) */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
