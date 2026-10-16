@@ -1,89 +1,280 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thực đơn Trà Sữa - UTETra</title>
-<link
-	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-	rel="stylesheet">
+
+<title>Thực đơn trà sữa - UTETra</title>
+
+<link rel="stylesheet"
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+<link rel="stylesheet"
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+<style>
+body {
+	background-color: #f8f9fa;
+}
+
+.navbar-custom {
+	background-color: #1b7a4b;
+}
+
+.btn-custom {
+	background-color: #1b7a4b;
+	color: white;
+}
+
+.btn-custom:hover {
+	background-color: #145c37;
+	color: white;
+}
+
+.product-card {
+	transition: transform 0.2s ease-in-out;
+}
+
+.product-card:hover {
+	transform: translateY(-4px);
+}
+
+.product-image, .img-placeholder {
+	width: 100%;
+	height: 180px;
+}
+
+.product-image {
+	object-fit: cover;
+}
+
+.img-placeholder {
+	background-color: #e9ecef;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #6c757d;
+	font-size: 1.2rem;
+}
+
+.price {
+	color: #dc3545;
+	font-weight: bold;
+}
+</style>
 </head>
-<body class="bg-light">
-	<!-- Navbar -->
-	<nav
-		class="navbar navbar-expand-lg navbar-dark bg-success sticky-top shadow-sm">
-		<div class="container">
-			<a class="navbar-brand fw-bold fs-4" th:href="@{/menu}">🍃 UTETra</a>
-			<div class="d-flex align-items-center">
-				<div th:if="${session.currentUser != null}" class="text-white me-3">
-					<span>Xin chào, <b
-						th:text="${session.currentUser.fullName != null ? session.currentUser.fullName : session.currentUser.username}">User</b></span>
-					<a th:href="@{/auth/logout}"
-						class="btn btn-outline-light btn-sm ms-2 rounded-pill">Đăng
-						xuất</a>
+
+<body>
+
+	<!-- THANH ĐIỀU HƯỚNG -->
+	<nav class="navbar navbar-custom text-white py-3">
+		<div
+			class="container d-flex justify-content-between align-items-center">
+
+			<a th:href="@{/menu}" class="navbar-brand text-white fw-bold fs-4">
+				<i class="bi bi-cup-hot-fill"></i> UTETra
+			</a>
+
+			<div class="d-flex align-items-center gap-3">
+
+				<!-- NÚT QUẢN TRỊ ADMIN -->
+				<a
+					th:if="${session.user != null
+                and session.user.role != null
+                and session.user.role.name != null
+                and (session.user.role.name == 'ADMIN'
+                or session.user.role.name == 'MANAGER')}"
+					th:href="@{/admin/products}" class="btn btn-warning btn-sm fw-bold">
+
+					<i class="bi bi-speedometer2"></i> Quản trị Admin
+				</a>
+
+				<!-- ĐÃ ĐĂNG NHẬP -->
+				<div th:if="${session.user != null}"
+					class="d-flex align-items-center">
+
+					<span> Xin chào, <strong
+						th:text="${session.user.fullName != null
+                        ? session.user.fullName
+                        : session.user.username}">
+							Người dùng </strong>
+					</span> <a th:href="@{/auth/logout}"
+						class="btn btn-outline-light btn-sm ms-2"> Đăng xuất </a>
 				</div>
-				<div th:if="${session.currentUser == null}">
-					<a th:href="@{/auth/login}"
-						class="btn btn-light btn-sm fw-bold rounded-pill px-3 me-2">Đăng
-						nhập</a> <a th:href="@{/auth/register}"
-						class="btn btn-outline-light btn-sm fw-bold rounded-pill px-3">Đăng
-						ký</a>
+
+				<!-- CHƯA ĐĂNG NHẬP -->
+				<div th:if="${session.user == null}">
+					<a th:href="@{/auth/login}" class="btn btn-outline-light btn-sm">
+						Đăng nhập </a>
 				</div>
+
 			</div>
 		</div>
 	</nav>
 
-	<!-- Main Content -->
-	<div class="container my-4">
-		<!-- Bộ Lọc & Tìm Kiếm -->
-		<div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
-			<form th:action="@{/menu}" method="get"
-				class="row g-2 align-items-center">
-				<div class="col-md-5">
-					<input type="text" name="keyword" th:value="${keyword}"
-						class="form-control"
-						placeholder="Tìm tên món (vd: Trà sữa, Bạc xỉu...)">
-				</div>
-				<div class="col-md-4">
-					<select name="categoryId" class="form-select">
-						<option value="">-- Tất cả danh mục --</option>
-						<option th:each="cat : ${categories}" th:value="${cat.id}"
-							th:text="${cat.name}" th:selected="${cat.id == selectedCategory}">
-						</option>
-					</select>
-				</div>
-				<div class="col-md-3">
-					<button type="submit"
-						class="btn btn-success w-100 fw-bold rounded-3">Tìm kiếm
-						& Lọc</button>
-				</div>
-			</form>
-		</div>
+	<!-- NỘI DUNG CHÍNH -->
+	<div class="container py-4">
 
-		<!-- Danh Sách Sản Phẩm Grid -->
-		<div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
-			<div class="col" th:each="product : ${products}">
-				<div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-					<img
-						th:src="${product.imageCloudinaryId != null ? product.imageCloudinaryId : 'https://via.placeholder.com/300x200?text=UTETra'}"
-						class="card-img-top" style="height: 190px; object-fit: cover;"
-						alt="Product Image">
-					<div class="card-body d-flex flex-column">
-						<h6 class="card-title fw-bold text-dark" th:text="${product.name}">Tên
-							sản phẩm</h6>
-						<p class="card-text text-muted small flex-grow-1"
-							th:text="${product.description}">Mô tả ngắn</p>
-						<div
-							class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
-							<span class="text-danger fw-bold fs-6"
-								th:text="${#numbers.formatDecimal(product.basePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'"></span>
-							<button class="btn btn-success btn-sm rounded-circle fw-bold"
-								title="Thêm vào giỏ">+</button>
+		<!-- TÌM KIẾM VÀ LỌC -->
+		<div class="card border-0 shadow-sm mb-4">
+			<div class="card-body">
+
+				<form th:action="@{/menu}" method="get"
+					class="row g-3 align-items-center">
+
+					<!-- TÌM KIẾM -->
+					<div class="col-md-6">
+						<div class="input-group">
+
+							<span class="input-group-text bg-white"> <i
+								class="bi bi-search"></i>
+							</span> <input type="text" name="keyword" th:value="${keyword}"
+								class="form-control" placeholder="Tìm tên món (nhấn Enter)...">
 						</div>
 					</div>
-				</div>
+
+					<!-- LỌC DANH MỤC -->
+					<div class="col-md-3">
+						<select name="categoryId" class="form-select"
+							onchange="this.form.submit()">
+
+							<option value="" th:selected="${selectedCategory == null}">
+								Tất cả danh mục</option>
+
+							<th:block th:if="${categories != null}">
+								<th:block th:each="c : ${categories}">
+
+									<option th:if="${c != null and c.id != null}"
+										th:value="${c.id}"
+										th:text="${c.name != null ? c.name : 'Chưa đặt tên'}"
+										th:selected="${selectedCategory != null
+                                            and c.id.toString() == selectedCategory.toString()}">
+									</option>
+
+								</th:block>
+							</th:block>
+
+						</select>
+					</div>
+
+					<!-- SẮP XẾP -->
+					<div class="col-md-3">
+						<select name="sortBy" class="form-select"
+							onchange="this.form.submit()">
+
+							<option value="newest"
+								th:selected="${sortBy == null or sortBy == 'newest'}">
+								Mới nhất</option>
+
+							<option value="sold" th:selected="${sortBy == 'sold'}">
+								Bán chạy nhất</option>
+
+							<option value="price_asc" th:selected="${sortBy == 'price_asc'}">
+								Giá: Thấp đến cao</option>
+
+							<option value="price_desc"
+								th:selected="${sortBy == 'price_desc'}">Giá: Cao đến
+								thấp</option>
+
+						</select>
+					</div>
+
+				</form>
 			</div>
 		</div>
+
+		<!-- TIÊU ĐỀ -->
+		<div class="mb-4">
+			<h3 class="fw-bold">Thực đơn UTETra</h3>
+
+			<p class="text-muted">Khám phá những món đồ uống yêu thích của
+				bạn.</p>
+		</div>
+
+		<!-- DANH SÁCH SẢN PHẨM -->
+		<div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
+
+			<th:block th:if="${products != null and !#lists.isEmpty(products)}">
+
+				<th:block th:each="p : ${products}">
+
+					<div class="col" th:if="${p != null}">
+
+						<div
+							class="card h-100 border-0 shadow-sm product-card rounded-3 overflow-hidden">
+
+							<!-- ẢNH SẢN PHẨM -->
+							<img
+								th:if="${p.imageCloudinaryId != null
+                            and !#strings.isEmpty(p.imageCloudinaryId)
+                            and #strings.startsWith(p.imageCloudinaryId, 'http')}"
+								th:src="${p.imageCloudinaryId}"
+								class="card-img-top product-image" alt="Ảnh sản phẩm">
+
+							<!-- ẢNH MẶC ĐỊNH -->
+							<div
+								th:if="${p.imageCloudinaryId == null
+                            or #strings.isEmpty(p.imageCloudinaryId)
+                            or !#strings.startsWith(p.imageCloudinaryId, 'http')}"
+								class="img-placeholder">
+
+								<i class="bi bi-cup-hot-fill me-2"></i> UTETra
+							</div>
+
+							<!-- THÔNG TIN SẢN PHẨM -->
+							<div class="card-body d-flex flex-column justify-content-between">
+
+								<div>
+									<h6 class="card-title fw-bold"
+										th:text="${p.name != null ? p.name : 'Chưa đặt tên'}">
+										Tên món</h6>
+
+									<p class="card-text text-muted small"
+										th:text="${p.description != null ? p.description : ''}">
+										Mô tả sản phẩm</p>
+								</div>
+
+								<div
+									class="d-flex justify-content-between align-items-center mt-3">
+
+									<span class="price"
+										th:text="${p.basePrice != null
+                                        ? #numbers.formatDecimal(p.basePrice, 0, 'COMMA', 0, 'POINT') + ' đ'
+                                        : 'Chưa có giá'}">
+										35,000 đ </span>
+
+									<button type="button"
+										class="btn btn-custom btn-sm rounded-circle" title="Thêm món">
+
+										<i class="bi bi-plus-lg"></i>
+									</button>
+
+								</div>
+							</div>
+
+						</div>
+					</div>
+
+				</th:block>
+			</th:block>
+
+			<!-- KHÔNG CÓ SẢN PHẨM -->
+			<div class="col-12 text-center py-5"
+				th:if="${products == null or #lists.isEmpty(products)}">
+
+				<i class="bi bi-emoji-frown text-muted display-4"></i>
+
+				<p class="mt-3 text-muted fw-bold">Không tìm thấy món nào phù
+					hợp!</p>
+
+			</div>
+
+		</div>
 	</div>
+
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>

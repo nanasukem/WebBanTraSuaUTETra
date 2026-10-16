@@ -33,10 +33,10 @@ public class SecurityConfiguration {
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		return http.cors(Customizer.withDefaults()).csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
-				// Trang lỗi - để thấy lỗi thật thay vì 403
+				// Trang lỗi
 				.requestMatchers("/error").permitAll()
 
-				// Trang công khai + Auth (Login, Register, OTP, Reset Pass)
+				// Trang công khai + Auth (Login, Register, OTP, Reset Pass, Logout)
 				.requestMatchers("/", "/menu/**", "/auth/**", "/api/auth/**", "/login/**").permitAll()
 
 				// Tài nguyên tĩnh
@@ -46,22 +46,26 @@ public class SecurityConfiguration {
 				.requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/toppings/**")
 				.permitAll()
 
-				// Chỉ ADMIN
-				// WebSocket (bắt tay kết nối) - quyền nghe kênh sẽ kiểm tra ở bước 6
+				// WebSocket (bắt tay kết nối)
 				.requestMatchers("/ws/**").permitAll()
 
-				// ADMIN + MANAGER: quản lý cửa hàng, nhà vận chuyển, khuyến mãi, danh mục...
+				// ADMIN + MANAGER
 				.requestMatchers("/admin/**", "/api/admin/**").hasAnyRole("ADMIN", "MANAGER")
 
-				// VENDOR: quản lý shop, đơn hàng của shop
+				// VENDOR
 				.requestMatchers("/vendor/**", "/api/vendor/**").hasRole("VENDOR")
 
-				// SHIPPER (phần thêm)
+				// SHIPPER
 				.requestMatchers("/shipper/**", "/api/shipper/**").hasRole("SHIPPER")
 
 				// Còn lại: phải đăng nhập
 				.anyRequest().authenticated())
-				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				// Chuyển sang IF_REQUIRED để giữ Session cho giao diện Web Thymeleaf
+				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
+				// Cấu hình Đăng xuất chuẩn
+				.logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessUrl("/menu").invalidateHttpSession(true)
+						.deleteCookies("JWT_TOKEN", "JSESSIONID"))
 				.authenticationProvider(authenticationProvider)
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class).build();
 	}
