@@ -68,7 +68,7 @@
 							<th>#</th>
 							<th>Tên chi nhánh</th>
 							<th class="d-none d-md-table-cell">Địa chỉ</th>
-							<th class="d-none d-lg-table-cell">Chủ shop</th>
+							<th class="d-none d-lg-table-cell">Quản lý chi nhánh</th>
 							<th class="text-end">Chiết khấu</th>
 							<th>Trạng thái</th>
 							<th class="text-end">Thao tác</th>
@@ -92,7 +92,9 @@
 								th:classappend="${b.status.name() == 'APPROVED'} ? 'text-bg-success'
                                             : (${b.status.name() == 'PENDING'} ? 'text-bg-warning'
                                             : (${b.status.name() == 'REJECTED'} ? 'text-bg-danger' : 'text-bg-secondary'))"
-								th:text="${b.status}"></span></td>
+								th:text="${b.status.name() == 'APPROVED'} ? 'Đang hoạt động'
+								       : (${b.status.name() == 'PENDING'} ? 'Chờ duyệt'
+								       : (${b.status.name() == 'REJECTED'} ? 'Bị từ chối' : 'Tạm ngưng'))"></span></td>
 							<td class="text-end text-nowrap"><a
 								th:href="@{/admin/branches/{id}/edit(id=${b.id})}"
 								class="btn btn-sm btn-outline-primary" title="Sửa"><i

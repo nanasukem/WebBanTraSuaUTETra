@@ -5,6 +5,10 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Menu chung của cả chuỗi (Admin quản lý). Tình trạng còn/hết theo chi nhánh
+ * nằm ở BranchProduct
+ */
 @Entity
 @Table(name = "Products")
 @Getter
@@ -15,10 +19,6 @@ public class Product {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
-
-	@ManyToOne
-	@JoinColumn(name = "branch_id", nullable = false)
-	private Branch branch;
 
 	@ManyToOne
 	@JoinColumn(name = "category_id", nullable = false)
@@ -39,6 +39,7 @@ public class Product {
 	@Column(name = "sold_count", nullable = false)
 	private Integer soldCount = 0;
 
+	/** false = ngừng bán trên toàn chuỗi */
 	@Column(name = "is_available", nullable = false)
 	private Boolean isAvailable = true;
 

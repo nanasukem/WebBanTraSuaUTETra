@@ -1,4 +1,4 @@
-﻿
+
 USE [master]
 GO
 CREATE DATABASE [UTETra]
@@ -75,10 +75,12 @@ CREATE TABLE Addresses (
 );
 
 /* =========================================================
-   2. SHOP (CHI NHÁNH) & SẢN PHẨM
+   2. CHI NHÁNH & MENU CHUNG CỦA CHUỖI
+   Admin quản lý 1 menu chung (Products) cho tất cả chi nhánh.
+   Mỗi chi nhánh chỉ bật/tắt món còn bán (BranchProducts).
    ========================================================= */
 
--- Branches = Shop. Vendor đăng ký -> PENDING -> Manager/Admin duyệt
+-- Branches = chi nhánh (shop). Vendor đăng ký quản lý -> PENDING -> Manager/Admin duyệt
 CREATE TABLE Branches (
     id                INT IDENTITY(1,1) PRIMARY KEY,
     owner_id          INT           NOT NULL,                -- Vendor sở hữu
@@ -99,9 +101,9 @@ CREATE TABLE Categories (
     image_cloudinary_id  VARCHAR(255)  NULL
 );
 
+-- Menu chung của cả chuỗi (Admin quản lý). is_available = 0: ngừng bán toàn chuỗi
 CREATE TABLE Products (
     id                   INT IDENTITY(1,1) PRIMARY KEY,
-    branch_id            INT           NOT NULL,             -- món thuộc shop nào
     category_id          INT           NOT NULL,
     name                 NVARCHAR(150) NOT NULL,
     base_price           DECIMAL(12,0) NOT NULL CHECK (base_price >= 0),
@@ -110,8 +112,19 @@ CREATE TABLE Products (
     sold_count           INT           NOT NULL DEFAULT 0 CHECK (sold_count >= 0), -- tăng khi đơn DELIVERED
     is_available         BIT           NOT NULL DEFAULT 1,
     created_at           DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
-    CONSTRAINT FK_Products_Branches   FOREIGN KEY (branch_id)   REFERENCES Branches(id),
     CONSTRAINT FK_Products_Categories FOREIGN KEY (category_id) REFERENCES Categories(id)
+);
+
+-- Tình trạng món theo từng chi nhánh (Vendor bật/tắt món hết hàng).
+-- Không có dòng cho (chi nhánh, món) = món đang bán ở chi nhánh đó.
+CREATE TABLE BranchProducts (
+    id            INT IDENTITY(1,1) PRIMARY KEY,
+    branch_id     INT NOT NULL,
+    product_id    INT NOT NULL,
+    is_available  BIT NOT NULL DEFAULT 1,
+    CONSTRAINT FK_BranchProducts_Branches FOREIGN KEY (branch_id)  REFERENCES Branches(id) ON DELETE CASCADE,
+    CONSTRAINT FK_BranchProducts_Products FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE CASCADE,
+    CONSTRAINT UQ_BranchProducts UNIQUE (branch_id, product_id)
 );
 
 CREATE TABLE ProductSizes (
@@ -132,8 +145,8 @@ CREATE TABLE Toppings (
 
 /* =========================================================
    3. KHUYẾN MÃI
-   branch_id NULL  = khuyến mãi của app (Manager/Admin tạo)
-   branch_id có giá trị = khuyến mãi của shop (Vendor tạo)
+   branch_id NULL  = khuyến mãi toàn chuỗi (Manager/Admin tạo)
+   branch_id có giá trị = khuyến mãi riêng của chi nhánh (Vendor tạo)
    ========================================================= */
 CREATE TABLE Vouchers (
     id               INT IDENTITY(1,1) PRIMARY KEY,
@@ -203,7 +216,7 @@ CREATE TABLE ViewedProducts (
 
 /* =========================================================
    5. ĐƠN HÀNG & THANH TOÁN
-   Mỗi đơn thuộc 1 shop. Giỏ có món nhiều shop -> tách thành nhiều đơn.
+   Mỗi đơn thuộc 1 chi nhánh (khách chọn chi nhánh khi Checkout).
    total_amount = items_total - product_discount + shipping_fee - shipping_discount
    ========================================================= */
 CREATE TABLE Orders (
@@ -323,7 +336,6 @@ CREATE INDEX IX_Users_Role             ON Users(role_id);
 CREATE INDEX IX_OtpCodes_Email         ON OtpCodes(email, purpose);
 CREATE INDEX IX_Addresses_User         ON Addresses(user_id);
 CREATE INDEX IX_Branches_Owner         ON Branches(owner_id);
-CREATE INDEX IX_Products_Branch        ON Products(branch_id);
 CREATE INDEX IX_Products_Category      ON Products(category_id);
 CREATE INDEX IX_Products_SoldCount     ON Products(sold_count DESC);
 CREATE INDEX IX_Products_CreatedAt     ON Products(created_at DESC);
@@ -366,15 +378,19 @@ INSERT INTO Branches (owner_id, name, address, phone, description, commission_ra
 
 INSERT INTO Categories (name) VALUES (N'Trà sữa'), (N'Trà trái cây'), (N'Cà phê'), (N'Đá xay');
 
-INSERT INTO Products (branch_id, category_id, name, base_price, description, sold_count) VALUES
- (1, 1, N'Trà sữa trân châu đường đen', 35000, N'Best seller của quán', 152),
- (1, 2, N'Trà đào cam sả',              40000, N'Thanh mát, giải nhiệt', 87),
- (1, 3, N'Bạc xỉu',                     29000, NULL, 45),
- (1, 4, N'Matcha đá xay',               45000, NULL, 8),
- (2, 1, N'Trà sữa khoai môn',           30000, NULL, 64),
- (2, 2, N'Trà vải hoa hồng',            38000, NULL, 23),
- (2, 3, N'Cà phê muối',                 32000, NULL, 110),
- (2, 4, N'Cookie đá xay',               49000, NULL, 3);
+-- Menu chung: cả 2 chi nhánh đều bán 8 món này
+INSERT INTO Products (category_id, name, base_price, description, sold_count) VALUES
+ (1, N'Trà sữa trân châu đường đen', 35000, N'Best seller của quán', 152),
+ (2, N'Trà đào cam sả',              40000, N'Thanh mát, giải nhiệt', 87),
+ (3, N'Bạc xỉu',                     29000, NULL, 45),
+ (4, N'Matcha đá xay',               45000, NULL, 8),
+ (1, N'Trà sữa khoai môn',           30000, NULL, 64),
+ (2, N'Trà vải hoa hồng',            38000, NULL, 23),
+ (3, N'Cà phê muối',                 32000, NULL, 110),
+ (4, N'Cookie đá xay',               49000, NULL, 3);
+
+-- Demo: chi nhánh Quận 1 (id 2) đang hết Matcha đá xay (id 4); các món khác bán bình thường
+INSERT INTO BranchProducts (branch_id, product_id, is_available) VALUES (2, 4, 0);
 
 INSERT INTO ProductSizes (product_id, size, extra_price)
 SELECT p.id, s.size, s.extra

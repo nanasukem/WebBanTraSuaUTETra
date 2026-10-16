@@ -150,11 +150,10 @@ public class VoucherServiceImpl implements VoucherService {
 	@Override
 	@Transactional
 	public void markUsed(Integer voucherId) {
-		Voucher v = findById(voucherId);
-		if (v.getUsedCount() >= v.getQuantity()) {
-			throw new BusinessException("Voucher đã hết lượt sử dụng");
+		findById(voucherId); // báo "không tìm thấy" nếu id sai
+		if (voucherRepository.increaseUsedCount(voucherId) == 0) {
+			throw new BusinessException("Voucher đã hết lượt sử dụng hoặc ngừng áp dụng");
 		}
-		v.setUsedCount(v.getUsedCount() + 1);
 	}
 
 	private void copy(VoucherReq req, Voucher v) {

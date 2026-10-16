@@ -3,29 +3,28 @@ package vn.utetra.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.utetra.dto.request.ProductRequest;
-import vn.utetra.entity.Branch;
 import vn.utetra.entity.Category;
 import vn.utetra.entity.Product;
-import vn.utetra.repository.BranchRepository;
 import vn.utetra.repository.CategoryRepository;
 import vn.utetra.repository.ProductRepository;
 
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Admin quản lý menu chung của cả chuỗi (món không thuộc riêng chi nhánh nào)
+ */
 @Service
 public class AdminProductService {
 
 	private final ProductRepository productRepository;
 	private final CategoryRepository categoryRepository;
-	private final BranchRepository branchRepository;
 	private final CloudinaryService cloudinaryService;
 
 	public AdminProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
-			BranchRepository branchRepository, CloudinaryService cloudinaryService) {
+			CloudinaryService cloudinaryService) {
 		this.productRepository = productRepository;
 		this.categoryRepository = categoryRepository;
-		this.branchRepository = branchRepository;
 		this.cloudinaryService = cloudinaryService;
 	}
 
@@ -51,9 +50,8 @@ public class AdminProductService {
 				.orElseThrow(() -> new RuntimeException("Danh mục không tồn tại!"));
 		product.setCategory(category);
 
-		Branch branch = branchRepository.findById(request.getBranchId())
-				.orElseThrow(() -> new RuntimeException("Chi nhánh/Shop không tồn tại!"));
-		product.setBranch(branch);
+		// Menu chung: món mới tự động có ở tất cả chi nhánh (chưa có dòng
+		// BranchProducts = đang bán)
 
 		// Upload ảnh lên Cloudinary nếu người dùng có chọn file
 		if (request.getImageFile() != null && !request.getImageFile().isEmpty()) {

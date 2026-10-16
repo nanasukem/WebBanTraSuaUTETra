@@ -47,7 +47,17 @@ public class SecurityConfiguration {
 				.permitAll()
 
 				// Chỉ ADMIN
-				.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
+				// WebSocket (bắt tay kết nối) - quyền nghe kênh sẽ kiểm tra ở bước 6
+				.requestMatchers("/ws/**").permitAll()
+
+				// ADMIN + MANAGER: quản lý cửa hàng, nhà vận chuyển, khuyến mãi, danh mục...
+				.requestMatchers("/admin/**", "/api/admin/**").hasAnyRole("ADMIN", "MANAGER")
+
+				// VENDOR: quản lý shop, đơn hàng của shop
+				.requestMatchers("/vendor/**", "/api/vendor/**").hasRole("VENDOR")
+
+				// SHIPPER (phần thêm)
+				.requestMatchers("/shipper/**", "/api/shipper/**").hasRole("SHIPPER")
 
 				// Còn lại: phải đăng nhập
 				.anyRequest().authenticated())
