@@ -63,7 +63,10 @@ public class AdminProductController {
 			adminProductService.deleteProduct(id);
 
 			redirectAttributes.addFlashAttribute("successMsg", "Đã xóa sản phẩm thành công!");
+
 		} catch (Exception e) {
+			e.printStackTrace();
+
 			redirectAttributes.addFlashAttribute("errorMsg", "Lỗi khi xóa sản phẩm: " + e.getMessage());
 		}
 
