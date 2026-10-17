@@ -17,35 +17,67 @@ public class CloudinaryService {
 		this.cloudinary = cloudinary;
 	}
 
-	public String uploadImage(MultipartFile file, String folderName) {
-		if (file == null || file.isEmpty())
+	/**
+	 * Upload ảnh lên Cloudinary với thư mục mặc định 'products'
+	 */
+	public String uploadImage(MultipartFile file) {
+		return uploadImage(file, "products");
+	}
+
+	/**
+	 * Upload ảnh lên Cloudinary với thư mục tùy chỉnh (branches, categories,
+	 * products,...) Tự động xử lý IOException thành RuntimeException để các Service
+	 * khác gọi gọn gàng.
+	 */
+	public String uploadImage(MultipartFile file, String folder) {
+		if (file == null || file.isEmpty()) {
 			return null;
+		}
+
 		try {
 			Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
-					ObjectUtils.asMap("folder", "utetra/" + folderName));
+					ObjectUtils.asMap("folder", "utetra/" + folder, "resource_type", "auto"));
 			return uploadResult.get("secure_url").toString();
 		} catch (IOException e) {
-			throw new RuntimeException("Lỗi upload ảnh lên Cloudinary: " + e.getMessage());
+			throw new RuntimeException("Lỗi khi tải ảnh lên Cloudinary: " + e.getMessage(), e);
 		}
 	}
 
+	/**
+	 * Xóa ảnh trên Cloudinary từ URL
+	 */
 	public void deleteImage(String imageUrl) {
-		if (imageUrl == null || !imageUrl.contains("cloudinary"))
+		if (imageUrl == null || imageUrl.isBlank()) {
 			return;
+		}
 		try {
-			String publicId = extractPublicId(imageUrl);
+			String publicId = extractPublicIdFromUrl(imageUrl);
 			if (publicId != null) {
 				cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
 			}
-		} catch (Exception ignored) {
+		} catch (Exception e) {
+			System.err.println("Lỗi khi xóa ảnh Cloudinary: " + e.getMessage());
 		}
 	}
 
-	private String extractPublicId(String imageUrl) {
+	/**
+	 * Trích xuất Public ID từ URL Cloudinary
+	 */
+	private String extractPublicIdFromUrl(String imageUrl) {
 		try {
-			int start = imageUrl.indexOf("utetra/");
-			int end = imageUrl.lastIndexOf(".");
-			return imageUrl.substring(start, end);
+			int uploadIndex = imageUrl.indexOf("/upload/");
+			if (uploadIndex == -1)
+				return null;
+
+			String pathAfterUpload = imageUrl.substring(uploadIndex + 8);
+			if (pathAfterUpload.startsWith("v")) {
+				int firstSlash = pathAfterUpload.indexOf('/');
+				if (firstSlash != -1) {
+					pathAfterUpload = pathAfterUpload.substring(firstSlash + 1);
+				}
+			}
+			int lastDot = pathAfterUpload.lastIndexOf('.');
+			return (lastDot != -1) ? pathAfterUpload.substring(0, lastDot) : pathAfterUpload;
 		} catch (Exception e) {
 			return null;
 		}

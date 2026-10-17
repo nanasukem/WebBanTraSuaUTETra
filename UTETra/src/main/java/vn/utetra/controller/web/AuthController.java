@@ -59,9 +59,16 @@ public class AuthController {
 
 			session.setAttribute("currentUser", authenticatedUser);
 
+			// Chuyển hướng theo Role sau khi Đăng nhập
+			if ("ADMIN".equalsIgnoreCase(authenticatedUser.getRole().getName())
+					|| "MANAGER".equalsIgnoreCase(authenticatedUser.getRole().getName())) {
+				return "redirect:/admin/products";
+			} else if ("VENDOR".equalsIgnoreCase(authenticatedUser.getRole().getName())) {
+				return "redirect:/vendor/menu";
+			}
+
 			return "redirect:/menu";
 		} catch (AccountNotVerifiedException e) {
-			// Đúng mật khẩu nhưng chưa kích hoạt -> hiện nút "Kích hoạt OTP ngay"
 			model.addAttribute("error", e.getMessage());
 			model.addAttribute("unverifiedEmail", e.getEmail());
 			return "auth/login";
@@ -76,13 +83,12 @@ public class AuthController {
 	public String handleResendOtp(@RequestParam("email") String email, RedirectAttributes redirectAttributes) {
 		try {
 			boolean sent = authenticationService.resendRegisterOtp(email);
-			redirectAttributes.addFlashAttribute("success", sent
-					? "Đã gửi mã OTP mới tới email của bạn!"
+			redirectAttributes.addFlashAttribute("success", sent ? "Đã gửi mã OTP mới tới email của bạn!"
 					: "Mã OTP vừa được gửi, vui lòng kiểm tra email (kể cả mục Spam).");
 		} catch (Exception e) {
 			redirectAttributes.addFlashAttribute("error", e.getMessage());
 		}
-		redirectAttributes.addAttribute("email", email); // tự mã hóa email trên URL
+		redirectAttributes.addAttribute("email", email);
 		return "redirect:/auth/verify-otp";
 	}
 
@@ -168,19 +174,22 @@ public class AuthController {
 		}
 	}
 
-	// 6. ĐĂNG XUẤT (Xóa Cookie JWT & Hủy Session)
-	@GetMapping("/logout")
+	// 6. ĐĂNG XUẤT (Bắt cả /logout và /auth/logout cho cả GET & POST)
+	@RequestMapping(value = { "/logout", "/auth/logout" }, method = { RequestMethod.GET, RequestMethod.POST })
 	public String logout(HttpServletRequest request, HttpServletResponse response, HttpSession session) {
+		// Xóa Cookie JWT_TOKEN
 		Cookie jwtCookie = new Cookie("JWT_TOKEN", null);
 		jwtCookie.setPath("/");
 		jwtCookie.setHttpOnly(true);
 		jwtCookie.setMaxAge(0);
 		response.addCookie(jwtCookie);
 
+		// Hủy Session
 		if (session != null) {
 			session.invalidate();
 		}
 
+		// Xóa Security Context
 		SecurityContextHolder.clearContext();
 
 		return "redirect:/auth/login?logout=true";
