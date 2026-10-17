@@ -1,20 +1,18 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:fragment="main(title, activePage, content)">
 
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title th:text="${title} + ' - Quản trị UTETra'">Quản trị System
+<title th:text="${title} + ' - Quản trị UTETra'">Quản trị UTETra
 </title>
 
-<!-- Bootstrap CSS -->
 <link
 	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
 	rel="stylesheet">
 
-<!-- Bootstrap Icons -->
 <link
 	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
 	rel="stylesheet">
@@ -25,15 +23,14 @@
 	<!-- Header dùng chung -->
 	<div th:replace="~{fragments/header :: header}"></div>
 
-	<!-- Sidebar + nội dung chính -->
 	<div class="d-flex flex-grow-1">
 
-		<!-- Sidebar -->
+		<!-- Sidebar dùng chung -->
 		<div th:replace="~{fragments/sidebar :: sidebar(${activePage})}"></div>
 
-		<!-- Nội dung trang -->
+		<!-- Nội dung của từng trang -->
 		<main class="flex-grow-1 p-4 overflow-auto">
-			<div th:replace="${content}"></div>
+			<th:block th:replace="${content}"></th:block>
 		</main>
 
 	</div>
@@ -41,7 +38,6 @@
 	<!-- Footer dùng chung -->
 	<div th:replace="~{fragments/footer :: footer}"></div>
 
-	<!-- Bootstrap JS -->
 	<script
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 

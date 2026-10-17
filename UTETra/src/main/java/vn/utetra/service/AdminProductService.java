@@ -1,91 +1,41 @@
 package vn.utetra.service;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-import vn.utetra.dto.ProductFormDto;
+import vn.utetra.dto.CategoryFormDto;
+import vn.utetra.dto.ProductDto;
 import vn.utetra.entity.Category;
 import vn.utetra.entity.Product;
-import vn.utetra.repository.CategoryRepository;
-import vn.utetra.repository.ProductRepository;
+import vn.utetra.entity.Topping;
 
+import java.io.IOException;
 import java.util.List;
 
-@Service
-public class AdminProductService {
+public interface AdminProductService {
+	// === QUẢN LÝ SẢN PHẨM (ADMIN) ===
+	List<Product> getAllProducts();
 
-	private final ProductRepository productRepository;
-	private final CategoryRepository categoryRepository;
-	private final CloudinaryService cloudinaryService;
+	Product getProductById(Integer id);
 
-	public AdminProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
-			CloudinaryService cloudinaryService) {
-		this.productRepository = productRepository;
-		this.categoryRepository = categoryRepository;
-		this.cloudinaryService = cloudinaryService;
-	}
+	Product createProduct(ProductDto dto) throws IOException;
 
-	public List<Product> getAllProducts() {
-		return productRepository.findAll();
-	}
+	Product updateProduct(Integer id, ProductDto dto) throws IOException;
 
-	public Product getProductById(Integer id) {
-		return productRepository.findById(id)
-				.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy món ăn ID: " + id));
-	}
+	void deleteProduct(Integer id);
 
-	@Transactional
-	public Product saveProduct(ProductFormDto form) {
-		Category category = categoryRepository.findById(form.getCategoryId())
-				.orElseThrow(() -> new IllegalArgumentException("Danh mục không tồn tại"));
+	// === QUẢN LÝ DANH MỤC (ADMIN & MANAGER) ===
+	List<Category> getAllCategories();
 
-		Product product;
-		if (form.getId() != null) {
-			product = getProductById(form.getId());
-		} else {
-			product = new Product();
-		}
+	Category getCategoryById(Integer id);
 
-		product.setName(form.getName());
-		product.setCategory(category);
-		product.setBasePrice(form.getBasePrice());
-		product.setDescription(form.getDescription());
+	Category saveCategory(CategoryFormDto dto) throws IOException; // Hỗ trợ lưu ảnh Cloudinary
 
-		MultipartFile imageFile = form.getImageFile();
-		if (imageFile != null && !imageFile.isEmpty()) {
-			if (product.getImageCloudinaryId() != null) {
-				cloudinaryService.deleteImage(product.getImageCloudinaryId());
-			}
-			String imageUrl = cloudinaryService.uploadImage(imageFile, "products");
-			product.setImageCloudinaryId(imageUrl);
-		}
+	void deleteCategory(Integer id);
 
-		return productRepository.save(product);
-	}
+	// === QUẢN LÝ TOPPING (ADMIN) ===
+	List<Topping> getAllToppings();
 
-	@Transactional
-	public void deleteProduct(Integer id) {
-		Product product = getProductById(id);
-		if (product.getImageCloudinaryId() != null) {
-			cloudinaryService.deleteImage(product.getImageCloudinaryId());
-		}
-		productRepository.deleteById(id);
-	}
+	Topping getToppingById(Integer id);
 
-	public List<Category> getAllCategories() {
-		return categoryRepository.findAll();
-	}
+	Topping saveTopping(Topping topping);
 
-	@Transactional
-	public Category saveCategory(String name, MultipartFile imageFile) {
-		Category category = new Category();
-		category.setName(name);
-
-		if (imageFile != null && !imageFile.isEmpty()) {
-			String imageUrl = cloudinaryService.uploadImage(imageFile, "categories");
-			category.setImageCloudinaryId(imageUrl);
-		}
-
-		return categoryRepository.save(category);
-	}
+	void deleteTopping(Integer id);
 }

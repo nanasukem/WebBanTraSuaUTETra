@@ -1,126 +1,358 @@
-```html
 <!DOCTYPE html>
-<html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/admin-layout :: main('Quản lý sản phẩm', 'products', ~{::#admin-products-content})}">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản lý sản phẩm - UTETra</title>
+</head>
 
 <body>
-	<div id="admin-products-content">
 
-		<div
-			class="d-flex flex-wrap justify-content-between
-                align-items-center gap-3 mb-4">
-			<div>
-				<h3 class="fw-bold mb-1">Quản lý sản phẩm</h3>
-				<p class="text-muted mb-0">Thêm, cập nhật và quản lý danh sách
-					sản phẩm UTETra.</p>
-			</div>
+	<div
+		th:replace="~{layout/admin-layout :: main(
+    'Quản lý sản phẩm',
+    'products',
+    ~{::content}
+)}">
 
-			<a th:href="@{/admin/products/create}" class="btn btn-success"> <i
-				class="bi bi-plus-lg me-1"></i> Thêm sản phẩm
-			</a>
-		</div>
+		<div th:fragment="content">
 
-		<!-- TÌM KIẾM -->
-		<div class="card border-0 shadow-sm mb-4">
-			<div class="card-body">
-				<form th:action="@{/admin/products}" method="get" class="row g-3">
+			<div class="container-fluid">
 
-					<div class="col-md-9">
-						<input type="text" name="keyword" th:value="${keyword}"
-							class="form-control" placeholder="Tìm theo tên sản phẩm...">
+				<!-- Tiêu đề -->
+				<div class="d-flex justify-content-between align-items-center mb-4">
+					<div>
+						<h2 class="fw-bold mb-1">Quản lý sản phẩm</h2>
+						<p class="text-muted mb-0">Thêm, sửa, tìm kiếm và quản lý sản
+							phẩm.</p>
 					</div>
 
-					<div class="col-md-3 d-grid">
-						<button type="submit" class="btn btn-outline-success">
-							<i class="bi bi-search me-1"></i> Tìm kiếm
-						</button>
+					<button type="button" class="btn btn-primary"
+						onclick="openAddModal()">
+						<i class="bi bi-plus-circle me-1"></i> Thêm sản phẩm
+					</button>
+				</div>
+
+				<!-- Thông báo -->
+				<div th:if="${successMsg}"
+					class="alert alert-success alert-dismissible fade show"
+					role="alert">
+					<span th:text="${successMsg}"></span>
+					<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+				</div>
+
+				<div th:if="${errorMsg}"
+					class="alert alert-danger alert-dismissible fade show" role="alert">
+					<span th:text="${errorMsg}"></span>
+					<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+				</div>
+
+				<!-- Tìm kiếm -->
+				<div class="card border-0 shadow-sm mb-4">
+					<div class="card-body">
+						<div class="input-group">
+							<span class="input-group-text"> <i class="bi bi-search"></i>
+							</span> <input type="text" id="searchInput" class="form-control"
+								placeholder="Tìm theo tên, mô tả hoặc danh mục..."
+								oninput="filterProducts()">
+						</div>
 					</div>
+				</div>
 
-				</form>
-			</div>
-		</div>
+				<!-- Bảng sản phẩm -->
+				<div class="card border-0 shadow-sm">
+					<div class="card-body">
 
-		<!-- BẢNG SẢN PHẨM -->
-		<div class="card border-0 shadow-sm">
-			<div class="card-body">
-				<div class="table-responsive">
-					<table class="table table-hover align-middle">
-						<thead class="table-light">
-							<tr>
-								<th style="width: 70px;">ID</th>
-								<th style="width: 100px;">Ảnh</th>
-								<th>Tên sản phẩm</th>
-								<th>Giá</th>
-								<th>Mô tả</th>
-								<th style="width: 170px;">Thao tác</th>
-							</tr>
-						</thead>
+						<div class="table-responsive">
+							<table class="table table-hover align-middle">
+								<thead class="table-light">
+									<tr>
+										<th>ID</th>
+										<th>Hình ảnh</th>
+										<th>Tên sản phẩm</th>
+										<th>Mô tả</th>
+										<th>Danh mục</th>
+										<th>Giá</th>
+										<th>Trạng thái</th>
+										<th class="text-center">Thao tác</th>
+									</tr>
+								</thead>
 
-						<tbody>
-							<tr th:each="p : ${products}">
-								<td th:text="${p.id}">1</td>
+								<tbody id="productTableBody">
 
-								<td><img
-									th:if="${p.imageCloudinaryId != null
-                                             and !#strings.isEmpty(p.imageCloudinaryId)}"
-									th:src="${p.imageCloudinaryId}" alt="Ảnh sản phẩm"
-									style="width: 65px; height: 55px; object-fit: cover;"
-									class="rounded">
+									<tr th:each="prod : ${products}" class="product-row">
 
-									<div
-										th:if="${p.imageCloudinaryId == null
-                                             or #strings.isEmpty(p.imageCloudinaryId)}"
-										class="bg-light rounded d-flex
-                                            align-items-center justify-content-center"
-										style="width: 65px; height: 55px;">
-										<i class="bi bi-cup-hot text-success fs-4"></i>
-									</div></td>
+										<td th:text="${prod.id}"></td>
 
-								<td class="fw-semibold"
-									th:text="${p.name != null ? p.name : 'Chưa đặt tên'}">Tên
-									sản phẩm</td>
+										<td><img
+											th:if="${prod.imageCloudinaryId != null
+                                                 and !#strings.isEmpty(prod.imageCloudinaryId)}"
+											th:src="${prod.imageCloudinaryId}" alt="Ảnh sản phẩm"
+											style="width: 60px; height: 60px; object-fit: cover;"
+											class="rounded"> <span
+											th:unless="${prod.imageCloudinaryId != null
+                                                      and !#strings.isEmpty(prod.imageCloudinaryId)}"
+											class="text-muted"> Không có ảnh </span></td>
 
-								<td class="text-danger fw-bold"
-									th:text="${p.basePrice != null
-                                    ? #numbers.formatDecimal(p.basePrice, 0, 'COMMA', 0, 'POINT') + ' đ'
-                                    : 'Chưa có giá'}">
-									35,000 đ</td>
+										<td class="product-name" th:text="${prod.name}"></td>
 
-								<td
-									th:text="${p.description != null
-                                          ? p.description : ''}">
-									Mô tả</td>
+										<td class="product-description" th:text="${prod.description}"></td>
 
-								<td>
-									<div class="d-flex gap-2">
-										<a th:href="@{/admin/products/edit/{id}(id=${p.id})}"
-											class="btn btn-sm btn-outline-primary" title="Sửa"> <i
-											class="bi bi-pencil-square"></i>
+										<td class="product-category"
+											th:text="${prod.category != null
+                                              ? prod.category.name
+                                              : 'Chưa phân loại'}"></td>
+
+										<td class="text-nowrap"
+											th:text="${#numbers.formatDecimal(prod.basePrice, 0, 'COMMA', 0, 'POINT') + ' VNĐ'}">
+										</td>
+
+										<td><span th:if="${prod.isAvailable}"
+											class="badge bg-success"> Đang bán </span> <span
+											th:unless="${prod.isAvailable}" class="badge bg-secondary">
+												Ngừng bán </span></td>
+
+										<td class="text-center text-nowrap">
+
+											<button type="button" class="btn btn-sm btn-warning"
+												title="Sửa sản phẩm"
+												th:attr="
+                                                data-id=${prod.id},
+                                                data-name=${prod.name},
+                                                data-description=${prod.description},
+                                                data-price=${prod.basePrice},
+                                                data-category=${prod.category != null ? prod.category.id : ''},
+                                                data-available=${prod.isAvailable},
+                                                data-image=${prod.imageCloudinaryId}"
+												onclick="editProduct(this)">
+												<i class="bi bi-pencil-square"></i>
+											</button> <a class="btn btn-sm btn-danger" title="Xóa sản phẩm"
+											th:href="@{/admin/products/delete/{id}(id=${prod.id})}"
+											onclick="return confirm('Bạn có chắc muốn xóa sản phẩm này không?')">
+												<i class="bi bi-trash"></i>
 										</a>
 
-										<form th:action="@{/admin/products/delete/{id}(id=${p.id})}"
-											method="post"
-											onsubmit="return confirm('Bạn có chắc muốn xóa sản phẩm này?');">
-											<button type="submit" class="btn btn-sm btn-outline-danger"
-												title="Xóa">
-												<i class="bi bi-trash"></i>
-											</button>
-										</form>
-									</div>
-								</td>
-							</tr>
+										</td>
+									</tr>
 
-							<tr th:if="${products == null or #lists.isEmpty(products)}">
-								<td colspan="6" class="text-center text-muted py-4">Chưa có
-									sản phẩm nào.</td>
-							</tr>
-						</tbody>
-					</table>
+									<tr th:if="${#lists.isEmpty(products)}">
+										<td colspan="8" class="text-center text-muted py-4">Chưa
+											có sản phẩm nào.</td>
+									</tr>
+
+								</tbody>
+							</table>
+						</div>
+
+					</div>
+				</div>
+
+			</div>
+
+			<!-- Modal thêm / sửa sản phẩm -->
+			<div class="modal fade" id="productModal" tabindex="-1"
+				aria-labelledby="productModalLabel" aria-hidden="true">
+
+				<div class="modal-dialog modal-lg modal-dialog-centered">
+					<div class="modal-content">
+
+						<form th:action="@{/admin/products/save}"
+							th:object="${productDTO}" method="post"
+							enctype="multipart/form-data">
+
+							<div class="modal-header">
+								<h5 class="modal-title" id="productModalLabel">Thêm sản
+									phẩm</h5>
+
+								<button type="button" class="btn-close" data-bs-dismiss="modal"
+									aria-label="Đóng"></button>
+							</div>
+
+							<div class="modal-body">
+
+								<input type="hidden" th:field="*{id}" id="productId">
+
+								<div class="mb-3">
+									<label for="productName" class="form-label"> Tên sản
+										phẩm </label> <input type="text" th:field="*{name}" id="productName"
+										class="form-control" required maxlength="255">
+								</div>
+
+								<div class="mb-3">
+									<label for="categoryId" class="form-label"> Danh mục </label> <select
+										th:field="*{categoryId}" id="categoryId" class="form-select"
+										required>
+
+										<option value="">-- Chọn danh mục --</option>
+
+										<option th:each="cat : ${categories}" th:value="${cat.id}"
+											th:text="${cat.name}"></option>
+									</select>
+								</div>
+
+								<div class="mb-3">
+									<label for="basePrice" class="form-label"> Giá sản phẩm
+										(VNĐ) </label> <input type="number" th:field="*{basePrice}"
+										id="basePrice" class="form-control" min="0" step="1" required>
+								</div>
+
+								<div class="mb-3">
+									<label for="description" class="form-label"> Mô tả </label>
+
+									<textarea th:field="*{description}" id="description"
+										class="form-control" rows="4"></textarea>
+								</div>
+
+								<div class="form-check mb-3">
+									<input type="checkbox" th:field="*{isAvailable}"
+										id="isAvailable" class="form-check-input"> <label
+										for="isAvailable" class="form-check-label"> Đang kinh
+										doanh </label>
+								</div>
+
+								<div class="mb-3">
+									<label for="imageFile" class="form-label"> Hình ảnh sản
+										phẩm </label> <input type="file" name="imageFile" id="imageFile"
+										class="form-control" accept="image/*"
+										onchange="previewImg(event)">
+
+									<div class="mt-3">
+										<img id="imagePreview" src="" alt="Xem trước ảnh"
+											class="rounded border d-none"
+											style="max-width: 180px; max-height: 180px; object-fit: cover;">
+									</div>
+								</div>
+
+							</div>
+
+							<div class="modal-footer">
+								<button type="button" class="btn btn-secondary"
+									data-bs-dismiss="modal">Hủy</button>
+
+								<button type="submit" class="btn btn-primary">
+									<i class="bi bi-save me-1"></i> Lưu sản phẩm
+								</button>
+							</div>
+
+						</form>
+
+					</div>
 				</div>
 			</div>
-		</div>
 
+			<!-- JavaScript -->
+			<script>
+            let modalInstance;
+
+            document.addEventListener('DOMContentLoaded', function () {
+                const modalElement = document.getElementById('productModal');
+
+                if (modalElement) {
+                    modalInstance = new bootstrap.Modal(modalElement);
+                }
+            });
+
+            function openAddModal() {
+                document.getElementById('productModalLabel').textContent =
+                    'Thêm sản phẩm';
+
+                document.getElementById('productId').value = '';
+                document.getElementById('productName').value = '';
+                document.getElementById('categoryId').value = '';
+                document.getElementById('basePrice').value = '';
+                document.getElementById('description').value = '';
+                document.getElementById('isAvailable').checked = true;
+                document.getElementById('imageFile').value = '';
+
+                const preview = document.getElementById('imagePreview');
+                preview.src = '';
+                preview.classList.add('d-none');
+
+                modalInstance.show();
+            }
+
+            function editProduct(button) {
+                document.getElementById('productModalLabel').textContent =
+                    'Cập nhật sản phẩm';
+
+                document.getElementById('productId').value =
+                    button.dataset.id || '';
+
+                document.getElementById('productName').value =
+                    button.dataset.name || '';
+
+                document.getElementById('categoryId').value =
+                    button.dataset.category || '';
+
+                document.getElementById('basePrice').value =
+                    button.dataset.price || '';
+
+                document.getElementById('description').value =
+                    button.dataset.description || '';
+
+                document.getElementById('isAvailable').checked =
+                    button.dataset.available === 'true';
+
+                document.getElementById('imageFile').value = '';
+
+                const preview = document.getElementById('imagePreview');
+                const image = button.dataset.image || '';
+
+                if (image) {
+                    preview.src = image;
+                    preview.classList.remove('d-none');
+                } else {
+                    preview.src = '';
+                    preview.classList.add('d-none');
+                }
+
+                modalInstance.show();
+            }
+
+            function previewImg(event) {
+                const preview = document.getElementById('imagePreview');
+                const file = event.target.files[0];
+
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                    preview.classList.remove('d-none');
+                } else {
+                    preview.src = '';
+                    preview.classList.add('d-none');
+                }
+            }
+
+            function filterProducts() {
+                const keyword = document.getElementById('searchInput')
+                    .value.toLowerCase().trim();
+
+                const rows = document.querySelectorAll(
+                    '#productTableBody tr.product-row'
+                );
+
+                rows.forEach(function (row) {
+                    const name = row.querySelector('.product-name')
+                        ?.textContent.toLowerCase() || '';
+
+                    const description = row.querySelector('.product-description')
+                        ?.textContent.toLowerCase() || '';
+
+                    const category = row.querySelector('.product-category')
+                        ?.textContent.toLowerCase() || '';
+
+                    row.style.display =
+                        name.includes(keyword) ||
+                        description.includes(keyword) ||
+                        category.includes(keyword)
+                            ? ''
+                            : 'none';
+                });
+            }
+        </script>
+
+		</div>
 	</div>
+
 </body>
 </html>
-```
