@@ -78,10 +78,9 @@ public class AdminProductController {
 	@GetMapping("/categories")
 	public String listCategories(Model model) {
 		model.addAttribute("categories", adminProductService.getAllCategories());
-
 		model.addAttribute("categoryDTO", new CategoryFormDto());
 
-		return "categories/admin/index";
+		return "admin/categories/index";
 	}
 
 	@PostMapping("/categories/save")
@@ -90,10 +89,9 @@ public class AdminProductController {
 
 		try {
 			adminProductService.saveCategory(categoryDTO);
-
 			redirectAttributes.addFlashAttribute("successMsg", "Lưu danh mục thành công!");
 		} catch (Exception e) {
-			redirectAttributes.addFlashAttribute("errorMsg", "Lỗi khi lưu danh mục: " + e.getMessage());
+			redirectAttributes.addFlashAttribute("errorMsg", "Không thể lưu danh mục: " + e.getMessage());
 		}
 
 		return "redirect:/admin/categories";
@@ -104,10 +102,10 @@ public class AdminProductController {
 
 		try {
 			adminProductService.deleteCategory(id);
-
 			redirectAttributes.addFlashAttribute("successMsg", "Đã xóa danh mục thành công!");
 		} catch (Exception e) {
-			redirectAttributes.addFlashAttribute("errorMsg", "Không thể xóa danh mục đang có sản phẩm!");
+			redirectAttributes.addFlashAttribute("errorMsg",
+					"Không thể xóa danh mục. Hãy kiểm tra xem có sản phẩm đang sử dụng danh mục này không.");
 		}
 
 		return "redirect:/admin/categories";
