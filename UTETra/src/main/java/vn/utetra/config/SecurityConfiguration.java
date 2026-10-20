@@ -41,8 +41,10 @@ public class SecurityConfiguration {
 		return (request, response, authentication) -> {
 			String redirectUrl;
 
-			if (hasRole(authentication, "ROLE_ADMIN") || hasRole(authentication, "ROLE_MANAGER")) {
+			if (hasRole(authentication, "ROLE_ADMIN")) {
 				redirectUrl = "/admin/dashboard";
+			} else if (hasRole(authentication, "ROLE_MANAGER")) {
+				redirectUrl = "/manager/dashboard";
 			} else if (hasRole(authentication, "ROLE_VENDOR")) {
 				redirectUrl = "/vendor/dashboard";
 			} else if (hasRole(authentication, "ROLE_SHIPPER")) {
@@ -64,7 +66,8 @@ public class SecurityConfiguration {
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		return http.cors(Customizer.withDefaults())
 
-				// Giữ nguyên cấu hình CSRF hiện tại của dự án
+				// Giữ nguyên cấu hình CSRF hiện tại của dự án.
+				// Lưu ý: CSRF đang bị vô hiệu hóa.
 				.csrf(csrf -> csrf.disable())
 
 				.authorizeHttpRequests(auth -> auth
@@ -83,18 +86,33 @@ public class SecurityConfiguration {
 						// WebSocket
 						.requestMatchers("/ws/**").permitAll()
 
+						// =========================================
+						// KHU VỰC MANAGER
+						// ADMIN và MANAGER được phép truy cập
+						// =========================================
+						.requestMatchers("/manager/**", "/api/manager/**").hasAnyRole("ADMIN", "MANAGER")
+
+						// =========================================
 						// QUẢN LÝ NGƯỜI DÙNG: CHỈ ADMIN
-						// Phải đặt trước quy tắc /admin/** và /api/admin/**
+						// Phải đặt trước quy tắc /admin/**
+						// =========================================
 						.requestMatchers("/admin/users", "/admin/users/**", "/api/admin/users", "/api/admin/users/**")
 						.hasRole("ADMIN")
 
-						// Các khu vực quản trị khác: ADMIN và MANAGER
+						// =========================================
+						// CÁC KHU VỰC QUẢN TRỊ KHÁC
+						// ADMIN và MANAGER
+						// =========================================
 						.requestMatchers("/admin/**", "/api/admin/**").hasAnyRole("ADMIN", "MANAGER")
 
-						// Khu vực Vendor
+						// =========================================
+						// KHU VỰC VENDOR
+						// =========================================
 						.requestMatchers("/vendor/**", "/api/vendor/**").hasRole("VENDOR")
 
-						// Khu vực Shipper
+						// =========================================
+						// KHU VỰC SHIPPER
+						// =========================================
 						.requestMatchers("/shipper/**", "/api/shipper/**").hasRole("SHIPPER")
 
 						// Các đường dẫn còn lại yêu cầu đăng nhập
@@ -112,6 +130,7 @@ public class SecurityConfiguration {
 				.logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessUrl("/auth/login?logout")
 						.invalidateHttpSession(true).clearAuthentication(true).deleteCookies("JSESSIONID").permitAll())
 
+				// Authentication provider
 				.authenticationProvider(authenticationProvider)
 
 				// JWT filter
