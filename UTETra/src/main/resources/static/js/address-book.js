@@ -2,6 +2,8 @@
    address-book.js - Thêm / sửa địa chỉ nhận hàng kiểu Shopee
    Dùng chung cho trang Checkout (và sau này trang Hồ sơ).
    Màn hình: Form -> Chọn Tỉnh/Phường -> Nhập Tên đường -> Bản đồ xác nhận -> Form
+   - "Dùng vị trí hiện tại": lấy vị trí máy, tự điền tên đường/số nhà đọc được từ bản đồ
+   - Ghim lệch xa Phường/Xã đã chọn -> cảnh báo (so bằng khoảng cách, vì bản đồ OSM còn dùng tên phường cũ)
    Cách dùng:
      AddressBook.open({ address, defaults: {name, phone}, isFirst, onSaved(saved), onDeleted(list) })
    ============================================================ */
@@ -10,7 +12,7 @@ window.AddressBook = (() => {
 	const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
 		(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 	/** Bỏ dấu để tìm kiếm: "Phường Đông Hòa" -> "phuong dong hoa" */
-	const plain = (s) => String(s || '').replace(/[đĐ]/g, 'd').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+	const plain = (s) => String(s || '').replace(/[đĐ]/g, 'd').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 	const PHONE_RE = /^0\d{9}$/;
 	const HCM = [10.7769, 106.7009];
 	const NOMINATIM = 'https://nominatim.openstreetmap.org';
@@ -121,6 +123,41 @@ window.AddressBook = (() => {
 			}
 		}
 		return [];
+	}
+
+	/** Đọc địa chỉ từ 1 điểm trên bản đồ (dùng cho "Dùng vị trí hiện tại") */
+	async function reverse(lat, lng) {
+		const url = `${NOMINATIM}/reverse?format=json&zoom=18&addressdetails=1&accept-language=vi&lat=${lat}&lon=${lng}`;
+		const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+		if (!res.ok) return null;
+		const r = await res.json();
+		return r && !r.error ? r : null;
+	}
+
+	/** Khoảng cách 2 điểm (km), công thức Haversine */
+	function distanceKm(lat1, lng1, lat2, lng2) {
+		const rad = (d) => d * Math.PI / 180;
+		const a = Math.sin(rad(lat2 - lat1) / 2) ** 2
+			+ Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2;
+		return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	}
+
+	/** Trung tâm của Phường/Xã đã chọn. Không tìm thấy (tên phường mới chưa có trên bản đồ) -> null */
+	const wardCenterCache = {};
+	async function wardCenter(ward, province) {
+		const key = ward + '|' + province;
+		if (key in wardCenterCache) return wardCenterCache[key];
+		const rows = await nominatim(`${ward.replace(/^(Phường|Xã|Đặc khu)\s+/, '')}, ${province}`);
+		// Chỉ tin kết quả là khu vực hành chính / địa danh, bỏ qua tên đường hay cửa hàng trùng tên
+		const area = rows.find((r) => r.class === 'boundary' || r.class === 'place');
+		const c = area ? [Number(area.lat), Number(area.lon)] : null;
+		wardCenterCache[key] = c;
+		return c;
+	}
+
+	/** Phường thường nhỏ, xã/đặc khu rộng hơn nhiều -> ngưỡng cảnh báo khác nhau */
+	function warnLimitKm(ward) {
+		return /^Phường/.test(ward) ? 4 : 10;
 	}
 
 	/** Toạ độ trung tâm của Phường/Tỉnh (để mở bản đồ đúng khu vực) */
@@ -291,7 +328,10 @@ window.AddressBook = (() => {
 
 	function renderStreetList(list, message) {
 		const typed = $('ab-street-input').value.trim();
-		let html = '';
+		let html = `<button type="button" class="ab-suggest" data-here="1">
+				<i class="bi bi-crosshair text-success"></i>
+				<span><b>Dùng vị trí hiện tại</b>
+				<span class="d-block small text-muted">Lấy vị trí của máy, tự điền tên đường (bạn kiểm tra lại số nhà)</span></span></button>`;
 		if (typed) {
 			html += `<button type="button" class="ab-suggest" data-typed="1">
 				<i class="bi bi-pencil-square"></i>
@@ -309,6 +349,8 @@ window.AddressBook = (() => {
 			st.street = keepHouseNumber(typed, s.street);
 			openMap([s.lat, s.lng]);
 		}));
+		const here = $('ab-street-list').querySelector('[data-here]');
+		if (here) here.addEventListener('click', () => useCurrentLocation(here));
 		const t = $('ab-street-list').querySelector('[data-typed]');
 		if (t) t.addEventListener('click', async () => {
 			st.street = typed;
@@ -344,8 +386,9 @@ window.AddressBook = (() => {
 	// ================= MÀN 4: BẢN ĐỒ XÁC NHẬN (ghim cố định giữa màn hình) =================
 	function openMap(center, zoom = 17) {
 		show('map');
-		$('ab-map-address').textContent = `${st.street}, ${st.ward}, ${st.province}`;
+		$('ab-map-address').textContent = `${st.street || '(chưa có tên đường)'}, ${st.ward}, ${st.province}`;
 		$('ab-map-msg').textContent = '';
+		$('ab-map-warn').classList.add('d-none');
 		if (typeof L === 'undefined') {
 			$('ab-big-map').innerHTML = '<div class="p-3 small text-muted">Không tải được bản đồ. Bấm Xác nhận để lưu không có vị trí</div>';
 			return;
@@ -383,12 +426,80 @@ window.AddressBook = (() => {
 		}
 	}
 
-	function confirmMap() {
+	/** "Dùng vị trí hiện tại": GPS (không được thì vị trí gần đúng theo mạng) -> tự điền tên đường -> mở bản đồ */
+	async function useCurrentLocation(btn) {
+		btn.disabled = true;
+		const label = btn.querySelector('b');
+		label.textContent = 'Đang lấy vị trí...';
+		let pos = null;
+		let approx = false;
+		try {
+			pos = await getPosition();
+		} catch (e) {
+			try {
+				const p = await approxPosition();
+				pos = { lat: p.lat, lng: p.lng };
+				approx = true;
+			} catch (e2) {
+				renderStreetList([], e.message);
+				return;
+			}
+		}
+
+		// Vị trí chính xác: đọc tên đường / số nhà từ bản đồ (nếu khách chưa gõ gì)
+		const typed = $('ab-street-input').value.trim();
+		let found = '';
+		if (!approx) {
+			try {
+				const r = await reverse(pos.lat, pos.lng);
+				if (r) found = streetPart(r);
+			} catch (e) { /* lỗi mạng: bỏ qua, khách tự gõ */ }
+		}
+		st.street = typed || found;
+		$('ab-street-input').value = st.street;
+
+		openMap([pos.lat, pos.lng], approx ? 15 : 18);
+		if (approx) {
+			$('ab-map-msg').textContent = 'Máy không xác định được vị trí chính xác. Bản đồ đã tới khu vực gần bạn, hãy kéo cho ghim nằm đúng nhà';
+		} else if (!st.street) {
+			$('ab-map-msg').textContent = 'Chưa đọc được tên đường ở vị trí này. Xác nhận ghim xong, bạn nhập Tên đường, Số nhà nhé';
+		}
+	}
+
+	/** Bấm Xác nhận trên bản đồ: ghim xa Phường/Xã đã chọn thì cảnh báo trước khi lưu */
+	async function confirmMap() {
+		if (!bigMap) { finishMap(); return; }
+		const c = bigMap.getCenter();
+		const btn = $('ab-map-confirm');
+		btn.disabled = true;
+		btn.textContent = 'Đang kiểm tra vị trí...';
+		let warn = null;
+		try {
+			const center = await wardCenter(st.ward, st.province);
+			if (center) {
+				const km = distanceKm(c.lat, c.lng, center[0], center[1]);
+				if (km > warnLimitKm(st.ward)) warn = { km };
+			}
+		} catch (e) { /* không kiểm tra được thì cho qua */ }
+		btn.disabled = false;
+		btn.textContent = 'Xác Nhận';
+
+		if (warn) {
+			$('ab-warn-text').textContent = `Vị trí ghim cách trung tâm ${st.ward} khoảng ${warn.km.toFixed(1)} km, có thể không thuộc khu vực bạn đã chọn.`;
+			$('ab-map-warn').classList.remove('d-none');
+			return;
+		}
+		finishMap();
+	}
+
+	/** Lưu toạ độ ghim và quay về form */
+	function finishMap() {
 		if (bigMap) {
 			const c = bigMap.getCenter();
 			st.lat = Number(c.lat.toFixed(6));
 			st.lng = Number(c.lng.toFixed(6));
 		}
+		$('ab-map-warn').classList.add('d-none');
 		$('ab-form-err').textContent = '';
 		show('form');
 	}
@@ -471,6 +582,12 @@ window.AddressBook = (() => {
 		$('ab-map-change').addEventListener('click', () => show('street'));
 		$('ab-map-locate').addEventListener('click', locateOnMap);
 		$('ab-map-confirm').addEventListener('click', confirmMap);
+		$('ab-warn-keep').addEventListener('click', finishMap);                  // vẫn dùng vị trí ghim này
+		$('ab-warn-fix').addEventListener('click', () => $('ab-map-warn').classList.add('d-none')); // kéo lại ghim
+		$('ab-warn-area').addEventListener('click', () => {                    // chọn lại Phường/Xã
+			$('ab-map-warn').classList.add('d-none');
+			$('ab-open-area').click();
+		});
 		$('ab-submit').addEventListener('click', submit);
 		$('ab-delete').addEventListener('click', remove);
 		$('ab-name').addEventListener('input', () => { $('ab-name-err').textContent = ''; updateSubmit(); });
