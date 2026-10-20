@@ -224,19 +224,22 @@ public class AdminProductServiceImpl implements AdminProductService {
 	public void deleteCategory(Integer id) {
 		Category category = getCategoryById(id);
 
+		// Không cho xóa danh mục nếu vẫn có sản phẩm tham chiếu.
+		if (!productRepository.findByCategoryId(id).isEmpty()) {
+			throw new IllegalArgumentException(
+					"Không thể xóa danh mục đang có sản phẩm. " + "Hãy chuyển sản phẩm sang danh mục khác trước.");
+		}
+
 		String imageUrl = category.getImageCloudinaryId();
 
-		/*
-		 * Neu san pham dang tham chieu danh muc nay, co the co loi rang buoc khoa ngoai
-		 * khi xoa.
-		 */
 		categoryRepository.delete(category);
 
+		// Chỉ xóa ảnh sau khi yêu cầu xóa danh mục đã được thực hiện.
 		if (imageUrl != null && !imageUrl.isBlank()) {
 			try {
 				cloudinaryService.deleteImage(imageUrl);
 			} catch (Exception e) {
-				System.err.println("Khong the xoa anh danh muc tren Cloudinary: " + e.getMessage());
+				System.err.println("Không thể xóa ảnh danh mục trên Cloudinary: " + e.getMessage());
 			}
 		}
 	}

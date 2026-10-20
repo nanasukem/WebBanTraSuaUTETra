@@ -1,0 +1,252 @@
+
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Quản lý voucher', 'vouchers', ~{::content})}">
+
+<body>
+	<th:block th:fragment="content">
+
+		<div class="container-fluid py-3">
+
+			<div
+				class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+				<div>
+					<h3 class="fw-bold mb-1">Quản lý voucher</h3>
+					<p class="text-muted mb-0">Quản lý mã giảm giá toàn hệ thống
+						UTETra</p>
+				</div>
+
+				<a th:href="@{/admin/vouchers/new}" class="btn btn-success"> <i
+					class="bi bi-plus-lg me-1"></i> Tạo voucher
+				</a>
+			</div>
+
+			<div th:if="${successMessage}"
+				class="alert alert-success alert-dismissible fade show">
+				<span th:text="${successMessage}"></span>
+				<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+			</div>
+
+			<div th:if="${errorMessage}"
+				class="alert alert-danger alert-dismissible fade show">
+				<span th:text="${errorMessage}"></span>
+				<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+			</div>
+
+			<div class="card border-0 shadow-sm">
+				<div class="card-body">
+
+					<div class="row g-3 mb-3">
+						<div class="col-md-6">
+							<label for="voucherSearch" class="form-label">Tìm voucher</label>
+							<input id="voucherSearch" type="search" class="form-control"
+								placeholder="Nhập mã hoặc tên voucher...">
+						</div>
+
+						<div class="col-md-3">
+							<label for="statusFilter" class="form-label">Trạng thái</label> <select
+								id="statusFilter" class="form-select">
+								<option value="">Tất cả trạng thái</option>
+								<option value="active">Đang bật</option>
+								<option value="inactive">Đã tắt</option>
+								<option value="expired">Đã hết hạn</option>
+								<option value="upcoming">Chưa bắt đầu</option>
+								<option value="exhausted">Hết lượt</option>
+							</select>
+						</div>
+
+						<div class="col-md-3 d-flex align-items-end">
+							<button type="button" id="resetFilter"
+								class="btn btn-outline-secondary w-100">
+								<i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại
+							</button>
+						</div>
+					</div>
+
+					<div class="table-responsive">
+						<table class="table table-hover align-middle" id="voucherTable">
+							<thead class="table-light">
+								<tr>
+									<th>Mã voucher</th>
+									<th>Tên chương trình</th>
+									<th>Ưu đãi</th>
+									<th>Phạm vi</th>
+									<th>Lượt sử dụng</th>
+									<th>Thời gian</th>
+									<th>Trạng thái</th>
+									<th class="text-end">Thao tác</th>
+								</tr>
+							</thead>
+
+							<tbody>
+								<tr th:each="v : ${vouchers}"
+									th:with="
+                                now=${T(java.time.LocalDateTime).now()},
+                                expired=${v.endDate.isBefore(now)},
+                                upcoming=${v.startDate.isAfter(now)},
+                                exhausted=${v.usedCount >= v.quantity},
+                                status=${!v.isActive ? 'inactive' : (expired ? 'expired' : (upcoming ? 'upcoming' : (exhausted ? 'exhausted' : 'active')))}">
+
+									<td><span class="badge text-bg-dark" th:text="${v.code}"></span>
+									</td>
+
+									<td>
+										<div class="fw-semibold" th:text="${v.name}"></div> <small
+										class="text-muted" th:text="${v.applyTo}"></small>
+									</td>
+
+									<td><span th:if="${v.discountType.name() == 'PERCENT'}">
+											<strong
+											th:text="${#numbers.formatDecimal(v.discountValue, 1, 0)} + '%'"></strong>
+											<div th:if="${v.maxDiscount != null}"
+												class="small text-muted">
+												Tối đa <span
+													th:text="${#numbers.formatDecimal(v.maxDiscount, 0, 'COMMA', 0, 'POINT')}"></span>đ
+											</div>
+									</span> <span th:unless="${v.discountType.name() == 'PERCENT'}">
+											<strong
+											th:text="${#numbers.formatDecimal(v.discountValue, 0, 'COMMA', 0, 'POINT')} + 'đ'"></strong>
+									</span>
+										<div class="small text-muted">
+											Đơn tối thiểu: <span
+												th:text="${#numbers.formatDecimal(v.minOrderValue, 0, 'COMMA', 0, 'POINT')}"></span>đ
+										</div></td>
+
+									<td><span class="badge text-bg-primary">Toàn hệ
+											thống</span></td>
+
+									<td><span th:text="${v.usedCount}"></span> / <span
+										th:text="${v.quantity}"></span>
+										<div class="small text-muted">
+											Còn <span
+												th:text="${T(java.lang.Math).max(0, v.quantity - v.usedCount)}"></span>
+											lượt
+										</div></td>
+
+									<td>
+										<div class="small">
+											<span
+												th:text="${#temporals.format(v.startDate, 'dd/MM/yyyy HH:mm')}"></span>
+										</div>
+										<div class="small text-muted">
+											đến <span
+												th:text="${#temporals.format(v.endDate, 'dd/MM/yyyy HH:mm')}"></span>
+										</div>
+									</td>
+
+									<td><span th:if="${!v.isActive}"
+										class="badge text-bg-secondary">Đã tắt</span> <span
+										th:if="${v.isActive and expired}" class="badge text-bg-danger">Hết
+											hạn</span> <span th:if="${v.isActive and !expired and upcoming}"
+										class="badge text-bg-info">Chưa bắt đầu</span> <span
+										th:if="${v.isActive and !expired and !upcoming and exhausted}"
+										class="badge text-bg-warning">Hết lượt</span> <span
+										th:if="${v.isActive and !expired and !upcoming and !exhausted}"
+										class="badge text-bg-success">Đang áp dụng</span></td>
+
+									<td class="text-end text-nowrap"><a
+										th:href="@{/admin/vouchers/{id}/edit(id=${v.id})}"
+										class="btn btn-sm btn-outline-primary" title="Chỉnh sửa">
+											<i class="bi bi-pencil-square"></i>
+									</a>
+
+										<form th:action="@{/admin/vouchers/{id}/toggle(id=${v.id})}"
+											method="post" class="d-inline">
+											<button type="submit" class="btn btn-sm btn-outline-warning"
+												th:title="${v.isActive ? 'Tắt voucher' : 'Bật voucher'}">
+												<i
+													th:class="${v.isActive ? 'bi bi-toggle-on' : 'bi bi-toggle-off'}"></i>
+											</button>
+										</form>
+
+										<form th:action="@{/admin/vouchers/{id}/delete(id=${v.id})}"
+											method="post" class="d-inline"
+											onsubmit="return confirm('Bạn có chắc muốn xóa voucher này? Nếu đã có người sử dụng, voucher sẽ chỉ được tắt.');">
+											<button type="submit" class="btn btn-sm btn-outline-danger"
+												title="Xóa voucher">
+												<i class="bi bi-trash"></i>
+											</button>
+										</form></td>
+								</tr>
+
+								<tr th:if="${#lists.isEmpty(vouchers)}">
+									<td colspan="8" class="text-center py-5 text-muted"><i
+										class="bi bi-ticket-perforated fs-1 d-block mb-2"></i> Chưa có
+										voucher toàn hệ thống.</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+					<div id="noSearchResults"
+						class="text-center text-muted py-3 d-none">Không tìm thấy
+						voucher phù hợp.</div>
+
+				</div>
+			</div>
+		</div>
+
+		<script>
+			document
+					.addEventListener(
+							'DOMContentLoaded',
+							function() {
+								const search = document
+										.getElementById('voucherSearch');
+								const filter = document
+										.getElementById('statusFilter');
+								const reset = document
+										.getElementById('resetFilter');
+								const rows = Array
+										.from(document
+												.querySelectorAll('#voucherTable tbody tr[data-status]'));
+								const emptyMessage = document
+										.getElementById('noSearchResults');
+
+								function applyFilters() {
+									const keyword = search.value.trim()
+											.toLowerCase();
+									const selectedStatus = filter.value;
+									let visibleCount = 0;
+
+									rows
+											.forEach(function(row) {
+												const matchesKeyword = row.textContent
+														.toLowerCase()
+														.includes(keyword);
+												const matchesStatus = !selectedStatus
+														|| row.dataset.status === selectedStatus;
+												const visible = matchesKeyword
+														&& matchesStatus;
+
+												row.classList.toggle('d-none',
+														!visible);
+												if (visible)
+													visibleCount++;
+											});
+
+									emptyMessage.classList.toggle('d-none',
+											visibleCount > 0
+													|| rows.length === 0);
+								}
+
+								rows
+										.forEach(function(row) {
+											row.dataset.status = row.dataset.voucherStatus
+													|| '';
+										});
+
+								search.addEventListener('input', applyFilters);
+								filter.addEventListener('change', applyFilters);
+
+								reset.addEventListener('click', function() {
+									search.value = '';
+									filter.value = '';
+									applyFilters();
+								});
+							});
+		</script>
+
+	</th:block>
+</body>
+</html>

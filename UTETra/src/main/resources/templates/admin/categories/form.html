@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main(${isEdit} ? 'Cập nhật danh mục' : 'Thêm danh mục', 'categories', ~{::content})}">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản lý danh mục - UTETra</title>
+
+<style>
+:root {
+	--primary: #0d7a42;
+	--primary-dark: #095c32;
+	--background: #f5f7f6;
+}
+
+body {
+	background: var(--background);
+	color: #26352d;
+}
+
+.page-header {
+	margin-bottom: 24px;
+}
+
+.page-title {
+	font-weight: 700;
+	color: #183c2a;
+}
+
+.form-card {
+	background: #fff;
+	border: 1px solid #e4ebe6;
+	border-radius: 16px;
+	box-shadow: 0 5px 20px rgba(20, 60, 35, .05);
+}
+
+.form-label {
+	font-weight: 600;
+}
+
+.form-control:focus, .form-select:focus {
+	border-color: var(--primary);
+	box-shadow: 0 0 0 .2rem rgba(13, 122, 66, .12);
+}
+
+.btn-primary-custom {
+	background: var(--primary);
+	border-color: var(--primary);
+	color: #fff;
+}
+
+.btn-primary-custom:hover {
+	background: var(--primary-dark);
+	border-color: var(--primary-dark);
+	color: #fff;
+}
+
+.image-preview {
+	width: 160px;
+	height: 140px;
+	object-fit: cover;
+	border: 1px solid #e0e7e2;
+	border-radius: 12px;
+	background: #f1f5f2;
+}
+
+.required-mark {
+	color: #dc3545;
+}
+
+.section-title {
+	font-weight: 700;
+	font-size: 1.05rem;
+	margin-bottom: 20px;
+}
+
+.help-text {
+	font-size: .875rem;
+	color: #718078;
+}
+
+.breadcrumb a {
+	color: var(--primary);
+	text-decoration: none;
+}
+</style>
+</head>
+
+<body>
+
+	<div th:fragment="content" class="container-fluid py-4">
+
+		<!-- Tiêu đề -->
+		<div
+			class="page-header d-flex justify-content-between align-items-start flex-wrap gap-3">
+
+			<div>
+				<div class="text-muted small mb-2">
+					<a th:href="@{/admin/categories}" class="text-decoration-none">
+						Admin </a> <span class="mx-1">/</span> <a
+						th:href="@{/admin/categories}" class="text-decoration-none">
+						Quản lý danh mục </a> <span class="mx-1">/</span> <span
+						th:text="${isEdit} ? 'Cập nhật' : 'Thêm mới'"> Thêm mới </span>
+				</div>
+
+				<h1 class="page-title mb-2"
+					th:text="${isEdit} ? 'Cập nhật danh mục' : 'Thêm danh mục mới'">
+					Thêm danh mục mới</h1>
+
+				<p class="text-muted mb-0">Quản lý thông tin và hình ảnh danh
+					mục sản phẩm của UTETra.</p>
+			</div>
+
+			<a th:href="@{/admin/categories}" class="btn btn-outline-secondary">
+				<i class="bi bi-arrow-left me-1"></i> Quay lại
+			</a>
+		</div>
+
+		<!-- Thông báo lỗi -->
+		<div th:if="${errorMessage}"
+			class="alert alert-danger alert-dismissible fade show" role="alert">
+			<i class="bi bi-exclamation-triangle-fill me-2"></i> <span
+				th:text="${errorMessage}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"
+				aria-label="Đóng"></button>
+		</div>
+
+		<!-- Form danh mục -->
+		<form th:object="${form}"
+			th:action="${isEdit} ? @{/admin/categories/{id}/edit(id=${form.id})} : @{/admin/categories/create}"
+			method="post" enctype="multipart/form-data">
+
+			<input type="hidden" th:field="*{id}">
+
+			<div class="row g-4">
+
+				<!-- Cột trái: thông tin danh mục -->
+				<div class="col-12 col-lg-8">
+
+					<div class="form-card p-4 mb-4">
+
+						<h2 class="section-title">
+							<i class="bi bi-info-circle me-2 text-success"></i> Thông tin
+							danh mục
+						</h2>
+
+						<div class="mb-3">
+							<label for="name" class="form-label"> Tên danh mục <span
+								class="required-mark">*</span>
+							</label> <input type="text" id="name" class="form-control"
+								th:field="*{name}" placeholder="Ví dụ: Trà sữa, Cà phê..."
+								maxlength="150" required>
+
+							<div class="help-text mt-2">Nhập tên dễ hiểu để khách hàng
+								có thể nhận biết danh mục.</div>
+						</div>
+
+					</div>
+
+					<div class="form-card p-4">
+
+						<h2 class="section-title">
+							<i class="bi bi-lightbulb me-2 text-success"></i> Hướng dẫn
+						</h2>
+
+						<ul class="text-muted mb-0 ps-3">
+							<li class="mb-2">Tên danh mục nên ngắn gọn và dễ nhận biết.
+							</li>
+							<li class="mb-2">Có thể thêm ảnh để danh mục hiển thị trực
+								quan hơn.</li>
+							<li>Kiểm tra thông tin trước khi lưu.</li>
+						</ul>
+
+					</div>
+
+				</div>
+
+				<!-- Cột phải: hình ảnh -->
+				<div class="col-12 col-lg-4">
+
+					<div class="form-card p-4 mb-4">
+
+						<h2 class="section-title">
+							<i class="bi bi-image me-2 text-success"></i> Hình ảnh danh mục
+						</h2>
+
+						<div class="mb-3">
+
+							<label class="form-label d-block"> Ảnh hiện tại </label> <img
+								th:if="${isEdit and category != null
+                                     and category.imageCloudinaryId != null
+                                     and !#strings.isEmpty(category.imageCloudinaryId)}"
+								th:src="${category.imageCloudinaryId}" th:alt="${category.name}"
+								class="image-preview" id="imagePreview"> <img
+								th:unless="${isEdit and category != null
+                                         and category.imageCloudinaryId != null
+                                         and !#strings.isEmpty(category.imageCloudinaryId)}"
+								src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+								alt="Ảnh xem trước" class="image-preview d-none"
+								id="imagePreview">
+
+							<div id="noImage"
+								class="image-preview d-flex align-items-center justify-content-center text-muted"
+								th:classappend="${isEdit and category != null
+                                             and category.imageCloudinaryId != null
+                                             and !#strings.isEmpty(category.imageCloudinaryId)} ? ' d-none' : ''">
+								<div class="text-center">
+									<i class="bi bi-image fs-2 d-block"></i> <small>Chưa có
+										ảnh</small>
+								</div>
+							</div>
+
+						</div>
+
+						<div class="mb-3">
+							<label for="imageFile" class="form-label"> Chọn ảnh mới </label>
+
+							<input type="file" id="imageFile" class="form-control"
+								th:field="*{imageFile}" accept="image/*">
+
+							<div class="help-text mt-2">Chọn ảnh từ máy tính. Nếu không
+								chọn ảnh mới khi sửa, hệ thống sẽ giữ ảnh cũ nếu service hỗ trợ
+								chức năng đó.</div>
+						</div>
+
+						<div class="alert alert-light border small mb-0">
+							<i class="bi bi-cloud-arrow-up me-1"></i> Ảnh sẽ được xử lý theo
+							cấu hình lưu trữ hình ảnh của hệ thống.
+						</div>
+
+					</div>
+
+				</div>
+
+			</div>
+
+			<!-- Nút thao tác -->
+			<div class="form-card p-3 mt-4">
+				<div
+					class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+					<a th:href="@{/admin/categories}" class="btn btn-outline-secondary">
+						<i class="bi bi-x-lg me-1"></i> Hủy
+					</a>
+
+					<button type="submit" class="btn btn-primary-custom px-4">
+						<i class="bi bi-check-lg me-1"></i> <span
+							th:text="${isEdit} ? 'Lưu thay đổi' : 'Thêm danh mục'">
+							Thêm danh mục </span>
+					</button>
+
+				</div>
+			</div>
+
+		</form>
+
+		<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				const imageInput = document.getElementById('imageFile');
+				const imagePreview = document.getElementById('imagePreview');
+				const noImage = document.getElementById('noImage');
+
+				if (imageInput) {
+					imageInput.addEventListener('change', function(event) {
+						const file = event.target.files[0];
+
+						if (!file) {
+							return;
+						}
+
+						if (!file.type.startsWith('image/')) {
+							alert('Vui lòng chọn một tệp hình ảnh hợp lệ.');
+							imageInput.value = '';
+							return;
+						}
+
+						const reader = new FileReader();
+
+						reader.onload = function(e) {
+							imagePreview.src = e.target.result;
+							imagePreview.classList.remove('d-none');
+
+							if (noImage) {
+								noImage.classList.add('d-none');
+							}
+						};
+
+						reader.readAsDataURL(file);
+					});
+				}
+			});
+		</script>
+
+	</div>
+
+</body>
+</html>

@@ -16,30 +16,269 @@
 <link
 	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
 	rel="stylesheet">
+
+<style>
+html, body {
+	margin: 0;
+	padding: 0;
+	min-height: 100%;
+}
+
+body {
+	background: #f7f9f8;
+	color: #26352d;
+}
+
+/* =========================
+           ADMIN HEADER
+           ========================= */
+.admin-header {
+	height: 76px;
+	background: #198754;
+	display: flex;
+	align-items: center;
+	padding: 0 40px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.admin-brand {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	color: #ffffff;
+	text-decoration: none;
+	font-size: 25px;
+	font-weight: 700;
+}
+
+.admin-brand-icon {
+	color: #ffc107;
+	font-size: 28px;
+}
+
+.admin-menu {
+	display: flex;
+	align-items: center;
+	margin-left: 32px;
+}
+
+.admin-menu a {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: #ffffff;
+	text-decoration: none;
+	font-size: 15px;
+	font-weight: 500;
+	padding: 9px 14px;
+	border-radius: 8px;
+	transition: 0.2s;
+}
+
+.admin-menu a:hover {
+	background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-actions {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.admin-user {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: #ffffff;
+	font-size: 14px;
+	font-weight: 600;
+	padding: 8px 13px;
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	border-radius: 8px;
+	text-decoration: none;
+}
+
+.admin-user:hover {
+	color: #ffffff;
+	background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-logout {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	color: #ffffff;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	padding: 8px 13px;
+	border-radius: 8px;
+	text-decoration: none;
+	font-size: 14px;
+	transition: 0.2s;
+}
+
+.admin-logout:hover {
+	color: #ffffff;
+	background: rgba(255, 255, 255, 0.12);
+}
+
+/* =========================
+           MAIN
+           ========================= */
+.admin-main {
+	width: 100%;
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 28px 32px;
+	overflow-x: hidden;
+}
+
+.admin-content {
+	width: 100%;
+	max-width: 1600px;
+	margin: 0 auto;
+}
+
+/* =========================
+           FOOTER
+           ========================= */
+.admin-footer {
+	background: #ffffff;
+	border-top: 1px solid #e5ebe7;
+	color: #7a8780;
+	text-align: center;
+	font-size: 13px;
+	padding: 14px 20px;
+}
+
+/* =========================
+           RESPONSIVE
+           ========================= */
+@media ( max-width : 768px) {
+	.admin-header {
+		padding: 0 18px;
+	}
+	.admin-brand {
+		font-size: 21px;
+	}
+	.admin-menu {
+		margin-left: 12px;
+	}
+	.admin-menu a {
+		padding: 8px;
+	}
+	.admin-menu span {
+		display: none;
+	}
+	.admin-user span {
+		display: none;
+	}
+	.admin-main {
+		padding: 22px 18px;
+	}
+}
+
+@media ( max-width : 480px) {
+	.admin-header {
+		height: 68px;
+		padding: 0 14px;
+	}
+	.admin-brand-icon {
+		font-size: 24px;
+	}
+	.admin-brand {
+		font-size: 19px;
+	}
+	.admin-menu {
+		margin-left: 5px;
+	}
+	.admin-logout {
+		padding: 7px 9px;
+	}
+	.admin-main {
+		padding: 18px 12px;
+	}
+}
+</style>
 </head>
 
-<body class="d-flex flex-column min-vh-100 bg-light">
 
-	<!-- Header dùng chung -->
-	<div th:replace="~{fragments/header :: header}"></div>
+<body class="d-flex flex-column min-vh-100">
 
-	<div class="d-flex flex-grow-1">
 
-		<!-- Sidebar dùng chung -->
-		<div th:replace="~{fragments/sidebar :: sidebar(${activePage})}"></div>
+	<!-- =========================
+     HEADER ADMIN
+     ========================= -->
+	<header class="admin-header">
 
-		<!-- Nội dung của từng trang -->
-		<main class="flex-grow-1 p-4 overflow-auto">
-			<th:block th:replace="${content}"></th:block>
-		</main>
+		<!-- Logo -->
+		<a th:href="@{/admin/dashboard}" class="admin-brand"> <i
+			class="bi bi-cup-hot-fill admin-brand-icon"></i> <span>UTETra</span>
 
-	</div>
+		</a>
 
-	<!-- Footer dùng chung -->
-	<div th:replace="~{fragments/footer :: footer}"></div>
+
+		<!-- Menu -->
+		<nav class="admin-menu">
+
+			<a th:href="@{/menu}"> <i class="bi bi-journal-text"></i> <span>Thực
+					đơn</span>
+
+			</a>
+
+		</nav>
+
+
+		```html
+		<!-- Tài khoản admin -->
+		<div class="admin-actions">
+
+			<a href="#" class="admin-user"> <i class="bi bi-person-gear"></i>
+				<span>Quản trị viên</span>
+			</a>
+
+			<!-- Đăng xuất -->
+			<form th:action="@{/auth/logout}" method="post" class="m-0">
+
+				<button type="submit" class="admin-logout">
+					<i class="bi bi-box-arrow-right"></i> <span>Đăng xuất</span>
+				</button>
+
+			</form>
+
+		</div>
+		```
+
+	</header>
+
+
+	<!-- =========================
+     NỘI DUNG ADMIN
+     ========================= -->
+	<main class="admin-main">
+
+		<div class="admin-content">
+
+			<th:block th:replace="${content}">
+			</th:block>
+
+		</div>
+
+	</main>
+
+
+	<!-- =========================
+     FOOTER
+     ========================= -->
+	<footer class="admin-footer"> © 2026 UTETra - Hệ thống quản
+		trị </footer>
+
 
 	<script
-		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+		
+	</script>
 
 </body>
 </html>
