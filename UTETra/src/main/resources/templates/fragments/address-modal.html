@@ -64,6 +64,9 @@
 	background: rgba(255,255,255,.95); border-radius: .5rem; padding: .4rem .6rem; }
 #abModal .ab-map-msg:empty { display: none; }
 #abModal .ab-primary { font-weight: 700; letter-spacing: .03em; }
+/* Cảnh báo ghim lệch khu vực */
+#abModal .ab-map-warn { position: absolute; z-index: 600; left: .75rem; right: .75rem; bottom: 1rem; background: #fff;
+	border: 1px solid #ffc107; border-radius: .75rem; padding: .75rem; box-shadow: 0 .25rem .75rem rgba(0,0,0,.2); font-size: .9rem; }
 		</style>
 
 		<div class="modal fade" id="abModal" tabindex="-1" aria-hidden="true">
@@ -96,7 +99,6 @@
 									<i class="bi bi-chevron-right text-muted"></i>
 								</button>
 								<div id="ab-mini-map" class="ab-mini-map d-none" title="Bấm để chỉnh vị trí"></div>
-								<!-- Ghi chú địa chỉ (không bắt buộc) -->
 								<div class="ab-field border-0">
 									<div class="ab-row-label">Ghi chú địa chỉ (không bắt buộc)</div>
 									<textarea id="ab-note" class="ab-note" rows="2" maxlength="200"
@@ -169,6 +171,16 @@
 							</div>
 							<button type="button" class="ab-locate" id="ab-map-locate" title="Vị trí của tôi"><i class="bi bi-crosshair"></i></button>
 							<div class="ab-map-msg" id="ab-map-msg"></div>
+							<!-- Cảnh báo: ghim nằm xa Phường/Xã đã chọn -->
+							<div class="ab-map-warn d-none" id="ab-map-warn">
+								<div class="fw-semibold text-warning-emphasis mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Kiểm tra lại vị trí</div>
+								<div id="ab-warn-text" class="mb-2"></div>
+								<div class="d-flex flex-wrap gap-2">
+									<button type="button" class="btn btn-sm btn-success" id="ab-warn-fix">Kéo lại ghim</button>
+									<button type="button" class="btn btn-sm btn-outline-secondary" id="ab-warn-area">Chọn lại Phường/Xã</button>
+									<button type="button" class="btn btn-sm btn-link text-muted" id="ab-warn-keep">Vẫn dùng vị trí này</button>
+								</div>
+							</div>
 						</div>
 					</div>
 
