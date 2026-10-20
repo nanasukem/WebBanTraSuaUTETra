@@ -1,0 +1,269 @@
+
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Chi tiết cửa hàng', 'branches', ~{::#admin-content})}">
+
+<section id="admin-content">
+
+	<div
+		class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+		<div>
+			<h2 class="fw-bold mb-1">
+				<i class="bi bi-shop me-2"></i>Chi tiết cửa hàng
+			</h2>
+			<p class="text-secondary mb-0">Thông tin và trạng thái hoạt động</p>
+		</div>
+		<a th:href="@{/manager/branches}" class="btn btn-outline-secondary">
+			<i class="bi bi-arrow-left me-1"></i>Quay lại
+		</a>
+	</div>
+
+	<div th:if="${successMessage != null}"
+		class="alert alert-success alert-dismissible fade show">
+		<span th:text="${successMessage}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<div th:if="${errorMessage != null}"
+		class="alert alert-danger alert-dismissible fade show">
+		<span th:text="${errorMessage}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<div class="row g-4">
+
+		<!-- Thông tin cửa hàng -->
+		<div class="col-12 col-xl-7">
+			<div class="card border-0 shadow-sm rounded-4 h-100">
+				<div class="card-header bg-white py-3">
+					<h5 class="fw-bold mb-0">
+						<i class="bi bi-info-circle me-2"></i> <span
+							th:text="${branch.name}">Tên cửa hàng</span>
+					</h5>
+				</div>
+
+				<div class="card-body">
+					<div class="row g-4">
+
+						<div class="col-sm-6">
+							<div class="info-label">Mã cửa hàng</div>
+							<div class="fw-semibold" th:text="${branch.id}">1</div>
+						</div>
+
+						<div class="col-sm-6">
+							<div class="info-label">Trạng thái</div>
+							<span class="badge bg-warning text-dark"
+								th:if="${branch.status.name() == 'PENDING'}">Chờ duyệt</span> <span
+								class="badge bg-success"
+								th:if="${branch.status.name() == 'APPROVED'}">Đang hoạt
+								động</span> <span class="badge bg-danger"
+								th:if="${branch.status.name() == 'REJECTED'}">Đã từ chối</span>
+							<span class="badge bg-secondary"
+								th:if="${branch.status.name() == 'SUSPENDED'}">Tạm ngưng</span>
+						</div>
+
+						<div class="col-12">
+							<div class="info-label">Địa chỉ</div>
+							<div th:text="${branch.address ?: 'Chưa cập nhật'}">Địa chỉ</div>
+						</div>
+
+						<div class="col-sm-6">
+							<div class="info-label">Số điện thoại</div>
+							<div th:text="${branch.phone ?: 'Chưa cập nhật'}">-</div>
+						</div>
+
+						<div class="col-sm-6">
+							<div class="info-label">Chủ cửa hàng</div>
+							<div
+								th:text="${branch.owner != null ? branch.owner.username : 'Chưa có'}">-</div>
+						</div>
+
+						<div class="col-12">
+							<div class="info-label">Mô tả</div>
+							<p class="mb-0"
+								th:text="${branch.description ?: 'Chưa có mô tả'}">-</p>
+						</div>
+
+						<div class="col-sm-6">
+							<div class="info-label">Vĩ độ</div>
+							<div
+								th:text="${branch.latitude != null ? branch.latitude : 'Chưa cập nhật'}">-</div>
+						</div>
+
+						<div class="col-sm-6">
+							<div class="info-label">Kinh độ</div>
+							<div
+								th:text="${branch.longitude != null ? branch.longitude : 'Chưa cập nhật'}">-</div>
+						</div>
+
+						<div class="col-12">
+							<div class="info-label">Ngày tạo</div>
+							<div
+								th:text="${branch.createdAt != null
+                                ? #temporals.format(branch.createdAt, 'dd/MM/yyyy HH:mm')
+                                : '—'}">-</div>
+						</div>
+
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Chiết khấu và thao tác -->
+		<div class="col-12 col-xl-5">
+
+			<div class="card border-0 shadow-sm rounded-4 mb-4">
+				<div class="card-header bg-white py-3">
+					<h5 class="fw-bold mb-0">
+						<i class="bi bi-percent me-2"></i>Tỷ lệ chiết khấu
+					</h5>
+				</div>
+
+				<div class="card-body">
+					<div class="display-5 fw-bold text-primary mb-3">
+						<span th:text="${branch.commissionRate}">5.00</span>%
+					</div>
+
+					<form
+						th:action="@{/manager/branches/{id}/commission(id=${branch.id})}"
+						method="post">
+
+						<label for="commissionRate" class="form-label"> Chiết khấu
+							mới (%) </label>
+
+						<div class="input-group mb-2">
+							<input id="commissionRate" name="commissionRate" type="number"
+								class="form-control" min="0" max="100" step="0.01"
+								th:value="${branch.commissionRate}" required> <span
+								class="input-group-text">%</span>
+						</div>
+
+						<div class="form-text mb-3">Giá trị từ 0 đến 100%.</div>
+
+						<button type="submit" class="btn btn-primary w-100">
+							<i class="bi bi-save me-1"></i>Cập nhật chiết khấu
+						</button>
+					</form>
+				</div>
+			</div>
+
+			<div class="card border-0 shadow-sm rounded-4">
+				<div class="card-header bg-white py-3">
+					<h5 class="fw-bold mb-0">Thao tác cửa hàng</h5>
+				</div>
+
+				<div class="card-body d-grid gap-2">
+
+					<a th:href="@{/manager/branches/{id}/products(id=${branch.id})}"
+						class="btn btn-outline-primary"> <i
+						class="bi bi-box-seam me-1"></i>Quản lý sản phẩm
+					</a> <a th:href="@{/manager/branches/{id}/orders(id=${branch.id})}"
+						class="btn btn-outline-info"> <i class="bi bi-receipt me-1"></i>Đơn
+						hàng của cửa hàng
+					</a> <a th:href="@{/manager/branches/{id}/vouchers(id=${branch.id})}"
+						class="btn btn-outline-success"> <i
+						class="bi bi-ticket-perforated me-1"></i>Voucher của cửa hàng
+					</a> <a th:href="@{/manager/branches/{id}/reports(id=${branch.id})}"
+						class="btn btn-outline-dark"> <i
+						class="bi bi-bar-chart-line me-1"></i>Báo cáo cửa hàng
+					</a>
+
+					<form th:if="${branch.status.name() == 'PENDING'}"
+						th:action="@{/manager/branches/{id}/approve(id=${branch.id})}"
+						method="post" onsubmit="return confirm('Duyệt cửa hàng này?')">
+						<button type="submit" class="btn btn-success w-100">
+							<i class="bi bi-check-circle me-1"></i>Duyệt cửa hàng
+						</button>
+					</form>
+
+					<form th:if="${branch.status.name() == 'PENDING'}"
+						th:action="@{/manager/branches/{id}/reject(id=${branch.id})}"
+						method="post" onsubmit="return confirm('Từ chối cửa hàng này?')">
+						<button type="submit" class="btn btn-outline-danger w-100">
+							<i class="bi bi-x-circle me-1"></i>Từ chối cửa hàng
+						</button>
+					</form>
+
+					<form th:if="${branch.status.name() == 'APPROVED'}"
+						th:action="@{/manager/branches/{id}/suspend(id=${branch.id})}"
+						method="post" onsubmit="return confirm('Tạm ngưng cửa hàng này?')">
+						<button type="submit" class="btn btn-warning w-100">
+							<i class="bi bi-pause-circle me-1"></i>Tạm ngưng
+						</button>
+					</form>
+
+					<form th:if="${branch.status.name() == 'SUSPENDED'}"
+						th:action="@{/manager/branches/{id}/activate(id=${branch.id})}"
+						method="post"
+						onsubmit="return confirm('Kích hoạt lại cửa hàng này?')">
+						<button type="submit" class="btn btn-success w-100">
+							<i class="bi bi-play-circle me-1"></i>Kích hoạt lại
+						</button>
+					</form>
+
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Sản phẩm của cửa hàng -->
+	<div class="card border-0 shadow-sm rounded-4 mt-4">
+		<div
+			class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+			<h5 class="fw-bold mb-0">Sản phẩm thuộc cửa hàng</h5>
+			<a th:href="@{/manager/branches/{id}/products(id=${branch.id})}"
+				class="btn btn-sm btn-primary"> <i class="bi bi-box-seam me-1"></i>Quản
+				lý sản phẩm
+			</a>
+		</div>
+
+		<div class="table-responsive">
+			<table class="table table-hover align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th>ID</th>
+						<th>Tên sản phẩm</th>
+						<th>Danh mục</th>
+						<th>Giá</th>
+						<th>Trạng thái tại cửa hàng</th>
+					</tr>
+				</thead>
+
+				<tbody>
+					<tr th:each="bp : ${branchProducts}">
+						<td th:text="${bp.product.id}">1</td>
+						<td th:text="${bp.product.name}">Tên sản phẩm</td>
+						<td
+							th:text="${bp.product.category != null
+                        ? bp.product.category.name : '—'}">Danh
+							mục</td>
+						<td class="text-nowrap"><span
+							th:text="${bp.product.basePrice != null
+                            ? #numbers.formatDecimal(bp.product.basePrice, 0, 'COMMA', 0, 'POINT')
+                            : '0'}">0</span>
+							đ</td>
+						<td><span class="badge bg-success" th:if="${bp.isAvailable}">Đang
+								bán</span> <span class="badge bg-secondary"
+							th:unless="${bp.isAvailable}">Ngừng bán</span></td>
+					</tr>
+
+					<tr
+						th:if="${branchProducts == null or #lists.isEmpty(branchProducts)}">
+						<td colspan="5" class="text-center text-secondary py-4">Chưa
+							có sản phẩm thuộc cửa hàng.</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<style>
+.info-label {
+	color: #64748b;
+	font-size: .9rem;
+	margin-bottom: .35rem;
+}
+</style>
+
+</section>
+</html>

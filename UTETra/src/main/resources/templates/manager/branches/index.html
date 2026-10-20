@@ -1,0 +1,194 @@
+
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Quản lý cửa hàng', 'branches', ~{::#admin-content})}">
+
+<section id="admin-content">
+
+	<div
+		class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+		<div>
+			<h2 class="fw-bold mb-1">
+				<i class="bi bi-shop-window me-2"></i>Quản lý cửa hàng
+			</h2>
+			<p class="text-secondary mb-0">Duyệt và quản lý hoạt động của các
+				cửa hàng</p>
+		</div>
+
+		<a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary">
+			<i class="bi bi-arrow-left me-1"></i>Dashboard
+		</a>
+	</div>
+
+	<div th:if="${successMessage != null}"
+		class="alert alert-success alert-dismissible fade show">
+		<span th:text="${successMessage}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<div th:if="${errorMessage != null}"
+		class="alert alert-danger alert-dismissible fade show">
+		<span th:text="${errorMessage}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<!-- Tìm kiếm và lọc -->
+	<div class="card border-0 shadow-sm rounded-4 mb-4">
+		<div class="card-header bg-white py-3">
+			<h5 class="fw-bold mb-0">
+				<i class="bi bi-funnel me-2"></i>Tìm kiếm và lọc
+			</h5>
+		</div>
+
+		<div class="card-body">
+			<form th:action="@{/manager/branches}" method="get">
+				<div class="row g-3 align-items-end">
+
+					<div class="col-12 col-lg-5">
+						<label for="keyword" class="form-label">Tìm cửa hàng</label> <input
+							id="keyword" type="text" name="keyword" class="form-control"
+							placeholder="Tên cửa hàng hoặc địa chỉ..." th:value="${keyword}">
+					</div>
+
+					<div class="col-12 col-lg-4">
+						<label for="status" class="form-label">Trạng thái</label> <select
+							id="status" name="status" class="form-select">
+							<option value="">Tất cả trạng thái</option>
+							<option th:each="s : ${statuses}" th:value="${s.name()}"
+								th:text="${s.name() == 'PENDING' ? 'Chờ duyệt' :
+                                        (s.name() == 'APPROVED' ? 'Đang hoạt động' :
+                                        (s.name() == 'REJECTED' ? 'Đã từ chối' : 'Tạm ngưng'))}"
+								th:selected="${selectedStatus != null and selectedStatus.name() == s.name()}">
+							</option>
+						</select>
+					</div>
+
+					<div class="col-12 col-lg-3 d-flex gap-2">
+						<button type="submit" class="btn btn-primary flex-fill">
+							<i class="bi bi-search me-1"></i>Tìm kiếm
+						</button>
+
+						<a th:href="@{/manager/branches}"
+							class="btn btn-outline-secondary"> Xóa lọc </a>
+					</div>
+
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<!-- Danh sách cửa hàng -->
+	<div class="card border-0 shadow-sm rounded-4">
+		<div class="card-header bg-white py-3">
+			<h5 class="fw-bold mb-0">
+				<i class="bi bi-list-ul me-2"></i>Danh sách cửa hàng
+			</h5>
+		</div>
+
+		<div class="table-responsive">
+			<table class="table table-hover align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th class="ps-3">ID</th>
+						<th>Cửa hàng</th>
+						<th>Địa chỉ</th>
+						<th>Số điện thoại</th>
+						<th>Chiết khấu</th>
+						<th>Trạng thái</th>
+						<th style="min-width: 230px">Thao tác</th>
+					</tr>
+				</thead>
+
+				<tbody>
+					<tr th:each="branch : ${branches}">
+						<td class="ps-3" th:text="${branch.id}">1</td>
+
+						<td>
+							<div class="fw-semibold" th:text="${branch.name}">Tên cửa
+								hàng</div> <small class="text-secondary"
+							th:text="${branch.owner != null
+                                   ? branch.owner.username : 'Chưa có chủ cửa hàng'}">
+								Chủ cửa hàng </small>
+						</td>
+
+						<td th:text="${branch.address ?: '—'}">Địa chỉ</td>
+						<td th:text="${branch.phone ?: '—'}">Số điện thoại</td>
+						<td class="text-nowrap"><span
+							th:text="${branch.commissionRate}">5</span>%</td>
+
+						<td><span class="badge bg-warning text-dark"
+							th:if="${branch.status.name() == 'PENDING'}">Chờ duyệt</span> <span
+							class="badge bg-success"
+							th:if="${branch.status.name() == 'APPROVED'}">Hoạt động</span> <span
+							class="badge bg-danger"
+							th:if="${branch.status.name() == 'REJECTED'}">Từ chối</span> <span
+							class="badge bg-secondary"
+							th:if="${branch.status.name() == 'SUSPENDED'}">Tạm ngưng</span></td>
+
+						<td>
+							<div class="d-flex flex-wrap gap-1">
+
+								<a th:href="@{/manager/branches/{id}(id=${branch.id})}"
+									class="btn btn-sm btn-outline-primary" title="Chi tiết"> <i
+									class="bi bi-eye"></i>
+								</a> <a
+									th:href="@{/manager/branches/{id}/products(id=${branch.id})}"
+									class="btn btn-sm btn-outline-info" title="Sản phẩm"> <i
+									class="bi bi-box-seam"></i>
+								</a>
+
+								<form th:if="${branch.status.name() == 'PENDING'}"
+									th:action="@{/manager/branches/{id}/approve(id=${branch.id})}"
+									method="post" onsubmit="return confirm('Duyệt cửa hàng này?')">
+									<button class="btn btn-sm btn-success" type="submit"
+										title="Duyệt">
+										<i class="bi bi-check-lg"></i>
+									</button>
+								</form>
+
+								<form th:if="${branch.status.name() == 'PENDING'}"
+									th:action="@{/manager/branches/{id}/reject(id=${branch.id})}"
+									method="post"
+									onsubmit="return confirm('Từ chối cửa hàng này?')">
+									<button class="btn btn-sm btn-outline-danger" type="submit"
+										title="Từ chối">
+										<i class="bi bi-x-lg"></i>
+									</button>
+								</form>
+
+								<form th:if="${branch.status.name() == 'APPROVED'}"
+									th:action="@{/manager/branches/{id}/suspend(id=${branch.id})}"
+									method="post"
+									onsubmit="return confirm('Tạm ngưng cửa hàng này?')">
+									<button class="btn btn-sm btn-warning" type="submit"
+										title="Tạm ngưng">
+										<i class="bi bi-pause"></i>
+									</button>
+								</form>
+
+								<form th:if="${branch.status.name() == 'SUSPENDED'}"
+									th:action="@{/manager/branches/{id}/activate(id=${branch.id})}"
+									method="post"
+									onsubmit="return confirm('Kích hoạt lại cửa hàng này?')">
+									<button class="btn btn-sm btn-success" type="submit"
+										title="Kích hoạt">
+										<i class="bi bi-play"></i>
+									</button>
+								</form>
+
+							</div>
+						</td>
+					</tr>
+
+					<tr th:if="${branches == null or #lists.isEmpty(branches)}">
+						<td colspan="7" class="text-center py-5 text-secondary"><i
+							class="bi bi-shop fs-1 d-block mb-2"></i> Không tìm thấy cửa hàng
+							phù hợp.</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+</section>
+</html>

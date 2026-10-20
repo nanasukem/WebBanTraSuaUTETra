@@ -1,0 +1,231 @@
+
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Quản lý đơn hàng', 'branches', ~{::#admin-content})}">
+
+<section id="admin-content">
+	<div
+		class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+		<div>
+			<h2 class="fw-bold mb-1">
+				<i class="bi bi-receipt me-2"></i>Quản lý đơn hàng
+			</h2>
+			<p class="text-muted mb-0">
+				Chi nhánh: <strong th:text="${branch.name}">Tên chi nhánh</strong>
+			</p>
+		</div>
+
+		<a th:href="@{/manager/branches/{id}(id=${branch.id})}"
+			class="btn btn-outline-secondary"> <i
+			class="bi bi-arrow-left me-1"></i>Chi tiết chi nhánh
+		</a>
+	</div>
+
+	<div th:if="${success != null}"
+		class="alert alert-success alert-dismissible fade show" role="alert">
+		<span th:text="${success}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<div th:if="${error != null}"
+		class="alert alert-danger alert-dismissible fade show" role="alert">
+		<span th:text="${error}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<!-- Thống kê -->
+	<div class="row g-3 mb-4">
+		<div class="col-6 col-xl-3">
+			<div class="card border-0 shadow-sm h-100">
+				<div class="card-body">
+					<p class="text-muted mb-1">Tổng đơn hàng</p>
+					<h3 class="fw-bold mb-0" th:text="${totalOrders}">0</h3>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-6 col-xl-3">
+			<div class="card border-0 shadow-sm h-100">
+				<div class="card-body">
+					<p class="text-muted mb-1">Chờ xử lý</p>
+					<h3 class="fw-bold text-warning mb-0" th:text="${pendingOrders}">0</h3>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-6 col-xl-3">
+			<div class="card border-0 shadow-sm h-100">
+				<div class="card-body">
+					<p class="text-muted mb-1">Đã giao</p>
+					<h3 class="fw-bold text-success mb-0" th:text="${deliveredOrders}">0</h3>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-6 col-xl-3">
+			<div class="card border-0 shadow-sm h-100">
+				<div class="card-body">
+					<p class="text-muted mb-1">Đã hủy</p>
+					<h3 class="fw-bold text-danger mb-0" th:text="${cancelledOrders}">0</h3>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Bộ lọc -->
+	<div class="card border-0 shadow-sm mb-4">
+		<div class="card-header bg-white py-3">
+			<h5 class="fw-bold mb-0">
+				<i class="bi bi-funnel me-2"></i>Tìm kiếm và lọc đơn hàng
+			</h5>
+		</div>
+
+		<div class="card-body">
+			<form method="get"
+				th:action="@{/manager/branches/{branchId}/orders(branchId=${branch.id})}"
+				class="row g-3">
+
+				<div class="col-12 col-md-6 col-xl-3">
+					<label for="keyword" class="form-label">Từ khóa</label> <input
+						id="keyword" type="text" name="keyword" class="form-control"
+						placeholder="Mã đơn, tên hoặc tài khoản khách"
+						th:value="${keyword}">
+				</div>
+
+				<div class="col-12 col-md-6 col-xl-3">
+					<label for="status" class="form-label">Trạng thái đơn</label> <select
+						id="status" name="status" class="form-select">
+						<option value="">Tất cả trạng thái</option>
+						<option th:each="s : ${orderStatuses}" th:value="${s.name()}"
+							th:text="${s}" th:selected="${selectedStatus == s.name()}">
+						</option>
+					</select>
+				</div>
+
+				<div class="col-12 col-md-6 col-xl-3">
+					<label for="paymentStatus" class="form-label">Thanh toán</label> <select
+						id="paymentStatus" name="paymentStatus" class="form-select">
+						<option value="">Tất cả trạng thái thanh toán</option>
+						<option th:each="s : ${paymentStatuses}" th:value="${s.name()}"
+							th:text="${s}" th:selected="${selectedPaymentStatus == s.name()}">
+						</option>
+					</select>
+				</div>
+
+				<div class="col-12 col-md-6 col-xl-3">
+					<label for="paymentMethod" class="form-label">Phương thức
+						thanh toán</label> <select id="paymentMethod" name="paymentMethod"
+						class="form-select">
+						<option value="">Tất cả phương thức</option>
+						<option th:each="m : ${paymentMethods}" th:value="${m.name()}"
+							th:text="${m}" th:selected="${selectedPaymentMethod == m.name()}">
+						</option>
+					</select>
+				</div>
+
+				<div class="col-12 d-flex flex-wrap gap-2">
+					<button type="submit" class="btn btn-primary">
+						<i class="bi bi-search me-1"></i>Lọc
+					</button>
+
+					<a
+						th:href="@{/manager/branches/{branchId}/orders(branchId=${branch.id})}"
+						class="btn btn-outline-secondary"> <i
+						class="bi bi-arrow-counterclockwise me-1"></i>Xóa bộ lọc
+					</a>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<!-- Danh sách đơn -->
+	<div class="card border-0 shadow-sm">
+		<div class="card-header bg-white py-3">
+			<h5 class="fw-bold mb-0">Danh sách đơn hàng</h5>
+		</div>
+
+		<div class="card-body p-0">
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0">
+					<thead class="table-light">
+						<tr>
+							<th class="ps-3">Mã đơn</th>
+							<th>Khách hàng</th>
+							<th>Ngày đặt</th>
+							<th>Tổng tiền</th>
+							<th>Thanh toán</th>
+							<th>Phương thức</th>
+							<th>Trạng thái</th>
+							<th class="text-center">Thao tác</th>
+						</tr>
+					</thead>
+
+					<tbody>
+						<tr th:if="${#lists.isEmpty(orders)}">
+							<td colspan="8" class="text-center text-muted py-5"><i
+								class="bi bi-inbox fs-2 d-block mb-2"></i> Không tìm thấy đơn
+								hàng phù hợp.</td>
+						</tr>
+
+						<tr th:each="order : ${orders}">
+							<td class="ps-3"><strong th:text="${'#' + order.id}">#1</strong>
+							</td>
+
+							<td>
+								<div th:if="${order.user != null}">
+									<div class="fw-semibold" th:text="${order.user.fullName}">Tên
+										khách</div>
+									<small class="text-muted" th:text="${order.user.username}">username</small>
+								</div> <span th:unless="${order.user != null}" class="text-muted">Không
+									có thông tin</span>
+							</td>
+
+							<td
+								th:text="${order.createdAt != null
+                                    ? #temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm')
+                                    : '-'}">21/10/2026</td>
+
+							<td class="fw-semibold"
+								th:text="${order.totalAmount != null
+                                    ? #numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT') + ' ₫'
+                                    : '0 ₫'}">0
+								₫</td>
+
+							<td><span th:if="${order.paymentStatus != null}"
+								class="badge bg-light text-dark border"
+								th:text="${order.paymentStatus}">UNPAID</span> <span
+								th:unless="${order.paymentStatus != null}" class="text-muted">-</span>
+							</td>
+
+							<td
+								th:text="${order.paymentMethod != null
+                                    ? order.paymentMethod : '-'}">COD</td>
+
+							<td><span th:if="${order.status != null}" class="badge"
+								th:classappend="${order.status.name() == 'DELIVERED'}
+                                          ? ' bg-success'
+                                          : (${order.status.name() == 'CANCELLED'}
+                                              ? ' bg-danger'
+                                              : (${order.status.name() == 'PENDING'}
+                                                  ? ' bg-warning text-dark'
+                                                  : ' bg-primary')}"
+								th:text="${order.status}">PENDING</span> <span
+								th:unless="${order.status != null}" class="badge bg-secondary">Chưa
+									xác định</span></td>
+
+							<td class="text-center"><a
+								th:href="@{/manager/branches/{branchId}/orders/{orderId}(
+                                        branchId=${branch.id},
+                                        orderId=${order.id})}"
+								class="btn btn-sm btn-outline-primary"> <i
+									class="bi bi-eye me-1"></i>Chi tiết
+							</a></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</section>
+
+</html>

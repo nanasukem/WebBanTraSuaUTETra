@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Chi tiết đơn hàng', 'orders', ~{::#admin-content})}">
+
+<section id="admin-content">
+
+	<!-- Tiêu đề -->
+	<div
+		class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+		<div>
+			<h2 class="fw-bold mb-1">
+				<i class="bi bi-receipt me-2"></i> Chi tiết đơn hàng <span
+					th:text="${'#' + order.id}">#1</span>
+			</h2>
+			<p class="text-muted mb-0">
+				Chi nhánh: <strong th:text="${branch.name}">Tên chi nhánh</strong>
+			</p>
+		</div>
+
+		<a class="btn btn-outline-secondary"
+			th:href="@{/manager/branches/{id}/orders(id=${branch.id})}"> <i
+			class="bi bi-arrow-left me-1"></i>Danh sách đơn hàng
+		</a>
+	</div>
+
+	<!-- Thông báo -->
+	<div th:if="${success != null}"
+		class="alert alert-success alert-dismissible fade show" role="alert">
+		<i class="bi bi-check-circle me-2"></i> <span th:text="${success}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"
+			aria-label="Đóng"></button>
+	</div>
+
+	<div th:if="${error != null}"
+		class="alert alert-danger alert-dismissible fade show" role="alert">
+		<i class="bi bi-exclamation-triangle me-2"></i> <span
+			th:text="${error}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"
+			aria-label="Đóng"></button>
+	</div>
+
+	<!-- Thông tin đơn hàng -->
+	<div class="card border-0 shadow-sm mb-4">
+		<div class="card-header bg-white py-3">
+			<h5 class="fw-semibold mb-0">
+				<i class="bi bi-info-circle me-2"></i>Thông tin đơn hàng
+			</h5>
+		</div>
+
+		<div class="card-body">
+			<div class="row g-4">
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Mã đơn hàng</div>
+					<div class="detail-value" th:text="${'#' + order.id}">#1</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Chi nhánh</div>
+					<div class="detail-value" th:text="${branch.name}">Chi nhánh</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Khách hàng</div>
+					<div class="detail-value"
+						th:text="${order.user != null ? order.user.fullName : '-'}">-</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Tài khoản</div>
+					<div class="detail-value"
+						th:text="${order.user != null ? order.user.username : '-'}">-</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Ngày đặt</div>
+					<div class="detail-value"
+						th:text="${order.createdAt != null
+                            ? #temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm')
+                            : '-'}">-</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Ngày giao</div>
+					<div class="detail-value"
+						th:text="${order.deliveredAt != null
+                            ? #temporals.format(order.deliveredAt, 'dd/MM/yyyy HH:mm')
+                            : '-'}">-</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Tổng tiền</div>
+					<div class="detail-value text-primary"
+						th:text="${order.totalAmount != null
+                            ? #numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT') + ' đ'
+                            : '-'}">-</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Hoa hồng</div>
+					<div class="detail-value"
+						th:text="${order.commissionAmount != null
+                            ? #numbers.formatDecimal(order.commissionAmount, 0, 'COMMA', 0, 'POINT') + ' đ'
+                            : '-'}">-</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Phương thức thanh toán</div>
+					<div class="detail-value"
+						th:text="${order.paymentMethod != null ? order.paymentMethod : '-'}">-</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Trạng thái thanh toán</div>
+					<div class="detail-value"
+						th:text="${order.paymentStatus != null ? order.paymentStatus : '-'}">-</div>
+				</div>
+
+				<div class="col-12 col-md-6">
+					<div class="detail-label">Trạng thái đơn hàng</div>
+					<div>
+						<span class="badge bg-secondary fs-6" th:text="${order.status}">Trạng
+							thái</span>
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+
+	<!-- Cập nhật trạng thái -->
+	<div class="card border-0 shadow-sm mb-4">
+		<div class="card-header bg-white py-3">
+			<h5 class="fw-semibold mb-0">
+				<i class="bi bi-arrow-repeat me-2"></i>Cập nhật trạng thái
+			</h5>
+		</div>
+
+		<div class="card-body">
+
+			<form th:if="${!#lists.isEmpty(nextStatuses)}"
+				th:action="@{/manager/branches/{branchId}/orders/{orderId}/status
+                    (branchId=${branch.id},orderId=${order.id})}"
+				method="post" class="row g-3 align-items-end">
+
+				<div class="col-12 col-md-6">
+					<label for="status" class="form-label"> Trạng thái mới </label> <select
+						id="status" class="form-select" name="status" required>
+						<option value="">-- Chọn trạng thái --</option>
+						<option th:each="s : ${nextStatuses}" th:value="${s.name()}"
+							th:text="${s}"></option>
+					</select>
+				</div>
+
+				<div class="col-12 col-md-3">
+					<button class="btn btn-primary" type="submit"
+						onclick="return confirm('Bạn có chắc muốn cập nhật trạng thái đơn hàng?')">
+						<i class="bi bi-check-lg me-1"></i>Cập nhật
+					</button>
+				</div>
+
+			</form>
+
+			<div th:if="${#lists.isEmpty(nextStatuses)}"
+				class="alert alert-secondary mb-0">
+				<i class="bi bi-lock me-2"></i> Đơn hàng đã ở trạng thái cuối, không
+				thể chuyển trạng thái tiếp.
+			</div>
+
+		</div>
+	</div>
+
+	<!-- Nút điều hướng -->
+	<div class="d-flex flex-wrap gap-2">
+		<a class="btn btn-outline-secondary"
+			th:href="@{/manager/branches/{id}/orders(id=${branch.id})}"> <i
+			class="bi bi-arrow-left me-1"></i>Quay lại danh sách
+		</a> <a class="btn btn-outline-primary"
+			th:href="@{/manager/branches/{id}(id=${branch.id})}"> <i
+			class="bi bi-shop me-1"></i>Chi tiết chi nhánh
+		</a>
+	</div>
+
+	<style>
+.detail-label {
+	color: #6c757d;
+	font-size: 0.9rem;
+	margin-bottom: 0.35rem;
+}
+
+.detail-value {
+	font-weight: 500;
+	overflow-wrap: anywhere;
+}
+</style>
+
+</section>
+
+</html>
