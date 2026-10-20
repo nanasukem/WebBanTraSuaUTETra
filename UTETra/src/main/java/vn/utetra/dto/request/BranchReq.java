@@ -20,6 +20,14 @@ public class BranchReq {
 	@NotBlank(message = "Địa chỉ không được để trống")
 	@Size(max = 255, message = "Địa chỉ tối đa 255 ký tự")
 	private String address;
+	
+	@DecimalMin(value = "-90", message = "Vĩ độ phải từ -90 đến 90")
+	@DecimalMax(value = "90", message = "Vĩ độ phải từ -90 đến 90")
+	private BigDecimal latitude;
+
+	@DecimalMin(value = "-180", message = "Kinh độ phải từ -180 đến 180")
+	@DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
+	private BigDecimal longitude;
 
 	@Pattern(regexp = "^$|^0\\d{9,10}$", message = "Số điện thoại phải bắt đầu bằng 0 và có 10-11 số")
 	private String phone;

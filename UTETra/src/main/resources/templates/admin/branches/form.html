@@ -41,6 +41,34 @@
 				<div class="invalid-feedback" th:errors="*{address}"></div>
 			</div>
 
+			<!-- Tọa độ chi nhánh (gợi ý chi nhánh gần khách nhất) -->
+			<div class="row g-3 mb-1">
+				<div class="col-md-6">
+					<label class="form-label">Vĩ độ (latitude)</label> <input
+						type="number" step="0.000001" min="-90" max="90"
+						th:field="*{latitude}" class="form-control"
+						th:errorclass="is-invalid" placeholder="VD: 10.850700">
+					<div class="invalid-feedback" th:errors="*{latitude}"></div>
+				</div>
+				<div class="col-md-6">
+					<label class="form-label">Kinh độ (longitude)</label> <input
+						type="number" step="0.000001" min="-180" max="180"
+						th:field="*{longitude}" class="form-control"
+						th:errorclass="is-invalid" placeholder="VD: 106.771900">
+					<div class="invalid-feedback" th:errors="*{longitude}"></div>
+				</div>
+			</div>
+			<div class="form-text mb-3">
+				<i class="bi bi-geo-alt"></i> Mở Google Maps → chuột phải vào vị trí
+				chi nhánh → bấm dòng số đầu tiên (VD
+				<code>10.8507, 106.7719</code>
+				) để copy, rồi dán vào ô <b>Vĩ độ</b> (tự tách 2 ô). Bỏ trống thì
+				chi nhánh vẫn hiện cho khách nhưng không tính được khoảng cách. <a
+					id="mapLink" href="#" target="_blank" class="ms-1 d-none"> <i
+					class="bi bi-box-arrow-up-right"></i> Xem trên Google Maps
+				</a>
+			</div>
+
 			<div class="row g-3 mb-3">
 				<div class="col-md-6">
 					<label class="form-label">Số điện thoại</label> <input type="tel"
@@ -86,5 +114,38 @@
 
 	<script
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+	<script>
+		(function () {
+			const lat = document.getElementById('latitude');
+			const lng = document.getElementById('longitude');
+			const mapLink = document.getElementById('mapLink');
+			if (!lat || !lng) return;
+
+			// Dán "10.8507, 106.7719" (copy từ Google Maps) vào ô Vĩ độ -> tự tách 2 ô
+			lat.addEventListener('paste', function (e) {
+				const text = (e.clipboardData || window.clipboardData).getData('text');
+				const parts = text.split(',').map(s => s.trim());
+				if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+					e.preventDefault();
+					lat.value = Number(parts[0]).toFixed(6);
+					lng.value = Number(parts[1]).toFixed(6);
+					updateMapLink();
+				}
+			});
+
+			// Hiện link "Xem trên Google Maps" khi đã có đủ 2 số
+			function updateMapLink() {
+				if (lat.value !== '' && lng.value !== '') {
+					mapLink.href = 'https://www.google.com/maps?q=' + lat.value + ',' + lng.value;
+					mapLink.classList.remove('d-none');
+				} else {
+					mapLink.classList.add('d-none');
+				}
+			}
+			lat.addEventListener('input', updateMapLink);
+			lng.addEventListener('input', updateMapLink);
+			updateMapLink(); // trang Sửa: đã có tọa độ thì hiện link ngay
+		})();
+	</script>
 </body>
 </html>

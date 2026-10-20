@@ -33,6 +33,12 @@ public class Branch {
 
 	@Column(name = "address", nullable = false, length = 255)
 	private String address;
+	
+	@Column(name = "latitude", precision = 9, scale = 6)
+	private BigDecimal latitude; // vĩ độ, VD 10.850700 (null = chưa nhập)
+
+	@Column(name = "longitude", precision = 9, scale = 6)
+	private BigDecimal longitude; // kinh độ, VD 106.771900
 
 	@Column(name = "phone", length = 15)
 	private String phone;

@@ -1,5 +1,7 @@
 package vn.utetra.entity;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,6 +29,27 @@ public class Address {
 	@Column(name = "address_line", nullable = false, length = 255)
 	private String addressLine;
 
+	@Column(name = "latitude", precision = 9, scale = 6)
+	private BigDecimal latitude; // ghim trên bản đồ khi thêm địa chỉ (null = chưa có)
+
+	@Column(name = "longitude", precision = 9, scale = 6)
+	private BigDecimal longitude;
+
+	@Column(name = "province", length = 100)
+	private String province; // Tỉnh/Thành phố (sau sáp nhập 2025)
+
+	@Column(name = "ward", length = 100)
+	private String ward; // Phường/Xã/Đặc khu
+
+	@Column(name = "street", length = 150)
+	private String street; // Tên đường, Toà nhà, Số nhà
+
+	@Column(name = "address_type", length = 10)
+	private String addressType; // HOME = Nhà riêng, OFFICE = Văn phòng
+	
+	@Column(name = "note", length = 200)
+	private String note; // Ghi chú địa chỉ: cổng sau, gửi bảo vệ...
+	
 	@Column(name = "is_default", nullable = false)
 	private Boolean isDefault = false;
 }

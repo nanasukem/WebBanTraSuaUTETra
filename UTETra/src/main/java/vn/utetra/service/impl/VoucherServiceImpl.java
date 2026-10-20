@@ -2,13 +2,21 @@ package vn.utetra.service.impl;
 
 import vn.utetra.dto.request.VoucherReq;
 import vn.utetra.entity.Branch;
+import vn.utetra.entity.MemberTier;
 import vn.utetra.entity.Voucher;
+import vn.utetra.entity.VoucherUsage;
 import vn.utetra.entity.enums.DiscountType;
+import vn.utetra.entity.enums.PaymentMethod;
 import vn.utetra.entity.enums.VoucherApplyTo;
+import vn.utetra.entity.enums.VoucherAudience;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.BranchRepository;
+import vn.utetra.repository.OrderRepository;
+import vn.utetra.repository.UserRepository;
 import vn.utetra.repository.VoucherRepository;
+import vn.utetra.repository.VoucherUsageRepository;
+import vn.utetra.service.MemberService;
 import vn.utetra.service.VoucherService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,10 +32,20 @@ public class VoucherServiceImpl implements VoucherService {
 
 	private final VoucherRepository voucherRepository;
 	private final BranchRepository branchRepository;
+	private final VoucherUsageRepository voucherUsageRepository;
+	private final UserRepository userRepository;
+	private final OrderRepository orderRepository;
+	private final MemberService memberService;
 
-	public VoucherServiceImpl(VoucherRepository voucherRepository, BranchRepository branchRepository) {
+	public VoucherServiceImpl(VoucherRepository voucherRepository, BranchRepository branchRepository,
+			VoucherUsageRepository voucherUsageRepository, UserRepository userRepository,
+			OrderRepository orderRepository, MemberService memberService) {
 		this.voucherRepository = voucherRepository;
 		this.branchRepository = branchRepository;
+		this.voucherUsageRepository = voucherUsageRepository;
+		this.userRepository = userRepository;
+		this.orderRepository = orderRepository;
+		this.memberService = memberService;
 	}
 
 	@Override
@@ -113,7 +131,9 @@ public class VoucherServiceImpl implements VoucherService {
 		return voucherRepository.findUsable(branchId, LocalDateTime.now());
 	}
 
+	// ================= KIỂM TRA CHUNG =================
 	@Override
+	@Transactional(readOnly = true, noRollbackFor = BusinessException.class)
 	public BigDecimal calculateDiscount(String code, Integer branchId, BigDecimal itemsTotal, BigDecimal shippingFee) {
 		Voucher v = voucherRepository.findByCodeIgnoreCase(code.trim())
 				.orElseThrow(() -> new BusinessException("Mã voucher không tồn tại"));
@@ -147,12 +167,84 @@ public class VoucherServiceImpl implements VoucherService {
 		return discount.min(base); // không giảm quá số tiền gốc
 	}
 
+	// ================= KIỂM TRA ĐẦY ĐỦ KHI ĐẶT HÀNG (v2 + v3) =================
+	@Override
+	@Transactional(readOnly = true, noRollbackFor = BusinessException.class)
+	public BigDecimal calculateDiscount(String code, Integer branchId, Integer userId, PaymentMethod paymentMethod,
+			BigDecimal itemsTotal, BigDecimal shippingFee) {
+		BigDecimal discount = calculateDiscount(code, branchId, itemsTotal, shippingFee); // kiểm tra chung trước
+		Voucher v = voucherRepository.findByCodeIgnoreCase(code.trim())
+				.orElseThrow(() -> new BusinessException("Mã voucher không tồn tại"));
+
+		// v3: mã chỉ dành cho 1 phương thức thanh toán
+		if (v.getPaymentMethod() != null && v.getPaymentMethod() != paymentMethod) {
+			throw new BusinessException("Mã " + v.getCode() + " chỉ áp dụng khi thanh toán bằng "
+					+ paymentLabel(v.getPaymentMethod()));
+		}
+		// v2: theo người dùng
+		if (userId != null) checkUser(v, userId);
+		return discount;
+	}
+
+	/** Lượt mỗi người / tài khoản mới / hạng tối thiểu */
+	private void checkUser(Voucher v, Integer userId) {
+		if (v.getPerUserLimit() != null) {
+			long used = voucherUsageRepository.countByVoucherIdAndUserId(v.getId(), userId);
+			if (used >= v.getPerUserLimit()) {
+				throw new BusinessException(v.getPerUserLimit() == 1 ? "Bạn đã dùng mã " + v.getCode() + " rồi"
+						: "Bạn đã dùng hết " + v.getPerUserLimit() + " lượt của mã " + v.getCode());
+			}
+		}
+		VoucherAudience audience = v.getAudience() == null ? VoucherAudience.ALL : v.getAudience();
+		if (audience == VoucherAudience.NEW_USER && !memberService.isNewCustomer(userId)) {
+			throw new BusinessException("Mã " + v.getCode() + " chỉ dành cho đơn hàng đầu tiên của tài khoản mới");
+		}
+		if (audience == VoucherAudience.MIN_TIER && v.getMinTier() != null) {
+			MemberTier current = memberService.getCurrentTier(userId);
+			if (current.getMinSpent().compareTo(v.getMinTier().getMinSpent()) < 0) {
+				throw new BusinessException("Mã " + v.getCode() + " chỉ dành cho hạng " + v.getMinTier().getName()
+						+ " trở lên (bạn đang là hạng " + current.getName() + ")");
+			}
+		}
+	}
+
+	private String paymentLabel(PaymentMethod m) {
+		return switch (m) {
+			case COD -> "tiền mặt khi nhận hàng (COD)";
+			case VNPAY -> "VNPAY";
+			case MOMO -> "MoMo";
+		};
+	}
+
+	// ================= GHI NHẬN ĐÃ DÙNG =================
+	/** Bản cũ: chỉ tăng used_count (an toàn khi nhiều người đặt cùng lúc) */
 	@Override
 	@Transactional
 	public void markUsed(Integer voucherId) {
 		findById(voucherId); // báo "không tìm thấy" nếu id sai
 		if (voucherRepository.increaseUsedCount(voucherId) == 0) {
 			throw new BusinessException("Voucher đã hết lượt sử dụng hoặc ngừng áp dụng");
+		}
+	}
+
+	/** v2: kiểm tra lượt mỗi người -> ghi lịch sử -> tăng used_count. Gọi SAU CÙNG khi đặt hàng */
+	@Override
+	@Transactional
+	public void markUsed(Integer voucherId, Integer userId, Integer orderId) {
+		Voucher v = findById(voucherId);
+		if (v.getPerUserLimit() != null
+				&& voucherUsageRepository.countByVoucherIdAndUserId(voucherId, userId) >= v.getPerUserLimit()) {
+			throw new BusinessException("Bạn đã dùng hết lượt của mã " + v.getCode());
+		}
+		VoucherUsage usage = new VoucherUsage();
+		usage.setVoucher(v);
+		usage.setUser(userRepository.getReferenceById(userId));
+		usage.setOrder(orderRepository.getReferenceById(orderId));
+		voucherUsageRepository.save(usage);
+
+		// UPDATE ... WHERE used_count < quantity: nhiều người dùng cùng lúc thì chỉ người còn lượt thành công
+		if (voucherRepository.increaseUsedCount(voucherId) == 0) {
+			throw new BusinessException("Mã " + v.getCode() + " đã hết lượt sử dụng hoặc ngừng áp dụng");
 		}
 	}
 
