@@ -12,4 +12,5 @@ public interface VoucherUsageRepository extends JpaRepository<VoucherUsage, Inte
 
 	/** Các mã đã dùng cho 1 đơn (hoàn lượt khi huỷ đơn) */
 	List<VoucherUsage> findByOrderId(Integer orderId);
+
 }

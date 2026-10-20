@@ -1,6 +1,7 @@
 package vn.utetra.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -35,4 +36,9 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 	 * GuestHomeService.getProducts(categoryId)
 	 */
 	List<Product> findByCategoryId(Integer categoryId);
+
+	/** Đơn giao xong: tăng số ly đã bán */
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
+	@Query("update Product p set p.soldCount = p.soldCount + :qty where p.id = :id")
+	int increaseSoldCount(@Param("id") Integer id, @Param("qty") Integer qty);
 }

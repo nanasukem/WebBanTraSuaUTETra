@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Chi tiết đơn của shop - UTETra', ~{::#vendor-order-detail})}">
+
+<body>
+	<div id="vendor-order-detail">
+		<style>
+.vd-card { border: 0; border-radius: 1rem; box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06); }
+.vd-title { font-size: 1rem; font-weight: 700; color: #198754; margin-bottom: .75rem; }
+		</style>
+
+		<a th:href="@{/vendor/orders/history(status=${order.status})}" class="text-decoration-none text-success small">
+			<i class="bi bi-arrow-left"></i> Đơn hàng của shop
+		</a>
+		<div class="d-flex align-items-center gap-2 mt-2 mb-3 flex-wrap">
+			<h1 class="h4 fw-bold text-success mb-0">Đơn #<span th:text="${order.id}"></span></h1>
+			<span class="badge" th:classappend="${order.badgeClass}" th:text="${order.statusLabel}"></span>
+			<span class="badge text-bg-light border" th:text="${order.pickup} ? 'Đến lấy tại cửa hàng' : 'Giao tận nơi'"></span>
+			<span class="small text-muted ms-auto">Đặt lúc <span th:text="${order.createdAt}"></span></span>
+		</div>
+
+		<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+		<div th:if="${order.status == 'CANCELLED'}" class="alert alert-secondary">
+			<i class="bi bi-x-circle me-1"></i> Đơn đã huỷ.
+			<span th:if="${order.cancelReason}">Lý do: <b th:text="${order.cancelReason}"></b></span>
+		</div>
+
+		<div class="row g-3">
+			<div class="col-lg-7">
+				<!-- Món -->
+				<div class="card vd-card mb-3">
+					<div class="card-body">
+						<div class="vd-title">Món cần làm (<span th:text="${order.totalQty}"></span> ly)</div>
+						<div class="d-flex justify-content-between border-bottom py-2" th:each="it : ${order.items}">
+							<div class="me-2">
+								<div><b th:text="|${it.quantity}×|"></b> <span th:text="${it.productName}"></span></div>
+								<div class="small text-muted">
+									Size <span th:text="${it.size}"></span> · <span th:text="${it.sugarIce}"></span>
+								</div>
+								<div class="small text-muted" th:if="${!#strings.isEmpty(it.toppings)}">
+									+ <span th:text="${it.toppings}"></span>
+								</div>
+							</div>
+							<div class="fw-semibold text-nowrap"
+								th:text="|${#numbers.formatInteger(it.subtotal, 1, 'POINT')}đ|"></div>
+						</div>
+						<div th:if="${order.note}" class="small text-danger mt-2">
+							<i class="bi bi-chat-left-text me-1"></i> Ghi chú của khách: <i th:text="${order.note}"></i>
+						</div>
+					</div>
+				</div>
+
+				<!-- Khách / giao hàng -->
+				<div class="card vd-card mb-3">
+					<div class="card-body">
+						<div class="vd-title" th:text="${order.pickup} ? 'Khách đến lấy' : 'Giao tới'"></div>
+						<div class="fw-semibold">
+							<span th:text="${order.receiverName}"></span> · <span th:text="${order.receiverPhone}"></span>
+						</div>
+						<th:block th:unless="${order.pickup}">
+							<div class="small text-muted" th:text="${order.deliveryAddress}"></div>
+							<div class="small fst-italic text-secondary" th:if="${order.deliveryNote}">
+								<i class="bi bi-sticky me-1"></i><span th:text="${order.deliveryNote}"></span>
+							</div>
+							<div class="small mt-1" th:if="${order.carrierName}">
+								Vận chuyển: <b th:text="${order.carrierName}"></b>
+							</div>
+						</th:block>
+						<div th:if="${order.deliveredAt}" class="small text-success mt-1">
+							<span th:text="${order.pickup} ? 'Khách nhận lúc ' : 'Giao xong lúc '"></span>
+							<span th:text="${order.deliveredAt}"></span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-lg-5">
+				<!-- Tiền -->
+				<div class="card vd-card mb-3">
+					<div class="card-body">
+						<div class="vd-title">Thanh toán</div>
+						<div class="d-flex justify-content-between mb-1"><span>Tạm tính</span>
+							<span th:text="|${#numbers.formatInteger(order.itemsTotal, 1, 'POINT')}đ|"></span></div>
+						<div class="d-flex justify-content-between mb-1 text-success" th:if="${order.productDiscount > 0}">
+							<span>Mã giảm món <b th:text="${order.productVoucherCode}"></b></span>
+							<span th:text="|−${#numbers.formatInteger(order.productDiscount, 1, 'POINT')}đ|"></span></div>
+						<div class="d-flex justify-content-between mb-1 text-success" th:if="${order.memberDiscount > 0}">
+							<span>Ưu đãi hạng <span th:text="${order.memberTierName}"></span></span>
+							<span th:text="|−${#numbers.formatInteger(order.memberDiscount, 1, 'POINT')}đ|"></span></div>
+						<div class="d-flex justify-content-between mb-1" th:unless="${order.pickup}"><span>Phí ship</span>
+							<span th:text="|${#numbers.formatInteger(order.shippingFee, 1, 'POINT')}đ|"></span></div>
+						<div class="d-flex justify-content-between mb-1 text-success" th:if="${order.shippingDiscount > 0}">
+							<span>Giảm phí ship <b th:text="${order.shippingVoucherCode}"></b></span>
+							<span th:text="|−${#numbers.formatInteger(order.shippingDiscount, 1, 'POINT')}đ|"></span></div>
+						<div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+							<span class="fw-bold">Khách trả</span>
+							<span class="fs-5 fw-bold text-danger"
+								th:text="|${#numbers.formatInteger(order.totalAmount, 1, 'POINT')}đ|"></span></div>
+						<div class="small text-muted mt-1">
+							<span th:text="${order.paymentMethodLabel}"></span> · <span th:text="${order.paymentStatusLabel}"></span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Việc cần làm: đúng các nút quán được bấm -->
+				<div class="card vd-card mb-3" th:if="${!#lists.isEmpty(card.actions) or card.canCancel or card.hint != null}">
+					<div class="card-body">
+						<div class="vd-title">Xử lý đơn</div>
+						<div class="small text-primary mb-2" th:if="${card.hint}">
+							<i class="bi bi-info-circle"></i> <span th:text="${card.hint}"></span>
+						</div>
+						<form th:each="a : ${card.actions}" method="post" class="mb-2"
+							th:action="@{/vendor/orders/{id}/status(id=${order.id})}">
+							<input type="hidden" name="status" th:value="${a.to}">
+							<button type="submit" class="btn w-100 fw-semibold" th:classappend="${a.style}" th:text="${a.label}"></button>
+						</form>
+
+						<form th:if="${card.canCancel}" method="post" class="border-top pt-2 mt-2"
+							th:action="@{/vendor/orders/{id}/status(id=${order.id})}">
+							<input type="hidden" name="status" value="CANCELLED">
+							<div class="small fw-semibold text-danger mb-1">Huỷ đơn (bắt buộc lý do)</div>
+							<div class="form-check" th:each="r, s : ${cancelReasons}">
+								<input class="form-check-input" type="radio" name="reason" th:id="|vd-reason-${s.index}|"
+									th:value="${r}" required>
+								<label class="form-check-label small" th:for="|vd-reason-${s.index}|" th:text="${r}"></label>
+							</div>
+							<div class="form-check">
+								<input class="form-check-input" type="radio" name="reason" id="vd-reason-other" value="OTHER">
+								<label class="form-check-label small" for="vd-reason-other">Lý do khác</label>
+							</div>
+							<textarea name="otherReason" class="form-control form-control-sm mt-1" rows="2" maxlength="200"
+								placeholder="Ghi rõ lý do (nếu chọn Lý do khác)"></textarea>
+							<button type="submit" class="btn btn-outline-danger w-100 mt-2"
+								onclick="return confirm('Huỷ đơn này?')">Huỷ đơn</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

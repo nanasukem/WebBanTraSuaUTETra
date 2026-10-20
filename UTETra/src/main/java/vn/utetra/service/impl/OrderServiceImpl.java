@@ -15,6 +15,7 @@ import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.*;
 import vn.utetra.service.CartService;
 import vn.utetra.service.MemberService;
+import vn.utetra.service.OrderNotifier;
 import vn.utetra.service.OrderService;
 import vn.utetra.service.VoucherService;
 
@@ -44,12 +45,14 @@ public class OrderServiceImpl implements OrderService {
 	private final ProductRepository productRepository;
 	private final ToppingRepository toppingRepository;
 	private final UserRepository userRepository;
+	private final OrderNotifier orderNotifier; // bước 7: báo quán có đơn mới
 
 	public OrderServiceImpl(CartService cartService, VoucherService voucherService, MemberService memberService,
 			OrderRepository orderRepository, BranchRepository branchRepository,
 			BranchProductRepository branchProductRepository, AddressRepository addressRepository,
 			CarrierRepository carrierRepository, VoucherRepository voucherRepository,
-			ProductRepository productRepository, ToppingRepository toppingRepository, UserRepository userRepository) {
+			ProductRepository productRepository, ToppingRepository toppingRepository, UserRepository userRepository,
+			OrderNotifier orderNotifier) {
 		this.cartService = cartService;
 		this.voucherService = voucherService;
 		this.memberService = memberService;
@@ -62,6 +65,7 @@ public class OrderServiceImpl implements OrderService {
 		this.productRepository = productRepository;
 		this.toppingRepository = toppingRepository;
 		this.userRepository = userRepository;
+		this.orderNotifier = orderNotifier;
 	}
 
 	/** Kết quả tính toán, dùng chung cho preview và placeOrder */
@@ -213,10 +217,13 @@ public class OrderServiceImpl implements OrderService {
 		// 3. Lưu (cascade lưu luôn OrderDetail + OrderDetailTopping)
 		Order saved = orderRepository.save(o);
 
-		// 4. Xoá giỏ hàng
+		// 4. Báo quán có đơn mới: lưu thông báo + chuông/popup (WebSocket đẩy sau khi lưu đơn xong)
+		orderNotifier.onNewOrder(saved);
+
+		// 5. Xoá giỏ hàng
 		cartService.clear(userId);
 
-		// 5. Ghi lịch sử dùng mã + tăng lượt - làm SAU CÙNG (UPDATE có clearAutomatically).
+		// 6. Ghi lịch sử dùng mã + tăng lượt - làm SAU CÙNG (UPDATE có clearAutomatically).
 		if (c.productVoucher != null) voucherService.markUsed(c.productVoucher.getId(), userId, saved.getId());
 		if (c.shippingVoucher != null) voucherService.markUsed(c.shippingVoucher.getId(), userId, saved.getId());
 

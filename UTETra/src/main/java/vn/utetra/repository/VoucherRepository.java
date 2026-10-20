@@ -50,4 +50,9 @@ public interface VoucherRepository extends JpaRepository<Voucher, Integer> {
 			WHERE v.id = :id AND v.isActive = true AND v.usedCount < v.quantity
 			""")
 	int increaseUsedCount(@Param("id") Integer id);
+
+	/** Huỷ đơn: trả lại 1 lượt dùng mã */
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
+	@Query("update Voucher v set v.usedCount = v.usedCount - 1 where v.id = :id and v.usedCount > 0")
+	int decreaseUsedCount(@Param("id") Integer id);
 }

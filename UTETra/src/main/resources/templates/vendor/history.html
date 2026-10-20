@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Đơn hàng của shop - UTETra', ~{::#vendor-history})}">
+
+<body>
+	<div id="vendor-history">
+		<style>
+.vh-tabs { gap: .35rem; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: .25rem; }
+.vh-tabs .nav-link { color: #495057; white-space: nowrap; border-radius: 999px; background: #fff; border: 1px solid #dee2e6; }
+.vh-tabs .nav-link.active { background: #198754; border-color: #198754; color: #fff; }
+.vh-card { border: 0; border-radius: 1rem; box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06); }
+		</style>
+
+		<!-- Tiêu đề + chọn chi nhánh + về quầy -->
+		<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+			<h1 class="h4 fw-bold text-success mb-0 me-2">
+				<i class="bi bi-receipt-cutoff me-1"></i>Đơn hàng của shop
+			</h1>
+			<form th:if="${data != null and #lists.size(branches) > 1}" method="get" th:action="@{/vendor/orders/history}">
+				<input type="hidden" name="status" th:value="${data.status}">
+				<select name="branchId" class="form-select form-select-sm" onchange="this.form.submit()">
+					<option th:each="b : ${branches}" th:value="${b.id}" th:text="${b.name}"
+						th:selected="${b.id == data.branchId}"></option>
+				</select>
+			</form>
+			<span th:if="${data != null and #lists.size(branches) == 1}" class="fw-semibold" th:text="${data.branchName}"></span>
+			<a th:if="${data != null}" th:href="@{/vendor/orders(branchId=${data.branchId})}"
+				class="btn btn-sm btn-warning fw-bold ms-auto">
+				<i class="bi bi-bell me-1"></i> Về Quầy đơn hàng (nhận đơn trực tiếp)
+			</a>
+		</div>
+
+		<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+		<div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
+
+		<th:block th:if="${data != null}">
+			<!-- 7 tab theo đề -->
+			<ul class="nav vh-tabs mb-3">
+				<li class="nav-item" th:each="t : ${data.tabs}">
+					<a class="nav-link" th:classappend="${t.status == data.status} ? 'active'"
+						th:href="@{/vendor/orders/history(branchId=${data.branchId}, status=${t.status})}">
+						<span th:text="${t.label}">Tab</span>
+						<span th:if="${t.count > 0}" class="badge rounded-pill ms-1"
+							th:classappend="${t.status == data.status} ? 'text-bg-light' : 'text-bg-success'"
+							th:text="${t.count}">0</span>
+					</a>
+				</li>
+			</ul>
+
+			<!-- Không có đơn -->
+			<div th:if="${#lists.isEmpty(data.orders)}" class="text-center text-muted py-5">
+				<i class="bi bi-inbox display-4 opacity-50"></i>
+				<p class="mt-2">Không có đơn nào ở mục <b th:text="${data.statusLabel}"></b></p>
+			</div>
+
+			<!-- Danh sách đơn -->
+			<div class="card vh-card mb-2" th:each="o : ${data.orders}">
+				<div class="card-body py-2">
+					<div class="d-flex justify-content-between align-items-start gap-2">
+						<div>
+							<span class="fw-bold">#<span th:text="${o.id}"></span></span>
+							<span class="small text-muted" th:text="${o.time}"></span> ·
+							<span class="small" th:text="${o.pickup} ? 'Đến lấy tại cửa hàng' : 'Giao tận nơi'"></span>
+						</div>
+						<span class="badge" th:classappend="${o.badgeClass}" th:text="${o.statusLabel}"></span>
+					</div>
+					<div class="small mt-1">
+						<span th:text="${o.items[0]}"></span>
+						<span th:if="${#lists.size(o.items) > 1}" class="text-muted"
+							th:text="|và ${#lists.size(o.items) - 1} món khác|"></span>
+					</div>
+					<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-1">
+						<div class="small text-muted">
+							<i class="bi bi-person"></i> <span th:text="${o.receiverName}"></span> ·
+							<span th:text="${o.receiverPhone}"></span> · <span th:text="${o.totalQty}"></span> ly ·
+							<span th:text="${o.paymentLabel}"></span>
+						</div>
+						<div class="d-flex align-items-center gap-2">
+							<b class="text-danger" th:text="|${#numbers.formatInteger(o.totalAmount, 1, 'POINT')}đ|"></b>
+							<a class="btn btn-sm btn-success" th:href="@{/vendor/orders/{id}(id=${o.id})}">Chi tiết</a>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Phân trang -->
+			<nav th:if="${data.totalPages > 1}" class="mt-3">
+				<ul class="pagination pagination-sm justify-content-center">
+					<li class="page-item" th:classappend="${data.page == 0} ? 'disabled'">
+						<a class="page-link"
+							th:href="@{/vendor/orders/history(branchId=${data.branchId}, status=${data.status}, page=${data.page - 1})}">‹</a>
+					</li>
+					<li class="page-item" th:each="p : ${#numbers.sequence(0, data.totalPages - 1)}"
+						th:classappend="${p == data.page} ? 'active'">
+						<a class="page-link" th:text="${p + 1}"
+							th:href="@{/vendor/orders/history(branchId=${data.branchId}, status=${data.status}, page=${p})}"></a>
+					</li>
+					<li class="page-item" th:classappend="${data.page >= data.totalPages - 1} ? 'disabled'">
+						<a class="page-link"
+							th:href="@{/vendor/orders/history(branchId=${data.branchId}, status=${data.status}, page=${data.page + 1})}">›</a>
+					</li>
+				</ul>
+				<div class="text-center small text-muted" th:text="|Tổng ${data.totalElements} đơn|"></div>
+			</nav>
+		</th:block>
+	</div>
+</body>
+</html>
