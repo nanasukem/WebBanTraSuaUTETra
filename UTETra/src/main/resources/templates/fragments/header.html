@@ -24,30 +24,49 @@
 			<ul class="navbar-nav me-auto mb-2 mb-lg-0">
 				<!-- Đang ở /menu: cuộn xuống phần thực đơn; ở trang khác: mở /menu tại phần thực đơn -->
 				<li class="nav-item"><a class="nav-link active fw-semibold"
-					th:href="@{/menu#thuc-don}"> <i class="bi bi-journal-richtext me-1"></i>
-						Thực đơn
+					th:href="@{/menu#thuc-don}"> <i
+						class="bi bi-journal-richtext me-1"></i> Thực đơn
 				</a></li>
 			</ul>
 
-			<div class="d-flex align-items-center gap-3">
+			<!--
+				isBuyer = tài khoản được mua hàng (thấy Giỏ hàng + Đơn hàng).
+				Hiện tại: chỉ USER.
+				Muốn cho Vendor mua hàng (đề: "Vendor có các quyền của User") thì đổi điều kiện thành:
+				(session.user.role.name == 'USER' or session.user.role.name == 'VENDOR')
+			-->
+			<div class="d-flex align-items-center gap-3"
+				th:with="roleName=${session.user != null and session.user.role != null ? session.user.role.name : ''},
+				         isBuyer=${roleName == 'USER'}">
 
 				<!-- Nút quản trị dành cho Admin/Manager -->
-				<a
-					th:if="${session.user != null
-                            and session.user.role != null
-                            and (session.user.role.name == 'ADMIN'
-                            or session.user.role.name == 'MANAGER')}"
+				<a th:if="${roleName == 'ADMIN' or roleName == 'MANAGER'}"
 					th:href="@{/admin/products}" class="btn btn-warning btn-sm fw-bold">
 					<i class="bi bi-speedometer2 me-1"></i> Quản trị Admin
 				</a>
 
-				<!-- Giỏ hàng: số ly do cart.js cập nhật vào #cart-count (lấy từ /api/cart) -->
-				<a th:if="${session.user != null}" th:href="@{/cart}"
+				<!-- Quầy đơn hàng dành cho Vendor -->
+				<a th:if="${roleName == 'VENDOR'}"
+					th:href="@{/vendor/orders}" class="btn btn-warning btn-sm fw-bold">
+					<i class="bi bi-bell me-1"></i> Quầy đơn hàng
+				</a>
+
+				<!-- Đơn hàng của tôi: chỉ người mua -->
+				<a th:if="${isBuyer}" th:href="@{/orders}"
+					class="btn btn-outline-light btn-sm fw-bold"
+					title="Đơn hàng của tôi"> <i class="bi bi-receipt me-1"></i>
+					Đơn hàng
+				</a>
+
+				<!-- Giỏ hàng: chỉ người mua. Số ly do cart.js cập nhật vào #cart-count (lấy từ /api/cart) -->
+				<a th:if="${isBuyer}" th:href="@{/cart}"
 					class="btn btn-light btn-sm fw-bold position-relative"
 					title="Giỏ hàng"> <i class="bi bi-cart3 me-1"></i> Giỏ hàng <span
 					id="cart-count"
 					class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
 				</a>
+				<!-- Không phải người mua: giữ 1 thẻ #cart-count ẩn để cart.js không bị lỗi khi tìm thẻ này -->
+				<span th:unless="${isBuyer}" id="cart-count" class="d-none">0</span>
 
 				<!-- Trường hợp đã đăng nhập -->
 				<div th:if="${session.user != null}" class="dropdown">
@@ -68,8 +87,18 @@
 								<i class="bi bi-person me-2"></i> Hồ sơ cá nhân
 						</a></li>
 
-						<li><a class="dropdown-item" th:href="@{/cart}"> <i
+						<!-- Chỉ người mua -->
+						<li th:if="${isBuyer}"><a class="dropdown-item" th:href="@{/orders}"> <i
+								class="bi bi-receipt me-2"></i> Đơn hàng của tôi
+						</a></li>
+
+						<li th:if="${isBuyer}"><a class="dropdown-item" th:href="@{/cart}"> <i
 								class="bi bi-cart3 me-2"></i> Giỏ hàng
+						</a></li>
+
+						<!-- Vendor: lối tắt tới trang quản lý đơn -->
+						<li th:if="${roleName == 'VENDOR'}"><a class="dropdown-item" th:href="@{/vendor/orders/history}">
+								<i class="bi bi-receipt-cutoff me-2"></i> Đơn hàng của shop
 						</a></li>
 
 						<li><hr class="dropdown-divider"></li>

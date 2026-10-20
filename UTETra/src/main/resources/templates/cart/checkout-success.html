@@ -3,56 +3,83 @@
 	th:replace="~{layout/user-layout :: main('Đặt hàng thành công - UTETra', ~{::#success-content})}">
 
 <body>
-	<div id="success-content" class="py-4" style="max-width: 640px; margin: 0 auto">
+	<div id="success-content" class="py-4"
+		style="max-width: 640px; margin: 0 auto">
 		<div class="text-center mb-4">
-			<i class="bi bi-check-circle-fill text-success" style="font-size: 4rem"></i>
+			<i class="bi bi-check-circle-fill text-success"
+				style="font-size: 4rem"></i>
 			<h1 class="h4 fw-bold text-success mt-2">Đặt hàng thành công!</h1>
-			<p class="text-muted mb-0">Mã đơn <b th:text="'#' + ${order.id}">#1</b> · <span th:text="${order.createdAt}"></span></p>
+			<p class="text-muted mb-0">
+				Mã đơn <b th:text="'#' + ${order.id}">#1</b> · <span
+					th:text="${order.createdAt}"></span>
+			</p>
 		</div>
 
-		<div class="card border-0 shadow-sm rounded-4 mb-3"><div class="card-body">
-			<!-- Đến lấy -->
-			<div th:if="${order.deliveryType.name() == 'PICKUP'}">
-				<div class="fw-bold mb-1"><i class="bi bi-shop text-success me-1"></i> Đến lấy tại cửa hàng</div>
-				<div th:text="${order.branchName}" class="fw-semibold"></div>
-				<div class="small text-muted" th:text="${order.branchAddress}"></div>
-				<div class="small text-muted" th:if="${order.branchPhone}" th:text="'Điện thoại quán: ' + ${order.branchPhone}"></div>
-				<div class="alert alert-success small mt-2 mb-0">
-					Quán sẽ gọi số <b th:text="${order.receiverPhone}"></b> khi món đã sẵn sàng.
-					Đọc mã đơn <b th:text="'#' + ${order.id}"></b> khi đến lấy nhé!
+		<div class="card border-0 shadow-sm rounded-4 mb-3">
+			<div class="card-body">
+				<!-- Đến lấy -->
+				<div th:if="${order.deliveryType.name() == 'PICKUP'}">
+					<div class="fw-bold mb-1">
+						<i class="bi bi-shop text-success me-1"></i> Đến lấy tại cửa hàng
+					</div>
+					<div th:text="${order.branchName}" class="fw-semibold"></div>
+					<div class="small text-muted" th:text="${order.branchAddress}"></div>
+					<div class="small text-muted" th:if="${order.branchPhone}"
+						th:text="'Điện thoại quán: ' + ${order.branchPhone}"></div>
+					<div class="alert alert-success small mt-2 mb-0">
+						Quán sẽ gọi số <b th:text="${order.receiverPhone}"></b> khi món đã
+						sẵn sàng. Đọc mã đơn <b th:text="'#' + ${order.id}"></b> khi đến
+						lấy nhé!
+					</div>
+				</div>
+				<!-- Giao tận nơi -->
+				<div th:unless="${order.deliveryType.name() == 'PICKUP'}">
+					<div class="fw-bold mb-1">
+						<i class="bi bi-scooter text-success me-1"></i> Giao tận nơi
+					</div>
+					<div>
+						<span th:text="${order.receiverName}"></span> · <span
+							th:text="${order.receiverPhone}"></span>
+					</div>
+					<div class="small text-muted" th:text="${order.deliveryAddress}"></div>
+					<div class="small text-muted mt-1">
+						Chi nhánh <span th:text="${order.branchName}"></span> <span
+							th:if="${order.carrierName}"
+							th:text="' · ' + ${order.carrierName}"></span>
+					</div>
+				</div>
+
+				<hr>
+				<div class="d-flex justify-content-between mb-1">
+					<span>Số ly</span><span th:text="${order.totalQty}"></span>
+				</div>
+				<div class="d-flex justify-content-between mb-1">
+					<span>Thanh toán</span> <span
+						th:switch="${order.paymentMethod.name()}"> <span
+						th:case="'COD'">Khi nhận hàng (COD)</span> <span th:case="'VNPAY'">VNPAY</span>
+						<span th:case="'MOMO'">Ví MoMo</span>
+					</span>
+				</div>
+				<div class="d-flex justify-content-between align-items-center mt-2">
+					<span class="fw-bold">Tổng tiền</span> <span
+						class="fs-4 fw-bold text-danger"
+						th:text="${#numbers.formatInteger(order.totalAmount, 1, 'POINT')} + 'đ'"></span>
 				</div>
 			</div>
-			<!-- Giao tận nơi -->
-			<div th:unless="${order.deliveryType.name() == 'PICKUP'}">
-				<div class="fw-bold mb-1"><i class="bi bi-scooter text-success me-1"></i> Giao tận nơi</div>
-				<div><span th:text="${order.receiverName}"></span> · <span th:text="${order.receiverPhone}"></span></div>
-				<div class="small text-muted" th:text="${order.deliveryAddress}"></div>
-				<div class="small text-muted mt-1">
-					Chi nhánh <span th:text="${order.branchName}"></span>
-					<span th:if="${order.carrierName}" th:text="' · ' + ${order.carrierName}"></span>
-				</div>
-			</div>
-
-			<hr>
-			<div class="d-flex justify-content-between mb-1"><span>Số ly</span><span th:text="${order.totalQty}"></span></div>
-			<div class="d-flex justify-content-between mb-1"><span>Thanh toán</span>
-				<span th:switch="${order.paymentMethod.name()}">
-					<span th:case="'COD'">Khi nhận hàng (COD)</span>
-					<span th:case="'VNPAY'">VNPAY</span>
-					<span th:case="'MOMO'">Ví MoMo</span>
-				</span>
-			</div>
-			<div class="d-flex justify-content-between align-items-center mt-2">
-				<span class="fw-bold">Tổng tiền</span>
-				<span class="fs-4 fw-bold text-danger"
-					th:text="${#numbers.formatInteger(order.totalAmount, 1, 'POINT')} + 'đ'"></span>
-			</div>
-		</div></div>
-
-		<div class="d-flex gap-2 justify-content-center">
-			<a th:href="@{/menu#thuc-don}" class="btn btn-success px-4"><i class="bi bi-cup-hot me-1"></i> Đặt thêm món</a>
 		</div>
-		<p class="small text-muted text-center mt-3">Trang "Đơn hàng của tôi" để theo dõi trạng thái sẽ có ở bước tiếp theo.</p>
+
+		<div class="d-flex gap-2 justify-content-center flex-wrap">
+			<a th:href="@{/orders/{id}(id=${order.id})}"
+				class="btn btn-success px-4"> <i class="bi bi-receipt me-1"></i>
+				Xem đơn hàng
+			</a> <a th:href="@{/menu#thuc-don}" class="btn btn-outline-success px-4">
+				<i class="bi bi-cup-hot me-1"></i> Đặt thêm món
+			</a>
+		</div>
+		<p class="small text-muted text-center mt-3">
+			Theo dõi trạng thái đơn và huỷ đơn (khi quán chưa xác nhận) trong mục
+			<a th:href="@{/orders}" class="text-success">Đơn hàng của tôi</a>.
+		</p>
 	</div>
 </body>
 </html>

@@ -18,4 +18,7 @@ public interface BranchRepository extends JpaRepository<Branch, Integer> {
 			+ "(:keyword IS NULL OR LOWER(b.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(b.address) LIKE LOWER(CONCAT('%', :keyword, '%'))) "
 			+ "AND (:status IS NULL OR b.status = :status)")
 	List<Branch> searchBranches(@Param("keyword") String keyword, @Param("status") BranchStatus status);
+	
+	/** Chi nhánh mà vendor sở hữu */
+	List<Branch> findByOwnerIdOrderByIdAsc(Integer ownerId);
 }

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Quầy đơn hàng - UTETra', ~{::#vendor-orders})}">
+
+<body>
+	<div id="vendor-orders" th:attr="data-branch-id=${branchId}">
+		<style>
+.vo-col {
+	background: #f1f3f5;
+	border-radius: 1rem;
+	padding: .75rem;
+	min-height: 200px;
+}
+
+.vo-col-title {
+	font-weight: 700;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: .5rem;
+}
+
+.vo-card {
+	border: 0;
+	border-radius: .75rem;
+	box-shadow: 0 .125rem .4rem rgba(0, 0, 0, .08);
+}
+
+.vo-card ul {
+	margin: .25rem 0;
+}
+
+.vo-card.vo-new {
+	animation: voPulse 1.2s ease-in-out 4;
+	box-shadow: 0 0 0 3px #ffc107;
+}
+
+@keyframes voPulse {
+	50% {
+		box-shadow: 0 0 0 6px rgba(255, 193, 7, .35);
+	}
+}
+
+.vo-toasts {
+	position: fixed;
+	top: 80px;
+	right: 16px;
+	z-index: 1100;
+	width: 360px;
+	max-width: calc(100vw - 32px);
+}
+
+.vo-toasts .toast {
+	cursor: pointer;
+	width: 100%;
+}
+		</style>
+
+		<!-- Tiêu đề + chọn chi nhánh + trạng thái kết nối + chuông -->
+		<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+			<h1 class="h4 fw-bold text-success mb-0 me-2">
+				<i class="bi bi-bell me-1"></i>Quầy đơn hàng
+			</h1>
+			<form th:if="${#lists.size(branches) > 1}" method="get" th:action="@{/vendor/orders}">
+				<select name="branchId" class="form-select form-select-sm" onchange="this.form.submit()">
+					<option th:each="b : ${branches}" th:value="${b.id}" th:text="${b.name}"
+						th:selected="${b.id == branchId}"></option>
+				</select>
+			</form>
+			<span th:if="${#lists.size(branches) == 1}" class="fw-semibold" th:text="${branches[0].name}"></span>
+			<span id="vo-live" class="badge text-bg-secondary">Đang kết nối...</span>
+			<div class="ms-auto d-flex gap-2">
+				<a th:if="${branchId != null}" th:href="@{/vendor/orders/history(branchId=${branchId})}"
+					class="btn btn-sm btn-outline-success">
+					<i class="bi bi-list-ul me-1"></i> Tất cả đơn theo trạng thái
+				</a>
+				<button type="button" id="vo-sound" class="btn btn-sm btn-outline-secondary"></button>
+			</div>
+		</div>
+
+		<div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
+		<div id="vo-error" class="small text-danger mb-2"></div>
+
+		<!-- 4 cột -->
+		<div class="row g-3" th:if="${branchId != null}">
+			<div class="col-md-6 col-xl-3">
+				<div class="vo-col">
+					<div class="vo-col-title text-warning-emphasis">
+						<span><i class="bi bi-inbox me-1"></i>Đơn mới</span>
+						<span class="badge text-bg-warning" id="cnt-new">0</span>
+					</div>
+					<div id="col-new"></div>
+				</div>
+			</div>
+			<div class="col-md-6 col-xl-3">
+				<div class="vo-col">
+					<div class="vo-col-title text-info-emphasis">
+						<span><i class="bi bi-cup-hot me-1"></i>Đang pha chế</span>
+						<span class="badge text-bg-info" id="cnt-making">0</span>
+					</div>
+					<div id="col-making"></div>
+				</div>
+			</div>
+			<div class="col-md-6 col-xl-3">
+				<div class="vo-col">
+					<div class="vo-col-title text-primary-emphasis">
+						<span><i class="bi bi-scooter me-1"></i>Shipper đang giao</span>
+						<span class="badge text-bg-primary" id="cnt-shipping">0</span>
+					</div>
+					<div id="col-shipping"></div>
+				</div>
+			</div>
+			<div class="col-md-6 col-xl-3">
+				<div class="vo-col">
+					<div class="vo-col-title text-secondary">
+						<span><i class="bi bi-clock-history me-1"></i>Gần đây</span>
+						<span class="badge text-bg-secondary" id="cnt-recent">0</span>
+					</div>
+					<div id="col-recent"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Modal huỷ đơn -->
+		<div class="modal fade" id="vo-cancel-modal" tabindex="-1" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Huỷ đơn #<span id="vo-cancel-id"></span></h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+					</div>
+					<div class="modal-body">
+						<div class="form-check mb-1" th:each="r, s : ${cancelReasons}">
+							<input class="form-check-input" type="radio" name="vo-reason" th:id="|vo-reason-${s.index}|"
+								th:value="${r}">
+							<label class="form-check-label" th:for="|vo-reason-${s.index}|" th:text="${r}"></label>
+						</div>
+						<div class="form-check mb-1">
+							<input class="form-check-input" type="radio" name="vo-reason" id="vo-reason-other" value="OTHER">
+							<label class="form-check-label" for="vo-reason-other">Lý do khác</label>
+						</div>
+						<textarea id="vo-reason-text" class="form-control form-control-sm mt-2" rows="2" maxlength="200"
+							placeholder="Ghi rõ lý do (nếu chọn Lý do khác)"></textarea>
+						<div id="vo-cancel-error" class="small text-danger mt-2"></div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-light" data-bs-dismiss="modal">Đóng</button>
+						<button type="button" class="btn btn-danger" id="vo-cancel-confirm">Huỷ đơn</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Popup đơn mới -->
+		<div class="vo-toasts" id="vo-toasts"></div>
+
+		<!-- vendor-orders.js tự nạp thư viện STOMP (WebSocket); mạng chậm thì bảng đơn vẫn hiện bình thường -->
+		<script th:src="@{/js/live-socket.js}"></script>
+		<script th:src="@{/js/vendor-orders.js}"></script>
+	</div>
+</body>
+</html>
