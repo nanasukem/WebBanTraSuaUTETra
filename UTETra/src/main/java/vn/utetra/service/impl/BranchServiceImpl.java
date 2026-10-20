@@ -3,18 +3,27 @@ package vn.utetra.service.impl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.utetra.dto.request.BranchReq;
+import vn.utetra.dto.response.NearbyBranchRes;
 import vn.utetra.entity.Branch;
 import vn.utetra.entity.User;
 import vn.utetra.entity.enums.BranchStatus;
+import vn.utetra.exception.BusinessException;
+import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.BranchRepository;
 import vn.utetra.repository.UserRepository;
 import vn.utetra.service.BranchService;
 import vn.utetra.service.CloudinaryService;
 
+import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
 public class BranchServiceImpl implements BranchService {
+
+	private static final String VENDOR_ROLE = "VENDOR";
+	private static final BigDecimal DEFAULT_COMMISSION = new BigDecimal("5.00");
+	private static final double EARTH_RADIUS_KM = 6371.0;
 
 	private final BranchRepository branchRepository;
 	private final UserRepository userRepository;
@@ -41,24 +50,28 @@ public class BranchServiceImpl implements BranchService {
 	@Override
 	public Branch findById(Integer id) {
 		return branchRepository.findById(id)
-				.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chi nhánh với ID: " + id));
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi nhánh với ID: " + id));
 	}
 
 	@Override
 	@Transactional
 	public Branch create(BranchReq req) {
-		User owner = userRepository.findById(req.getOwnerId())
-				.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng Vendor sở hữu"));
+		String name = cleanName(req.getName());
+		checkDuplicateName(name, null);   // luật 2: không trùng tên
+		User owner = findVendor(req.getOwnerId()); // luật 3: chủ shop phải là Vendor
+		checkCoordinates(req);
 
 		Branch branch = new Branch();
 		branch.setOwner(owner);
-		branch.setName(req.getName());
+		branch.setName(name);
 		branch.setAddress(req.getAddress());
+		branch.setLatitude(req.getLatitude());
+		branch.setLongitude(req.getLongitude());
 		branch.setPhone(req.getPhone());
 		branch.setDescription(req.getDescription());
-		branch.setCommissionRate(
-				req.getCommissionRate() != null ? req.getCommissionRate() : new java.math.BigDecimal("5.00"));
-		branch.setStatus(req.getStatus() != null ? req.getStatus() : BranchStatus.PENDING);
+		branch.setCommissionRate(req.getCommissionRate() != null ? req.getCommissionRate() : DEFAULT_COMMISSION);
+		// luật 1: Admin/Manager tạo thì duyệt luôn (form có chọn trạng thái thì theo form)
+		branch.setStatus(req.getStatus() != null ? req.getStatus() : BranchStatus.APPROVED);
 
 		if (req.getImageFile() != null && !req.getImageFile().isEmpty()) {
 			String imageUrl = cloudinaryService.uploadImage(req.getImageFile(), "branches");
@@ -73,20 +86,25 @@ public class BranchServiceImpl implements BranchService {
 	public Branch update(Integer id, BranchReq req) {
 		Branch branch = findById(id);
 
+		String name = cleanName(req.getName());
+		checkDuplicateName(name, id);
+		checkCoordinates(req);
+
 		if (req.getOwnerId() != null && !req.getOwnerId().equals(branch.getOwner().getId())) {
-			User newOwner = userRepository.findById(req.getOwnerId())
-					.orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng Vendor sở hữu"));
-			branch.setOwner(newOwner);
+			branch.setOwner(findVendor(req.getOwnerId()));
 		}
 
-		branch.setName(req.getName());
+		branch.setName(name);
 		branch.setAddress(req.getAddress());
+		branch.setLatitude(req.getLatitude());
+		branch.setLongitude(req.getLongitude());
 		branch.setPhone(req.getPhone());
 		branch.setDescription(req.getDescription());
 		if (req.getCommissionRate() != null) {
 			branch.setCommissionRate(req.getCommissionRate());
 		}
-		if (req.getStatus() != null) {
+		if (req.getStatus() != null && req.getStatus() != branch.getStatus()) {
+			checkTransition(branch.getStatus(), req.getStatus()); // luật 4 áp dụng cả khi sửa qua form
 			branch.setStatus(req.getStatus());
 		}
 
@@ -105,6 +123,8 @@ public class BranchServiceImpl implements BranchService {
 	@Transactional
 	public void changeStatus(Integer id, BranchStatus newStatus) {
 		Branch branch = findById(id);
+		if (newStatus == null || newStatus == branch.getStatus()) return; // không đổi gì
+		checkTransition(branch.getStatus(), newStatus);
 		branch.setStatus(newStatus);
 		branchRepository.save(branch);
 	}
@@ -116,6 +136,8 @@ public class BranchServiceImpl implements BranchService {
 		req.setOwnerId(branch.getOwner() != null ? branch.getOwner().getId() : null);
 		req.setName(branch.getName());
 		req.setAddress(branch.getAddress());
+		req.setLatitude(branch.getLatitude());
+		req.setLongitude(branch.getLongitude());
 		req.setPhone(branch.getPhone());
 		req.setDescription(branch.getDescription());
 		req.setCommissionRate(branch.getCommissionRate());
@@ -126,6 +148,97 @@ public class BranchServiceImpl implements BranchService {
 
 	@Override
 	public List<User> findVendors() {
-		return userRepository.findByRole_Name("VENDOR");
+		return userRepository.findByRole_Name(VENDOR_ROLE);
+	}
+
+	// ================= GỢI Ý CHI NHÁNH GẦN NHẤT =================
+	@Override
+	public List<NearbyBranchRes> findNearby(Double lat, Double lng) {
+		boolean coViTri = lat != null && lng != null;
+		return findApproved().stream()
+				.map(b -> new NearbyBranchRes(b.getId(), b.getName(), b.getAddress(), b.getPhone(), b.getLatitude(),
+						b.getLongitude(), coViTri ? distanceKm(lat, lng, b.getLatitude(), b.getLongitude()) : null))
+				// gần -> xa; chi nhánh không tính được khoảng cách xếp cuối, theo tên
+				.sorted(Comparator.comparing(NearbyBranchRes::distanceKm, Comparator.nullsLast(Comparator.naturalOrder()))
+						.thenComparing(NearbyBranchRes::name))
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true) // owner là LAZY: cần transaction để đọc
+	public boolean isOwner(Integer branchId, String username) {
+		if (branchId == null || username == null) return false;
+		return branchRepository.findById(branchId)
+				.map(b -> b.getOwner() != null && username.equals(b.getOwner().getUsername()))
+				.orElse(false);
+	}
+
+	/** Khoảng cách đường chim bay (công thức Haversine), làm tròn 1 chữ số. null nếu chi nhánh chưa có tọa độ */
+	private Double distanceKm(double lat, double lng, BigDecimal branchLat, BigDecimal branchLng) {
+		if (branchLat == null || branchLng == null) return null;
+		double dLat = Math.toRadians(branchLat.doubleValue() - lat);
+		double dLng = Math.toRadians(branchLng.doubleValue() - lng);
+		double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat))
+				* Math.cos(Math.toRadians(branchLat.doubleValue())) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+		double km = EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		return Math.round(km * 10) / 10.0;
+	}
+
+	// ================= LUẬT NGHIỆP VỤ =================
+
+	private String cleanName(String name) {
+		if (name == null || name.isBlank()) throw new BusinessException("Tên chi nhánh không được để trống");
+		return name.trim();
+	}
+
+	/** Luật 2: tên chi nhánh không trùng (không phân biệt hoa thường). excludeId = chi nhánh đang sửa */
+	private void checkDuplicateName(String name, Integer excludeId) {
+		boolean duplicated = branchRepository.findAll().stream()
+				.anyMatch(b -> b.getName().trim().equalsIgnoreCase(name) && !b.getId().equals(excludeId));
+		if (duplicated) throw new BusinessException("Tên chi nhánh \"" + name + "\" đã tồn tại");
+	}
+
+	/** Luật 3: chủ shop phải là tài khoản có role VENDOR */
+	private User findVendor(Integer ownerId) {
+		if (ownerId == null) throw new BusinessException("Vui lòng chọn chủ shop (Vendor)");
+		User owner = userRepository.findById(ownerId)
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng #" + ownerId));
+		if (owner.getRole() == null || !VENDOR_ROLE.equalsIgnoreCase(owner.getRole().getName())) {
+			throw new BusinessException("Chủ shop phải là tài khoản Vendor");
+		}
+		return owner;
+	}
+
+	/** Tọa độ: nhập đủ cả 2 hoặc bỏ trống cả 2 */
+	private void checkCoordinates(BranchReq req) {
+		if ((req.getLatitude() == null) != (req.getLongitude() == null)) {
+			throw new BusinessException("Vui lòng nhập đủ cả vĩ độ và kinh độ (hoặc bỏ trống cả hai)");
+		}
+	}
+
+	/**
+	 * Luật 4: luồng trạng thái hợp lệ
+	 *   Chờ duyệt  -> Đã duyệt / Từ chối
+	 *   Đã duyệt   -> Tạm ngưng
+	 *   Tạm ngưng  -> Đã duyệt (mở lại)
+	 *   Từ chối    -> Đã duyệt (xét lại)
+	 */
+	private void checkTransition(BranchStatus from, BranchStatus to) {
+		boolean ok = switch (from) {
+			case PENDING -> to == BranchStatus.APPROVED || to == BranchStatus.REJECTED;
+			case APPROVED -> to == BranchStatus.SUSPENDED;
+			case SUSPENDED -> to == BranchStatus.APPROVED;
+			case REJECTED -> to == BranchStatus.APPROVED;
+		};
+		if (!ok) throw new BusinessException("Không thể chuyển chi nhánh từ " + label(from) + " sang " + label(to));
+	}
+
+	private String label(BranchStatus s) {
+		return switch (s) {
+			case PENDING -> "Chờ duyệt";
+			case APPROVED -> "Đã duyệt";
+			case SUSPENDED -> "Tạm ngưng";
+			case REJECTED -> "Từ chối";
+		};
 	}
 }

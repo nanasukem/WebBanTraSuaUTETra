@@ -1,6 +1,7 @@
 package vn.utetra.service;
 
 import vn.utetra.dto.request.BranchReq;
+import vn.utetra.dto.response.NearbyBranchRes;
 import vn.utetra.entity.Branch;
 import vn.utetra.entity.User;
 import vn.utetra.entity.enums.BranchStatus;
@@ -9,10 +10,10 @@ import java.util.List;
 
 public interface BranchService {
 
-	/** Tìm kiếm + lọc. keyword/status null = lấy tất cả */
+	/** Tìm theo tên/địa chỉ + lọc trạng thái (trang Admin) */
 	List<Branch> search(String keyword, BranchStatus status);
 
-	/** Các shop đang hoạt động (hiển thị cho khách) */
+	/** Chi nhánh đang hoạt động (khách được chọn) */
 	List<Branch> findApproved();
 
 	Branch findById(Integer id);
@@ -21,12 +22,21 @@ public interface BranchService {
 
 	Branch update(Integer id, BranchReq req);
 
-	/** Duyệt / từ chối / tạm ngưng / mở lại */
+	/** Đổi trạng thái theo đúng luồng */
 	void changeStatus(Integer id, BranchStatus newStatus);
 
-	/** Chuyển entity -> form để hiển thị trang Sửa */
 	BranchReq toReq(Branch branch);
 
-	/** Danh sách tài khoản VENDOR để chọn chủ shop */
+	/** Danh sách tài khoản Vendor (chọn chủ shop) */
 	List<User> findVendors();
+
+	/**
+	 * Chi nhánh đang hoạt động, sắp xếp từ gần đến xa vị trí (lat, lng) của khách.
+	 * lat/lng = null -> vẫn trả đủ danh sách, không có khoảng cách.
+	 */
+	List<NearbyBranchRes> findNearby(Double lat, Double lng);
+	
+
+	/** username có phải chủ (Vendor) của chi nhánh branchId không. Chi nhánh không tồn tại -> false */
+	boolean isOwner(Integer branchId, String username);
 }

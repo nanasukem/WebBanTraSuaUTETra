@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Thanh toán - UTETra', ~{::#checkout-content})}">
+
+<body>
+	<div id="checkout-content">
+		<style>
+.co-card {
+	border: 0;
+	border-radius: 1rem;
+	box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06);
+}
+
+.co-title {
+	font-size: 1rem;
+	font-weight: 700;
+	color: #198754;
+	margin-bottom: .75rem;
+}
+
+.option-card {
+	display: flex;
+	gap: .75rem;
+	align-items: flex-start;
+	border: 1px solid #dee2e6;
+	border-radius: .75rem;
+	padding: .75rem;
+	cursor: pointer;
+	margin-bottom: .5rem;
+	transition: .15s;
+}
+
+.option-card:hover {
+	border-color: #75b798;
+}
+
+.option-card.active {
+	border-color: #198754;
+	background: #f1f8f4;
+}
+
+.mode-btn {
+	border-radius: .75rem !important;
+	padding: .75rem;
+	font-weight: 600;
+}
+
+.voucher {
+	display: flex;
+	gap: .75rem;
+	align-items: center;
+	border: 1px dashed #75b798;
+	border-radius: .75rem;
+	padding: .6rem .75rem;
+	margin-bottom: .5rem;
+	background: #fff;
+}
+
+.voucher.disabled {
+	opacity: .55;
+	border-color: #ced4da;
+}
+
+.voucher.selected {
+	border-style: solid;
+	border-color: #198754;
+	background: #f1f8f4;
+	opacity: 1;
+}
+
+.voucher-icon {
+	width: 42px;
+	height: 42px;
+	border-radius: .6rem;
+	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+	background: #198754;
+	color: #fff;
+	font-size: 1.2rem;
+}
+
+.voucher-icon.ship {
+	background: #0d6efd;
+}
+
+.selected-chip {
+	display: flex;
+	gap: .5rem;
+	align-items: center;
+	border: 1px solid #198754;
+	border-radius: .6rem;
+	padding: .4rem .6rem;
+	margin-bottom: .5rem;
+	background: #f1f8f4;
+}
+
+.selected-chip.error {
+	border-color: #dc3545;
+	background: #fff5f5;
+}
+
+.tier-badge {
+	color: #fff;
+	border-radius: 999px;
+	padding: .2rem .7rem;
+	font-size: .8rem;
+	font-weight: 700;
+}
+
+.min-w-0 {
+	min-width: 0;
+}
+</style>
+
+		<a th:href="@{/cart}" class="text-decoration-none text-success small">
+			<i class="bi bi-arrow-left"></i> Quay lại giỏ hàng
+		</a>
+		<h1 class="h4 fw-bold text-success mt-2 mb-3">
+			<i class="bi bi-bag-check me-2"></i>Thanh toán
+		</h1>
+
+		<div id="co-loading" class="text-center text-muted py-5">Đang
+			tải...</div>
+
+		<div id="co-empty" class="text-center py-5 d-none">
+			<i class="bi bi-cup-straw display-1 text-success opacity-50"></i>
+			<p class="mt-3 text-muted">Giỏ hàng đang trống, chưa có gì để
+				thanh toán</p>
+			<a th:href="@{/menu#thuc-don}" class="btn btn-success px-4"><i
+				class="bi bi-cup-hot me-1"></i> Xem thực đơn</a>
+		</div>
+
+		<div id="co-page" class="row g-4 d-none">
+			<!-- ===== CỘT TRÁI: LỰA CHỌN ===== -->
+			<div class="col-lg-7">
+
+				<!-- 1. Hình thức nhận hàng -->
+				<div class="card co-card mb-3">
+					<div class="card-body">
+						<div class="co-title">Hình thức nhận hàng</div>
+						<div class="row g-2">
+							<div class="col-6">
+								<input type="radio" class="btn-check" name="deliveryType"
+									id="dt-delivery" value="DELIVERY" checked> <label
+									class="btn btn-outline-success w-100 mode-btn"
+									for="dt-delivery"> <i class="bi bi-scooter me-1"></i>
+									Giao tận nơi
+								</label>
+							</div>
+							<div class="col-6">
+								<input type="radio" class="btn-check" name="deliveryType"
+									id="dt-pickup" value="PICKUP"> <label
+									class="btn btn-outline-success w-100 mode-btn" for="dt-pickup">
+									<i class="bi bi-shop me-1"></i> Đến lấy tại cửa hàng
+								</label>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- 2a. Giao tận nơi: địa chỉ + nhà vận chuyển -->
+				<div id="sec-delivery" class="card co-card mb-3">
+					<div class="card-body">
+						<div class="d-flex justify-content-between align-items-center">
+							<div class="co-title mb-2">Địa chỉ nhận hàng</div>
+							<button type="button" class="btn btn-sm btn-outline-success"
+								id="btn-add-address">
+								<i class="bi bi-plus-lg"></i> Thêm địa chỉ mới
+							</button>
+						</div>
+						<div id="address-list"></div>
+
+						<div class="co-title mt-3 mb-2">Nhà vận chuyển</div>
+						<div id="carrier-list"></div>
+					</div>
+				</div>
+
+				<!-- 2b. Đến lấy: người đến lấy -->
+				<div id="sec-pickup" class="card co-card mb-3 d-none">
+					<div class="card-body">
+						<div class="co-title">Người đến lấy</div>
+						<div class="row g-2">
+							<div class="col-md-6">
+								<label class="form-label small mb-1">Họ tên</label> <input
+									type="text" class="form-control" id="pickup-name"
+									maxlength="100">
+							</div>
+							<div class="col-md-6">
+								<label class="form-label small mb-1">Số điện thoại (quán
+									gọi khi món xong)</label> <input type="tel" class="form-control"
+									id="pickup-phone" maxlength="15" placeholder="0xxxxxxxxx">
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- 3. Chi nhánh -->
+				<div class="card co-card mb-3">
+					<div class="card-body">
+						<div class="d-flex justify-content-between align-items-center">
+							<div class="co-title mb-1" id="branch-title">Chi nhánh làm
+								&amp; giao món</div>
+							<button type="button"
+								class="btn btn-sm btn-outline-secondary d-none" id="btn-locate">
+								<i class="bi bi-crosshair"></i> Dùng vị trí hiện tại
+							</button>
+						</div>
+						<div class="small text-muted mb-2" id="location-hint"></div>
+						<div id="branch-list"></div>
+					</div>
+				</div>
+
+				<!-- 4. Mã giảm giá -->
+				<div class="card co-card mb-3">
+					<div class="card-body">
+						<div class="co-title">Mã giảm giá</div>
+						<div id="selected-vouchers"></div>
+						<div class="input-group mb-1">
+							<input type="text" class="form-control text-uppercase"
+								id="voucher-input" placeholder="Nhập mã khác">
+							<button class="btn btn-outline-success" type="button"
+								id="btn-apply-voucher">Áp dụng</button>
+						</div>
+						<div class="small text-danger mb-2" id="voucher-error"></div>
+						<div class="small fw-semibold text-muted mb-2">Mã của bạn</div>
+						<div id="voucher-list"></div>
+					</div>
+				</div>
+
+				<!-- 5. Thanh toán -->
+				<div class="card co-card mb-3">
+					<div class="card-body">
+						<div class="co-title">Phương thức thanh toán</div>
+						<label class="option-card active"> <input
+							class="form-check-input mt-1" type="radio" name="paymentMethod"
+							value="COD" checked>
+							<div>
+								<div class="fw-semibold">
+									<i class="bi bi-cash-coin text-success me-1"></i> Thanh toán
+									khi nhận hàng (COD)
+								</div>
+								<div class="small text-muted">Trả tiền mặt khi nhận món</div>
+							</div>
+						</label> <label class="option-card"> <input
+							class="form-check-input mt-1" type="radio" name="paymentMethod"
+							value="VNPAY">
+							<div>
+								<div class="fw-semibold">
+									<i class="bi bi-credit-card text-primary me-1"></i> VNPAY <span
+										class="badge text-bg-secondary ms-1">Sắp có</span>
+								</div>
+								<div class="small text-muted">Thẻ ATM / QR ngân hàng</div>
+							</div>
+						</label> <label class="option-card"> <input
+							class="form-check-input mt-1" type="radio" name="paymentMethod"
+							value="MOMO">
+							<div>
+								<div class="fw-semibold">
+									<i class="bi bi-wallet2 me-1" style="color: #a50064"></i> Ví
+									MoMo <span class="badge text-bg-secondary ms-1">Sắp có</span>
+								</div>
+								<div class="small text-muted">Có mã giảm riêng khi thanh
+									toán MoMo</div>
+							</div>
+						</label>
+					</div>
+				</div>
+
+				<!-- 6. Ghi chú -->
+				<div class="card co-card mb-3">
+					<div class="card-body">
+						<div class="co-title">Ghi chú cho quán</div>
+						<textarea class="form-control" id="order-note" rows="2"
+							maxlength="500" placeholder="VD: ít ngọt, giao giờ trưa..."></textarea>
+					</div>
+				</div>
+			</div>
+
+			<!-- ===== CỘT PHẢI: TÓM TẮT ===== -->
+			<div class="col-lg-5">
+				<div class="card co-card position-sticky" style="top: 90px">
+					<div class="card-body">
+						<div id="tier-box" class="mb-3 pb-3 border-bottom"></div>
+
+						<div class="co-title">
+							Đơn hàng (<span id="sum-qty">0</span> ly)
+						</div>
+						<div id="sum-items" class="mb-2"></div>
+
+						<div class="border-top pt-2">
+							<div class="d-flex justify-content-between mb-1">
+								<span>Tạm tính</span><span id="sum-items-total">0đ</span>
+							</div>
+							<div
+								class="d-flex justify-content-between mb-1 text-success d-none"
+								id="row-product-discount">
+								<span>Mã giảm món</span><span id="sum-product-discount"></span>
+							</div>
+							<div
+								class="d-flex justify-content-between mb-1 text-success d-none"
+								id="row-member-discount">
+								<span id="sum-member-label">Ưu đãi hạng</span><span
+									id="sum-member-discount"></span>
+							</div>
+							<div class="d-flex justify-content-between mb-1"
+								id="row-shipping">
+								<span>Phí ship</span><span id="sum-shipping-fee">0đ</span>
+							</div>
+							<div
+								class="d-flex justify-content-between mb-1 text-success d-none"
+								id="row-shipping-discount">
+								<span>Giảm phí ship</span><span id="sum-shipping-discount"></span>
+							</div>
+							<div
+								class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+								<span class="fw-bold">Tổng thanh toán</span> <span
+									class="fs-4 fw-bold text-danger" id="sum-total">0đ</span>
+							</div>
+							<div class="small text-success text-end" id="sum-saved"></div>
+						</div>
+
+						<div id="sum-errors" class="mt-3"></div>
+
+						<div class="d-grid mt-3">
+							<button type="button" class="btn btn-success btn-lg fw-bold"
+								id="btn-place-order" disabled>
+								<i class="bi bi-bag-check me-1"></i> Đặt hàng
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Modal thêm / sửa địa chỉ kiểu Shopee (dùng chung) + Leaflet + address-book.js -->
+		<th:block th:replace="~{fragments/address-modal :: addressModal}"></th:block>
+
+		<script th:src="@{/js/checkout.js}"></script>
+	</div>
+</body>
+</html>

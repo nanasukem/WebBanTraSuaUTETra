@@ -22,8 +22,9 @@
 		<div class="collapse navbar-collapse" id="navbarMain">
 
 			<ul class="navbar-nav me-auto mb-2 mb-lg-0">
+				<!-- Đang ở /menu: cuộn xuống phần thực đơn; ở trang khác: mở /menu tại phần thực đơn -->
 				<li class="nav-item"><a class="nav-link active fw-semibold"
-					th:href="@{/menu}"> <i class="bi bi-journal-richtext me-1"></i>
+					th:href="@{/menu#thuc-don}"> <i class="bi bi-journal-richtext me-1"></i>
 						Thực đơn
 				</a></li>
 			</ul>
@@ -38,6 +39,14 @@
                             or session.user.role.name == 'MANAGER')}"
 					th:href="@{/admin/products}" class="btn btn-warning btn-sm fw-bold">
 					<i class="bi bi-speedometer2 me-1"></i> Quản trị Admin
+				</a>
+
+				<!-- Giỏ hàng: số ly do cart.js cập nhật vào #cart-count (lấy từ /api/cart) -->
+				<a th:if="${session.user != null}" th:href="@{/cart}"
+					class="btn btn-light btn-sm fw-bold position-relative"
+					title="Giỏ hàng"> <i class="bi bi-cart3 me-1"></i> Giỏ hàng <span
+					id="cart-count"
+					class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
 				</a>
 
 				<!-- Trường hợp đã đăng nhập -->
@@ -57,6 +66,10 @@
 					<ul class="dropdown-menu dropdown-menu-end shadow">
 						<li><a class="dropdown-item" th:href="@{/user/profile}">
 								<i class="bi bi-person me-2"></i> Hồ sơ cá nhân
+						</a></li>
+
+						<li><a class="dropdown-item" th:href="@{/cart}"> <i
+								class="bi bi-cart3 me-2"></i> Giỏ hàng
 						</a></li>
 
 						<li><hr class="dropdown-divider"></li>

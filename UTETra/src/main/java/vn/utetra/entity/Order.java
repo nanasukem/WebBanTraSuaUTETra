@@ -1,5 +1,6 @@
 package vn.utetra.entity;
 
+import vn.utetra.entity.enums.DeliveryType;
 import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.entity.enums.PaymentMethod;
 import vn.utetra.entity.enums.PaymentStatus;
@@ -14,8 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Bảng Orders. Mỗi đơn thuộc 1 shop (branch). totalAmount = itemsTotal -
- * productDiscount + shippingFee - shippingDiscount
+ * Bảng Orders. Mỗi đơn thuộc 1 chi nhánh (khách chọn khi Checkout).
+ * totalAmount = itemsTotal - productDiscount - memberDiscount + shippingFee - shippingDiscount
  */
 @Entity
 @Table(name = "Orders") // "Order" là từ khoá SQL nên bảng tên Orders
@@ -36,9 +37,13 @@ public class Order {
 	@JoinColumn(name = "branch_id", nullable = false)
 	private Branch branch;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "delivery_type", nullable = false, length = 10)
+	private DeliveryType deliveryType = DeliveryType.DELIVERY; // giao tận nơi / đến lấy
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "carrier_id")
-	private Carrier carrier;
+	private Carrier carrier; // null khi đến lấy
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "shipper_id")
@@ -58,9 +63,12 @@ public class Order {
 	@Column(name = "receiver_phone", nullable = false, length = 15)
 	private String receiverPhone;
 
-	@Column(name = "delivery_address", nullable = false, length = 255)
-	private String deliveryAddress;
-
+	@Column(name = "delivery_address", length = 255)
+	private String deliveryAddress; // null khi đến lấy
+	
+	@Column(name = "delivery_note", length = 200)
+	private String deliveryNote; // ghi chú địa chỉ, chép từ sổ địa chỉ lúc đặt
+	
 	@Column(name = "note", length = 500)
 	private String note;
 
@@ -69,6 +77,12 @@ public class Order {
 
 	@Column(name = "product_discount", nullable = false, precision = 12, scale = 0)
 	private BigDecimal productDiscount = BigDecimal.ZERO;
+
+	@Column(name = "member_discount", nullable = false, precision = 12, scale = 0)
+	private BigDecimal memberDiscount = BigDecimal.ZERO; // giảm theo hạng thành viên
+
+	@Column(name = "member_tier_name", length = 50)
+	private String memberTierName; // hạng lúc đặt (chốt lại, sau này lên/xuống hạng không đổi)
 
 	@Column(name = "shipping_fee", nullable = false, precision = 12, scale = 0)
 	private BigDecimal shippingFee = BigDecimal.ZERO;
@@ -80,7 +94,7 @@ public class Order {
 	private BigDecimal totalAmount = BigDecimal.ZERO;
 
 	@Column(name = "commission_amount", nullable = false, precision = 12, scale = 0)
-	private BigDecimal commissionAmount = BigDecimal.ZERO; // tiền app thu của shop
+	private BigDecimal commissionAmount = BigDecimal.ZERO; // tiền app thu của chi nhánh
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false, length = 20)

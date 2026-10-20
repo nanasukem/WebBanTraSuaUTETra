@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<body>
+	<!--
+		Modal Thêm / Sửa địa chỉ kiểu Shopee - dùng chung cho Checkout và Hồ sơ.
+		Nhúng vào trang: <th:block th:replace="~{fragments/address-modal :: addressModal}"></th:block>
+		Mở bằng JS: AddressBook.open({...})  (xem static/js/address-book.js)
+	-->
+	<th:block th:fragment="addressModal">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+			media="print" onload="this.media='all'">
+		<style>
+#abModal .modal-content { background: #f5f5f5; }
+#abModal .modal-header { background: #fff; }
+#abModal .ab-back { border: 0; background: none; font-size: 1.4rem; color: #198754; padding: 0 .5rem 0 0; }
+#abModal .modal-body { padding: 0; }
+#abModal .ab-section { background: #fff; border-radius: .75rem; margin: .75rem; padding: .25rem 1rem; }
+#abModal .ab-section-title { font-weight: 700; padding: .75rem 0 .25rem; }
+#abModal .ab-field { border-bottom: 1px solid #eee; padding: .5rem 0; }
+#abModal .ab-field input { border: 0; outline: 0; width: 100%; padding: .4rem 0; background: transparent; }
+#abModal .ab-err { color: #dc3545; font-size: .85rem; }
+#abModal .ab-note { width: 100%; border: 1px solid #eee; border-radius: .5rem; outline: 0; resize: none; padding: .4rem .6rem; margin-top: .25rem; }
+#abModal .ab-note:focus { border-color: #75b798; }
+#abModal .ab-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .5rem;
+	text-align: left; border: 0; border-bottom: 1px solid #eee; background: none; padding: .75rem 0; }
+#abModal .ab-row:disabled { opacity: .55; }
+#abModal .ab-row-label { font-size: .8rem; color: #6c757d; }
+#abModal .ab-mini-map { height: 150px; border-radius: .5rem; margin: .75rem 0; cursor: pointer; }
+#abModal .ab-chip { border: 1px solid #ddd; background: #f8f9fa; border-radius: .4rem; padding: .3rem .8rem; font-size: .9rem; }
+#abModal .ab-chip.active { border-color: #198754; color: #198754; background: #e8f5ee; font-weight: 600; }
+/* Màn chọn Tỉnh / Phường */
+#abModal .ab-search { display: flex; align-items: center; gap: .5rem; background: #fff; padding: .6rem 1rem; }
+#abModal .ab-search input { flex: 1; border: 0; outline: 0; background: #f1f3f5; border-radius: .5rem; padding: .5rem .75rem; }
+#abModal .ab-crumb { display: flex; align-items: center; gap: .6rem; width: 100%; border: 1px solid transparent; background: none;
+	text-align: left; padding: .6rem .75rem; border-radius: .5rem; color: #212529; }
+#abModal .ab-crumb .ab-dot { width: 10px; height: 10px; border-radius: 50%; background: #ced4da; flex-shrink: 0; }
+#abModal .ab-crumb.active { border-color: #ddd; background: #fff; color: #198754; }
+#abModal .ab-crumb.active .ab-dot { background: #fff; box-shadow: 0 0 0 4px #198754; }
+#abModal .ab-list-header { background: #eceff1; color: #6c757d; font-size: .85rem; padding: .5rem 1rem; }
+#abModal .ab-item { display: flex; width: 100%; justify-content: space-between; align-items: center; text-align: left;
+	border: 0; border-bottom: 1px solid #eee; background: #fff; padding: .8rem 1rem .8rem 2rem; }
+#abModal .ab-item.selected { color: #198754; }
+/* Màn nhập tên đường */
+#abModal .ab-street-box { display: flex; align-items: center; background: #fff; border-radius: .75rem; padding: .5rem .75rem; }
+#abModal .ab-street-box input { flex: 1; border: 0; outline: 0; padding: .4rem 0; }
+#abModal .ab-suggest { display: flex; gap: .75rem; width: 100%; align-items: flex-start; text-align: left; border: 0;
+	background: none; padding: .6rem 1rem; }
+#abModal .ab-suggest:hover { background: #fff; }
+#abModal .ab-suggest > i { color: #adb5bd; font-size: 1.2rem; }
+/* Màn bản đồ: ghim cố định giữa, kéo bản đồ để chỉnh */
+#abModal .ab-map-screen { position: relative; height: 70vh; min-height: 420px; }
+#abModal #ab-big-map { position: absolute; inset: 0; }
+#abModal .ab-map-card { position: absolute; z-index: 500; top: .75rem; left: .75rem; right: .75rem; background: #fff;
+	border-radius: .75rem; padding: .6rem .9rem; box-shadow: 0 .25rem .75rem rgba(0,0,0,.12); }
+#abModal .ab-center-pin { position: absolute; z-index: 500; left: 50%; top: 50%; transform: translate(-50%, -100%);
+	pointer-events: none; text-align: center; }
+#abModal .ab-center-pin > i { font-size: 2.6rem; color: #198754; line-height: 1; display: block; }
+#abModal .ab-bubble { background: #198754; color: #fff; border-radius: 1.5rem; padding: .4rem 1rem; font-size: .85rem;
+	margin-bottom: .3rem; white-space: nowrap; transition: opacity .15s; }
+#abModal.ab-moving .ab-bubble { opacity: 0; }
+#abModal .ab-locate { position: absolute; z-index: 500; right: 1rem; bottom: 1rem; width: 48px; height: 48px; border-radius: 50%;
+	border: 0; background: #fff; box-shadow: 0 .25rem .75rem rgba(0,0,0,.2); font-size: 1.3rem; }
+#abModal .ab-map-msg { position: absolute; z-index: 500; left: .75rem; right: 4.5rem; bottom: 1rem; font-size: .85rem;
+	background: rgba(255,255,255,.95); border-radius: .5rem; padding: .4rem .6rem; }
+#abModal .ab-map-msg:empty { display: none; }
+#abModal .ab-primary { font-weight: 700; letter-spacing: .03em; }
+		</style>
+
+		<div class="modal fade" id="abModal" tabindex="-1" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+				<div class="modal-content">
+					<div class="modal-header py-2">
+						<button type="button" class="ab-back" id="ab-back" aria-label="Quay lại"><i class="bi bi-arrow-left"></i></button>
+						<h5 class="modal-title flex-grow-1 text-center pe-4" id="ab-title">Địa chỉ mới</h5>
+					</div>
+
+					<div class="modal-body" id="ab-body">
+						<!-- ===== MÀN 1: FORM ===== -->
+						<div id="ab-s-form">
+							<div class="ab-section">
+								<div class="ab-section-title">Địa chỉ</div>
+								<div class="ab-field">
+									<input type="text" id="ab-name" maxlength="100" placeholder="Họ và tên">
+									<div class="ab-err" id="ab-name-err"></div>
+								</div>
+								<div class="ab-field">
+									<input type="tel" id="ab-phone" maxlength="15" placeholder="Số điện thoại">
+									<div class="ab-err" id="ab-phone-err"></div>
+								</div>
+								<button type="button" class="ab-row" id="ab-open-area">
+									<div><div class="ab-row-label">Tỉnh/Thành Phố và Phường/Xã</div><div id="ab-area-text"></div></div>
+									<i class="bi bi-chevron-right text-muted"></i>
+								</button>
+								<button type="button" class="ab-row" id="ab-open-street">
+									<div><div class="ab-row-label">Tên đường, Toà nhà, Số nhà.</div><div id="ab-street-text"></div></div>
+									<i class="bi bi-chevron-right text-muted"></i>
+								</button>
+								<div id="ab-mini-map" class="ab-mini-map d-none" title="Bấm để chỉnh vị trí"></div>
+								<!-- Ghi chú địa chỉ (không bắt buộc) -->
+								<div class="ab-field border-0">
+									<div class="ab-row-label">Ghi chú địa chỉ (không bắt buộc)</div>
+									<textarea id="ab-note" class="ab-note" rows="2" maxlength="200"
+										placeholder="VD: Cổng sau, gửi bảo vệ, gọi trước khi tới..."></textarea>
+									<div class="text-end small text-muted"><span id="ab-note-count">0</span>/200</div>
+								</div>
+							</div>
+
+							<div class="ab-section">
+								<div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+									<span>Đặt làm địa chỉ mặc định</span>
+									<div class="form-check form-switch m-0">
+										<input class="form-check-input" type="checkbox" role="switch" id="ab-default">
+									</div>
+								</div>
+								<div class="d-flex justify-content-between align-items-center py-3">
+									<span>Loại địa chỉ:</span>
+									<div class="d-flex gap-2">
+										<button type="button" class="ab-chip" data-type="OFFICE">Văn Phòng</button>
+										<button type="button" class="ab-chip" data-type="HOME">Nhà Riêng</button>
+									</div>
+								</div>
+							</div>
+							<div class="ab-err text-center px-3 pb-2" id="ab-form-err"></div>
+						</div>
+
+						<!-- ===== MÀN 2: CHỌN TỈNH / PHƯỜNG ===== -->
+						<div id="ab-s-area" class="d-none">
+							<div class="ab-search">
+								<i class="bi bi-search text-muted"></i>
+								<input type="text" id="ab-area-search" placeholder="Tìm kiếm Tỉnh/Thành Phố và Phường/Xã">
+							</div>
+							<div class="d-flex justify-content-between align-items-center px-3 pt-3 small text-muted">
+								<span>Khu vực được chọn</span>
+								<button type="button" class="btn btn-link btn-sm p-0 text-success text-decoration-none" id="ab-area-reset">Thiết lập lại</button>
+							</div>
+							<div class="px-2 pb-2" id="ab-area-crumbs"></div>
+							<div class="ab-list-header" id="ab-area-header">Tỉnh/Thành Phố</div>
+							<div id="ab-area-list"></div>
+						</div>
+
+						<!-- ===== MÀN 3: NHẬP TÊN ĐƯỜNG + GỢI Ý ===== -->
+						<div id="ab-s-street" class="d-none">
+							<div class="p-3">
+								<div class="ab-street-box">
+									<input type="text" id="ab-street-input" maxlength="150" placeholder="Tên đường, Toà nhà, Số nhà.">
+									<button type="button" class="btn btn-sm text-muted" id="ab-street-clear" aria-label="Xoá"><i class="bi bi-x-circle-fill"></i></button>
+								</div>
+								<div class="small text-muted mt-1"><i class="bi bi-geo"></i> Khu vực: <span id="ab-street-area"></span></div>
+								<button type="button" class="btn btn-outline-success w-100 mt-2" id="ab-street-search">
+									<i class="bi bi-search"></i> Tìm gợi ý địa điểm</button>
+							</div>
+							<div id="ab-street-list" class="pb-3"></div>
+						</div>
+
+						<!-- ===== MÀN 4: BẢN ĐỒ XÁC NHẬN ===== -->
+						<div id="ab-s-map" class="d-none ab-map-screen">
+							<div id="ab-big-map"></div>
+							<div class="ab-map-card">
+								<div class="small text-muted">Nhập Địa Chỉ</div>
+								<div class="d-flex justify-content-between gap-2">
+									<div id="ab-map-address" class="fw-semibold small"></div>
+									<button type="button" class="btn btn-link btn-sm p-0 text-muted text-decoration-none text-nowrap" id="ab-map-change">
+										Đổi <i class="bi bi-chevron-right"></i></button>
+								</div>
+							</div>
+							<div class="ab-center-pin">
+								<div class="ab-bubble">Địa chỉ của bạn ở đây<br><small>Vui lòng kiểm tra vị trí trên bản đồ</small></div>
+								<i class="bi bi-geo-alt-fill"></i>
+							</div>
+							<button type="button" class="ab-locate" id="ab-map-locate" title="Vị trí của tôi"><i class="bi bi-crosshair"></i></button>
+							<div class="ab-map-msg" id="ab-map-msg"></div>
+						</div>
+					</div>
+
+					<div class="modal-footer bg-white">
+						<div id="ab-footer-form" class="w-100 d-flex gap-2">
+							<button type="button" class="btn btn-outline-danger d-none" id="ab-delete" title="Xoá địa chỉ"><i class="bi bi-trash"></i></button>
+							<button type="button" class="btn btn-success btn-lg flex-grow-1 ab-primary" id="ab-submit" disabled>HOÀN THÀNH</button>
+						</div>
+						<div id="ab-footer-map" class="w-100 d-none">
+							<button type="button" class="btn btn-success btn-lg w-100 ab-primary" id="ab-map-confirm">Xác Nhận</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script async src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+		<script th:src="@{/js/address-book.js}"></script>
+	</th:block>
+</body>
+</html>

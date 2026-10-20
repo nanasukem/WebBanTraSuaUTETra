@@ -2,6 +2,7 @@ package vn.utetra.service;
 
 import vn.utetra.dto.request.VoucherReq;
 import vn.utetra.entity.Voucher;
+import vn.utetra.entity.enums.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -32,8 +33,8 @@ public interface VoucherService {
 	List<Voucher> findUsable(Integer branchId);
 
 	/**
-	 * Kiểm tra voucher và tính số tiền được giảm.
-	 * 
+	 * Kiểm tra voucher và tính số tiền được giảm (kiểm tra chung, không xét người dùng).
+	 *
 	 * @param itemsTotal  tổng tiền món của đơn
 	 * @param shippingFee phí ship của đơn
 	 * @return số tiền giảm (không vượt quá tiền món/phí ship)
@@ -41,6 +42,18 @@ public interface VoucherService {
 	 */
 	BigDecimal calculateDiscount(String code, Integer branchId, BigDecimal itemsTotal, BigDecimal shippingFee);
 
-	/** Gọi khi đặt hàng thành công: tăng used_count */
+	/** Gọi khi đặt hàng thành công: tăng used_count (bản cũ, không ghi lịch sử) */
 	void markUsed(Integer voucherId);
+
+	// ===== v2 + v3: kiểm tra đầy đủ khi đặt hàng =====
+
+	/**
+	 * Như hàm trên + phương thức thanh toán (v3) + kiểm tra theo người dùng (v2):
+	 * lượt mỗi người, tài khoản mới, hạng tối thiểu.
+	 */
+	BigDecimal calculateDiscount(String code, Integer branchId, Integer userId, PaymentMethod paymentMethod,
+			BigDecimal itemsTotal, BigDecimal shippingFee);
+
+	/** Đặt hàng thành công: kiểm tra lượt mỗi người + ghi lịch sử dùng mã + tăng used_count */
+	void markUsed(Integer voucherId, Integer userId, Integer orderId);
 }

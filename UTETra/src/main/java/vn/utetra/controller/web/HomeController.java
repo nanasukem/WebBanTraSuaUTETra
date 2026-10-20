@@ -20,51 +20,43 @@ public class HomeController {
 	private UserRepository userRepository;
 
 	@GetMapping("/")
-    public String index(HttpSession session) {
+	public String index(HttpSession session) {
 
-        Authentication auth = SecurityContextHolder
-                .getContext()
-                .getAuthentication();
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        // Kiểm tra người dùng đã đăng nhập hay chưa
-        if (auth != null
-                && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getName())) {
+		// Kiểm tra người dùng đã đăng nhập hay chưa
+		if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
 
-            String username = auth.getName();
+			String username = auth.getName();
 
-            Optional<User> userOpt =
-                    userRepository.findByUsername(username);
+			Optional<User> userOpt = userRepository.findByUsername(username);
 
-            if (userOpt.isPresent()) {
+			if (userOpt.isPresent()) {
 
-                User user = userOpt.get();
+				User user = userOpt.get();
 
-                // Lưu thông tin người dùng vào Session
-                session.setAttribute("user", user);
+				// Lưu thông tin người dùng vào Session
+				session.setAttribute("user", user);
 
-                if (user.getRole() != null
-                        && user.getRole().getName() != null) {
+				if (user.getRole() != null && user.getRole().getName() != null) {
 
-                    String roleName =
-                            user.getRole().getName().toUpperCase();
+					String roleName = user.getRole().getName().toUpperCase();
 
-                    // ADMIN và MANAGER
-                    if ("ADMIN".equals(roleName)
-                            || "MANAGER".equals(roleName)) {
-                        return "redirect:/admin/products";
-                    }
+					// ADMIN và MANAGER
+					if ("ADMIN".equals(roleName) || "MANAGER".equals(roleName)) {
+						return "redirect:/admin/products";
+					}
 
-                    // VENDOR
-                    if ("VENDOR".equals(roleName)) {
-                        return "redirect:/vendor/menu";
-                    }
-                }
-            }
-        }
+					// VENDOR
+					if ("VENDOR".equals(roleName)) {
+						return "redirect:/vendor/menu";
+					}
+				}
+			}
+		}
 
-        // Khách chưa đăng nhập hoặc USER thông thường
-        // Chuyển sang trang thực đơn công khai
-        return "redirect:/menu";
-    }
+		// Khách chưa đăng nhập hoặc USER thông thường
+		// Chuyển sang trang thực đơn công khai
+		return "redirect:/menu";
+	}
 }
