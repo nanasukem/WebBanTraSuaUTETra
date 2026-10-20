@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/admin-layout :: main('Quản lý người dùng', 'users', ~{::#admin-content})}">
+
+<section id="admin-content">
+    <div class="container-fluid py-3">
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+            <div>
+                <h2 class="fw-bold mb-1">Quản lý người dùng</h2>
+                <p class="text-muted mb-0">
+                    Quản lý tài khoản và phân quyền người dùng UTETra.
+                </p>
+            </div>
+        </div>
+
+        <!-- Thông báo -->
+        <div th:if="${successMessage}"
+             class="alert alert-success alert-dismissible fade show">
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div th:if="${errorMessage}"
+             class="alert alert-danger alert-dismissible fade show">
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Thống kê -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Tổng tài khoản</div>
+                        <div class="fs-3 fw-bold" th:text="${totalUsers}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Đang hoạt động</div>
+                        <div class="fs-3 fw-bold text-success"
+                             th:text="${activeUsers}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Đã khóa</div>
+                        <div class="fs-3 fw-bold text-danger"
+                             th:text="${inactiveUsers}">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tìm kiếm và lọc -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form method="get" th:action="@{/admin/users}">
+                    <div class="row g-3 align-items-end">
+
+                        <div class="col-12 col-lg-5">
+                            <label for="keyword" class="form-label">Tìm kiếm</label>
+                            <input id="keyword"
+                                   name="keyword"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="Tên đăng nhập, họ tên, email, số điện thoại..."
+                                   th:value="${keyword}">
+                        </div>
+
+                        <div class="col-12 col-md-4 col-lg-3">
+                            <label for="role" class="form-label">Vai trò</label>
+                            <select id="role" name="role" class="form-select">
+                                <option value="ALL"
+                                        th:selected="${selectedRole == 'ALL'}">
+                                    Tất cả vai trò
+                                </option>
+                                <option value="ADMIN"
+                                        th:selected="${selectedRole == 'ADMIN'}">Admin</option>
+                                <option value="MANAGER"
+                                        th:selected="${selectedRole == 'MANAGER'}">Manager</option>
+                                <option value="VENDOR"
+                                        th:selected="${selectedRole == 'VENDOR'}">Vendor</option>
+                                <option value="SHIPPER"
+                                        th:selected="${selectedRole == 'SHIPPER'}">Shipper</option>
+                                <option value="USER"
+                                        th:selected="${selectedRole == 'USER'}">Khách hàng</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-4 col-lg-2">
+                            <label for="status" class="form-label">Trạng thái</label>
+                            <select id="status" name="status" class="form-select">
+                                <option value="ALL"
+                                        th:selected="${selectedStatus == 'ALL'}">Tất cả</option>
+                                <option value="ACTIVE"
+                                        th:selected="${selectedStatus == 'ACTIVE'}">Đang hoạt động</option>
+                                <option value="INACTIVE"
+                                        th:selected="${selectedStatus == 'INACTIVE'}">Đã khóa</option>
+                                <option value="VERIFIED"
+                                        th:selected="${selectedStatus == 'VERIFIED'}">Đã xác minh</option>
+                                <option value="UNVERIFIED"
+                                        th:selected="${selectedStatus == 'UNVERIFIED'}">Chưa xác minh</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-4 col-lg-2 d-flex gap-2">
+                            <button type="submit"
+                                    class="btn btn-primary flex-grow-1">
+                                <i class="bi bi-search"></i> Lọc
+                            </button>
+                            <a th:href="@{/admin/users}"
+                               class="btn btn-outline-secondary"
+                               title="Xóa bộ lọc">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </a>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Danh sách tài khoản -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <div class="fw-semibold">
+                    Danh sách tài khoản
+                    <span class="badge bg-secondary ms-1"
+                          th:text="${#lists.size(users)}">0</span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">ID</th>
+                            <th>Tài khoản</th>
+                            <th>Thông tin liên hệ</th>
+                            <th>Vai trò</th>
+                            <th>Xác minh</th>
+                            <th>Trạng thái</th>
+                            <th>Ngày tạo</th>
+                            <th class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr th:each="u : ${users}">
+                            <td class="ps-3" th:text="${u.id}">1</td>
+
+                            <td>
+                                <div class="fw-semibold"
+                                     th:text="${u.fullName != null and !u.fullName.isBlank() ? u.fullName : u.username}">
+                                    Nguyễn Văn A
+                                </div>
+                                <div class="text-muted small">
+                                    @<span th:text="${u.username}">username</span>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div th:text="${u.email}">email@example.com</div>
+                                <div class="text-muted small"
+                                     th:text="${u.phone != null and !u.phone.isBlank() ? u.phone : 'Chưa cập nhật số điện thoại'}">
+                                    0900000000
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge bg-primary"
+                                      th:text="${u.role != null ? u.role.name : 'Chưa phân vai trò'}">
+                                    USER
+                                </span>
+                            </td>
+
+                            <td>
+                                <span th:if="${u.isVerified}"
+                                      class="badge bg-success">Đã xác minh</span>
+                                <span th:unless="${u.isVerified}"
+                                      class="badge bg-warning text-dark">Chưa xác minh</span>
+                            </td>
+
+                            <td>
+                                <span th:if="${u.isActive}"
+                                      class="badge bg-success">Hoạt động</span>
+                                <span th:unless="${u.isActive}"
+                                      class="badge bg-danger">Đã khóa</span>
+                            </td>
+
+                            <td>
+                                <span th:if="${u.createdAt != null}"
+                                      th:text="${#temporals.format(u.createdAt, 'dd/MM/yyyy HH:mm')}">
+                                    01/01/2026
+                                </span>
+                                <span th:unless="${u.createdAt != null}">—</span>
+                            </td>
+
+                            <td class="text-center">
+                                <div class="d-inline-flex flex-wrap justify-content-center gap-1">
+
+                                    <!-- Xem chi tiết -->
+                                    <a th:href="@{/admin/users/{id}(id=${u.id})}"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Xem chi tiết">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+
+                                    <!-- Đổi vai trò: chỉ ADMIN -->
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            title="Đổi vai trò"
+                                            data-bs-toggle="modal"
+                                            th:attr="data-bs-target='#roleModal-' + ${u.id}"
+                                            sec:authorize="hasRole('ADMIN')">
+                                        <i class="bi bi-person-gear"></i>
+                                    </button>
+
+                                    <!-- Khóa/mở khóa: chỉ ADMIN -->
+                                    <form th:action="@{/admin/users/{id}/toggle(id=${u.id})}"
+                                          method="post"
+                                          class="d-inline"
+                                          sec:authorize="hasRole('ADMIN')"
+                                          onsubmit="return confirm('Bạn có chắc muốn thay đổi trạng thái tài khoản này?');">
+
+                                        <button type="submit"
+                                                class="btn btn-sm"
+                                                th:classappend="${u.isActive} ? ' btn-outline-danger' : ' btn-outline-success'"
+                                                th:title="${u.isActive} ? 'Khóa tài khoản' : 'Mở khóa tài khoản'">
+                                            <i th:class="${u.isActive} ? 'bi bi-lock' : 'bi bi-unlock'"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Modal phân quyền -->
+                                <div class="modal fade"
+                                     th:id="'roleModal-' + ${u.id}"
+                                     tabindex="-1"
+                                     aria-hidden="true"
+                                     sec:authorize="hasRole('ADMIN')">
+
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content text-start">
+
+                                            <form th:action="@{/admin/users/{id}/role(id=${u.id})}"
+                                                  method="post">
+
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Phân quyền tài khoản</h5>
+                                                    <button type="button"
+                                                            class="btn-close"
+                                                            data-bs-dismiss="modal"></button>
+                                                </div>
+
+                                                <div class="modal-body">
+                                                    <p>
+                                                        Tài khoản:
+                                                        <strong th:text="${u.username}">username</strong>
+                                                    </p>
+
+                                                    <label th:for="'roleName-' + ${u.id}"
+                                                           class="form-label">
+                                                        Vai trò mới
+                                                    </label>
+
+                                                    <select class="form-select"
+                                                            name="roleName"
+                                                            th:id="'roleName-' + ${u.id}"
+                                                            required>
+                                                        <option th:each="r : ${roles}"
+                                                                th:if="${r.name == 'ADMIN' or r.name == 'MANAGER' or r.name == 'VENDOR' or r.name == 'SHIPPER' or r.name == 'USER'}"
+                                                                th:value="${r.name}"
+                                                                th:text="${r.name}"
+                                                                th:selected="${u.role != null and u.role.name == r.name}">
+                                                        </option>
+                                                    </select>
+
+                                                    <div class="alert alert-warning mt-3 mb-0 small">
+                                                        Không thể tự thay đổi vai trò tài khoản đang đăng nhập.
+                                                        Hãy kiểm tra kỹ vai trò trước khi lưu.
+                                                    </div>
+                                                </div>
+
+                                                <div class="modal-footer">
+                                                    <button type="button"
+                                                            class="btn btn-secondary"
+                                                            data-bs-dismiss="modal">Hủy</button>
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="bi bi-check-circle"></i> Lưu vai trò
+                                                    </button>
+                                                </div>
+
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr th:if="${#lists.isEmpty(users)}">
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="bi bi-people fs-2 d-block mb-2"></i>
+                                Không tìm thấy tài khoản phù hợp.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</section>
+</html>

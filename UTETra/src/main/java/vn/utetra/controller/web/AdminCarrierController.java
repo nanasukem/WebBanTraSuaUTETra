@@ -1,83 +1,211 @@
 package vn.utetra.controller.web;
 
-import jakarta.validation.Valid;
+import vn.utetra.entity.Carrier;
+import vn.utetra.repository.CarrierRepository;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import vn.utetra.dto.request.CarrierReq;
-import vn.utetra.exception.BusinessException;
-import vn.utetra.service.CarrierService;
 
-/** Quản lý nhà vận chuyển cho ADMIN / MANAGER */
+import java.math.BigDecimal;
+
 @Controller
 @RequestMapping("/admin/carriers")
 public class AdminCarrierController {
 
-	private final CarrierService carrierService;
+    private final CarrierRepository carrierRepository;
 
-	public AdminCarrierController(CarrierService carrierService) {
-		this.carrierService = carrierService;
-	}
+    public AdminCarrierController(CarrierRepository carrierRepository) {
+        this.carrierRepository = carrierRepository;
+    }
 
-	@GetMapping
-	public String list(@RequestParam(required = false) String keyword, Model model) {
-		model.addAttribute("carriers", carrierService.search(keyword));
-		model.addAttribute("keyword", keyword);
-		return "admin/carriers/index";
-	}
+    @GetMapping
+    public String index(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "ALL") String status,
+            Model model) {
 
-	@GetMapping("/create")
-	public String createForm(Model model) {
-		model.addAttribute("carrierReq", new CarrierReq());
-		model.addAttribute("carrierId", null);
-		return "admin/carriers/form";
-	}
+        var carriers = keyword.isBlank()
+                ? carrierRepository.findAll()
+                : carrierRepository.findByNameContainingIgnoreCaseOrderByIdAsc(
+                        keyword.trim());
 
-	@PostMapping("/create")
-	public String create(@Valid @ModelAttribute("carrierReq") CarrierReq req, BindingResult result, Model model,
-			RedirectAttributes ra) {
-		model.addAttribute("carrierId", null);
-		if (result.hasErrors())
-			return "admin/carriers/form";
-		try {
-			carrierService.create(req);
-		} catch (BusinessException e) {
-			model.addAttribute("error", e.getMessage());
-			return "admin/carriers/form";
-		}
-		ra.addFlashAttribute("success", "Đã thêm nhà vận chuyển " + req.getName());
-		return "redirect:/admin/carriers";
-	}
+        if ("ACTIVE".equalsIgnoreCase(status)) {
+            carriers = carriers.stream()
+                    .filter(c -> Boolean.TRUE.equals(c.getIsActive()))
+                    .toList();
+        } else if ("INACTIVE".equalsIgnoreCase(status)) {
+            carriers = carriers.stream()
+                    .filter(c -> !Boolean.TRUE.equals(c.getIsActive()))
+                    .toList();
+        }
 
-	@GetMapping("/{id}/edit")
-	public String editForm(@PathVariable Integer id, Model model) {
-		model.addAttribute("carrierReq", carrierService.toReq(carrierService.findById(id)));
-		model.addAttribute("carrierId", id);
-		return "admin/carriers/form";
-	}
+        model.addAttribute("carriers", carriers);
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("selectedStatus", status);
+        model.addAttribute("totalCarriers", carrierRepository.count());
+        model.addAttribute("activeCarriers",
+                carrierRepository.findAll().stream()
+                        .filter(c -> Boolean.TRUE.equals(c.getIsActive()))
+                        .count());
 
-	@PostMapping("/{id}/edit")
-	public String update(@PathVariable Integer id, @Valid @ModelAttribute("carrierReq") CarrierReq req,
-			BindingResult result, Model model, RedirectAttributes ra) {
-		model.addAttribute("carrierId", id);
-		if (result.hasErrors())
-			return "admin/carriers/form";
-		try {
-			carrierService.update(id, req);
-		} catch (BusinessException e) {
-			model.addAttribute("error", e.getMessage());
-			return "admin/carriers/form";
-		}
-		ra.addFlashAttribute("success", "Đã cập nhật nhà vận chuyển " + req.getName());
-		return "redirect:/admin/carriers";
-	}
+        return "admin/carriers/index";
+    }
 
-	@PostMapping("/{id}/toggle")
-	public String toggle(@PathVariable Integer id, RedirectAttributes ra) {
-		carrierService.toggleActive(id);
-		ra.addFlashAttribute("success", "Đã đổi trạng thái nhà vận chuyển #" + id);
-		return "redirect:/admin/carriers";
-	}
+    @GetMapping("/new")
+    public String createForm(Model model) {
+        Carrier carrier = new Carrier();
+        carrier.setFee(BigDecimal.ZERO);
+        carrier.setIsActive(true);
+
+        model.addAttribute("carrier", carrier);
+        model.addAttribute("pageTitle", "Thêm nhà vận chuyển");
+        model.addAttribute("isEdit", false);
+
+        return "admin/carriers/form";
+    }
+
+    @PostMapping
+    public String create(
+            @ModelAttribute("carrier") Carrier carrier,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        String error = validateCarrier(carrier, null);
+
+        if (error != null) {
+            model.addAttribute("pageTitle", "Thêm nhà vận chuyển");
+            model.addAttribute("isEdit", false);
+            model.addAttribute("errorMessage", error);
+            return "admin/carriers/form";
+        }
+
+        carrier.setId(null);
+        carrier.setName(carrier.getName().trim());
+        carrier.setIsActive(true);
+
+        carrierRepository.save(carrier);
+
+        redirectAttributes.addFlashAttribute(
+                "successMessage", "Thêm nhà vận chuyển thành công.");
+
+        return "redirect:/admin/carriers";
+    }
+
+    @GetMapping("/{id}/edit")
+    public String editForm(
+            @PathVariable Integer id,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        Carrier carrier = carrierRepository.findById(id).orElse(null);
+
+        if (carrier == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage", "Không tìm thấy nhà vận chuyển.");
+            return "redirect:/admin/carriers";
+        }
+
+        model.addAttribute("carrier", carrier);
+        model.addAttribute("pageTitle", "Chỉnh sửa nhà vận chuyển");
+        model.addAttribute("isEdit", true);
+
+        return "admin/carriers/form";
+    }
+
+    @PostMapping("/{id}/edit")
+    public String update(
+            @PathVariable Integer id,
+            @ModelAttribute("carrier") Carrier formCarrier,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        Carrier existing = carrierRepository.findById(id).orElse(null);
+
+        if (existing == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage", "Không tìm thấy nhà vận chuyển.");
+            return "redirect:/admin/carriers";
+        }
+
+        String error = validateCarrier(formCarrier, id);
+
+        if (error != null) {
+            formCarrier.setId(id);
+            model.addAttribute("carrier", formCarrier);
+            model.addAttribute("pageTitle", "Chỉnh sửa nhà vận chuyển");
+            model.addAttribute("isEdit", true);
+            model.addAttribute("errorMessage", error);
+
+            return "admin/carriers/form";
+        }
+
+        existing.setName(formCarrier.getName().trim());
+        existing.setFee(formCarrier.getFee());
+
+        // Không nhận isActive từ form chỉnh sửa.
+        // Trạng thái được quản lý riêng bằng chức năng bật/tắt.
+        carrierRepository.save(existing);
+
+        redirectAttributes.addFlashAttribute(
+                "successMessage", "Cập nhật nhà vận chuyển thành công.");
+
+        return "redirect:/admin/carriers";
+    }
+
+    @PostMapping("/{id}/toggle")
+    public String toggle(
+            @PathVariable Integer id,
+            RedirectAttributes redirectAttributes) {
+
+        Carrier carrier = carrierRepository.findById(id).orElse(null);
+
+        if (carrier == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage", "Không tìm thấy nhà vận chuyển.");
+            return "redirect:/admin/carriers";
+        }
+
+        boolean active = Boolean.TRUE.equals(carrier.getIsActive());
+        carrier.setIsActive(!active);
+
+        carrierRepository.save(carrier);
+
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                active
+                        ? "Đã tắt nhà vận chuyển."
+                        : "Đã bật nhà vận chuyển.");
+
+        return "redirect:/admin/carriers";
+    }
+
+    private String validateCarrier(Carrier carrier, Integer excludeId) {
+        if (carrier.getName() == null || carrier.getName().isBlank()) {
+            return "Tên nhà vận chuyển không được để trống.";
+        }
+
+        String name = carrier.getName().trim();
+
+        if (name.length() > 100) {
+            return "Tên nhà vận chuyển không được vượt quá 100 ký tự.";
+        }
+
+        boolean duplicate = excludeId == null
+                ? carrierRepository.existsByNameIgnoreCase(name)
+                : carrierRepository.existsByNameIgnoreCaseAndIdNot(
+                        name, excludeId);
+
+        if (duplicate) {
+            return "Tên nhà vận chuyển đã tồn tại.";
+        }
+
+        if (carrier.getFee() == null
+                || carrier.getFee().compareTo(BigDecimal.ZERO) < 0) {
+            return "Phí vận chuyển phải lớn hơn hoặc bằng 0.";
+        }
+
+        return null;
+    }
 }

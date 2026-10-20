@@ -10,7 +10,9 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -31,15 +33,40 @@ public class SecurityConfiguration {
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
 	}
 
+	/**
+	 * Chuyển hướng sau khi đăng nhập thành công theo vai trò.
+	 */
+	@Bean
+	public AuthenticationSuccessHandler authenticationSuccessHandler() {
+		return (request, response, authentication) -> {
+			String redirectUrl;
+
+			if (hasRole(authentication, "ROLE_ADMIN") || hasRole(authentication, "ROLE_MANAGER")) {
+				redirectUrl = "/admin/dashboard";
+			} else if (hasRole(authentication, "ROLE_VENDOR")) {
+				redirectUrl = "/vendor/dashboard";
+			} else if (hasRole(authentication, "ROLE_SHIPPER")) {
+				redirectUrl = "/shipper/dashboard";
+			} else {
+				redirectUrl = "/";
+			}
+
+			response.sendRedirect(request.getContextPath() + redirectUrl);
+		};
+	}
+
+	private boolean hasRole(Authentication authentication, String role) {
+		return authentication != null && authentication.getAuthorities().stream()
+				.anyMatch(authority -> role.equals(authority.getAuthority()));
+	}
+
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
 		return http.cors(Customizer.withDefaults())
 
-				// Giữ nguyên cấu hình CSRF hiện tại của bạn
+				// Giữ nguyên cấu hình CSRF hiện tại của dự án
 				.csrf(csrf -> csrf.disable())
 
-				// PHÂN QUYỀN
 				.authorizeHttpRequests(auth -> auth
 
 						// Tài nguyên tĩnh
@@ -49,47 +76,45 @@ public class SecurityConfiguration {
 						// Trang công khai và xác thực
 						.requestMatchers("/", "/menu", "/menu/**", "/auth/**", "/api/auth/**").permitAll()
 
-						// API công khai chỉ cho GET
+						// API xem dữ liệu công khai
 						.requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/toppings/**")
 						.permitAll()
 
 						// WebSocket
 						.requestMatchers("/ws/**").permitAll()
 
-						// Admin và Manager
+						// QUẢN LÝ NGƯỜI DÙNG: CHỈ ADMIN
+						// Phải đặt trước quy tắc /admin/** và /api/admin/**
+						.requestMatchers("/admin/users", "/admin/users/**", "/api/admin/users", "/api/admin/users/**")
+						.hasRole("ADMIN")
+
+						// Các khu vực quản trị khác: ADMIN và MANAGER
 						.requestMatchers("/admin/**", "/api/admin/**").hasAnyRole("ADMIN", "MANAGER")
 
-						// Vendor
+						// Khu vực Vendor
 						.requestMatchers("/vendor/**", "/api/vendor/**").hasRole("VENDOR")
 
-						// Shipper
+						// Khu vực Shipper
 						.requestMatchers("/shipper/**", "/api/shipper/**").hasRole("SHIPPER")
 
-						// Những trang còn lại cần đăng nhập
+						// Các đường dẫn còn lại yêu cầu đăng nhập
 						.anyRequest().authenticated())
 
-				// CẤU HÌNH ĐĂNG NHẬP
+				// Đăng nhập bằng form
 				.formLogin(form -> form.loginPage("/auth/login").loginProcessingUrl("/auth/login")
-
-						// Đăng nhập thành công
-						.defaultSuccessUrl("/", true)
-
-						// Đăng nhập thất bại
-						.failureUrl("/auth/login?error=true")
-
+						.successHandler(authenticationSuccessHandler()).failureUrl("/auth/login?error=true")
 						.permitAll())
 
-				// SESSION
+				// Quản lý session
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
-				// ĐĂNG XUẤT
-				.logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessUrl("/menu").invalidateHttpSession(true)
-						.clearAuthentication(true).deleteCookies("JWT_TOKEN", "JSESSIONID").permitAll())
+				// Đăng xuất
+				.logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessUrl("/auth/login?logout")
+						.invalidateHttpSession(true).clearAuthentication(true).deleteCookies("JSESSIONID").permitAll())
 
-				// AUTHENTICATION PROVIDER
 				.authenticationProvider(authenticationProvider)
 
-				// JWT FILTER
+				// JWT filter
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
 				.build();
@@ -97,7 +122,6 @@ public class SecurityConfiguration {
 
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
-
 		CorsConfiguration configuration = new CorsConfiguration();
 
 		configuration.setAllowedOrigins(List.of("http://localhost:8080"));

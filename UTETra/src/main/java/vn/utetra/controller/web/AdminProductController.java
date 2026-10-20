@@ -1,113 +1,234 @@
 package vn.utetra.controller.web;
 
+import java.io.IOException;
+import java.util.List;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import vn.utetra.dto.CategoryFormDto;
+import lombok.RequiredArgsConstructor;
 import vn.utetra.dto.ProductDto;
+import vn.utetra.dto.ProductFormDto;
+import vn.utetra.entity.Category;
+import vn.utetra.entity.Product;
 import vn.utetra.service.AdminProductService;
 
 @Controller
-@RequestMapping("/admin")
+@RequestMapping("/admin/products")
+@RequiredArgsConstructor
 public class AdminProductController {
 
 	private final AdminProductService adminProductService;
 
-	public AdminProductController(AdminProductService adminProductService) {
-		this.adminProductService = adminProductService;
-	}
+	// Danh sách và tìm kiếm sản phẩm
+	@GetMapping
+	public String index(@RequestParam(required = false) String keyword,
+			@RequestParam(required = false) Integer categoryId, @RequestParam(required = false) String status,
+			Model model) {
 
-	// ==================== QUAN LY SAN PHAM ====================
+		List<Product> products = adminProductService.getAllProducts();
 
-	@GetMapping("/products")
-	public String listProducts(Model model) {
-		model.addAttribute("products", adminProductService.getAllProducts());
+		if (keyword != null && !keyword.isBlank()) {
+			String search = keyword.trim().toLowerCase();
 
+			products = products.stream().filter(p -> p.getName() != null && p.getName().toLowerCase().contains(search))
+					.toList();
+		}
+
+		if (categoryId != null) {
+			products = products.stream()
+					.filter(p -> p.getCategory() != null && categoryId.equals(p.getCategory().getId())).toList();
+		}
+
+		if ("available".equals(status)) {
+			products = products.stream().filter(p -> Boolean.TRUE.equals(p.getIsAvailable())).toList();
+		} else if ("unavailable".equals(status)) {
+			products = products.stream().filter(p -> !Boolean.TRUE.equals(p.getIsAvailable())).toList();
+		}
+
+		model.addAttribute("products", products);
 		model.addAttribute("categories", adminProductService.getAllCategories());
+		model.addAttribute("keyword", keyword);
+		model.addAttribute("categoryId", categoryId);
+		model.addAttribute("status", status);
 
-		model.addAttribute("productDTO", new ProductDto());
-
-		return "admin/products/menu";
+		return "admin/products/index";
 	}
 
-	@PostMapping("/products/save")
-	public String saveProduct(@ModelAttribute("productDTO") ProductDto form, RedirectAttributes redirectAttributes) {
+	// Hiển thị form thêm
+	@GetMapping("/create")
+	public String createForm(Model model) {
+		model.addAttribute("form", new ProductFormDto());
+		model.addAttribute("categories", adminProductService.getAllCategories());
+		model.addAttribute("isEdit", false);
+
+		return "admin/products/form";
+	}
+
+	// Xử lý thêm sản phẩm
+	@PostMapping("/create")
+	public String create(@ModelAttribute("form") ProductFormDto form, Model model,
+			RedirectAttributes redirectAttributes) {
 
 		try {
-			if (form.getId() == null) {
-				adminProductService.createProduct(form);
+			ProductDto dto = toProductDto(form);
+			dto.setIsAvailable(true);
 
-				redirectAttributes.addFlashAttribute("successMsg", "Thêm sản phẩm mới thành công!");
-			} else {
-				adminProductService.updateProduct(form.getId(), form);
+			adminProductService.createProduct(dto);
 
-				redirectAttributes.addFlashAttribute("successMsg", "Cập nhật sản phẩm thành công!");
-			}
+			redirectAttributes.addFlashAttribute("successMessage", "Thêm sản phẩm thành công.");
+
+			return "redirect:/admin/products";
+
 		} catch (Exception e) {
-			redirectAttributes.addFlashAttribute("errorMsg", "Có lỗi xảy ra: " + e.getMessage());
+			model.addAttribute("errorMessage", getErrorMessage(e, "Không thể thêm sản phẩm."));
+			model.addAttribute("form", form);
+			model.addAttribute("categories", adminProductService.getAllCategories());
+			model.addAttribute("isEdit", false);
+
+			return "admin/products/form";
+		}
+	}
+
+	// Hiển thị form sửa
+	@GetMapping("/{id}/edit")
+	public String editForm(@PathVariable Integer id, Model model, RedirectAttributes redirectAttributes) {
+
+		try {
+			Product product = adminProductService.getProductById(id);
+
+			ProductFormDto form = new ProductFormDto();
+			form.setId(product.getId());
+			form.setName(product.getName());
+			form.setDescription(product.getDescription());
+			form.setBasePrice(product.getBasePrice());
+
+			if (product.getCategory() != null) {
+				form.setCategoryId(product.getCategory().getId());
+			}
+
+			model.addAttribute("form", form);
+			model.addAttribute("product", product);
+			model.addAttribute("categories", adminProductService.getAllCategories());
+			model.addAttribute("isEdit", true);
+
+			return "admin/products/form";
+
+		} catch (Exception e) {
+			redirectAttributes.addFlashAttribute("errorMessage", getErrorMessage(e, "Không tìm thấy sản phẩm."));
+
+			return "redirect:/admin/products";
+		}
+	}
+
+	// Xử lý sửa sản phẩm
+	@PostMapping("/{id}/edit")
+	public String update(@PathVariable Integer id, @ModelAttribute("form") ProductFormDto form, Model model,
+			RedirectAttributes redirectAttributes) {
+
+		try {
+			ProductDto dto = toProductDto(form);
+			dto.setId(id);
+
+			// null nghĩa là không thay đổi trạng thái hiện tại
+			dto.setIsAvailable(null);
+
+			adminProductService.updateProduct(id, dto);
+
+			redirectAttributes.addFlashAttribute("successMessage", "Cập nhật sản phẩm thành công.");
+
+			return "redirect:/admin/products";
+
+		} catch (Exception e) {
+			model.addAttribute("errorMessage", getErrorMessage(e, "Không thể cập nhật sản phẩm."));
+			model.addAttribute("form", form);
+			model.addAttribute("product", safeGetProduct(id));
+			model.addAttribute("categories", adminProductService.getAllCategories());
+			model.addAttribute("isEdit", true);
+
+			return "admin/products/form";
+		}
+	}
+
+	// Bật / tắt sản phẩm
+	@PostMapping("/{id}/availability")
+	public String toggleAvailability(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
+
+		try {
+			Product product = adminProductService.getProductById(id);
+
+			ProductDto dto = ProductDto.builder().id(product.getId()).name(product.getName())
+					.description(product.getDescription()).basePrice(product.getBasePrice())
+					.categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
+					.isAvailable(!Boolean.TRUE.equals(product.getIsAvailable())).build();
+
+			adminProductService.updateProduct(id, dto);
+
+			redirectAttributes.addFlashAttribute("successMessage", "Đã cập nhật trạng thái sản phẩm.");
+
+		} catch (Exception e) {
+			redirectAttributes.addFlashAttribute("errorMessage",
+					getErrorMessage(e, "Không thể đổi trạng thái sản phẩm."));
 		}
 
 		return "redirect:/admin/products";
 	}
 
-	@PostMapping("/products/delete/{id}")
-	public String deleteProduct(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
+	// Xóa sản phẩm
+	@PostMapping("/{id}/delete")
+	public String delete(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 
 		try {
 			adminProductService.deleteProduct(id);
 
-			redirectAttributes.addFlashAttribute("successMsg", "Đã xóa sản phẩm thành công!");
+			redirectAttributes.addFlashAttribute("successMessage", "Xóa sản phẩm thành công.");
 
 		} catch (Exception e) {
-			e.printStackTrace();
-
-			redirectAttributes.addFlashAttribute("errorMsg", "Lỗi khi xóa sản phẩm: " + e.getMessage());
+			redirectAttributes.addFlashAttribute("errorMessage",
+					getErrorMessage(e, "Không thể xóa sản phẩm. " + "Sản phẩm có thể đang được sử dụng."));
 		}
 
 		return "redirect:/admin/products";
 	}
 
-	// ==================== QUAN LY DANH MUC ====================
-
-	@GetMapping("/categories")
-	public String listCategories(Model model) {
-		model.addAttribute("categories", adminProductService.getAllCategories());
-		model.addAttribute("categoryDTO", new CategoryFormDto());
-
-		return "admin/categories/index";
-	}
-
-	@PostMapping("/categories/save")
-	public String saveCategory(@ModelAttribute("categoryDTO") CategoryFormDto categoryDTO,
-			RedirectAttributes redirectAttributes) {
-
-		try {
-			adminProductService.saveCategory(categoryDTO);
-			redirectAttributes.addFlashAttribute("successMsg", "Lưu danh mục thành công!");
-		} catch (Exception e) {
-			redirectAttributes.addFlashAttribute("errorMsg", "Không thể lưu danh mục: " + e.getMessage());
+	private ProductDto toProductDto(ProductFormDto form) {
+		if (form.getName() == null || form.getName().isBlank()) {
+			throw new IllegalArgumentException("Tên sản phẩm không được để trống.");
 		}
 
-		return "redirect:/admin/categories";
-	}
-
-	@PostMapping("/categories/delete/{id}")
-	public String deleteCategory(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
-
-		try {
-			adminProductService.deleteCategory(id);
-			redirectAttributes.addFlashAttribute("successMsg", "Đã xóa danh mục thành công!");
-		} catch (Exception e) {
-			redirectAttributes.addFlashAttribute("errorMsg",
-					"Không thể xóa danh mục. Hãy kiểm tra xem có sản phẩm đang sử dụng danh mục này không.");
+		if (form.getName().trim().length() > 150) {
+			throw new IllegalArgumentException("Tên sản phẩm không được vượt quá 150 ký tự.");
 		}
 
-		return "redirect:/admin/categories";
+		if (form.getBasePrice() == null || form.getBasePrice().signum() <= 0) {
+			throw new IllegalArgumentException("Giá sản phẩm phải lớn hơn 0.");
+		}
+
+		if (form.getCategoryId() == null) {
+			throw new IllegalArgumentException("Vui lòng chọn danh mục sản phẩm.");
+		}
+
+		return ProductDto.builder().id(form.getId()).name(form.getName().trim()).description(form.getDescription())
+				.basePrice(form.getBasePrice()).categoryId(form.getCategoryId()).imageFile(form.getImageFile()).build();
+	}
+
+	private Product safeGetProduct(Integer id) {
+		try {
+			return adminProductService.getProductById(id);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private String getErrorMessage(Exception e, String fallback) {
+		if (e instanceof IllegalArgumentException || e instanceof IllegalStateException) {
+			return e.getMessage();
+		}
+
+		// Ghi chi tiết lỗi vào console để chẩn đoán
+		e.printStackTrace();
+		return fallback;
 	}
 }
