@@ -2,344 +2,142 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/user-layout :: main('Thực đơn - UTETra', ~{::#menu-content})}">
 
+<!--
+	TRANG THỰC ĐƠN - ai cũng xem được (Guest, User, Manager, Admin):
+	TOÀN BỘ món đang bán, xếp theo từng danh mục như tờ menu ở quán.
+	- Thanh danh mục (dính trên đầu khi cuộn): bấm để cuộn tới danh mục (#cat-{id})
+	- Tìm kiếm theo tên + sắp xếp (mặc định / bán chạy / mới nhất / giá)
+	- Món nổi bật (bán chạy, mới, đánh giá, yêu thích) nằm ở TRANG CHỦ, không lặp lại ở đây
+	cardMode (HomeController): buy = USER chọn món | guest = "+" dẫn tới đăng nhập | view = Manager/Admin chỉ xem
+-->
 <body>
 	<div id="menu-content">
 
-		<!-- TIÊU ĐỀ -->
-		<section class="bg-white rounded-4 shadow-sm p-4 mb-4">
-			<div
-				class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-				<div>
+		<!-- TIÊU ĐỀ + TÌM KIẾM -->
+		<section id="thuc-don" class="bg-white rounded-4 shadow-sm p-4 mb-3" style="scroll-margin-top: 90px;">
+			<div class="row g-3 align-items-end">
+				<div class="col-lg-5">
 					<span class="badge bg-success mb-2">UTETra</span>
-					<h1 class="fw-bold text-success mb-2">Thực đơn</h1>
-					<p class="text-muted mb-0">Khám phá và lựa chọn đồ uống yêu
-						thích của bạn.</p>
+					<h1 class="fw-bold text-success mb-1">Thực đơn</h1>
+					<p class="text-muted mb-0" th:if="${cardMode == 'buy'}">
+						<strong th:text="${totalItems}">40</strong> món. Bấm <i class="bi bi-plus-circle"></i> để chọn size, topping và thêm vào giỏ.</p>
+					<p class="text-muted mb-0" th:if="${cardMode == 'guest'}">
+						<strong th:text="${totalItems}">40</strong> món. <a th:href="@{/auth/login}" class="link-success fw-semibold">Đăng nhập</a>
+						để đặt món.</p>
+					<p class="text-muted mb-0" th:if="${cardMode == 'view'}">
+						<strong th:text="${totalItems}">40</strong> món. Bạn đang xem với vai trò quản lý: chỉ xem, không đặt món.</p>
 				</div>
 
-				<a th:href="@{/}" class="btn btn-outline-success"> <i
-					class="bi bi-house me-1"></i> Trang chủ
+				<div class="col-lg-7">
+					<form id="menuFilterForm" th:action="@{/menu}" method="get" class="row g-2">
+						<div class="col-12 col-md-7">
+							<div class="input-group">
+								<span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+								<input type="search" id="keyword" name="keyword" class="form-control"
+									placeholder="Tìm món, vd: trà đào..." autocomplete="off" th:value="${keyword}">
+							</div>
+						</div>
+						<div class="col-12 col-md-5">
+							<select id="sortBy" name="sortBy" class="form-select" aria-label="Sắp xếp">
+								<option value="default" th:selected="${sortBy == 'default'}">Sắp xếp: mặc định</option>
+								<option value="sold" th:selected="${sortBy == 'sold'}">Bán chạy</option>
+								<option value="newest" th:selected="${sortBy == 'newest'}">Mới nhất</option>
+								<option value="price_asc" th:selected="${sortBy == 'price_asc'}">Giá tăng dần</option>
+								<option value="price_desc" th:selected="${sortBy == 'price_desc'}">Giá giảm dần</option>
+							</select>
+						</div>
+					</form>
+				</div>
+			</div>
+
+			<div class="mt-3" th:if="${!#strings.isEmpty(keyword)}">
+				<span class="text-muted">Kết quả cho "<strong th:text="${keyword}">trà</strong>": </span>
+				<strong th:text="${totalItems}">0</strong> món ·
+				<a th:href="@{/menu}" class="link-success">Xoá tìm kiếm</a>
+			</div>
+		</section>
+
+		<!-- THANH DANH MỤC (dính trên đầu khi cuộn) -->
+		<nav class="menu-cats bg-light py-2 mb-3" th:unless="${#lists.isEmpty(sections)}" aria-label="Danh mục">
+			<div class="d-flex flex-nowrap overflow-auto gap-2 pb-1">
+				<a th:each="sec : ${sections}" th:href="'#cat-' + ${sec.categoryId}"
+					class="btn btn-outline-success btn-sm rounded-pill text-nowrap menu-cat-link">
+					<span th:text="${sec.categoryName}">Trà sữa</span>
+					<span class="badge rounded-pill text-bg-success ms-1" th:text="${#lists.size(sec.items)}">10</span>
 				</a>
 			</div>
-		</section>
+		</nav>
 
-		<!-- TÌM KIẾM, LỌC VÀ SẮP XẾP -->
-		<section id="thuc-don" class="card border-0 shadow-sm rounded-4 mb-4"
-			style="scroll-margin-top: 90px;">
-
-			<div class="card-body p-3 p-md-4">
-
-				<form id="menuFilterForm" th:action="@{/menu}" method="get"
-					class="row g-3 align-items-end">
-
-					<!-- Tìm kiếm -->
-					<div class="col-12 col-md-5">
-						<label for="keyword" class="form-label fw-semibold"> Tìm
-							kiếm sản phẩm </label>
-
-						<div class="input-group">
-							<span class="input-group-text bg-white"> <i
-								class="bi bi-search"></i>
-							</span> <input type="search" id="keyword" name="keyword"
-								class="form-control" placeholder="Nhập tên đồ uống..."
-								autocomplete="off" th:value="${keyword}">
-						</div>
-					</div>
-
-					<!-- Lọc danh mục -->
-					<div class="col-12 col-md-3">
-						<label for="categoryId" class="form-label fw-semibold">
-							Danh mục </label> <select id="categoryId" name="categoryId"
-							class="form-select">
-
-							<option value="">Tất cả danh mục</option>
-
-							<option th:each="category : ${categories}"
-								th:value="${category.id}" th:text="${category.name}"
-								th:selected="${selectedCategory != null and selectedCategory == category.id}">
-							</option>
-						</select>
-					</div>
-
-					<!-- Sắp xếp -->
-					<div class="col-12 col-md-2">
-						<label for="sortBy" class="form-label fw-semibold"> Sắp
-							xếp </label> <select id="sortBy" name="sortBy" class="form-select">
-
-							<option value="newest" th:selected="${sortBy == 'newest'}">
-								Mới nhất</option>
-
-							<option value="sold" th:selected="${sortBy == 'sold'}">
-								Bán chạy</option>
-
-							<option value="price_asc" th:selected="${sortBy == 'price_asc'}">
-								Giá tăng dần</option>
-
-							<option value="price_desc"
-								th:selected="${sortBy == 'price_desc'}">Giá giảm dần</option>
-						</select>
-					</div>
-
-					<!-- Nút lọc -->
-					<div class="col-12 col-md-2 d-grid">
-						<input type="hidden" name="page" value="0">
-
-						<button type="submit" class="btn btn-success">
-							<i class="bi bi-funnel me-1"></i> Lọc sản phẩm
-						</button>
-					</div>
-
-				</form>
+		<!-- TỪNG DANH MỤC -->
+		<section th:each="sec : ${sections}" th:id="'cat-' + ${sec.categoryId}" class="menu-section mb-5">
+			<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3 border-bottom pb-2">
+				<h2 class="h4 fw-bold mb-0">
+					<span th:text="${sec.categoryName}">Trà sữa</span>
+					<small class="text-muted fw-normal fs-6" th:text="|· ${#lists.size(sec.items)} món|">· 10 món</small>
+				</h2>
+				<a th:if="${sec.categoryId > 0}" th:href="@{/category/{id}(id=${sec.categoryId})}"
+					class="small link-success">Trang danh mục <i class="bi bi-chevron-right"></i></a>
 			</div>
-		</section>
-
-		<!-- TIÊU ĐỀ DANH SÁCH -->
-		<section class="mb-4">
-
-			<div
-				class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-				<h2 class="h4 fw-bold mb-0">Danh sách đồ uống</h2>
-
-				<span class="text-muted small"> Tổng <strong
-					th:text="${totalItems}">0</strong> sản phẩm
-				</span>
-			</div>
-
-			<!-- DANH SÁCH SẢN PHẨM -->
-			<div class="row g-3 g-md-4"
-				th:if="${products != null and !products.isEmpty()}">
-
-				<div class="col-6 col-md-4 col-lg-3" th:each="p : ${products}">
-
-					<div
-						class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-
-						<!-- Ảnh sản phẩm -->
-						<div class="bg-light" style="height: 190px; overflow: hidden;">
-
-							<img
-								th:if="${p.imageCloudinaryId != null and !#strings.isEmpty(p.imageCloudinaryId)}"
-								th:src="${p.imageCloudinaryId}" th:alt="${p.name}"
-								class="w-100 h-100" style="object-fit: cover;">
-
-							<div
-								th:unless="${p.imageCloudinaryId != null and !#strings.isEmpty(p.imageCloudinaryId)}"
-								class="w-100 h-100 d-flex justify-content-center align-items-center text-secondary">
-
-								<i class="bi bi-cup-hot" style="font-size: 3rem;"></i>
-							</div>
-						</div>
-
-						<!-- Nội dung sản phẩm -->
-						<div class="card-body d-flex flex-column">
-
-							<h3 class="h6 fw-bold mb-2" th:text="${p.name}">Tên sản phẩm
-							</h3>
-
-							<p class="text-muted small mb-3"
-								th:if="${p.description != null and !#strings.isEmpty(p.description)}"
-								th:text="${p.description}">Mô tả sản phẩm</p>
-
-							<div
-								class="mt-auto pt-2 d-flex justify-content-between align-items-center gap-2">
-
-								<!-- Giá -->
-								<span class="fw-bold text-success"
-									th:if="${p.basePrice != null}"
-									th:text="${#numbers.formatDecimal(p.basePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">
-									35,000 đ </span> <span class="text-muted small"
-									th:unless="${p.basePrice != null}"> Chưa có giá </span>
-
-								<!-- Nút mở modal -->
-								<button type="button"
-									class="btn btn-success btn-sm rounded-circle d-inline-flex align-items-center justify-content-center js-open-product"
-									style="width: 36px; height: 36px; flex-shrink: 0;"
-									data-bs-toggle="modal" data-bs-target="#productModal"
-									th:attr="data-id=${p.id},
-                                             data-name=${p.name},
-                                             data-price=${p.basePrice},
-                                             data-image=${p.imageCloudinaryId},
-                                             data-description=${p.description}"
-									th:aria-label="'Chọn ' + ${p.name}">
-
-									<i class="bi bi-plus-lg"></i>
-								</button>
-
-							</div>
-						</div>
-					</div>
+			<div class="row g-3 g-md-4">
+				<div class="col-6 col-md-4 col-lg-3" th:each="p : ${sec.items}">
+					<div th:replace="~{fragments/product-card :: card(${p}, ${cardMode})}"></div>
 				</div>
 			</div>
-
-			<!-- KHÔNG CÓ SẢN PHẨM -->
-			<div class="card border-0 shadow-sm rounded-4"
-				th:if="${products == null or products.isEmpty()}">
-
-				<div class="card-body text-center py-5">
-					<i class="bi bi-search text-success" style="font-size: 3rem;"></i>
-
-					<h3 class="h5 mt-3">Không tìm thấy sản phẩm</h3>
-
-					<p class="text-muted mb-3">Hãy thử từ khóa hoặc danh mục khác.
-					</p>
-
-					<a th:href="@{/menu}" class="btn btn-outline-success"> <i
-						class="bi bi-arrow-clockwise me-1"></i> Xem tất cả sản phẩm
-					</a>
-				</div>
-			</div>
-
-			<!-- THÔNG TIN PHÂN TRANG -->
-			<div
-				class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4"
-				th:if="${totalPages != null and totalPages > 0}">
-
-				<span class="text-muted small"> Trang <strong
-					th:text="${currentPage + 1}">1</strong> / <strong
-					th:text="${totalPages}">1</strong>
-				</span> <span class="text-muted small"> <strong
-					th:text="${totalItems}">0</strong> sản phẩm
-				</span>
-			</div>
-
-			<!-- PHÂN TRANG -->
-			<nav class="mt-3" aria-label="Phân trang"
-				th:if="${totalPages != null and totalPages > 1}">
-
-				<ul class="pagination justify-content-center flex-wrap">
-
-					<!-- Trang trước -->
-					<li class="page-item"
-						th:classappend="${currentPage <= 0} ? 'disabled' : ''"><a
-						class="page-link" th:if="${currentPage > 0}"
-						th:href="@{/menu(keyword=${keyword},categoryId=${selectedCategory},sortBy=${sortBy},page=${currentPage - 1})}">
-
-							<i class="bi bi-chevron-left"></i> Trước
-					</a> <span class="page-link" th:if="${currentPage <= 0}"> <i
-							class="bi bi-chevron-left"></i> Trước
-					</span></li>
-
-					<!-- Số trang -->
-					<li class="page-item"
-						th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}"
-						th:classappend="${pageNumber == currentPage} ? 'active' : ''">
-
-						<a class="page-link"
-						th:href="@{/menu(keyword=${keyword},categoryId=${selectedCategory},sortBy=${sortBy},page=${pageNumber})}"
-						th:text="${pageNumber + 1}"> 1 </a>
-					</li>
-
-					<!-- Trang sau -->
-					<li class="page-item"
-						th:classappend="${currentPage >= totalPages - 1} ? 'disabled' : ''">
-
-						<a class="page-link" th:if="${currentPage < totalPages - 1}"
-						th:href="@{/menu(keyword=${keyword},categoryId=${selectedCategory},sortBy=${sortBy},page=${currentPage + 1})}">
-
-							Sau <i class="bi bi-chevron-right"></i>
-					</a> <span class="page-link" th:if="${currentPage >= totalPages - 1}">
-							Sau <i class="bi bi-chevron-right"></i>
-					</span>
-					</li>
-
-				</ul>
-			</nav>
-
 		</section>
 
-		<!-- MODAL CHỌN MÓN -->
+		<!-- KHÔNG CÓ MÓN -->
+		<div class="card border-0 shadow-sm rounded-4" th:if="${#lists.isEmpty(sections)}">
+			<div class="card-body text-center py-5">
+				<i class="bi bi-search text-success" style="font-size: 3rem;"></i>
+				<h3 class="h5 mt-3">Không tìm thấy món nào</h3>
+				<p class="text-muted mb-3">Hãy thử từ khoá khác.</p>
+				<a th:href="@{/menu}" class="btn btn-outline-success"><i class="bi bi-arrow-clockwise me-1"></i> Xem toàn bộ thực đơn</a>
+			</div>
+		</div>
+
+		<!-- MODAL CHỌN MÓN (chỉ nút "+" của USER mới mở) -->
 		<div th:replace="~{fragments/product-modal :: productModal}"></div>
 
-		<!-- TỰ ĐỘNG TÌM KIẾM, LỌC VÀ SẮP XẾP -->
+		<style>
+			.menu-cats { position: sticky; top: 62px; z-index: 1010; }
+			.menu-section { scroll-margin-top: 130px; }
+			.menu-cat-link.active { background-color: #198754; color: #fff; }
+			.menu-cat-link.active .badge { background-color: #fff !important; color: #198754 !important; }
+		</style>
+
 		<script>
-			(function() {
-				function initMenuFilter() {
-					const form = document.getElementById('menuFilterForm');
-					const keyword = document.getElementById('keyword');
-					const category = document.getElementById('categoryId');
-					const sortBy = document.getElementById('sortBy');
-					const page = form ? form.querySelector('[name="page"]')
-							: null;
-
-					if (!form || form.dataset.filterReady === 'true') {
-						return;
-					}
-
-					form.dataset.filterReady = 'true';
-
-					let timer = null;
-					let lastSubmittedKeyword = keyword ? keyword.value.trim()
-							: '';
-
-					// Luôn quay về trang đầu khi thay đổi điều kiện lọc.
-					function resetPage() {
-						if (page) {
-							page.value = '0';
-						}
-					}
-
-					// Tự động tìm kiếm sau khi ngừng gõ 400ms.
-					if (keyword) {
-						keyword.addEventListener('input', function() {
-							clearTimeout(timer);
-
-							timer = setTimeout(function() {
-								const value = keyword.value.trim();
-
-								if (value === lastSubmittedKeyword) {
-									return;
-								}
-
-								lastSubmittedKeyword = value;
-								resetPage();
-								form.requestSubmit();
-							}, 400);
-						});
-
-						// Nhấn Enter để tìm ngay.
-						keyword.addEventListener('keydown', function(event) {
-							if (event.key === 'Enter') {
-								event.preventDefault();
-								clearTimeout(timer);
-								resetPage();
-								lastSubmittedKeyword = keyword.value.trim();
-								form.requestSubmit();
-							}
-						});
-					}
-
-					// Tự động lọc khi chọn danh mục.
-					if (category) {
-						category.addEventListener('change', function() {
-							clearTimeout(timer);
-							resetPage();
-							form.requestSubmit();
-						});
-					}
-
-					// Tự động sắp xếp khi chọn kiểu sắp xếp.
-					if (sortBy) {
-						sortBy.addEventListener('change', function() {
-							clearTimeout(timer);
-							resetPage();
-							form.requestSubmit();
-						});
-					}
-
-					// Nút lọc thủ công vẫn hoạt động.
-					form.addEventListener('submit', function() {
+			(function () {
+				// TÌM KIẾM: tự gửi sau khi ngừng gõ 400ms; đổi sắp xếp thì gửi ngay
+				const form = document.getElementById('menuFilterForm');
+				const keyword = document.getElementById('keyword');
+				const sortBy = document.getElementById('sortBy');
+				let timer = null;
+				let last = keyword ? keyword.value.trim() : '';
+				if (keyword) {
+					keyword.addEventListener('input', function () {
 						clearTimeout(timer);
-						lastSubmittedKeyword = keyword ? keyword.value.trim()
-								: '';
-						resetPage();
+						timer = setTimeout(function () {
+							if (keyword.value.trim() === last) return;
+							last = keyword.value.trim();
+							form.requestSubmit();
+						}, 400);
 					});
 				}
+				if (sortBy) sortBy.addEventListener('change', function () { form.requestSubmit(); });
 
-				if (document.readyState === 'loading') {
-					document.addEventListener('DOMContentLoaded',
-							initMenuFilter);
-				} else {
-					initMenuFilter();
-				}
+				// THANH DANH MỤC: tô sáng danh mục đang xem khi cuộn
+				const links = Array.from(document.querySelectorAll('.menu-cat-link'));
+				const sections = Array.from(document.querySelectorAll('.menu-section'));
+				if (!links.length || !('IntersectionObserver' in window)) return;
+				const observer = new IntersectionObserver(function (entries) {
+					entries.forEach(function (entry) {
+						if (!entry.isIntersecting) return;
+						links.forEach(function (a) {
+							a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id);
+						});
+					});
+				}, { rootMargin: '-140px 0px -60% 0px' });
+				sections.forEach(function (s) { observer.observe(s); });
 			})();
 		</script>
 

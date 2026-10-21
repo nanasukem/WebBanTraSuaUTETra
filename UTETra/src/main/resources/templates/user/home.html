@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Trang chủ - UTETra', ~{::#user-home})}">
+
+<!--
+	TRANG CHỦ TRƯNG BÀY khi đã đăng nhập (toàn bộ món nằm ở trang Thực đơn /menu).
+	- USER: đầy đủ (đơn hàng, đặt món)  - MANAGER/ADMIN: chỉ xem (role, cardMode = 'view')
+	Theo đề (User):
+	1. Lịch sử mua hàng theo trạng thái: đơn mới, đã xác nhận, đang giao, đã giao, huỷ, trả hàng - hoàn tiền
+	2. Danh mục -> trang sản phẩm theo danh mục (/category/{id})
+	3. 20 sản phẩm mới / bán chạy / đánh giá / yêu thích nhất, mỗi khối PHÂN TRANG 8 món
+	   (trang sau tải bằng /menu/highlight/{type}?page=n - xem HomeController.highlightPage)
+	Bấm "+" trên món -> chọn size/đường/đá/topping -> thêm vào giỏ (lưu database)
+-->
+<body>
+	<div id="user-home">
+
+		<!-- ==================== CHÀO ==================== -->
+		<section class="p-4 p-md-5 mb-4 rounded-4 text-white"
+			style="background: linear-gradient(135deg, #198754, #20c997);">
+			<div class="row align-items-center g-3">
+				<div class="col-lg-8">
+					<span class="badge bg-light text-success mb-2">
+						<i class="bi me-1" th:classappend="${isBuyer} ? 'bi-person-check' : 'bi-shield-check'"></i>
+						<span th:text="${role == 'ADMIN'} ? 'Quản trị viên' : (${role == 'MANAGER'} ? 'Quản lý chi nhánh' : 'Thành viên UTETra')">Thành viên UTETra</span>
+					</span>
+					<h1 class="fw-bold mb-2">Xin chào,
+						<span th:text="${me.fullName != null and !#strings.isEmpty(me.fullName) ? me.fullName : me.username}">bạn</span>!</h1>
+					<p class="lead mb-3" th:if="${isBuyer}">Hôm nay bạn muốn uống gì? Chọn món, thêm vào giỏ và đặt hàng ngay.</p>
+					<p class="lead mb-3" th:unless="${isBuyer}">Đây là trang chủ khách hàng đang thấy (chế độ chỉ xem, không đặt món).</p>
+					<div class="d-flex flex-wrap gap-2">
+						<a th:href="@{/menu}" class="btn btn-light text-success fw-bold">
+							<i class="bi bi-journal-richtext me-1"></i> Xem thực đơn</a>
+						<a th:if="${isBuyer}" th:href="@{/cart}" class="btn btn-warning fw-bold">
+							<i class="bi bi-cart3 me-1"></i> Giỏ hàng</a>
+						<a th:if="${role == 'MANAGER'}" th:href="@{/manager/dashboard}" class="btn btn-warning fw-bold">
+							<i class="bi bi-speedometer2 me-1"></i> Về trang quản lý</a>
+						<a th:if="${role == 'ADMIN'}" th:href="@{/admin/dashboard}" class="btn btn-warning fw-bold">
+							<i class="bi bi-speedometer2 me-1"></i> Về trang quản trị</a>
+					</div>
+				</div>
+				<div class="col-lg-4 text-center d-none d-lg-block">
+					<i class="bi bi-cup-hot" style="font-size: 110px;"></i>
+				</div>
+			</div>
+		</section>
+
+		<!-- ==================== ĐƠN HÀNG THEO TRẠNG THÁI (chỉ USER) ==================== -->
+		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" th:if="${isBuyer}">
+			<div class="d-flex justify-content-between align-items-center mb-3">
+				<h2 class="h5 fw-bold mb-0"><i class="bi bi-receipt text-success me-1"></i> Đơn hàng của tôi</h2>
+				<a th:href="@{/orders}" class="small link-success fw-semibold">Xem lịch sử mua hàng <i class="bi bi-chevron-right"></i></a>
+			</div>
+			<div class="row g-2 text-center">
+				<div class="col-4 col-md-2" th:each="t : ${orderTabs}"
+					th:with="n=${orderCounts[t.name()] != null ? orderCounts[t.name()] : 0}">
+					<a th:href="@{/orders(tab=${t.name().toLowerCase()})}"
+						class="d-block text-decoration-none text-dark rounded-3 border py-3 h-100 position-relative">
+						<i class="fs-3" th:classappend="${t.name() == 'PENDING'} ? 'bi bi-hourglass-split text-warning'
+							: (${t.name() == 'CONFIRMED'} ? 'bi bi-check2-circle text-primary'
+							: (${t.name() == 'SHIPPING'} ? 'bi bi-truck text-info'
+							: (${t.name() == 'DELIVERED'} ? 'bi bi-box-seam text-success'
+							: (${t.name() == 'CANCELLED'} ? 'bi bi-x-circle text-secondary'
+							: 'bi bi-arrow-counterclockwise text-danger'))))"></i>
+						<div class="small fw-semibold mt-1"
+							th:text="${t.name() == 'PENDING'} ? 'Đơn mới' : (${t.name() == 'RETURNED'} ? 'Trả hàng - hoàn tiền' : ${t.label})">Đơn mới</div>
+						<span th:if="${n > 0}" class="badge rounded-pill bg-danger position-absolute top-0 end-0 m-1"
+							th:text="${n}">1</span>
+					</a>
+				</div>
+			</div>
+		</section>
+
+		<!-- ==================== DANH MỤC ==================== -->
+		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4">
+			<h2 class="h5 fw-bold mb-3"><i class="bi bi-grid text-success me-1"></i> Danh mục</h2>
+			<div class="row g-2">
+				<div class="col-6 col-md-3" th:each="c : ${categories}">
+					<a th:href="@{/category/{id}(id=${c.id})}"
+						class="d-flex align-items-center gap-3 border rounded-3 p-3 text-decoration-none text-dark h-100 cat-tile">
+						<img th:if="${c.imageCloudinaryId != null and !#strings.isEmpty(c.imageCloudinaryId)}"
+							th:src="${c.imageCloudinaryId}" th:alt="${c.name}" class="rounded-circle"
+							style="width: 44px; height: 44px; object-fit: cover;" loading="lazy">
+						<span th:unless="${c.imageCloudinaryId != null and !#strings.isEmpty(c.imageCloudinaryId)}"
+							class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center"
+							style="width: 44px; height: 44px;"><i class="bi bi-cup-straw fs-5"></i></span>
+						<span>
+							<span class="d-block fw-semibold" th:text="${c.name}">Trà sữa</span>
+							<small class="text-muted" th:text="|${c.productCount} món|">10 món</small>
+						</span>
+					</a>
+				</div>
+			</div>
+		</section>
+
+		<!-- Lối tắt tới 4 khối -->
+		<div class="d-flex flex-wrap gap-2 mb-3">
+			<a href="#moi-nhat" class="btn btn-sm btn-outline-warning"><i class="bi bi-stars me-1"></i>Mới nhất</a>
+			<a href="#ban-chay" class="btn btn-sm btn-outline-danger"><i class="bi bi-fire me-1"></i>Bán chạy</a>
+			<a href="#danh-gia-cao" class="btn btn-sm btn-outline-primary"><i class="bi bi-star me-1"></i>Đánh giá cao</a>
+			<a href="#yeu-thich" class="btn btn-sm btn-outline-danger"><i class="bi bi-heart me-1"></i>Yêu thích nhất</a>
+		</div>
+
+		<!-- ==================== 20 MÓN NHẤT (phân trang 8 món / trang) ==================== -->
+		<div th:replace="~{fragments/product-card :: hlAjax('moi-nhat', 'newest', 'bi bi-stars text-warning',
+			'20 sản phẩm mới nhất', 'Những món vừa có trong thực đơn', ${newestPage}, ${cardMode})}"></div>
+
+		<div th:replace="~{fragments/product-card :: hlAjax('ban-chay', 'sold', 'bi bi-fire text-danger',
+			'20 sản phẩm bán chạy nhất', 'Những món được mua nhiều nhất', ${soldPage}, ${cardMode})}"></div>
+
+		<div th:replace="~{fragments/product-card :: hlAjax('danh-gia-cao', 'rating', 'bi bi-star-fill text-warning',
+			'20 sản phẩm đánh giá cao nhất', 'Điểm trung bình cao nhất từ khách đã mua', ${ratingPage}, ${cardMode})}"></div>
+
+		<div th:replace="~{fragments/product-card :: hlAjax('yeu-thich', 'favorite', 'bi bi-heart-fill text-danger',
+			'20 sản phẩm yêu thích nhất', 'Những món được bấm thích nhiều nhất', ${favoritePage}, ${cardMode})}"></div>
+
+		<!-- MODAL CHỌN MÓN (nút "+") -->
+		<div th:replace="~{fragments/product-modal :: productModal}"></div>
+
+		<style>
+			.cat-tile { transition: border-color .15s, background-color .15s; }
+			.cat-tile:hover { border-color: #198754 !important; background-color: #f0faf4; }
+		</style>
+
+		<!-- PHÂN TRANG 4 KHỐI: bấm số trang -> tải trang đó từ server, thay vào khối -->
+		<script>
+			document.addEventListener('click', async function (e) {
+				const btn = e.target.closest('.hl-ajax .hl-go');
+				if (!btn || btn.disabled) return;
+				const section = btn.closest('.hl-ajax');
+				const body = section.querySelector('.hl-body');
+				body.style.opacity = '0.5';
+				try {
+					const res = await fetch(section.dataset.url + '?page=' + encodeURIComponent(btn.dataset.page),
+						{ headers: { 'X-Requested-With': 'fetch' } });
+					if (!res.ok) throw new Error(res.status);
+					body.outerHTML = await res.text();
+					section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				} catch (err) {
+					body.style.opacity = '1';
+				}
+			});
+		</script>
+
+	</div>
+</body>
+</html>

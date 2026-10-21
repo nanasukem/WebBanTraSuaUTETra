@@ -49,8 +49,9 @@ public class SecurityConfiguration {
 								"/webjars/**", "/favicon.ico", "/error")
 						.permitAll()
 
-						// USER mới được truy cập thực đơn.
-						.requestMatchers("/menu", "/menu/**").hasRole("USER")
+						// Thực đơn, trang sản phẩm theo danh mục, trang Chi nhánh: ai cũng xem được (không cần đăng nhập).
+						// Mua hàng (giỏ, đặt hàng) vẫn chỉ USER - xem quy tắc bên dưới.
+						.requestMatchers("/menu", "/menu/**", "/category/**", "/branches").permitAll()
 
 						// Chức năng quản trị.
 						.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
@@ -69,9 +70,9 @@ public class SecurityConfiguration {
 						// Những đường dẫn còn lại cần đăng nhập.
 						.anyRequest().authenticated())
 
-				// Đăng nhập bằng form.
+				// Đăng nhập bằng form. Xong -> /login-success (HomeController): Admin/Manager vào trang quản lý, USER về trang chủ.
 				.formLogin(form -> form.loginPage("/auth/login").loginProcessingUrl("/auth/login")
-						.defaultSuccessUrl("/", true).failureUrl("/auth/login?error=true").permitAll())
+						.defaultSuccessUrl("/login-success", true).failureUrl("/auth/login?error=true").permitAll())
 
 				// Sử dụng session cho giao diện Thymeleaf.
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))

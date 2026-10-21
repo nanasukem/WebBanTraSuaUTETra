@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main(${category.name} + ' - UTETra', ~{::#category-content})}">
+
+<!--
+	TRANG SẢN PHẨM THEO DANH MỤC (đề - User): /category/{id}?sortBy=sold&page=0
+	Ai cũng xem được; chỉ USER bấm "+" để chọn món (cardMode giống trang Thực đơn).
+-->
+<body>
+	<div id="category-content">
+
+		<!-- Đường dẫn -->
+		<nav aria-label="breadcrumb" class="mb-3">
+			<ol class="breadcrumb mb-0">
+				<li class="breadcrumb-item"><a th:href="@{/}" class="link-success">Trang chủ</a></li>
+				<li class="breadcrumb-item"><a th:href="@{/menu} + '#thuc-don'" class="link-success">Thực đơn</a></li>
+				<li class="breadcrumb-item active" aria-current="page" th:text="${category.name}">Trà sữa</li>
+			</ol>
+		</nav>
+
+		<!-- Các danh mục -->
+		<div class="d-flex flex-wrap gap-2 mb-4">
+			<a th:each="c : ${categories}" th:href="@{/category/{id}(id=${c.id})}"
+				class="btn rounded-pill"
+				th:classappend="${c.id == category.id} ? 'btn-success' : 'btn-outline-success'">
+				<span th:text="${c.name}">Trà sữa</span>
+				<span class="badge rounded-pill ms-1"
+					th:classappend="${c.id == category.id} ? 'text-bg-light' : 'text-bg-success'"
+					th:text="${c.productCount}">10</span>
+			</a>
+		</div>
+
+		<!-- Tiêu đề + sắp xếp -->
+		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4">
+			<div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+				<div>
+					<h1 class="h3 fw-bold text-success mb-1" th:text="${category.name}">Trà sữa</h1>
+					<p class="text-muted mb-0"><strong th:text="${totalItems}">0</strong> món trong danh mục</p>
+				</div>
+				<form th:action="@{/category/{id}(id=${category.id})}" method="get" class="d-flex align-items-center gap-2">
+					<label for="sortBy" class="small text-muted text-nowrap">Sắp xếp</label>
+					<select id="sortBy" name="sortBy" class="form-select form-select-sm" onchange="this.form.submit()">
+						<option value="sold" th:selected="${sortBy == 'sold'}">Bán chạy</option>
+						<option value="newest" th:selected="${sortBy == 'newest'}">Mới nhất</option>
+						<option value="price_asc" th:selected="${sortBy == 'price_asc'}">Giá tăng dần</option>
+						<option value="price_desc" th:selected="${sortBy == 'price_desc'}">Giá giảm dần</option>
+					</select>
+				</form>
+			</div>
+		</section>
+
+		<!-- Danh sách món -->
+		<div class="row g-3 g-md-4" th:if="${!#lists.isEmpty(products)}">
+			<div class="col-6 col-md-4 col-lg-3" th:each="p : ${products}">
+				<div th:replace="~{fragments/product-card :: card(${p}, ${cardMode})}"></div>
+			</div>
+		</div>
+
+		<div class="card border-0 shadow-sm rounded-4" th:if="${#lists.isEmpty(products)}">
+			<div class="card-body text-center py-5">
+				<i class="bi bi-inbox text-success" style="font-size: 3rem;"></i>
+				<h3 class="h5 mt-3">Danh mục này chưa có món</h3>
+				<a th:href="@{/menu} + '#thuc-don'" class="btn btn-outline-success mt-2">Xem toàn bộ thực đơn</a>
+			</div>
+		</div>
+
+		<!-- Phân trang -->
+		<nav class="mt-4" aria-label="Phân trang" th:if="${totalPages > 1}">
+			<ul class="pagination justify-content-center flex-wrap">
+				<li class="page-item" th:classappend="${currentPage <= 0} ? 'disabled'">
+					<a class="page-link" th:href="@{/category/{id}(id=${category.id},sortBy=${sortBy},page=${currentPage - 1})}">
+						<i class="bi bi-chevron-left"></i> Trước</a>
+				</li>
+				<li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+					th:classappend="${i == currentPage} ? 'active'">
+					<a class="page-link" th:href="@{/category/{id}(id=${category.id},sortBy=${sortBy},page=${i})}"
+						th:text="${i + 1}">1</a>
+				</li>
+				<li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+					<a class="page-link" th:href="@{/category/{id}(id=${category.id},sortBy=${sortBy},page=${currentPage + 1})}">
+						Sau <i class="bi bi-chevron-right"></i></a>
+				</li>
+			</ul>
+		</nav>
+
+		<!-- MODAL CHỌN MÓN (chỉ nút "+" của USER mới mở) -->
+		<div th:replace="~{fragments/product-modal :: productModal}"></div>
+
+	</div>
+</body>
+</html>
