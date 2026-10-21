@@ -15,8 +15,8 @@
 			</p>
 		</div>
 
-		<a th:href="@{/manager/branches/{id}(id=${branch.id})}" class="btn btn-outline-secondary">
-			<i class="bi bi-arrow-left me-1"></i>Chi tiết chi nhánh
+		<a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary">
+			<i class="bi bi-arrow-left me-1"></i>Tổng quan
 		</a>
 	</div>
 
@@ -32,7 +32,7 @@
 
 	<div th:if="${branch.status.name() != 'APPROVED'}" class="alert alert-warning">
 		<i class="bi bi-exclamation-triangle me-2"></i>
-		Chi nhánh chưa được duyệt hoặc đang tạm ngưng.
+		Chi nhánh đang tạm ngưng hoạt động.
 		Không thể thay đổi trạng thái sản phẩm.
 	</div>
 
@@ -102,7 +102,7 @@
 
 							<span th:if="${branch.status.name() != 'APPROVED'
                                 and product.isAvailable}" class="text-muted small">
-								Chi nhánh chưa hoạt động
+								Chi nhánh đang tạm ngưng
 							</span>
 						</td>
 					</tr>

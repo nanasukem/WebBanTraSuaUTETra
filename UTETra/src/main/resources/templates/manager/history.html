@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/user-layout :: main('Đơn hàng của shop - UTETra', ~{::#manager-history})}">
+	th:replace="~{layout/admin-layout :: main('Đơn hàng của chi nhánh - UTETra', 'orders', ~{::#manager-history})}">
 
 <body>
 	<div id="manager-history">
@@ -11,10 +11,10 @@
 .vh-card { border: 0; border-radius: 1rem; box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06); }
 		</style>
 
-		<!-- Tiêu đề + chọn chi nhánh + về quầy -->
+		<!-- Tiêu đề + chọn chi nhánh + nút quay lại -->
 		<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
 			<h1 class="h4 fw-bold text-success mb-0 me-2">
-				<i class="bi bi-receipt-cutoff me-1"></i>Đơn hàng của shop
+				<i class="bi bi-receipt-cutoff me-1"></i>Đơn hàng của chi nhánh
 			</h1>
 			<form th:if="${data != null and #lists.size(branches) > 1}" method="get" th:action="@{/manager/orders/history}">
 				<input type="hidden" name="status" th:value="${data.status}">
@@ -24,9 +24,8 @@
 				</select>
 			</form>
 			<span th:if="${data != null and #lists.size(branches) == 1}" class="fw-semibold" th:text="${data.branchName}"></span>
-			<a th:if="${data != null}" th:href="@{/manager/orders(branchId=${data.branchId})}"
-				class="btn btn-sm btn-warning fw-bold ms-auto">
-				<i class="bi bi-bell me-1"></i> Về Quầy đơn hàng (nhận đơn trực tiếp)
+			<a th:href="@{/manager/dashboard}" class="btn btn-sm btn-outline-secondary ms-auto">
+				<i class="bi bi-arrow-left me-1"></i> Tổng quan
 			</a>
 		</div>
 

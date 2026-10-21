@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/user-layout :: main('Quầy đơn hàng - UTETra', ~{::#manager-orders})}">
+	th:replace="~{layout/admin-layout :: main('Quầy đơn hàng - UTETra', 'orders', ~{::#manager-orders})}">
 
 <body>
 	<div id="manager-orders" th:attr="data-branch-id=${branchId}">
@@ -70,6 +70,9 @@
 			<span th:if="${#lists.size(branches) == 1}" class="fw-semibold" th:text="${branches[0].name}"></span>
 			<span id="vo-live" class="badge text-bg-secondary">Đang kết nối...</span>
 			<div class="ms-auto d-flex gap-2">
+				<a th:href="@{/manager/dashboard}" class="btn btn-sm btn-outline-secondary">
+					<i class="bi bi-arrow-left me-1"></i> Tổng quan
+				</a>
 				<a th:if="${branchId != null}" th:href="@{/manager/orders/history(branchId=${branchId})}"
 					class="btn btn-sm btn-outline-success">
 					<i class="bi bi-list-ul me-1"></i> Tất cả đơn theo trạng thái

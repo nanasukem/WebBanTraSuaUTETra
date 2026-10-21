@@ -44,10 +44,10 @@
 					<i class="bi bi-speedometer2 me-1"></i> Quản trị Admin
 				</a>
 
-				<!-- Quầy đơn hàng dành cho Manager (đơn khách đặt ở shop mình) -->
+				<!-- Manager đang xem trang của khách (thực đơn): nút quay về trang quản lý chi nhánh -->
 				<a th:if="${isManager}"
-					th:href="@{/manager/orders}" class="btn btn-warning btn-sm fw-bold">
-					<i class="bi bi-bell me-1"></i> Quầy đơn hàng
+					th:href="@{/manager/dashboard}" class="btn btn-warning btn-sm fw-bold">
+					<i class="bi bi-speedometer2 me-1"></i> Về trang quản lý
 				</a>
 
 				<!-- Đơn hàng của tôi: chỉ khách hàng (USER) -->
