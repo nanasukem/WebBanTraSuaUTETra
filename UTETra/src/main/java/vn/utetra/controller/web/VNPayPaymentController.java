@@ -1,3 +1,4 @@
+
 package vn.utetra.controller.web;
 
 import jakarta.servlet.http.HttpSession;
@@ -8,11 +9,7 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import vn.utetra.entity.Order;
@@ -33,10 +30,10 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Controller
-@RequestMapping("/payment/mock")
-public class MockPaymentController {
+@RequestMapping("/payment/vnpay")
+public class VNPayPaymentController {
 
-	private static final Logger log = LoggerFactory.getLogger(MockPaymentController.class);
+	private static final Logger log = LoggerFactory.getLogger(VNPayPaymentController.class);
 
 	private static final int PAYMENT_TIMEOUT_MINUTES = 5;
 	private static final int ORDER_TIMEOUT_HOURS = 24;
@@ -47,7 +44,7 @@ public class MockPaymentController {
 	private final CartService cartService;
 	private final OrderNotifier orderNotifier;
 
-	public MockPaymentController(OrderRepository orderRepository, PaymentRepository paymentRepository,
+	public VNPayPaymentController(OrderRepository orderRepository, PaymentRepository paymentRepository,
 			CurrentUserService currentUserService, CartService cartService, OrderNotifier orderNotifier) {
 
 		this.orderRepository = orderRepository;
@@ -56,10 +53,6 @@ public class MockPaymentController {
 		this.cartService = cartService;
 		this.orderNotifier = orderNotifier;
 	}
-
-	// =========================================================
-	// HIỂN THỊ TRANG THANH TOÁN MÔ PHỎNG
-	// =========================================================
 
 	@GetMapping("/{orderId}")
 	@Transactional
@@ -92,13 +85,11 @@ public class MockPaymentController {
 
 		if (isOrderExpired(order)) {
 			cancelExpiredOrder(order);
-
 			return showResult(model, order, "failed", "Đơn hàng đã hết hạn thanh toán và bị hủy.", false);
 		}
 
 		Payment payment = findLatestPayment(orderId);
 
-		// Nếu giao dịch PENDING đã hết hạn thì đánh dấu FAILED.
 		if (payment != null && "PENDING".equalsIgnoreCase(payment.getStatus()) && isPaymentExpired(payment)) {
 
 			markFailed(payment);
@@ -106,16 +97,14 @@ public class MockPaymentController {
 			payment = null;
 		}
 
-		// Tiếp tục giao dịch đang chờ thanh toán.
 		if (payment != null && "PENDING".equalsIgnoreCase(payment.getStatus())) {
 
 			model.addAttribute("order", order);
 			model.addAttribute("expiresAtMillis", getPaymentExpiresAtMillis(payment));
 
-			return "payment/mock";
+			return "payment/vnpay";
 		}
 
-		// Nếu giao dịch trước thất bại, hiển thị kết quả khi chưa yêu cầu thử lại.
 		if (payment != null
 				&& ("FAILED".equalsIgnoreCase(payment.getStatus()) || "CANCELLED".equalsIgnoreCase(payment.getStatus()))
 				&& !retry) {
@@ -124,18 +113,13 @@ public class MockPaymentController {
 					true);
 		}
 
-		// Chỉ tạo giao dịch mới khi giao dịch cũ không còn PENDING.
 		Payment newPayment = createPendingPayment(order);
 
 		model.addAttribute("order", order);
 		model.addAttribute("expiresAtMillis", getPaymentExpiresAtMillis(newPayment));
 
-		return "payment/mock";
+		return "payment/vnpay";
 	}
-
-	// =========================================================
-	// XỬ LÝ NÚT XÁC NHẬN THANH TOÁN
-	// =========================================================
 
 	@PostMapping("/{orderId}/process")
 	@Transactional
@@ -168,16 +152,14 @@ public class MockPaymentController {
 
 		if (isOrderExpired(order)) {
 			cancelExpiredOrder(order);
-
 			return showResult(model, order, "failed", "Đơn hàng đã hết hạn thanh toán và bị hủy.", false);
 		}
 
 		Payment payment = findLatestPayment(orderId);
 
-		log.info("MOCK PAYMENT: orderId={}, result={}, paymentStatus={}, createdAt={}", orderId, result,
-				payment == null ? null : payment.getStatus(), payment == null ? null : payment.getCreatedAt());
+		log.info("VNPAY SIMULATION: orderId={}, result={}, paymentStatus={}", orderId, result,
+				payment == null ? null : payment.getStatus());
 
-		// Không có giao dịch hoặc giao dịch không còn PENDING.
 		if (payment == null || !"PENDING".equalsIgnoreCase(payment.getStatus())) {
 
 			return showResult(model, order, "failed",
@@ -185,7 +167,6 @@ public class MockPaymentController {
 					true);
 		}
 
-		// Kiểm tra hạn thanh toán.
 		if (isPaymentExpired(payment)) {
 			markFailed(payment);
 			paymentRepository.save(payment);
@@ -193,16 +174,12 @@ public class MockPaymentController {
 			return showResult(model, order, "failed", "Giao dịch đã hết thời gian thanh toán. Vui lòng thử lại.", true);
 		}
 
-		// Kết quả phải được gửi từ form.
 		if (result == null || !"success".equalsIgnoreCase(result.trim())) {
-			log.warn("Kết quả thanh toán không hợp lệ: orderId={}, result={}", orderId, result);
 
-			return showResult(model, order, "failed", "Không nhận được kết quả xác nhận thanh toán hợp lệ.", true);
+			log.warn("Kết quả VNPAY mô phỏng không hợp lệ: orderId={}, result={}", orderId, result);
+
+			return showResult(model, order, "failed", "Giao dịch chưa được xác nhận thành công.", true);
 		}
-
-		// =====================================================
-		// THANH TOÁN MÔ PHỎNG THÀNH CÔNG
-		// =====================================================
 
 		payment.setStatus("SUCCESS");
 		payment.setTransactionCode(newTransactionCode());
@@ -213,22 +190,14 @@ public class MockPaymentController {
 		paymentRepository.save(payment);
 		orderRepository.save(order);
 
-		// Xóa giỏ hàng sau khi thanh toán thành công.
 		cartService.clear(user.getId());
-
-		// Thông báo đơn hàng mới.
 		orderNotifier.onNewOrder(order);
 
-		log.info("Thanh toán mô phỏng thành công: orderId={}, transactionCode={}", order.getId(),
+		log.info("VNPAY simulation success: orderId={}, transactionCode={}", order.getId(),
 				payment.getTransactionCode());
 
-		// Chuyển đến trang thành công.
 		return "redirect:/checkout/success/" + order.getId();
 	}
-
-	// =========================================================
-	// HÀM HỖ TRỢ
-	// =========================================================
 
 	private void addCsrfToken(Model model, CsrfToken csrfToken) {
 		if (csrfToken != null) {
@@ -243,11 +212,7 @@ public class MockPaymentController {
 			return null;
 		}
 
-		if (!Objects.equals(order.getUser().getId(), userId)) {
-			return null;
-		}
-
-		return order;
+		return Objects.equals(order.getUser().getId(), userId) ? order : null;
 	}
 
 	private Payment findLatestPayment(Integer orderId) {
@@ -256,7 +221,6 @@ public class MockPaymentController {
 
 	private Payment createPendingPayment(Order order) {
 		Payment payment = new Payment();
-
 		payment.setOrder(order);
 		payment.setMethod("VNPAY");
 		payment.setAmount(order.getTotalAmount());
@@ -312,7 +276,7 @@ public class MockPaymentController {
 	}
 
 	private String newTransactionCode() {
-		return "MOCK" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+		return "VNPAYSIM" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
 	}
 
 	private String showResult(Model model, Order order, String result, String message, boolean retryAllowed) {
@@ -324,6 +288,6 @@ public class MockPaymentController {
 		model.addAttribute("retryAllowed", retryAllowed);
 		model.addAttribute("payment", findLatestPayment(order.getId()));
 
-		return "payment/mock-result";
+		return "payment/vnpay-result";
 	}
 }

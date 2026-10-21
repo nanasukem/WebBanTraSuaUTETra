@@ -18,24 +18,48 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Integer> {
 
+	// ==========================
+	// TRUY VẤN ĐƠN HÀNG
+	// ==========================
+
 	List<Order> findByUserIdOrderByCreatedAtDesc(Integer userId);
 
 	List<Order> findByBranchIdAndStatusOrderByCreatedAtDesc(Integer branchId, OrderStatus status);
 
 	List<Order> findByShipperIdAndStatusOrderByCreatedAtDesc(Integer shipperId, OrderStatus status);
 
+	// ==========================
+	// THANH TOÁN VNPAY / MOMO
+	// ==========================
+
 	/**
-	 * Đơn VNPAY chưa thanh toán và chưa quá hạn. Dùng để cho phép khách thanh toán
-	 * lại trong 24 giờ.
+	 * Tìm các đơn theo phương thức thanh toán, trạng thái thanh toán, trạng thái
+	 * đơn hàng và thời gian tạo.
+	 *
+	 * Có thể dùng cho cả VNPAY và MOMO.
+	 *
+	 * Ví dụ: - PaymentMethod.VNPAY - PaymentMethod.MOMO
+	 *
+	 * deadline là mốc thời gian bắt đầu của khoảng cần tìm.
 	 */
 	List<Order> findByPaymentMethodAndPaymentStatusAndStatusNotAndCreatedAtAfter(PaymentMethod paymentMethod,
 			PaymentStatus paymentStatus, OrderStatus excludedStatus, LocalDateTime deadline);
 
 	/**
-	 * Tìm đơn VNPAY chưa thanh toán đã quá hạn để tự động hủy.
+	 * Tìm các đơn chưa thanh toán được tạo trước thời điểm deadline.
+	 *
+	 * Có thể dùng để tìm đơn VNPAY/MOMO đã quá hạn thanh toán.
+	 *
+	 * Lưu ý: phương thức này loại trừ một trạng thái đơn hàng, nhưng không tự xác
+	 * định đơn có thực sự quá hạn hay không. Service cần truyền deadline phù hợp và
+	 * kiểm tra các điều kiện nghiệp vụ trước khi hủy.
 	 */
 	List<Order> findByPaymentMethodAndPaymentStatusAndStatusNotAndCreatedAtBefore(PaymentMethod paymentMethod,
 			PaymentStatus paymentStatus, OrderStatus excludedStatus, LocalDateTime deadline);
+
+	// ==========================
+	// TỔNG TIỀN ĐƠN CỦA KHÁCH
+	// ==========================
 
 	/**
 	 * Tổng tiền đơn của khách, dùng cho xét hạng.
@@ -51,6 +75,10 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
 	@Query("select o.status, count(o) from Order o " + "where o.user.id = :userId group by o.status")
 	List<Object[]> countByStatusOfUser(@Param("userId") Integer userId);
+
+	// ==========================
+	// ĐƠN HÀNG CHI NHÁNH
+	// ==========================
 
 	List<Order> findByBranchIdAndStatusInOrderByCreatedAtAsc(Integer branchId, Collection<OrderStatus> statuses);
 
@@ -94,6 +122,10 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	long countByStatusAndDeliveredAtGreaterThanEqualAndDeliveredAtLessThan(OrderStatus status, LocalDateTime start,
 			LocalDateTime end);
 
+	// ==========================
+	// THỐNG KÊ VOUCHER CHI NHÁNH
+	// ==========================
+
 	/**
 	 * Mã giảm tiền món dùng tại chi nhánh (đơn không hủy).
 	 */
@@ -104,11 +136,18 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			@Param("cancelled") OrderStatus cancelled);
 
 	/**
-	 * Mã giảm phí ship dùng tại chi nhánh (đơn không hủy).
-	 */
-	@Query("SELECT o.shippingVoucher.id, COUNT(o), " + "COALESCE(SUM(o.shippingDiscount), 0) FROM Order o "
-			+ "WHERE o.branch.id = :branchId " + "AND o.shippingVoucher IS NOT NULL " + "AND o.status <> :cancelled "
-			+ "GROUP BY o.shippingVoucher.id")
-	List<Object[]> shippingVoucherStatsOfBranch(@Param("branchId") Integer branchId,
-			@Param("cancelled") OrderStatus cancelled);
+     * Mã giảm phí ship dùng tại chi nhánh (đơn không hủy).
+     */
+    @Query(
+        "SELECT o.shippingVoucher.id, COUNT(o), " +
+        "COALESCE(SUM(o.shippingDiscount), 0) FROM Order o " +
+        "WHERE o.branch.id = :branchId " +
+        "AND o.shippingVoucher IS NOT NULL " +
+        "AND o.status <> :cancelled " +
+        "GROUP BY o.shippingVoucher.id"
+    )
+    List<Object[]> shippingVoucherStatsOfBranch(
+            @Param("branchId") Integer branchId,
+            @Param("cancelled") OrderStatus cancelled
+    );
 }
