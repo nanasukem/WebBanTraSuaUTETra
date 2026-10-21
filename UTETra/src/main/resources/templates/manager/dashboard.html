@@ -50,37 +50,43 @@
 			và không đặt được đơn mới. Liên hệ Admin để mở lại.
 		</div>
 
-		<!-- Đơn hàng -->
-		<h5 class="fw-bold mb-3"><i class="bi bi-receipt me-2"></i>Đơn hàng</h5>
+		<!-- Đơn hàng: mỗi thẻ mở trang "Đơn hàng của chi nhánh" đúng tab trạng thái.
+		     Nhận và xử lý đơn mới trực tiếp: nút "Quầy đơn hàng" (menu trên cùng / nút bên dưới) -->
+		<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+			<h5 class="fw-bold mb-0"><i class="bi bi-receipt me-2"></i>Đơn hàng</h5>
+			<a th:href="@{/manager/orders}" class="btn btn-sm btn-warning fw-semibold">
+				<i class="bi bi-bell me-1"></i>Mở Quầy đơn hàng
+			</a>
+		</div>
 		<div class="row g-3 mb-4">
 			<div class="col-6 col-xl-3">
-				<a th:href="@{/manager/orders}" class="text-decoration-none">
+				<a th:href="@{/manager/orders/history(status='PENDING')}" class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
 							<p class="text-muted mb-2">Chờ xác nhận</p>
 							<h3 class="fw-bold mb-0 text-warning" th:text="${pendingOrders}">0</h3>
 						</div>
 						<div class="card-footer bg-white border-0 pt-0">
-							<span class="small text-warning">Mở quầy đơn hàng <i class="bi bi-arrow-right"></i></span>
+							<span class="small text-warning">Xem đơn hàng <i class="bi bi-arrow-right"></i></span>
 						</div>
 					</div>
 				</a>
 			</div>
 			<div class="col-6 col-xl-3">
-				<a th:href="@{/manager/orders}" class="text-decoration-none">
+				<a th:href="@{/manager/orders/history(status='CONFIRMED')}" class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
 							<p class="text-muted mb-2">Đang làm / đang giao</p>
 							<h3 class="fw-bold mb-0 text-primary" th:text="${processingOrders}">0</h3>
 						</div>
 						<div class="card-footer bg-white border-0 pt-0">
-							<span class="small text-primary">Mở quầy đơn hàng <i class="bi bi-arrow-right"></i></span>
+							<span class="small text-primary">Xem đơn hàng <i class="bi bi-arrow-right"></i></span>
 						</div>
 					</div>
 				</a>
 			</div>
 			<div class="col-6 col-xl-3">
-				<a th:href="@{/manager/orders/history}" class="text-decoration-none">
+				<a th:href="@{/manager/orders/history(status='DELIVERED')}" class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
 							<p class="text-muted mb-2">Đã giao</p>
@@ -93,7 +99,7 @@
 				</a>
 			</div>
 			<div class="col-6 col-xl-3">
-				<a th:href="@{/manager/orders/history}" class="text-decoration-none">
+				<a th:href="@{/manager/orders/history(status='CANCELLED')}" class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
 							<p class="text-muted mb-2">Đã huỷ</p>

@@ -200,11 +200,103 @@ body {
 		padding: 18px 12px;
 	}
 }
+
+/* =========================
+   MANAGER: đổi màu xanh dương (primary, info) của Bootstrap sang xanh lá
+   Chỉ áp dụng khi body có class manager-theme (tài khoản MANAGER)
+   ========================= */
+.manager-theme {
+	--bs-primary: #198754;
+	--bs-primary-rgb: 25, 135, 84;
+	--bs-primary-text-emphasis: #0a3622;
+	--bs-primary-bg-subtle: #d1e7dd;
+	--bs-primary-border-subtle: #a3cfbb;
+	--bs-info: #20c997;
+	--bs-info-rgb: 32, 201, 151;
+	--bs-info-text-emphasis: #0b5d47;
+	--bs-info-bg-subtle: #d2f4ea;
+	--bs-info-border-subtle: #a6e9d5;
+	--bs-link-color: #198754;
+	--bs-link-color-rgb: 25, 135, 84;
+	--bs-link-hover-color: #146c43;
+	--bs-link-hover-color-rgb: 20, 108, 67;
+}
+
+.manager-theme .btn-primary {
+	--bs-btn-bg: #198754;
+	--bs-btn-border-color: #198754;
+	--bs-btn-hover-bg: #157347;
+	--bs-btn-hover-border-color: #146c43;
+	--bs-btn-active-bg: #146c43;
+	--bs-btn-active-border-color: #13653f;
+	--bs-btn-disabled-bg: #198754;
+	--bs-btn-disabled-border-color: #198754;
+	--bs-btn-focus-shadow-rgb: 60, 153, 110;
+}
+
+.manager-theme .btn-outline-primary {
+	--bs-btn-color: #198754;
+	--bs-btn-border-color: #198754;
+	--bs-btn-hover-color: #fff;
+	--bs-btn-hover-bg: #198754;
+	--bs-btn-hover-border-color: #198754;
+	--bs-btn-active-color: #fff;
+	--bs-btn-active-bg: #198754;
+	--bs-btn-active-border-color: #198754;
+	--bs-btn-disabled-color: #198754;
+	--bs-btn-disabled-border-color: #198754;
+	--bs-btn-focus-shadow-rgb: 25, 135, 84;
+}
+
+.manager-theme .btn-info {
+	--bs-btn-color: #fff;
+	--bs-btn-bg: #20c997;
+	--bs-btn-border-color: #20c997;
+	--bs-btn-hover-color: #fff;
+	--bs-btn-hover-bg: #1aa179;
+	--bs-btn-hover-border-color: #1aa179;
+	--bs-btn-active-color: #fff;
+	--bs-btn-active-bg: #1aa179;
+	--bs-btn-active-border-color: #1aa179;
+}
+
+.manager-theme .btn-outline-info {
+	--bs-btn-color: #1aa179;
+	--bs-btn-border-color: #20c997;
+	--bs-btn-hover-color: #fff;
+	--bs-btn-hover-bg: #20c997;
+	--bs-btn-hover-border-color: #20c997;
+	--bs-btn-active-color: #fff;
+	--bs-btn-active-bg: #20c997;
+	--bs-btn-active-border-color: #20c997;
+}
+
+.manager-theme .form-control:focus,
+.manager-theme .form-select:focus,
+.manager-theme .form-check-input:focus {
+	border-color: #75b798;
+	box-shadow: 0 0 0 .25rem rgba(25, 135, 84, .25);
+}
+
+.manager-theme .form-check-input:checked {
+	background-color: #198754;
+	border-color: #198754;
+}
+
+.manager-theme .pagination {
+	--bs-pagination-color: #198754;
+	--bs-pagination-hover-color: #146c43;
+	--bs-pagination-focus-color: #146c43;
+	--bs-pagination-focus-box-shadow: 0 0 0 .25rem rgba(25, 135, 84, .25);
+	--bs-pagination-active-bg: #198754;
+	--bs-pagination-active-border-color: #198754;
+}
 </style>
 </head>
 
 
-<body class="d-flex flex-column min-vh-100">
+<body class="d-flex flex-column min-vh-100"
+	th:classappend="${session.user != null and session.user.role != null and session.user.role.name == 'MANAGER'} ? 'manager-theme'">
 
 
 	<!-- =========================
@@ -223,7 +315,8 @@ body {
 		<!-- Menu -->
 		<nav class="admin-menu">
 
-			<a th:href="@{/menu}"> <i class="bi bi-journal-text"></i> <span>Thực
+			<!-- Thực đơn (trang của khách): chỉ Admin. Manager xem món ở mục "Món" -->
+			<a th:unless="${isManager}" th:href="@{/menu}"> <i class="bi bi-journal-text"></i> <span>Thực
 					đơn</span>
 
 			</a>

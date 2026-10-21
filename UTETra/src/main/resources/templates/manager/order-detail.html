@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/user-layout :: main('Chi tiết đơn của shop - UTETra', ~{::#manager-order-detail})}">
+	th:replace="~{layout/admin-layout :: main('Chi tiết đơn của chi nhánh - UTETra', 'orders', ~{::#manager-order-detail})}">
 
 <body>
 	<div id="manager-order-detail">
@@ -10,7 +10,7 @@
 		</style>
 
 		<a th:href="@{/manager/orders/history(status=${order.status})}" class="text-decoration-none text-success small">
-			<i class="bi bi-arrow-left"></i> Đơn hàng của shop
+			<i class="bi bi-arrow-left"></i> Đơn hàng của chi nhánh
 		</a>
 		<div class="d-flex align-items-center gap-2 mt-2 mb-3 flex-wrap">
 			<h1 class="h4 fw-bold text-success mb-0">Đơn #<span th:text="${order.id}"></span></h1>
