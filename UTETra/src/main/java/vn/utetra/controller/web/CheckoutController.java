@@ -1,3 +1,4 @@
+
 package vn.utetra.controller.web;
 
 import jakarta.servlet.http.HttpSession;
@@ -11,7 +12,10 @@ import vn.utetra.service.OrderService;
 
 import java.security.Principal;
 
-/** Trang Checkout + trang Đặt hàng thành công (dữ liệu trang Checkout do checkout.js gọi API) */
+/**
+ * Trang Checkout và trang Đặt hàng thành công. Dữ liệu trang Checkout do
+ * checkout.js gọi API.
+ */
 @Controller
 public class CheckoutController {
 
@@ -25,19 +29,24 @@ public class CheckoutController {
 
 	@GetMapping("/checkout")
 	public String checkout(Principal principal, HttpSession session, Model model) {
-		model.addAttribute("currentUser", currentUserService.requireUser(principal, session)); // cho header
+
+		model.addAttribute("currentUser", currentUserService.requireUser(principal, session));
+
 		return "cart/checkout";
 	}
 
 	@GetMapping("/checkout/success/{id}")
 	public String success(@PathVariable Integer id, Principal principal, HttpSession session, Model model) {
+
 		var user = currentUserService.requireUser(principal, session);
 		model.addAttribute("currentUser", user);
+
 		try {
 			model.addAttribute("order", orderService.getOrderSummary(user.getId(), id));
 		} catch (ResourceNotFoundException e) {
-			return "redirect:/menu"; // đơn không tồn tại / của người khác
+			return "redirect:/menu";
 		}
+
 		return "cart/checkout-success";
 	}
 }

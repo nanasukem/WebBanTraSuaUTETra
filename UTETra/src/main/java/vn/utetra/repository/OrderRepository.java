@@ -8,11 +8,13 @@ import org.springframework.data.repository.query.Param;
 
 import vn.utetra.entity.Order;
 import vn.utetra.entity.enums.OrderStatus;
+import vn.utetra.entity.enums.PaymentMethod;
+import vn.utetra.entity.enums.PaymentStatus;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
-
 
 public interface OrderRepository extends JpaRepository<Order, Integer> {
 
@@ -21,6 +23,19 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	List<Order> findByBranchIdAndStatusOrderByCreatedAtDesc(Integer branchId, OrderStatus status);
 
 	List<Order> findByShipperIdAndStatusOrderByCreatedAtDesc(Integer shipperId, OrderStatus status);
+
+	/**
+	 * Đơn VNPAY chưa thanh toán và chưa quá hạn. Dùng để cho phép khách thanh toán
+	 * lại trong 24 giờ.
+	 */
+	List<Order> findByPaymentMethodAndPaymentStatusAndStatusNotAndCreatedAtAfter(PaymentMethod paymentMethod,
+			PaymentStatus paymentStatus, OrderStatus excludedStatus, LocalDateTime deadline);
+
+	/**
+	 * Tìm đơn VNPAY chưa thanh toán đã quá hạn để tự động hủy.
+	 */
+	List<Order> findByPaymentMethodAndPaymentStatusAndStatusNotAndCreatedAtBefore(PaymentMethod paymentMethod,
+			PaymentStatus paymentStatus, OrderStatus excludedStatus, LocalDateTime deadline);
 
 	/**
 	 * Tổng tiền đơn của khách, dùng cho xét hạng.
@@ -52,8 +67,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	// ==========================
 
 	/**
-	 * Lấy các đơn theo trạng thái và thời gian giao hàng. Dùng deliveredAt để thống
-	 * kê doanh thu theo ngày giao thành công.
+	 * Lấy các đơn theo trạng thái và thời gian giao hàng.
 	 */
 	List<Order> findByStatusAndDeliveredAtGreaterThanEqualAndDeliveredAtLessThanOrderByDeliveredAtAsc(
 			OrderStatus status, LocalDateTime start, LocalDateTime end);
@@ -75,23 +89,25 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
 	/**
-     * Đếm số đơn đã giao thành công trong khoảng thời gian.
-     */
-    long countByStatusAndDeliveredAtGreaterThanEqualAndDeliveredAtLessThan(
-            OrderStatus status,
-            LocalDateTime start,
-            LocalDateTime end);
+	 * Đếm số đơn đã giao thành công trong khoảng thời gian.
+	 */
+	long countByStatusAndDeliveredAtGreaterThanEqualAndDeliveredAtLessThan(OrderStatus status, LocalDateTime start,
+			LocalDateTime end);
 
-	/** Mã giảm tiền món dùng tại chi nhánh (đơn không huỷ): [voucherId, số đơn, tổng tiền giảm] */
-	@Query("SELECT o.productVoucher.id, COUNT(o), COALESCE(SUM(o.productDiscount), 0) FROM Order o "
-			+ "WHERE o.branch.id = :branchId AND o.productVoucher IS NOT NULL AND o.status <> :cancelled "
+	/**
+	 * Mã giảm tiền món dùng tại chi nhánh (đơn không hủy).
+	 */
+	@Query("SELECT o.productVoucher.id, COUNT(o), " + "COALESCE(SUM(o.productDiscount), 0) FROM Order o "
+			+ "WHERE o.branch.id = :branchId " + "AND o.productVoucher IS NOT NULL " + "AND o.status <> :cancelled "
 			+ "GROUP BY o.productVoucher.id")
 	List<Object[]> productVoucherStatsOfBranch(@Param("branchId") Integer branchId,
 			@Param("cancelled") OrderStatus cancelled);
 
-	/** Mã giảm phí ship dùng tại chi nhánh (đơn không huỷ): [voucherId, số đơn, tổng tiền giảm] */
-	@Query("SELECT o.shippingVoucher.id, COUNT(o), COALESCE(SUM(o.shippingDiscount), 0) FROM Order o "
-			+ "WHERE o.branch.id = :branchId AND o.shippingVoucher IS NOT NULL AND o.status <> :cancelled "
+	/**
+	 * Mã giảm phí ship dùng tại chi nhánh (đơn không hủy).
+	 */
+	@Query("SELECT o.shippingVoucher.id, COUNT(o), " + "COALESCE(SUM(o.shippingDiscount), 0) FROM Order o "
+			+ "WHERE o.branch.id = :branchId " + "AND o.shippingVoucher IS NOT NULL " + "AND o.status <> :cancelled "
 			+ "GROUP BY o.shippingVoucher.id")
 	List<Object[]> shippingVoucherStatsOfBranch(@Param("branchId") Integer branchId,
 			@Param("cancelled") OrderStatus cancelled);
