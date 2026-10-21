@@ -111,6 +111,11 @@ public class Order {
 	@Column(name = "cancel_reason", length = 255)
 	private String cancelReason;
 
+	/** Ai huỷ đơn (null = chưa huỷ) */
+	@Enumerated(EnumType.STRING)
+	@Column(name = "cancelled_by", length = 10)
+	private vn.utetra.entity.enums.CancelledBy cancelledBy;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 

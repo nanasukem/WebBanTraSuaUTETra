@@ -176,17 +176,10 @@
 								th:text="${#numbers.formatDecimal(o.totalAmount, 0, 'POINT', 0, 'COMMA')} + ' đ'">
 								100.000 đ</td>
 
-							<td><span class="badge bg-warning text-dark"
-								th:if="${o.status.name() == 'PENDING'}" th:text="${o.status}"></span>
-								<span class="badge bg-primary"
-								th:if="${o.status.name() == 'CONFIRMED'}" th:text="${o.status}"></span>
-								<span class="badge bg-info text-dark"
-								th:if="${o.status.name() == 'PICKED_UP' or o.status.name() == 'DELIVERING'}"
-								th:text="${o.status}"></span> <span class="badge bg-success"
-								th:if="${o.status.name() == 'DELIVERED'}" th:text="${o.status}"></span>
-								<span class="badge bg-danger"
-								th:if="${o.status.name() == 'CANCELLED' or o.status.name() == 'RETURNED'}"
-								th:text="${o.status}"></span></td>
+							<td><span class="badge"
+								th:with="pk=${o.deliveryType != null and o.deliveryType.name() == 'PICKUP'}"
+								th:classappend="${T(vn.utetra.service.impl.OrderFlowServiceImpl).badgeClass(o.status)}"
+								th:text="${o.status.name() == 'CANCELLED'} ? ${T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(o.cancelledBy, false)} : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, pk)}"></span></td>
 
 							<td>
 								<div th:text="${o.paymentMethod}">COD</div> <small

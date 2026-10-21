@@ -16,5 +16,7 @@ public record OrderListRes(
 		BigDecimal totalAmount,
 		String paymentMethodLabel,
 		String createdAt,          // "14:05 20/10/2026"
-		boolean canCancel) {
+		boolean canCancel,
+		String cancelledBy,        // CUSTOMER / STORE / SYSTEM (null = chưa huỷ)
+		int toReview) {            // đơn đã giao: số ly còn chờ đánh giá (0 = đã đánh giá hết / quá hạn)
 }

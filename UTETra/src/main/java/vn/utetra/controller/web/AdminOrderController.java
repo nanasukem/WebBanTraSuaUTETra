@@ -1,5 +1,11 @@
 package vn.utetra.controller.web;
 
+import vn.utetra.entity.enums.DeliveryType;
+import vn.utetra.exception.BusinessException;
+import vn.utetra.exception.ResourceNotFoundException;
+import vn.utetra.service.OrderFlowService;
+import vn.utetra.service.impl.OrderFlowServiceImpl;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -26,10 +32,13 @@ public class AdminOrderController {
 
 	private final OrderRepository orderRepository;
 	private final BranchRepository branchRepository;
+	private final OrderFlowService orderFlowService;
 
-	public AdminOrderController(OrderRepository orderRepository, BranchRepository branchRepository) {
+	public AdminOrderController(OrderRepository orderRepository, BranchRepository branchRepository,
+			OrderFlowService orderFlowService) {
 		this.orderRepository = orderRepository;
 		this.branchRepository = branchRepository;
+		this.orderFlowService = orderFlowService;
 	}
 
 	// Danh sách đơn hàng
@@ -124,52 +133,24 @@ public class AdminOrderController {
 		return "admin/orders/detail";
 	}
 
-	// Cập nhật trạng thái đơn hàng
+	// Cập nhật trạng thái đơn hàng: đi qua luồng chung (OrderFlowService) để đúng thứ tự trạng thái,
+	// huỷ bắt buộc lý do, hoàn mã giảm giá + xu, tăng "đã bán" khi giao xong và báo cho khách / quán
 	@PostMapping("/{id}/status")
-	@Transactional
 	public String updateStatus(@PathVariable Integer id, @RequestParam OrderStatus status,
-			RedirectAttributes redirectAttributes) {
-
-		Order order = orderRepository.findById(id).orElse(null);
-
-		if (order == null) {
-			redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy đơn hàng #" + id);
-			return "redirect:/admin/orders";
+			@RequestParam(required = false) String reason, RedirectAttributes redirectAttributes) {
+		try {
+			orderFlowService.updateStatus(id, status,
+					status == OrderStatus.CANCELLED && reason != null && !reason.isBlank()
+							? "UTETra huỷ: " + reason.trim() : reason);
+			redirectAttributes.addFlashAttribute("successMessage", "Đã cập nhật đơn hàng #" + id + ".");
+		} catch (BusinessException | ResourceNotFoundException e) {
+			redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
 		}
-
-		List<OrderStatus> allowedStatuses = getNextStatuses(order);
-
-		if (!allowedStatuses.contains(status)) {
-			redirectAttributes.addFlashAttribute("errorMessage",
-					"Không thể chuyển trạng thái từ " + order.getStatus() + " sang " + status + ".");
-			return "redirect:/admin/orders/" + id;
-		}
-
-		order.setStatus(status);
-
-		if (status == OrderStatus.DELIVERED) {
-			order.setDeliveredAt(LocalDateTime.now());
-		}
-
-		orderRepository.save(order);
-
-		redirectAttributes.addFlashAttribute("successMessage",
-				"Đã cập nhật trạng thái đơn hàng #" + id + " thành " + status + ".");
-
 		return "redirect:/admin/orders/" + id;
 	}
 
+	/** Các trạng thái tiếp theo hợp lệ (cùng luồng với quán) */
 	private List<OrderStatus> getNextStatuses(Order order) {
-		return switch (order.getStatus()) {
-		case PENDING -> Arrays.asList(OrderStatus.CONFIRMED, OrderStatus.CANCELLED);
-
-		case CONFIRMED -> Arrays.asList(OrderStatus.PICKED_UP, OrderStatus.CANCELLED);
-
-		case PICKED_UP -> Arrays.asList(OrderStatus.DELIVERING, OrderStatus.DELIVERED);
-
-		case DELIVERING -> List.of(OrderStatus.DELIVERED);
-
-		case DELIVERED, CANCELLED, RETURNED -> List.of();
-		};
+		return OrderFlowServiceImpl.nextStatuses(order.getStatus(), order.getDeliveryType() == DeliveryType.PICKUP);
 	}
 }

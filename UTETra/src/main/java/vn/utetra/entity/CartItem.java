@@ -35,6 +35,10 @@ public class CartItem {
 	@Column(nullable = false)
 	private Integer quantity = 1;
 
+	/** Ghi chú món (không bắt buộc): "Đá để riêng, Không ống hút · ít sữa thôi" */
+	@Column(length = 200)
+	private String note;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt = LocalDateTime.now();
 }

@@ -49,6 +49,17 @@
 			</div>
 		</section>
 
+		<!-- ==================== NHẮC ĐÁNH GIÁ (chỉ USER) ==================== -->
+		<a th:if="${isBuyer and reviewReminder != null and reviewReminder > 0}" th:href="@{/orders(tab='delivered')}"
+			class="d-flex align-items-center gap-3 rounded-4 p-3 mb-4 bg-warning-subtle border border-warning-subtle text-dark text-decoration-none">
+			<i class="bi bi-star-half text-warning" style="font-size: 2rem;"></i>
+			<div class="flex-grow-1">
+				<div class="fw-bold">Bạn có <span th:text="${reviewReminder}">1</span> đơn chờ đánh giá</div>
+				<div class="small text-muted">Chia sẻ cảm nhận về món và quán để UTETra phục vụ bạn tốt hơn</div>
+			</div>
+			<i class="bi bi-chevron-right"></i>
+		</a>
+
 		<!-- ==================== ĐƠN HÀNG THEO TRẠNG THÁI (chỉ USER) ==================== -->
 		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" th:if="${isBuyer}">
 			<div class="d-flex justify-content-between align-items-center mb-3">

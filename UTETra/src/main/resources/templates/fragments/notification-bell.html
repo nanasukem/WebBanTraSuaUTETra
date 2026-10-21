@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<!--
+	CHUÔNG THÔNG BÁO dùng chung cho User (header khách), Manager và Admin (header quản lý).
+	- bell(theme): theme 'light' = nút trắng trên nền xanh (header khách), 'admin' = header quản lý
+	- scripts: nạp live-socket.js + notifications.js (đặt cuối trang, sau Bootstrap JS)
+	Thông báo mới tới qua WebSocket -> số trên chuông tăng, thông báo mới hiện lên ĐẦU danh sách + popup góc phải.
+-->
+
+<div th:fragment="bell(theme)" class="dropdown nb-wrap">
+	<button type="button" id="nb-toggle" class="btn btn-sm position-relative nb-btn"
+		th:classappend="${theme == 'light'} ? 'btn-outline-light' : 'btn-light border'"
+		data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="Thông báo">
+		<i class="bi bi-bell fs-6"></i>
+		<span id="nb-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">0</span>
+	</button>
+	<div class="dropdown-menu dropdown-menu-end shadow p-0 nb-menu">
+		<div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+			<b>Thông báo</b>
+			<button type="button" class="btn btn-sm btn-link text-success text-decoration-none p-0" id="nb-read-all">
+				Đánh dấu đã đọc hết</button>
+		</div>
+		<div id="nb-list" class="nb-list">
+			<div class="text-center text-muted small py-4">Đang tải...</div>
+		</div>
+	</div>
+	<style>
+		.nb-menu { width: min(360px, calc(100vw - 24px)); }
+		.nb-list { max-height: 420px; overflow-y: auto; overflow-x: hidden; }
+		.nb-text { flex: 1; min-width: 0; }
+		.nb-text .text-truncate { white-space: normal; display: -webkit-box !important; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+		.nb-item { display: flex; gap: .6rem; padding: .6rem .9rem; border-bottom: 1px solid #f1f3f5; color: #212529;
+			text-decoration: none; cursor: pointer; }
+		.nb-item:hover { background: #f8f9fa; }
+		.nb-item.unread { background: #f0faf4; }
+		.nb-item.unread .nb-title { font-weight: 700; }
+		.nb-icon { width: 34px; height: 34px; border-radius: 50%; background: #fff; border: 1px solid #e9ecef;
+			display: grid; place-items: center; flex-shrink: 0; }
+		.nb-item.nb-new { animation: nb-flash 2s ease; }
+		@keyframes nb-flash { 0% { background: #fff3bf; } 100% { background: #f0faf4; } }
+		.nb-btn .bi-bell.ring { display: inline-block; animation: nb-ring .8s ease; }
+		@keyframes nb-ring { 20% { transform: rotate(15deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }
+	</style>
+</div>
+
+<th:block th:fragment="scripts">
+	<script th:src="@{/js/live-socket.js}"></script>
+	<script th:src="@{/js/notifications.js}"></script>
+</th:block>
+</html>

@@ -43,10 +43,13 @@ public class VoucherServiceImpl implements VoucherService {
 	private final UserRepository userRepository;
 	private final OrderRepository orderRepository;
 	private final MemberService memberService;
+	private final vn.utetra.service.VoucherAlertService voucherAlertService;
 
 	public VoucherServiceImpl(VoucherRepository voucherRepository, BranchRepository branchRepository,
 			VoucherUsageRepository voucherUsageRepository, UserRepository userRepository,
-			OrderRepository orderRepository, MemberService memberService) {
+			OrderRepository orderRepository, MemberService memberService,
+			vn.utetra.service.VoucherAlertService voucherAlertService) {
+		this.voucherAlertService = voucherAlertService;
 		this.voucherRepository = voucherRepository;
 		this.branchRepository = branchRepository;
 		this.voucherUsageRepository = voucherUsageRepository;
@@ -323,6 +326,8 @@ public class VoucherServiceImpl implements VoucherService {
 		if (voucherRepository.increaseUsedCount(voucherId) == 0) {
 			throw new BusinessException("Mã " + v.getCode() + " đã hết lượt sử dụng hoặc ngừng áp dụng");
 		}
+		// Còn ít lượt / hết lượt -> báo Admin (chuông)
+		voucherAlertService.checkRemaining(voucherId);
 	}
 
 	private void copy(VoucherReq req, Voucher v) {

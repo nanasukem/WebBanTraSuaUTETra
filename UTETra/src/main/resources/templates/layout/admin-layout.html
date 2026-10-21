@@ -290,6 +290,9 @@ body {
 		<!-- Tài khoản admin -->
 		<div class="admin-actions">
 
+			<!-- Chuông thông báo -->
+			<div th:replace="~{fragments/notification-bell :: bell('admin')}"></div>
+
 			<a href="#" class="admin-user"> <i class="bi bi-person-gear"></i>
 				<span>Quản trị viên</span>
 			</a>
@@ -335,5 +338,7 @@ body {
 		
 	</script>
 
+	<!-- Chuông thông báo (chỉ khi đã đăng nhập) -->
+	<th:block th:if="${session.user != null}"><th:block th:replace="~{fragments/notification-bell :: scripts}"></th:block></th:block>
 </body>
 </html>

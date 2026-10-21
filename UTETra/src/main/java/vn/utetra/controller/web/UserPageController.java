@@ -20,13 +20,13 @@ import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.service.AddressService;
 import vn.utetra.service.CurrentUserService;
 import vn.utetra.service.FavoriteService;
-import vn.utetra.service.ReviewService;
 import vn.utetra.service.UserService;
 import vn.utetra.service.ViewedProductService;
 
 /**
  * Các trang cá nhân của khách (chỉ USER - xem SecurityConfiguration):
- * /user/profile (thông tin, đổi mật khẩu, sổ địa chỉ) · /user/favorites · /user/viewed · gửi đánh giá
+ * /user/profile (thông tin + hạng thành viên, đổi mật khẩu, sổ địa chỉ) · /user/favorites · /user/viewed
+ * (Đánh giá: /orders/{id}/review - MyOrderController)
  */
 @Controller
 @RequestMapping("/user")
@@ -37,17 +37,20 @@ public class UserPageController {
 	private final AddressService addressService;
 	private final FavoriteService favoriteService;
 	private final ViewedProductService viewedProductService;
-	private final ReviewService reviewService;
+	private final vn.utetra.service.MemberService memberService;
+	private final vn.utetra.repository.MemberTierRepository memberTierRepository;
 
 	public UserPageController(CurrentUserService currentUserService, UserService userService,
 			AddressService addressService, FavoriteService favoriteService, ViewedProductService viewedProductService,
-			ReviewService reviewService) {
+			vn.utetra.service.MemberService memberService,
+			vn.utetra.repository.MemberTierRepository memberTierRepository) {
+		this.memberService = memberService;
+		this.memberTierRepository = memberTierRepository;
 		this.currentUserService = currentUserService;
 		this.userService = userService;
 		this.addressService = addressService;
 		this.favoriteService = favoriteService;
 		this.viewedProductService = viewedProductService;
-		this.reviewService = reviewService;
 	}
 
 	// ================= PROFILE =================
@@ -60,6 +63,9 @@ public class UserPageController {
 		model.addAttribute("addresses", addressService.list(userId));
 		model.addAttribute("favoriteCount", favoriteService.count(userId));
 		model.addAttribute("viewedCount", viewedProductService.count(userId));
+		// Hạng thành viên: % giảm mỗi đơn, chi tiêu 12 tháng, còn thiếu bao nhiêu để lên hạng
+		model.addAttribute("tier", memberService.getTierInfo(userId));
+		model.addAttribute("tiers", memberTierRepository.findAllByOrderByMinSpentAsc());
 		model.addAttribute("tab", List.of("info", "password", "address").contains(tab) ? tab : "info");
 		return "user/profile";
 	}
@@ -121,29 +127,5 @@ public class UserPageController {
 		int n = viewedProductService.clear(userId);
 		ra.addFlashAttribute("success", "Đã xoá " + n + " món khỏi lịch sử xem");
 		return "redirect:/user/viewed";
-	}
-
-	// ================= ĐÁNH GIÁ =================
-
-	/** Gửi đánh giá + bình luận (form trên trang chi tiết sản phẩm, multipart vì có ảnh/video) */
-	@PostMapping("/reviews")
-	public String review(@RequestParam("productId") Integer productId,
-			@RequestParam(name = "orderDetailId", required = false) Integer orderDetailId,
-			@RequestParam(name = "rating", required = false) Integer rating,
-			@RequestParam(name = "content", required = false) String content,
-			@RequestParam(name = "media", required = false) List<MultipartFile> media, Principal principal,
-			HttpSession session, RedirectAttributes ra) {
-		Integer userId = currentUserService.requireUserId(principal, session);
-		try {
-			reviewService.create(userId, orderDetailId, rating, content, media);
-			ra.addFlashAttribute("success", "Cảm ơn bạn đã đánh giá!");
-			return "redirect:/products/" + productId + "#danh-gia";
-		} catch (BusinessException | ResourceNotFoundException e) {
-			ra.addFlashAttribute("reviewError", e.getMessage());
-			ra.addFlashAttribute("draftContent", content);
-			ra.addFlashAttribute("draftRating", rating);
-			return "redirect:/products/" + productId + (orderDetailId != null ? "?od=" + orderDetailId : "")
-					+ "#viet-danh-gia";
-		}
 	}
 }

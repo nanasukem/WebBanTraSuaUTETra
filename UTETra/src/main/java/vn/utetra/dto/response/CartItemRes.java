@@ -15,7 +15,8 @@ public record CartItemRes(
 		List<ToppingRes> toppings,
 		Integer quantity,
 		BigDecimal unitPrice,   // giá 1 ly = giá món + size + topping
-		BigDecimal lineTotal) { // unitPrice * quantity
+		BigDecimal lineTotal,   // unitPrice * quantity
+		String note) {          // ghi chú món (null = không có)
 
 	public record ToppingRes(Integer id, String name, BigDecimal price) {
 	}

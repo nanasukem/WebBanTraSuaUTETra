@@ -14,4 +14,6 @@ public interface ReviewRepository extends JpaRepository<Review, Integer> {
 	boolean existsByOrderDetailId(Integer orderDetailId);
 
 	List<Review> findByOrderDetailIdIn(List<Integer> orderDetailIds);
+
+	long countByOrderDetailIdIn(List<Integer> orderDetailIds);
 }

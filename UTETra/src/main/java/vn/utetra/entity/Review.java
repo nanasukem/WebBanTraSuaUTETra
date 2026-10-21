@@ -30,8 +30,13 @@ public class Review {
 	@Column(nullable = false)
 	private Integer rating;
 
-	@Column(nullable = false, length = 2000)
+	/** Bình luận - không bắt buộc (null = chỉ chấm sao) */
+	@Column(length = 2000)
 	private String content;
+
+	/** Gợi ý khách bấm chọn, ngăn bằng "|": "Đúng vị, rất ngon|Sẽ mua lại" */
+	@Column(length = 255)
+	private String tags;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt = LocalDateTime.now();

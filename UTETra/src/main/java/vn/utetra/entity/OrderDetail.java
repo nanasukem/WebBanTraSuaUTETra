@@ -47,6 +47,10 @@ public class OrderDetail {
 	@Column(name = "subtotal", nullable = false, precision = 12, scale = 0)
 	private BigDecimal subtotal; // unitPrice * quantity
 
+	/** Ghi chú món, chép từ giỏ lúc đặt (quán đọc khi pha) */
+	@Column(length = 200)
+	private String note;
+
 	@OneToMany(mappedBy = "orderDetail", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OrderDetailTopping> toppings = new ArrayList<>();
 

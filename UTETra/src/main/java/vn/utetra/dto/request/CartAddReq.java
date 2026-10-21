@@ -25,4 +25,8 @@ public class CartAddReq {
 	@Min(value = 1, message = "Số lượng ít nhất là 1")
 	@Max(value = 50, message = "Mỗi món tối đa 50 ly")
 	private Integer quantity = 1;
+
+	/** Ghi chú món (không bắt buộc), tối đa 200 ký tự */
+	@Size(max = 200, message = "Ghi chú món tối đa 200 ký tự")
+	private String note;
 }

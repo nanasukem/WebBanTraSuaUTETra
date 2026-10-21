@@ -21,7 +21,7 @@
 	const liveText = document.getElementById('trkLiveText');
 
 	const BADGE = {
-		PENDING: 'text-bg-warning', CONFIRMED: 'text-bg-info', PICKED_UP: 'text-bg-primary', DELIVERING: 'text-bg-primary',
+		PENDING: 'text-bg-warning', CONFIRMED: 'text-bg-info', READY: 'text-bg-warning', PICKED_UP: 'text-bg-primary', DELIVERING: 'text-bg-primary',
 		DELIVERED: 'text-bg-success', CANCELLED: 'text-bg-secondary', RETURNED: 'text-bg-danger',
 	};
 	const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
@@ -89,11 +89,15 @@
 
 		if (ev.status === 'CANCELLED' || ev.status === 'RETURNED') {
 			stopped.className = 'alert mb-3 ' + (ev.status === 'CANCELLED' ? 'alert-secondary' : 'alert-danger');
-			stopped.textContent = ev.status === 'CANCELLED' ? 'Đơn đã huỷ. ' + (ev.message || '') : 'Đơn đã trả hàng - hoàn tiền.';
+			stopped.textContent = ev.status === 'CANCELLED'
+				? (ev.statusLabel || 'Đơn đã huỷ') + '. ' + (ev.message || '') : 'Đơn đã trả hàng - hoàn tiền.';
+		}
+		if (ev.status === 'READY' && flow.length === 4) {
+			document.getElementById('trkHint').innerHTML = '<b class="text-success">Món đã xong! Mời bạn đến quán lấy.</b>';
 		}
 		if (ev.status === 'DELIVERED') {
 			document.getElementById('trkHint').innerHTML =
-				'Đơn đã hoàn tất. <a class="link-success fw-semibold" href="/orders/' + orderId + '#danh-gia">Đánh giá món đã mua</a>';
+				'Đơn đã hoàn tất. <a class="link-success fw-semibold" href="/orders/' + orderId + '/review">Đánh giá món và quán</a>';
 		}
 		if (navigator.vibrate) navigator.vibrate(120);
 	}

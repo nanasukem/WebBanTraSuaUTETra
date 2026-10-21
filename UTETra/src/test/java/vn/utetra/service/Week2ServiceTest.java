@@ -893,6 +893,8 @@ class Week2ServiceTest {
 	void tab_dangGiao_gomCaPickedUpVaDelivering() {
 		int id = orderService.placeOrder(USER2, giaoTanNoi(null)).getId();
 		orderFlowService.updateStatus(id, OrderStatus.CONFIRMED, null);
+		orderFlowService.updateStatus(id, OrderStatus.READY, null);
+		assertTrue(co(orderFlowService.myOrders(USER2, OrderTab.CONFIRMED), id), "Pha xong (chờ shipper) nằm ở tab Đã xác nhận");
 		orderFlowService.updateStatus(id, OrderStatus.PICKED_UP, null);
 		assertTrue(co(orderFlowService.myOrders(USER2, OrderTab.SHIPPING), id), "PICKED_UP nằm ở tab Đang giao");
 
@@ -917,7 +919,7 @@ class Week2ServiceTest {
 		assertEquals(0, d.totalAmount().compareTo(java.math.BigDecimal.valueOf(153000)));
 		assertEquals("FREESHIP10K", d.shippingVoucherCode());
 		assertTrue(d.items().stream().anyMatch(i -> i.toppings().contains("Trân châu đen")));
-		assertEquals(5, d.steps().size());
+		assertEquals(6, d.steps().size(), "Đơn mới, Đang pha chế, Pha xong, Shipper lấy hàng, Đang giao, Đã giao");
 		assertTrue(d.steps().stream().allMatch(OrderDetailRes.Step::done), "Đã giao: mọi bước đều xong");
 		assertFalse(d.canCancel());
 	}
@@ -991,6 +993,7 @@ class Week2ServiceTest {
 		int daBanTruoc = productRepository.findById(5).orElseThrow().getSoldCount();
 
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.CONFIRMED, null);
+		orderFlowService.updateStatus(DON_CHO, OrderStatus.READY, null);
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.PICKED_UP, null);
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.DELIVERING, null);
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.DELIVERED, null);
@@ -1019,9 +1022,13 @@ class Week2ServiceTest {
 	void denLay_luongNgan_khongQuaShipper() {
 		int id = orderService.placeOrder(USER2, denLay()).getId();
 		orderFlowService.updateStatus(id, OrderStatus.CONFIRMED, null);
-		assertEquals("Đang pha chế, mời bạn ghé lấy", orderFlowService.myOrder(USER2, id).statusLabel());
-		assertEquals(3, orderFlowService.myOrder(USER2, id).steps().size());
+		assertEquals("Đang pha chế", orderFlowService.myOrder(USER2, id).statusLabel());
+		assertEquals(4, orderFlowService.myOrder(USER2, id).steps().size(), "Đơn mới, Đang pha chế, Chờ đến lấy, Đã nhận món");
+		assertThrows(BusinessException.class, () -> orderFlowService.updateStatus(id, OrderStatus.DELIVERED, null),
+				"Chưa pha xong thì chưa giao được");
 
+		orderFlowService.updateStatus(id, OrderStatus.READY, null);
+		assertEquals("Đã xong, chờ khách đến lấy", orderFlowService.myOrder(USER2, id).statusLabel());
 		assertThrows(BusinessException.class, () -> orderFlowService.updateStatus(id, OrderStatus.PICKED_UP, null),
 				"Đơn đến lấy không có bước shipper");
 
@@ -1079,9 +1086,16 @@ class Week2ServiceTest {
 		assertEquals(OrderStatus.CONFIRMED, trangThai(DON_CHO));
 		assertEquals(truoc + 1, notificationRepository.countByUserIdAndOrderId(USER1, DON_CHO), "Khách phải có thông báo");
 		ManagerOrderRes don = tim(managerOrderService.board(MANAGER2, 2).making(), DON_CHO);
-		assertNotNull(don, "Đã xác nhận phải sang cột Đang pha chế");
-		assertTrue(don.actions().isEmpty(), "Đơn giao tận nơi: chờ shipper, quán không có nút tiếp");
-		assertFalse(don.canCancel());
+		assertNotNull(don, "Nhận đơn phải sang cột Đang pha chế");
+		assertTrue(don.actions().stream().anyMatch(a -> a.to().equals("READY")), "Đang pha: có nút Pha xong");
+		assertTrue(don.canCancel(), "Đang pha mà hết nguyên liệu thì quán huỷ được");
+
+		// Pha xong: đơn giao tận nơi chờ shipper, quán không còn nút tiếp, không huỷ được nữa
+		managerOrderService.changeStatus(MANAGER2, DON_CHO, OrderStatus.READY, null);
+		ManagerOrderRes xong = tim(managerOrderService.board(MANAGER2, 2).shipping(), DON_CHO);
+		assertNotNull(xong, "Pha xong phải sang cột Pha xong / đang giao");
+		assertTrue(xong.actions().isEmpty());
+		assertFalse(xong.canCancel());
 	}
 
 	@Test
@@ -1102,7 +1116,13 @@ class Week2ServiceTest {
 		managerOrderService.changeStatus(MANAGER2, id, OrderStatus.CONFIRMED, null);
 		ManagerOrderRes don = tim(managerOrderService.board(MANAGER2, 2).making(), id);
 		assertNotNull(don);
-		assertTrue(don.actions().stream().anyMatch(a -> a.to().equals("DELIVERED")), "Đến lấy: có nút Khách đã nhận món");
+		assertTrue(don.actions().stream().anyMatch(a -> a.to().equals("READY")), "Đang pha: có nút Pha xong, báo khách đến lấy");
+
+		managerOrderService.changeStatus(MANAGER2, id, OrderStatus.READY, null);
+		ManagerOrderRes cho = tim(managerOrderService.board(MANAGER2, 2).shipping(), id);
+		assertNotNull(cho, "Đã xong, chờ khách lấy");
+		assertTrue(cho.actions().stream().anyMatch(a -> a.to().equals("DELIVERED")), "Đến lấy: có nút Khách đã nhận món");
+		assertTrue(cho.canCancel(), "Khách không đến lấy thì quán huỷ được");
 
 		managerOrderService.changeStatus(MANAGER2, id, OrderStatus.DELIVERED, null);
 		assertEquals(OrderStatus.DELIVERED, trangThai(id));
@@ -1142,16 +1162,18 @@ class Week2ServiceTest {
 	}
 
 	// =====================================================================
-	// 10. ĐƠN HÀNG CỦA SHOP THEO 7 TRẠNG THÁI (bước 7b)
+	// 10. ĐƠN HÀNG CỦA SHOP THEO 8 TRẠNG THÁI (bước 7b, thêm Pha xong)
 	// =====================================================================
 
 	@Test
-	void du7Tab_dungThuTuDe() {
+	void du8Tab_dungThuTu() {
 		ManagerHistoryRes h = managerOrderService.history(MANAGER2, null, null, 0);
-		assertEquals(7, h.tabs().size());
+		assertEquals(8, h.tabs().size());
 		assertEquals("PENDING", h.tabs().get(0).status());
-		assertEquals("Đã lấy hàng", h.tabs().get(2).label());
-		assertEquals("Trả hàng - hoàn tiền", h.tabs().get(6).label());
+		assertEquals("Đang pha chế", h.tabs().get(1).label());
+		assertEquals("READY", h.tabs().get(2).status());
+		assertEquals("Đã lấy hàng", h.tabs().get(3).label());
+		assertEquals("Trả hàng - hoàn tiền", h.tabs().get(7).label());
 		assertEquals("PENDING", h.status(), "Không chọn tab thì mở tab Đơn mới");
 		assertTrue(co(h, DON_CHO));
 		assertTrue(dem(h, "PENDING") >= 1);
@@ -1160,6 +1182,7 @@ class Week2ServiceTest {
 	@Test
 	void daLayHangVaDangGiao_tachRieng2Tab() {
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.CONFIRMED, null);
+		orderFlowService.updateStatus(DON_CHO, OrderStatus.READY, null);
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.PICKED_UP, null); // giả lập shipper lấy hàng
 		em.flush();
 		em.clear();

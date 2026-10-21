@@ -3,6 +3,7 @@ package vn.utetra.service;
 import vn.utetra.dto.request.CartAddReq;
 import vn.utetra.dto.response.CartRes;
 import vn.utetra.dto.response.ProductOptionsRes;
+import vn.utetra.dto.response.ReorderRes;
 
 public interface CartService {
 
@@ -23,4 +24,7 @@ public interface CartService {
 	
 	/** Size (giá cộng thêm) + topping đang bán của 1 món - dùng cho modal chọn món */
 	ProductOptionsRes getOptions(Integer productId);
+
+	/** "Mua lại": cho lại các món của 1 đơn cũ (của chính mình) vào giỏ, giữ size / đường / đá / topping / ghi chú */
+	ReorderRes reorder(Integer userId, Integer orderId);
 }

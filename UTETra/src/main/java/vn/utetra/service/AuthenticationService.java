@@ -32,10 +32,13 @@ public class AuthenticationService {
 	private final PasswordEncoder passwordEncoder;
 	private final AuthenticationManager authenticationManager;
 	private final EmailService emailService;
+	private final NotificationService notificationService;
 
 	public AuthenticationService(UserRepository userRepository, RoleRepository roleRepository,
 			OtpCodeRepository otpCodeRepository, PasswordEncoder passwordEncoder,
-			AuthenticationManager authenticationManager, EmailService emailService) {
+			AuthenticationManager authenticationManager, EmailService emailService,
+			NotificationService notificationService) {
+		this.notificationService = notificationService;
 		this.userRepository = userRepository;
 		this.roleRepository = roleRepository;
 		this.otpCodeRepository = otpCodeRepository;
@@ -111,6 +114,13 @@ public class AuthenticationService {
 				.orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
 		user.setIsVerified(true);
 		userRepository.save(user);
+
+		// Báo Admin có khách mới (chuông)
+		if (user.getRole() != null && "USER".equalsIgnoreCase(user.getRole().getName())) {
+			notificationService.notifyAdmins("USER", "Khách mới đăng ký: " + user.getUsername(),
+					(user.getFullName() == null ? "" : user.getFullName() + " · ") + user.getEmail(), "/admin/users",
+					"NEW_USER:" + user.getId());
+		}
 
 		return true;
 	}
