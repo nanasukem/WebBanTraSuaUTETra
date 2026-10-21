@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/manager-layout :: main('Chi tiết khách hàng', 'customers', ~{::#admin-content})}">
+
+<!-- (Chức năng mở rộng) Chi tiết 1 khách: thông tin + lịch sử đơn ở chi nhánh của Manager -->
+<section id="admin-content">
+
+	<!-- Tiêu đề + nút quay lại -->
+	<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+		<div>
+			<h2 class="fw-bold mb-1">
+				<i class="bi bi-person me-2"></i><span th:text="${data.customer.fullName}">Tên khách</span>
+			</h2>
+			<p class="text-muted mb-0">
+				Lịch sử mua tại chi nhánh <strong th:text="${data.branchName}">Tên chi nhánh</strong>
+			</p>
+		</div>
+
+		<a th:href="@{/manager/branches/{id}/customers(id=${data.branchId})}" class="btn btn-outline-secondary">
+			<i class="bi bi-arrow-left me-1"></i>Danh sách khách
+		</a>
+	</div>
+
+	<!-- Thông tin khách -->
+	<div class="row g-3 mb-4">
+		<div class="col-md-6 col-xl-3">
+			<div class="card border-0 shadow-sm h-100">
+				<div class="card-body">
+					<p class="text-muted mb-2">Liên hệ</p>
+					<div class="fw-semibold" th:text="${data.customer.phone ?: '—'}">0900000000</div>
+					<small class="text-muted" th:text="${data.customer.username}">username</small>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-6 col-xl-3">
+			<div class="card border-0 shadow-sm h-100">
+				<div class="card-body">
+					<p class="text-muted mb-2">Hạng thành viên</p>
+					<h4 class="fw-bold mb-0 text-success" th:text="${data.customer.tierName}">Thành viên</h4>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-6 col-xl-3">
+			<div class="card border-0 shadow-sm h-100">
+				<div class="card-body">
+					<p class="text-muted mb-2">Đơn tại chi nhánh</p>
+					<h4 class="fw-bold mb-0">
+						<span th:text="${data.customer.orderCount}">0</span>
+						<small class="fs-6 fw-normal text-muted">
+							(<span th:text="${data.customer.deliveredCount}">0</span> đã giao,
+							<span th:text="${data.customer.cancelledCount}">0</span> đã huỷ)
+						</small>
+					</h4>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-6 col-xl-3">
+			<div class="card border-0 shadow-sm h-100">
+				<div class="card-body">
+					<p class="text-muted mb-2">Tổng chi tiêu tại chi nhánh</p>
+					<h4 class="fw-bold mb-0 text-danger"
+						th:text="|${#numbers.formatInteger(data.customer.totalSpent, 1, 'POINT')}đ|">0đ</h4>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Lịch sử đơn tại chi nhánh -->
+	<div class="card border-0 shadow-sm rounded-4">
+		<div class="card-header bg-white py-3">
+			<h5 class="fw-bold mb-0">
+				<i class="bi bi-receipt me-2"></i>Đơn hàng của khách tại chi nhánh
+			</h5>
+		</div>
+
+		<div class="table-responsive">
+			<table class="table table-hover align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th class="ps-3">Mã đơn</th>
+						<th>Thời gian đặt</th>
+						<th>Hình thức</th>
+						<th>Trạng thái</th>
+						<th class="text-center">Số ly</th>
+						<th class="text-end">Tổng tiền</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="o : ${data.orders}">
+						<td class="ps-3 fw-semibold">#<span th:text="${o.id}">1</span></td>
+						<td class="text-nowrap" th:text="${o.time}">01/01/2026 10:00</td>
+						<td th:text="${o.pickup} ? 'Đến lấy tại cửa hàng' : 'Giao tận nơi'">Giao tận nơi</td>
+						<td><span class="badge" th:classappend="${o.badgeClass}" th:text="${o.statusLabel}">Đã giao</span></td>
+						<td class="text-center" th:text="${o.totalQty}">1</td>
+						<td class="text-end fw-semibold text-nowrap"
+							th:text="|${#numbers.formatInteger(o.totalAmount, 1, 'POINT')}đ|">0đ</td>
+						<td class="text-end pe-3">
+							<a class="btn btn-sm btn-success" th:href="@{/manager/orders/{id}(id=${o.id})}">Xem đơn</a>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+</section>
+
+</html>

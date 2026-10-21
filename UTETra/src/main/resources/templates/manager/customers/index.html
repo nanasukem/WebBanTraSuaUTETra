@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/manager-layout :: main('Khách hàng của chi nhánh', 'customers', ~{::#admin-content})}">
+
+<!-- (Chức năng mở rộng) Manager kiểm tra khách đã đặt đơn ở chi nhánh mình: chỉ xem, không sửa / khoá tài khoản -->
+<section id="admin-content">
+
+	<!-- Tiêu đề + nút quay lại -->
+	<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+		<div>
+			<h2 class="fw-bold mb-1">
+				<i class="bi bi-people me-2"></i>Khách hàng của chi nhánh
+			</h2>
+			<p class="text-muted mb-0">
+				Chi nhánh: <strong th:text="${branch.name}">Tên chi nhánh</strong>
+				· Khách đã từng đặt đơn ở chi nhánh này
+			</p>
+		</div>
+
+		<a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary">
+			<i class="bi bi-arrow-left me-1"></i>Tổng quan
+		</a>
+	</div>
+
+	<!-- Thông báo -->
+	<div th:if="${success != null}" class="alert alert-success alert-dismissible fade show">
+		<span th:text="${success}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+	<div th:if="${error != null}" class="alert alert-danger alert-dismissible fade show">
+		<span th:text="${error}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<!-- Tìm khách -->
+	<div class="card border-0 shadow-sm rounded-4 mb-4">
+		<div class="card-body">
+			<form method="get" th:action="@{/manager/branches/{id}/customers(id=${branch.id})}" class="row g-2">
+				<div class="col-md-9">
+					<input type="text" name="keyword" th:value="${keyword}" class="form-control"
+						placeholder="Tìm theo họ tên, tên đăng nhập hoặc số điện thoại...">
+				</div>
+				<div class="col-md-3 d-flex gap-2">
+					<button type="submit" class="btn btn-success flex-fill">
+						<i class="bi bi-search me-1"></i>Tìm
+					</button>
+					<a th:href="@{/manager/branches/{id}/customers(id=${branch.id})}"
+						class="btn btn-outline-secondary">Xoá lọc</a>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<!-- Danh sách khách -->
+	<div class="card border-0 shadow-sm rounded-4">
+		<div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+			<h5 class="fw-bold mb-0">
+				<i class="bi bi-list-ul me-2"></i>Danh sách khách hàng
+			</h5>
+			<span class="text-muted small" th:text="|${#lists.size(customers)} khách|">0 khách</span>
+		</div>
+
+		<div class="table-responsive">
+			<table class="table table-hover align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th class="ps-3">Khách hàng</th>
+						<th>Số điện thoại</th>
+						<th>Hạng thành viên</th>
+						<th class="text-center">Số đơn</th>
+						<th class="text-center">Đã giao</th>
+						<th class="text-center">Đã huỷ</th>
+						<th class="text-end">Tổng chi tiêu</th>
+						<th>Đặt gần nhất</th>
+						<th></th>
+					</tr>
+				</thead>
+
+				<tbody>
+					<tr th:if="${#lists.isEmpty(customers)}">
+						<td colspan="9" class="text-center py-5 text-muted">
+							<i class="bi bi-people fs-1 d-block mb-2"></i>
+							<span th:text="${keyword != null and !#strings.isEmpty(keyword)}
+								? 'Không tìm thấy khách phù hợp.'
+								: 'Chưa có khách nào đặt đơn ở chi nhánh này.'">Chưa có khách</span>
+						</td>
+					</tr>
+
+					<tr th:each="c : ${customers}">
+						<td class="ps-3">
+							<div class="fw-semibold" th:text="${c.fullName}">Tên khách</div>
+							<small class="text-muted" th:text="${c.username}">username</small>
+						</td>
+						<td th:text="${c.phone ?: '—'}">0900000000</td>
+						<td><span class="badge text-bg-light border" th:text="${c.tierName}">Thành viên</span></td>
+						<td class="text-center fw-semibold" th:text="${c.orderCount}">0</td>
+						<td class="text-center text-success" th:text="${c.deliveredCount}">0</td>
+						<td class="text-center text-danger" th:text="${c.cancelledCount}">0</td>
+						<td class="text-end fw-semibold text-nowrap"
+							th:text="|${#numbers.formatInteger(c.totalSpent, 1, 'POINT')}đ|">0đ</td>
+						<td class="small text-muted text-nowrap" th:text="${c.lastOrderAt}">01/01/2026 10:00</td>
+						<td class="text-end pe-3">
+							<a class="btn btn-sm btn-success"
+								th:href="@{/manager/branches/{b}/customers/{u}(b=${branch.id}, u=${c.userId})}">Chi tiết</a>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<p class="small text-muted mt-3 mb-0">
+		<i class="bi bi-info-circle me-1"></i>
+		Tổng chi tiêu chỉ tính các đơn đã giao ở chi nhánh này. Hạng thành viên tính trên toàn chuỗi.
+		Manager chỉ xem; sửa, khoá tài khoản khách là việc của Admin.
+	</p>
+
+</section>
+
+</html>
