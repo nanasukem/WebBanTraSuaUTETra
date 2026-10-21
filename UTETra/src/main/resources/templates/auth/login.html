@@ -1,143 +1,103 @@
 <!DOCTYPE html>
-<html lang="vi"
-      xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout/auth-layout :: main('Đăng nhập - UTETra', ~{::#login-content})}">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/auth-layout :: main('Đăng nhập - UTETra', ~{::#login-content})}">
 
 <body>
-<div id="login-content" class="container">
+	<div id="login-content" class="container">
 
-    <div class="card auth-card shadow-sm mx-auto p-4">
+		<div class="card auth-card shadow-sm mx-auto p-4">
 
-        <!-- Tieu de -->
-        <div class="text-center mb-4">
-            <h4 class="fw-bold text-success mb-1">
-                Chào mừng trở lại!
-            </h4>
-            <p class="text-muted small mb-0">
-                Đăng nhập tài khoản UTETra của bạn
-            </p>
-        </div>
+			<!-- Tiêu đề -->
+			<div class="text-center mb-4">
+				<h4 class="fw-bold text-success mb-1">Chào mừng trở lại!</h4>
+				<p class="text-muted small mb-0">Đăng nhập tài khoản UTETra của
+					bạn</p>
+			</div>
 
-        <!-- Loi dang nhap -->
-        <div th:if="${param.error != null}"
-             class="alert alert-danger text-center py-2"
-             role="alert">
-            <i class="bi bi-exclamation-circle-fill me-1"></i>
-            Sai tên đăng nhập hoặc mật khẩu!
-        </div>
+			<!-- Lỗi đăng nhập -->
+			<div th:if="${param.error != null}"
+				class="alert alert-danger text-center py-2" role="alert">
+				<i class="bi bi-exclamation-circle-fill me-1"></i> Sai tên đăng nhập
+				hoặc mật khẩu!
+			</div>
 
-        <!-- Dang xuat thanh cong -->
-        <div th:if="${param.logout != null}"
-             class="alert alert-success py-2"
-             role="alert">
-            <i class="bi bi-check-circle-fill me-1"></i>
-            Bạn đã đăng xuất thành công!
-        </div>
+			<!-- Đăng xuất thành công -->
+			<div th:if="${param.logout != null}" class="alert alert-success py-2"
+				role="alert">
+				<i class="bi bi-check-circle-fill me-1"></i> Bạn đã đăng xuất thành
+				công!
+			</div>
 
-        <!-- Thong bao thanh cong tu Controller -->
-        <div th:if="${success != null}"
-             class="alert alert-success py-2"
-             role="alert"
-             th:text="${success}">
-        </div>
+			<!-- Thông báo thành công từ Controller -->
+			<div th:if="${success != null}" class="alert alert-success py-2"
+				role="alert" th:text="${success}"></div>
 
-        <!-- Thong bao loi tu Controller -->
-        <div th:if="${error != null}"
-             class="alert alert-danger py-2"
-             role="alert"
-             th:text="${error}">
-        </div>
+			<!-- Thông báo lỗi từ Controller -->
+			<div th:if="${error != null}" class="alert alert-danger py-2"
+				role="alert" th:text="${error}"></div>
 
-        <!-- Email chua xac thuc -->
-        <div th:if="${unverifiedEmail != null}"
-             class="alert alert-warning text-center py-3">
+			<!-- Email chưa xác thực -->
+			<div th:if="${unverifiedEmail != null}"
+				class="alert alert-warning text-center py-3">
 
-            <p class="mb-2">
-                Email của bạn chưa được xác thực.
-            </p>
+				<p class="mb-2">Email của bạn chưa được xác thực.</p>
 
-            <form th:action="@{/auth/resend-otp}" method="post">
-                <input type="hidden"
-                       name="email"
-                       th:value="${unverifiedEmail}">
+				<form th:action="@{/auth/resend-otp}" method="post">
+					<input type="hidden" name="email" th:value="${unverifiedEmail}">
 
-                <button type="submit"
-                        class="btn btn-outline-success btn-sm rounded-pill px-4">
-                    <i class="bi bi-envelope me-1"></i>
-                    Gửi lại mã OTP
-                </button>
-            </form>
-        </div>
+					<button type="submit"
+						class="btn btn-outline-success btn-sm rounded-pill px-4">
+						<i class="bi bi-envelope me-1"></i> Gửi lại mã OTP
+					</button>
+				</form>
+			</div>
 
-        <!-- Form dang nhap -->
-        <form th:action="@{/auth/login}" method="post">
+			<!-- Form đăng nhập -->
+			<form th:action="@{/auth/login}" method="post">
 
-            <div class="mb-3">
-                <label for="username"
-                       class="form-label fw-semibold">
-                    Tên đăng nhập
-                </label>
+				<div class="mb-3">
+					<label for="username" class="form-label fw-semibold"> Tên
+						đăng nhập </label> <input type="text" id="username" name="username"
+						class="form-control" placeholder="Nhập tên đăng nhập"
+						autocomplete="username" required autofocus>
+				</div>
 
-                <input type="text"
-                       id="username"
-                       name="username"
-                       class="form-control"
-                       placeholder="Nhập tên đăng nhập"
-                       autocomplete="username"
-                       required
-                       autofocus>
-            </div>
+				<div class="mb-3">
+					<div class="d-flex justify-content-between align-items-center">
+						<label for="password" class="form-label fw-semibold mb-1">
+							Mật khẩu </label> <a th:href="@{/auth/forgot-password}"
+							class="small text-success text-decoration-none"> Quên mật
+							khẩu? </a>
+					</div>
 
-            <div class="mb-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <label for="password"
-                           class="form-label fw-semibold mb-1">
-                        Mật khẩu
-                    </label>
+					<input type="password" id="password" name="password"
+						class="form-control" placeholder="Nhập mật khẩu"
+						autocomplete="current-password" required>
+				</div>
 
-                    <a th:href="@{/auth/forgot-password}"
-                       class="small text-success text-decoration-none">
-                        Quên mật khẩu?
-                    </a>
-                </div>
+				<button type="submit"
+					class="btn btn-success w-100 rounded-pill py-2 fw-bold">
+					<i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+				</button>
+			</form>
 
-                <input type="password"
-                       id="password"
-                       name="password"
-                       class="form-control"
-                       placeholder="Nhập mật khẩu"
-                       autocomplete="current-password"
-                       required>
-            </div>
+			<!-- Đăng ký -->
+			<div class="text-center mt-4">
+				<p class="small text-muted mb-0">
+					Chưa có tài khoản? <a th:href="@{/auth/register}"
+						class="text-success fw-bold text-decoration-none"> Đăng ký
+						ngay </a>
+				</p>
+			</div>
 
-            <button type="submit"
-                    class="btn btn-success w-100 rounded-pill py-2 fw-bold">
-                <i class="bi bi-box-arrow-in-right me-1"></i>
-                Đăng nhập
-            </button>
-        </form>
+			<!-- Quay lại trang chủ -->
+			<div class="text-center mt-3">
+				<a th:href="@{/}" class="text-muted small text-decoration-none">
+					<i class="bi bi-arrow-left me-1"></i> Quay lại trang chủ
+				</a>
+			</div>
 
-        <!-- Dang ky -->
-        <div class="text-center mt-4">
-            <p class="small text-muted mb-0">
-                Chưa có tài khoản?
-                <a th:href="@{/auth/register}"
-                   class="text-success fw-bold text-decoration-none">
-                    Đăng ký ngay
-                </a>
-            </p>
-        </div>
-
-        <!-- Quay lai trang chu -->
-        <div class="text-center mt-3">
-            <a th:href="@{/menu}"
-               class="text-muted small text-decoration-none">
-                <i class="bi bi-arrow-left me-1"></i>
-                Quay lại trang chủ
-            </a>
-        </div>
-
-    </div>
-</div>
+		</div>
+	</div>
 </body>
 </html>
