@@ -1,0 +1,195 @@
+
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title
+	th:text="${voucherId == null ? 'Tạo voucher mới' : 'Cập nhật voucher'}">
+	Thêm / sửa voucher</title>
+
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+	<nav class="navbar navbar-dark bg-dark">
+		<div class="container-fluid">
+			<a class="navbar-brand" th:href="@{/manager/branches}"> UTETra -
+				Manager </a> <a class="btn btn-outline-light btn-sm"
+				th:href="@{/manager/branches/{branchId}/vouchers(branchId=${branch.id})}">
+				Danh sách voucher </a>
+		</div>
+	</nav>
+
+	<main class="container py-4">
+
+		<div class="mb-4">
+			<h2 class="fw-bold"
+				th:text="${voucherId == null ? 'Tạo voucher mới' : 'Cập nhật voucher'}">
+				Tạo voucher mới</h2>
+
+			<p class="text-muted mb-0">
+				Chi nhánh: <strong th:text="${branch.name}">Tên chi nhánh</strong>
+			</p>
+		</div>
+
+		<div th:if="${businessError != null}" class="alert alert-danger"
+			role="alert" th:text="${businessError}"></div>
+
+		<div th:if="${#fields != null}" class="d-none"></div>
+
+		<div class="card border-0 shadow-sm">
+			<div class="card-body p-4">
+
+				<form method="post" th:object="${voucherReq}"
+					th:action="${voucherId == null}
+                      ? @{/manager/branches/{branchId}/vouchers(branchId=${branch.id})}
+                      : @{/manager/branches/{branchId}/vouchers/{voucherId}(branchId=${branch.id},voucherId=${voucherId})}">
+
+					<input type="hidden" th:field="*{branchId}">
+
+					<div class="row g-3">
+
+						<div class="col-md-6">
+							<label for="code" class="form-label"> Mã voucher <span
+								class="text-danger">*</span>
+							</label> <input id="code" type="text" class="form-control"
+								th:field="*{code}" placeholder="Ví dụ: GIAM20" maxlength="30"
+								required>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('code')}" th:errors="*{code}"></div>
+						</div>
+
+						<div class="col-md-6">
+							<label for="name" class="form-label"> Tên chương trình <span
+								class="text-danger">*</span>
+							</label> <input id="name" type="text" class="form-control"
+								th:field="*{name}" placeholder="Tên chương trình khuyến mãi"
+								maxlength="150" required>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+						</div>
+
+						<div class="col-md-6">
+							<label for="applyTo" class="form-label"> Áp dụng cho <span
+								class="text-danger">*</span>
+							</label> <select id="applyTo" class="form-select" th:field="*{applyTo}"
+								required>
+								<option value="">-- Chọn phạm vi --</option>
+								<option th:each="item : ${applyToOptions}" th:value="${item}"
+									th:text="${item}"></option>
+							</select>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('applyTo')}" th:errors="*{applyTo}"></div>
+						</div>
+
+						<div class="col-md-6">
+							<label for="discountType" class="form-label"> Kiểu giảm
+								giá <span class="text-danger">*</span>
+							</label> <select id="discountType" class="form-select"
+								th:field="*{discountType}" required>
+								<option value="">-- Chọn kiểu giảm --</option>
+								<option th:each="item : ${discountTypes}" th:value="${item}"
+									th:text="${item}"></option>
+							</select>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('discountType')}"
+								th:errors="*{discountType}"></div>
+						</div>
+
+						<div class="col-md-6">
+							<label for="discountValue" class="form-label"> Giá trị
+								giảm <span class="text-danger">*</span>
+							</label> <input id="discountValue" type="number" min="1" step="1"
+								class="form-control" th:field="*{discountValue}" required>
+							<div class="form-text">Nếu giảm theo phần trăm, giá trị tối
+								đa là 100.</div>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('discountValue')}"
+								th:errors="*{discountValue}"></div>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('percentValid')}"
+								th:errors="*{percentValid}"></div>
+						</div>
+
+						<div class="col-md-6">
+							<label for="maxDiscount" class="form-label"> Mức giảm tối
+								đa </label> <input id="maxDiscount" type="number" min="0" step="1"
+								class="form-control" th:field="*{maxDiscount}">
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('maxDiscount')}"
+								th:errors="*{maxDiscount}"></div>
+						</div>
+
+						<div class="col-md-6">
+							<label for="minOrderValue" class="form-label"> Đơn hàng
+								tối thiểu <span class="text-danger">*</span>
+							</label> <input id="minOrderValue" type="number" min="0" step="1"
+								class="form-control" th:field="*{minOrderValue}" required>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('minOrderValue')}"
+								th:errors="*{minOrderValue}"></div>
+						</div>
+
+						<div class="col-md-6">
+							<label for="quantity" class="form-label"> Tổng số lượt sử
+								dụng <span class="text-danger">*</span>
+							</label> <input id="quantity" type="number" min="1" step="1"
+								class="form-control" th:field="*{quantity}" required>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('quantity')}" th:errors="*{quantity}"></div>
+						</div>
+
+						<div class="col-md-6">
+							<label for="startDate" class="form-label"> Ngày bắt đầu <span
+								class="text-danger">*</span>
+							</label> <input id="startDate" type="datetime-local" class="form-control"
+								th:field="*{startDate}" required>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('startDate')}"
+								th:errors="*{startDate}"></div>
+						</div>
+
+						<div class="col-md-6">
+							<label for="endDate" class="form-label"> Ngày kết thúc <span
+								class="text-danger">*</span>
+							</label> <input id="endDate" type="datetime-local" class="form-control"
+								th:field="*{endDate}" required>
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('endDate')}" th:errors="*{endDate}"></div>
+						</div>
+
+						<div class="col-12">
+							<div class="text-danger small"
+								th:if="${#fields.hasErrors('dateRangeValid')}"
+								th:errors="*{dateRangeValid}"></div>
+						</div>
+
+					</div>
+
+					<hr class="my-4">
+
+					<div class="d-flex flex-wrap gap-2">
+						<button type="submit" class="btn btn-primary">
+							<span
+								th:text="${voucherId == null ? 'Tạo voucher' : 'Lưu thay đổi'}">
+								Lưu voucher </span>
+						</button>
+
+						<a class="btn btn-outline-secondary"
+							th:href="@{/manager/branches/{branchId}/vouchers(branchId=${branch.id})}">
+							Hủy </a>
+					</div>
+
+				</form>
+
+			</div>
+		</div>
+
+	</main>
+
+</body>
+</html>
