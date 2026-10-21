@@ -40,7 +40,7 @@
 
 				<!-- Nút quản trị dành cho Admin (toàn hệ thống) -->
 				<a th:if="${roleName == 'ADMIN'}"
-					th:href="@{/admin/products}" class="btn btn-warning btn-sm fw-bold">
+					th:href="@{/admin/dashboard}" class="btn btn-warning btn-sm fw-bold">
 					<i class="bi bi-speedometer2 me-1"></i> Quản trị Admin
 				</a>
 
@@ -101,14 +101,23 @@
 						<th:block th:if="${isManager}">
 							<li><hr class="dropdown-divider"></li>
 							<li><h6 class="dropdown-header">Chi nhánh của tôi</h6></li>
+							<li><a class="dropdown-item" th:href="@{/manager/dashboard}">
+									<i class="bi bi-speedometer2 me-2"></i> Tổng quan chi nhánh
+							</a></li>
 							<li><a class="dropdown-item" th:href="@{/manager/orders}">
 									<i class="bi bi-bell me-2"></i> Quầy đơn hàng
 							</a></li>
 							<li><a class="dropdown-item" th:href="@{/manager/orders/history}">
 									<i class="bi bi-receipt-cutoff me-2"></i> Đơn hàng của chi nhánh
 							</a></li>
-							<li><a class="dropdown-item" th:href="@{/manager/menu}">
+							<li><a class="dropdown-item" th:href="@{/manager/products}">
 									<i class="bi bi-toggles me-2"></i> Bật/tắt món của chi nhánh
+							</a></li>
+							<li><a class="dropdown-item" th:href="@{/manager/vouchers}">
+									<i class="bi bi-ticket-perforated me-2"></i> Voucher của chi nhánh
+							</a></li>
+							<li><a class="dropdown-item" th:href="@{/manager/reports}">
+									<i class="bi bi-bar-chart-line me-2"></i> Báo cáo doanh thu
 							</a></li>
 						</th:block>
 

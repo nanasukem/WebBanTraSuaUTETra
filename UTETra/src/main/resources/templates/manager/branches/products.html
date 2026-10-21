@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Sản phẩm theo chi nhánh', 'branches', ~{::#admin-content})}">
+
+<section id="admin-content">
+
+	<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+		<div>
+			<h2 class="fw-bold mb-1">
+				<i class="bi bi-box-seam me-2"></i>Quản lý sản phẩm
+			</h2>
+			<p class="text-secondary mb-0">
+				Chi nhánh:
+				<strong th:text="${branch.name}">Tên chi nhánh</strong>
+			</p>
+		</div>
+
+		<a th:href="@{/manager/branches/{id}(id=${branch.id})}" class="btn btn-outline-secondary">
+			<i class="bi bi-arrow-left me-1"></i>Chi tiết chi nhánh
+		</a>
+	</div>
+
+	<div th:if="${success != null}" class="alert alert-success alert-dismissible fade show">
+		<span th:text="${success}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<div th:if="${error != null}" class="alert alert-danger alert-dismissible fade show">
+		<span th:text="${error}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	</div>
+
+	<div th:if="${branch.status.name() != 'APPROVED'}" class="alert alert-warning">
+		<i class="bi bi-exclamation-triangle me-2"></i>
+		Chi nhánh chưa được duyệt hoặc đang tạm ngưng.
+		Không thể thay đổi trạng thái sản phẩm.
+	</div>
+
+	<div class="card border-0 shadow-sm rounded-4">
+		<div class="card-header bg-white py-3">
+			<h5 class="fw-bold mb-0">
+				<i class="bi bi-list-ul me-2"></i>Danh sách sản phẩm
+			</h5>
+		</div>
+
+		<div class="table-responsive">
+			<table class="table table-hover align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th class="ps-3">ID</th>
+						<th>Tên sản phẩm</th>
+						<th>Danh mục</th>
+						<th>Giá</th>
+						<th>Trạng thái hệ thống</th>
+						<th>Trạng thái chi nhánh</th>
+						<th>Thao tác</th>
+					</tr>
+				</thead>
+
+				<tbody>
+					<tr th:each="product : ${products}">
+						<td class="ps-3" th:text="${product.id}">1</td>
+						<td class="fw-semibold" th:text="${product.name}">Tên sản phẩm</td>
+						<td th:text="${product.category != null
+                        ? product.category.name : '—'}">Danh mục</td>
+
+						<td class="text-nowrap">
+							<span th:text="${product.basePrice != null
+                            ? #numbers.formatDecimal(product.basePrice, 0, 'COMMA', 0, 'POINT')
+                            : '0'}">0</span> đ
+						</td>
+
+						<td>
+							<span class="badge bg-success" th:if="${product.isAvailable}">Đang mở</span>
+							<span class="badge bg-danger" th:unless="${product.isAvailable}">Đã khóa</span>
+						</td>
+
+						<td>
+							<span class="badge bg-secondary" th:if="${unavailableProductIds.contains(product.id)}">
+								Ngừng bán
+							</span>
+							<span class="badge bg-success" th:unless="${unavailableProductIds.contains(product.id)}">
+								Đang bán mặc định
+							</span>
+						</td>
+
+						<td>
+							<form th:if="${branch.status.name() == 'APPROVED'
+                                and product.isAvailable}" th:action="@{/manager/branches/{branchId}/products/{productId}/toggle(
+                                  branchId=${branch.id},productId=${product.id})}" method="post"
+								onsubmit="return confirm('Bạn có chắc muốn thay đổi trạng thái bán sản phẩm này?')">
+
+								<button class="btn btn-sm" th:classappend="${unavailableProductIds.contains(product.id)
+                                        ? ' btn-success' : ' btn-warning'}" type="submit" th:text="${unavailableProductIds.contains(product.id)
+                                        ? 'Mở bán' : 'Ngừng bán'}">
+								</button>
+							</form>
+
+							<span th:if="${!product.isAvailable}" class="text-muted small">
+								Bị khóa toàn hệ thống
+							</span>
+
+							<span th:if="${branch.status.name() != 'APPROVED'
+                                and product.isAvailable}" class="text-muted small">
+								Chi nhánh chưa hoạt động
+							</span>
+						</td>
+					</tr>
+
+					<tr th:if="${products == null or #lists.isEmpty(products)}">
+						<td colspan="7" class="text-center py-5 text-secondary">
+							<i class="bi bi-inbox fs-1 d-block mb-2"></i>
+							Chưa có sản phẩm.
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+</section>
+
+</html>

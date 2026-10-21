@@ -44,12 +44,12 @@ public class HomeController {
 
 					// ADMIN: quản lý toàn hệ thống
 					if ("ADMIN".equals(roleName)) {
-						return "redirect:/admin/products";
+						return "redirect:/admin/dashboard";
 					}
 
-					// MANAGER: quản lý chi nhánh của mình -> Quầy đơn hàng
+					// MANAGER: quản lý chi nhánh của mình -> Tổng quan chi nhánh
 					if ("MANAGER".equals(roleName)) {
-						return "redirect:/manager/orders";
+						return "redirect:/manager/dashboard";
 					}
 				}
 			}

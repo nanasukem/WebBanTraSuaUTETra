@@ -60,11 +60,11 @@ public class AuthController {
 			session.setAttribute("currentUser", authenticatedUser);
 
 			// Chuyển hướng theo Role sau khi Đăng nhập
-			// ADMIN: quản lý toàn hệ thống; MANAGER: quản lý 1 chi nhánh -> vào Quầy đơn hàng
+			// ADMIN: quản lý toàn hệ thống; MANAGER: quản lý 1 chi nhánh -> Tổng quan chi nhánh
 			if ("ADMIN".equalsIgnoreCase(authenticatedUser.getRole().getName())) {
-				return "redirect:/admin/products";
+				return "redirect:/admin/dashboard";
 			} else if ("MANAGER".equalsIgnoreCase(authenticatedUser.getRole().getName())) {
-				return "redirect:/manager/orders";
+				return "redirect:/manager/dashboard";
 			}
 
 			return "redirect:/menu";

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Tổng quan - UTETra Admin', 'dashboard', ~{::#admin-content})}">
+
+<section id="admin-content">
+
+	<style>
+.dashboard-page {
+	color: #26352d;
+}
+
+.dashboard-title {
+	color: #176b3a;
+	font-weight: 700;
+}
+
+.dashboard-card {
+	background: #fff;
+	border: 1px solid #e5ebe7;
+	border-radius: 15px;
+	box-shadow: 0 3px 12px rgba(0, 0, 0, .035);
+}
+
+.stat-card {
+	padding: 22px;
+	height: 100%;
+}
+
+.stat-icon {
+	width: 46px;
+	height: 46px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 12px;
+	background: #e9f5ee;
+	color: #198754;
+	font-size: 23px;
+}
+
+.stat-value {
+	color: #183c2a;
+	font-size: 30px;
+	font-weight: 700;
+	margin-top: 14px;
+}
+
+.stat-label {
+	color: #718078;
+	font-size: 14px;
+}
+
+.dashboard-panel-title {
+	font-size: 19px;
+	font-weight: 700;
+	margin: 0;
+}
+
+.dashboard-table th {
+	background: #f5f8f6;
+	color: #405248;
+	white-space: nowrap;
+}
+
+.dashboard-table td, .dashboard-table th {
+	padding: 13px 14px;
+	vertical-align: middle;
+}
+
+.quick-link {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 13px;
+	border: 1px solid #e5ebe7;
+	border-radius: 10px;
+	color: #26352d;
+	text-decoration: none;
+	transition: .2s;
+}
+
+.quick-link:hover {
+	background: #f0f8f3;
+	border-color: #198754;
+	color: #176b3a;
+}
+
+.quick-link i {
+	color: #198754;
+	font-size: 21px;
+}
+
+.quick-link .arrow {
+	margin-left: auto;
+	color: #718078;
+}
+
+.revenue-value {
+	color: #198754;
+	font-size: 25px;
+	font-weight: 700;
+}
+</style>
+
+	<div class="dashboard-page">
+
+		<!-- Tiêu đề -->
+		<div
+			class="d-flex flex-wrap justify-content-between
+                    align-items-center gap-3 mb-4">
+			<div>
+				<h1 class="dashboard-title h2 mb-2">Tổng quan hệ thống</h1>
+				<p class="text-muted mb-0">Theo dõi hoạt động kinh doanh và quản
+					trị UTETra.</p>
+			</div>
+
+			<div class="text-muted small">
+				<i class="bi bi-calendar3 me-1"></i> <span
+					th:text="${#temporals.format(
+                    #temporals.createNow(), 'dd/MM/yyyy')}">
+					Ngày hiện tại </span>
+			</div>
+		</div>
+
+		<!-- Thống kê -->
+		<div class="row g-3 mb-4">
+
+			<div class="col-12 col-sm-6 col-xl-3">
+				<div class="dashboard-card stat-card">
+					<div class="d-flex justify-content-between align-items-center">
+						<span class="stat-label">Tổng đơn hàng</span>
+						<div class="stat-icon">
+							<i class="bi bi-receipt"></i>
+						</div>
+					</div>
+
+					<div class="stat-value" th:text="${orderCount}">0</div>
+
+					<small class="text-warning"> <i class="bi bi-clock me-1"></i>
+						<span th:text="${pendingOrders}">0</span> đơn chờ xử lý
+					</small>
+				</div>
+			</div>
+
+			<div class="col-12 col-sm-6 col-xl-3">
+				<div class="dashboard-card stat-card">
+					<div class="d-flex justify-content-between align-items-center">
+						<span class="stat-label">Người dùng</span>
+						<div class="stat-icon">
+							<i class="bi bi-people"></i>
+						</div>
+					</div>
+
+					<div class="stat-value" th:text="${userCount}">0</div>
+
+					<small class="text-success"> <i
+						class="bi bi-check-circle me-1"></i> <span
+						th:text="${activeUsers}">0</span> tài khoản hoạt động
+					</small>
+				</div>
+			</div>
+
+			<div class="col-12 col-sm-6 col-xl-3">
+				<div class="dashboard-card stat-card">
+					<div class="d-flex justify-content-between align-items-center">
+						<span class="stat-label">Sản phẩm đang bán</span>
+						<div class="stat-icon">
+							<i class="bi bi-box-seam"></i>
+						</div>
+					</div>
+
+					<div class="stat-value" th:text="${activeProducts}">0</div>
+
+					<small class="text-muted"> Tổng cộng <span
+						th:text="${productCount}">0</span> sản phẩm
+					</small>
+				</div>
+			</div>
+
+			<div class="col-12 col-sm-6 col-xl-3">
+				<div class="dashboard-card stat-card">
+					<div class="d-flex justify-content-between align-items-center">
+						<span class="stat-label">Shop đã duyệt</span>
+						<div class="stat-icon">
+							<i class="bi bi-shop"></i>
+						</div>
+					</div>
+
+					<div class="stat-value" th:text="${approvedBranches}">0</div>
+
+					<small class="text-muted"> Tổng cộng <span
+						th:text="${branchCount}">0</span> shop/chi nhánh
+					</small>
+				</div>
+			</div>
+
+		</div>
+
+		<!-- Doanh thu -->
+		<div class="dashboard-card p-4 mb-4">
+			<div
+				class="d-flex justify-content-between align-items-center
+                        flex-wrap gap-3">
+				<div>
+					<div class="text-muted mb-2">
+						<i class="bi bi-cash-stack me-1"></i> Doanh thu từ đơn đã giao
+					</div>
+
+					<div class="revenue-value"
+						th:text="${#numbers.formatDecimal(
+                            revenue, 0, 'POINT', 0, 'COMMA')} + ' ₫'">
+						0 ₫</div>
+
+					<small class="text-muted"> <span
+						th:text="${deliveredOrders}">0</span> đơn đã hoàn thành
+					</small>
+				</div>
+
+				<a th:href="@{/admin/reports}" class="btn btn-outline-success">
+					<i class="bi bi-bar-chart-line me-1"></i> Xem báo cáo doanh thu
+				</a>
+			</div>
+		</div>
+
+		<div class="row g-4">
+
+			<!-- Đơn hàng gần đây -->
+			<div class="col-12 col-xxl-8">
+				<div class="dashboard-card h-100">
+
+					<div
+						class="p-4 border-bottom d-flex
+                                justify-content-between align-items-center">
+						<h2 class="dashboard-panel-title">Đơn hàng mới nhất</h2>
+
+						<a th:href="@{/admin/orders}"
+							class="text-success text-decoration-none small"> Xem tất cả <i
+							class="bi bi-arrow-right ms-1"></i>
+						</a>
+					</div>
+
+					<div class="table-responsive">
+						<table class="table table-hover dashboard-table mb-0">
+							<thead>
+								<tr>
+									<th>Mã đơn</th>
+									<th>Khách hàng</th>
+									<th>Shop/chi nhánh</th>
+									<th>Ngày tạo</th>
+									<th class="text-end">Tổng tiền</th>
+									<th>Trạng thái</th>
+								</tr>
+							</thead>
+
+							<tbody>
+								<tr th:if="${#lists.isEmpty(recentOrders)}">
+									<td colspan="6" class="text-center text-muted py-5"><i
+										class="bi bi-inbox fs-2 d-block mb-2"></i> Chưa có đơn hàng.</td>
+								</tr>
+
+								<tr th:each="o : ${recentOrders}">
+									<td><a th:href="@{/admin/orders/{id}(id=${o.id})}"
+										class="text-success fw-semibold
+                                              text-decoration-none"
+										th:text="${'#' + o.id}"> #1 </a></td>
+
+									<td
+										th:text="${o.receiverName != null
+                                    ? o.receiverName
+                                    : (o.user != null
+                                        ? o.user.username : 'Khách')}">
+										Khách hàng</td>
+
+									<td
+										th:text="${o.branch != null
+                                    ? o.branch.name : '—'}">
+										Shop</td>
+
+									<td
+										th:text="${o.createdAt != null
+                                    ? #temporals.format(
+                                        o.createdAt, 'dd/MM/yyyy HH:mm')
+                                    : '—'}">
+										Ngày tạo</td>
+
+									<td class="text-end fw-semibold"
+										th:text="${o.totalAmount != null
+                                        ? #numbers.formatDecimal(
+                                            o.totalAmount, 0, 'POINT', 0, 'COMMA')
+                                            + ' ₫'
+                                        : '0 ₫'}">
+										0 ₫</td>
+
+									<td><span class="badge text-bg-light border"
+										th:text="${o.status}"> PENDING </span></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+				</div>
+			</div>
+
+			<!-- Quản lý nhanh -->
+			<div class="col-12 col-xxl-4">
+				<div class="dashboard-card p-4 h-100">
+
+					<h2 class="dashboard-panel-title mb-3">Quản lý nhanh</h2>
+
+					<div class="d-grid gap-2">
+
+						<a th:href="@{/admin/users}" class="quick-link"> <i
+							class="bi bi-people"></i> <span>Quản lý người dùng</span> <i
+							class="bi bi-chevron-right arrow"></i>
+						</a> <a th:href="@{/admin/branches}" class="quick-link"> <i
+							class="bi bi-shop"></i> <span>Quản lý shop/chi nhánh</span> <i
+							class="bi bi-chevron-right arrow"></i>
+						</a> <a th:href="@{/admin/products}" class="quick-link"> <i
+							class="bi bi-box-seam"></i> <span>Quản lý sản phẩm</span> <i
+							class="bi bi-chevron-right arrow"></i>
+						</a> <a th:href="@{/admin/categories}" class="quick-link"> <i
+							class="bi bi-tags"></i> <span>Quản lý danh mục</span> <i
+							class="bi bi-chevron-right arrow"></i>
+						</a> <a th:href="@{/admin/orders}" class="quick-link"> <i
+							class="bi bi-receipt"></i> <span>Quản lý đơn hàng</span> <i
+							class="bi bi-chevron-right arrow"></i>
+						</a> <a th:href="@{/admin/vouchers}" class="quick-link"> <i
+							class="bi bi-ticket-perforated"></i> <span>Quản lý khuyến
+								mãi</span> <i class="bi bi-chevron-right arrow"></i>
+						</a> <a th:href="@{/admin/carriers}" class="quick-link">
+							<i class="bi bi-truck"></i> <span>Nhà vận chuyển</span> <i
+							class="bi bi-chevron-right arrow"></i>
+						</a> <a th:href="@{/admin/reports}" class="quick-link"> <i
+							class="bi bi-graph-up-arrow"></i> <span>Doanh thu và báo
+								cáo</span> <i class="bi bi-chevron-right arrow"></i>
+						</a>
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+
+</section>
+</html>

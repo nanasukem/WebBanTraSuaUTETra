@@ -33,13 +33,12 @@ public class SecurityConfiguration {
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
 		return http.cors(Customizer.withDefaults())
 
-				// Giữ nguyên cấu hình CSRF hiện tại của bạn
+				// Giữ nguyên cấu hình CSRF hiện tại của dự án.
+				// Lưu ý: CSRF đang bị vô hiệu hóa.
 				.csrf(csrf -> csrf.disable())
 
-				// PHÂN QUYỀN
 				.authorizeHttpRequests(auth -> auth
 
 						// Tài nguyên tĩnh
@@ -49,52 +48,55 @@ public class SecurityConfiguration {
 						// Trang công khai và xác thực
 						.requestMatchers("/", "/menu", "/menu/**", "/auth/**", "/api/auth/**").permitAll()
 
-						// API công khai chỉ cho GET
+						// API xem dữ liệu công khai
 						.requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/toppings/**")
 						.permitAll()
 
 						// WebSocket
 						.requestMatchers("/ws/**").permitAll()
 
-						// Admin: quản lý toàn hệ thống
+						// =========================================
+						// KHU VỰC ADMIN: quản lý toàn hệ thống (chỉ ADMIN)
+						// =========================================
 						.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
 
-						// Mua hàng (giỏ hàng, sổ địa chỉ, đặt hàng, đơn của tôi): chỉ khách hàng USER.
-						// Manager/Admin/Shipper là tài khoản công việc, không mua hàng
+						// =========================================
+						// KHU VỰC MANAGER: chỉ quản lý chi nhánh của mình (chỉ MANAGER)
+						// =========================================
+						.requestMatchers("/manager/**", "/api/manager/**").hasRole("MANAGER")
+
+						// =========================================
+						// MUA HÀNG: chỉ khách hàng USER (giỏ hàng, sổ địa chỉ, đặt hàng, đơn của tôi)
+						// Admin/Manager/Shipper là tài khoản công việc, không mua hàng
+						// =========================================
 						.requestMatchers("/cart/**", "/api/cart/**", "/checkout/**", "/api/checkout/**",
 								"/orders/**", "/api/addresses/**").hasRole("USER")
 
-						// Manager
-						.requestMatchers("/manager/**", "/api/manager/**").hasRole("MANAGER")
-
-						// Shipper
+						// =========================================
+						// KHU VỰC SHIPPER
+						// =========================================
 						.requestMatchers("/shipper/**", "/api/shipper/**").hasRole("SHIPPER")
 
-						// Những trang còn lại cần đăng nhập
+						// Các đường dẫn còn lại yêu cầu đăng nhập
 						.anyRequest().authenticated())
 
-				// CẤU HÌNH ĐĂNG NHẬP
+				// Đăng nhập bằng form
 				.formLogin(form -> form.loginPage("/auth/login").loginProcessingUrl("/auth/login")
-
-						// Đăng nhập thành công
-						.defaultSuccessUrl("/", true)
-
-						// Đăng nhập thất bại
-						.failureUrl("/auth/login?error=true")
-
+						// Thành công -> "/" : HomeController lưu session.user rồi chuyển trang theo vai trò
+						.defaultSuccessUrl("/", true).failureUrl("/auth/login?error=true")
 						.permitAll())
 
-				// SESSION
+				// Quản lý session
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
-				// ĐĂNG XUẤT
-				.logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessUrl("/menu").invalidateHttpSession(true)
-						.clearAuthentication(true).deleteCookies("JWT_TOKEN", "JSESSIONID").permitAll())
+				// Đăng xuất
+				.logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessUrl("/auth/login?logout")
+						.invalidateHttpSession(true).clearAuthentication(true).deleteCookies("JWT_TOKEN", "JSESSIONID").permitAll())
 
-				// AUTHENTICATION PROVIDER
+				// Authentication provider
 				.authenticationProvider(authenticationProvider)
 
-				// JWT FILTER
+				// JWT filter
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
 				.build();
@@ -102,7 +104,6 @@ public class SecurityConfiguration {
 
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
-
 		CorsConfiguration configuration = new CorsConfiguration();
 
 		configuration.setAllowedOrigins(List.of("http://localhost:8080"));
