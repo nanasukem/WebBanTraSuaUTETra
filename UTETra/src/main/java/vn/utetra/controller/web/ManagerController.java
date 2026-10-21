@@ -42,7 +42,9 @@ import vn.utetra.repository.BranchProductRepository;
 import vn.utetra.repository.BranchRepository;
 import vn.utetra.repository.OrderRepository;
 import vn.utetra.repository.ProductRepository;
+import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.service.CurrentUserService;
+import vn.utetra.service.ManagerCustomerService;
 import vn.utetra.service.VoucherService;
 
 /**
@@ -58,6 +60,7 @@ import vn.utetra.service.VoucherService;
  * - /manager/branches/{id}/products        : bật/tắt món tại chi nhánh
  * - /manager/branches/{id}/vouchers        : voucher riêng của chi nhánh
  * - /manager/branches/{id}/reports         : doanh thu chi nhánh
+ * - /manager/branches/{id}/customers       : (Chức năng mở rộng) khách hàng của chi nhánh, chỉ xem
  * - Đơn hàng: ManagerOrderController (/manager/orders, /manager/orders/history, /manager/orders/{id})
  */
 @Controller
@@ -73,16 +76,18 @@ public class ManagerController {
 	private final OrderRepository orderRepository;
 	private final VoucherService voucherService;
 	private final CurrentUserService currentUserService;
+	private final ManagerCustomerService managerCustomerService;
 
 	public ManagerController(BranchRepository branchRepository, BranchProductRepository branchProductRepository,
 			ProductRepository productRepository, OrderRepository orderRepository, VoucherService voucherService,
-			CurrentUserService currentUserService) {
+			CurrentUserService currentUserService, ManagerCustomerService managerCustomerService) {
 		this.branchRepository = branchRepository;
 		this.branchProductRepository = branchProductRepository;
 		this.productRepository = productRepository;
 		this.orderRepository = orderRepository;
 		this.voucherService = voucherService;
 		this.currentUserService = currentUserService;
+		this.managerCustomerService = managerCustomerService;
 	}
 
 	// =========================================================
@@ -141,6 +146,11 @@ public class ManagerController {
 	@GetMapping("/reports")
 	public String myReports(Principal principal, HttpSession session, RedirectAttributes ra) {
 		return toMyBranch("/reports", principal, session, ra);
+	}
+
+	@GetMapping("/customers")
+	public String myCustomers(Principal principal, HttpSession session, RedirectAttributes ra) {
+		return toMyBranch("/customers", principal, session, ra);
 	}
 
 	// =========================================================
@@ -278,6 +288,47 @@ public class ManagerController {
 		ra.addFlashAttribute("success", "Đã cập nhật trạng thái sản phẩm tại chi nhánh.");
 
 		return "redirect:/manager/branches/" + branchId + "/products";
+	}
+
+	// =========================================================
+	// (CHỨC NĂNG MỞ RỘNG) KHÁCH HÀNG CỦA CHI NHÁNH: chỉ xem, không sửa / khoá tài khoản khách
+	// =========================================================
+
+	@GetMapping("/branches/{branchId}/customers")
+	public String branchCustomers(@PathVariable Integer branchId, @RequestParam(required = false) String keyword,
+			Principal principal, HttpSession session, Model model, RedirectAttributes ra) {
+
+		Branch branch = ownBranch(branchId, principal, session);
+		if (branch == null) {
+			return denied(ra);
+		}
+
+		Integer managerId = currentUserService.requireUserId(principal, session);
+		model.addAttribute("branch", branch);
+		model.addAttribute("keyword", keyword);
+		model.addAttribute("customers", managerCustomerService.customers(managerId, branchId, keyword));
+
+		return "manager/customers/index";
+	}
+
+	@GetMapping("/branches/{branchId}/customers/{userId}")
+	public String branchCustomerDetail(@PathVariable Integer branchId, @PathVariable Integer userId,
+			Principal principal, HttpSession session, Model model, RedirectAttributes ra) {
+
+		Branch branch = ownBranch(branchId, principal, session);
+		if (branch == null) {
+			return denied(ra);
+		}
+
+		try {
+			Integer managerId = currentUserService.requireUserId(principal, session);
+			model.addAttribute("branch", branch);
+			model.addAttribute("data", managerCustomerService.customer(managerId, branchId, userId));
+			return "manager/customers/detail";
+		} catch (ResourceNotFoundException ex) {
+			ra.addFlashAttribute("error", ex.getMessage());
+			return "redirect:/manager/branches/" + branchId + "/customers";
+		}
 	}
 
 	// =========================================================

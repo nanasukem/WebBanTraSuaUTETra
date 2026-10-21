@@ -79,6 +79,37 @@ body {
 	background: rgba(255, 255, 255, 0.12);
 }
 
+/* Menu "Quản lý" thả xuống: chữ tối trên nền trắng (không ăn style chữ trắng của .admin-menu a) */
+.admin-menu .dropdown-toggle {
+	background: transparent;
+	border: 0;
+	color: #ffffff;
+	font-size: 15px;
+	font-weight: 500;
+	padding: 9px 14px;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.admin-menu .dropdown-toggle:hover, .admin-menu .dropdown-toggle.show {
+	background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-menu .dropdown-menu a {
+	color: #26352d;
+	font-weight: 400;
+	border-radius: 0;
+	padding: 8px 16px;
+	gap: 10px;
+}
+
+.admin-menu .dropdown-menu a:hover {
+	background: #e9f5ee;
+	color: #146c43;
+}
+
 .admin-actions {
 	margin-left: auto;
 	display: flex;
@@ -200,135 +231,59 @@ body {
 		padding: 18px 12px;
 	}
 }
-
-/* =========================
-   MANAGER: đổi màu xanh dương (primary, info) của Bootstrap sang xanh lá
-   Chỉ áp dụng khi body có class manager-theme (tài khoản MANAGER)
-   ========================= */
-.manager-theme {
-	--bs-primary: #198754;
-	--bs-primary-rgb: 25, 135, 84;
-	--bs-primary-text-emphasis: #0a3622;
-	--bs-primary-bg-subtle: #d1e7dd;
-	--bs-primary-border-subtle: #a3cfbb;
-	--bs-info: #20c997;
-	--bs-info-rgb: 32, 201, 151;
-	--bs-info-text-emphasis: #0b5d47;
-	--bs-info-bg-subtle: #d2f4ea;
-	--bs-info-border-subtle: #a6e9d5;
-	--bs-link-color: #198754;
-	--bs-link-color-rgb: 25, 135, 84;
-	--bs-link-hover-color: #146c43;
-	--bs-link-hover-color-rgb: 20, 108, 67;
-}
-
-.manager-theme .btn-primary {
-	--bs-btn-bg: #198754;
-	--bs-btn-border-color: #198754;
-	--bs-btn-hover-bg: #157347;
-	--bs-btn-hover-border-color: #146c43;
-	--bs-btn-active-bg: #146c43;
-	--bs-btn-active-border-color: #13653f;
-	--bs-btn-disabled-bg: #198754;
-	--bs-btn-disabled-border-color: #198754;
-	--bs-btn-focus-shadow-rgb: 60, 153, 110;
-}
-
-.manager-theme .btn-outline-primary {
-	--bs-btn-color: #198754;
-	--bs-btn-border-color: #198754;
-	--bs-btn-hover-color: #fff;
-	--bs-btn-hover-bg: #198754;
-	--bs-btn-hover-border-color: #198754;
-	--bs-btn-active-color: #fff;
-	--bs-btn-active-bg: #198754;
-	--bs-btn-active-border-color: #198754;
-	--bs-btn-disabled-color: #198754;
-	--bs-btn-disabled-border-color: #198754;
-	--bs-btn-focus-shadow-rgb: 25, 135, 84;
-}
-
-.manager-theme .btn-info {
-	--bs-btn-color: #fff;
-	--bs-btn-bg: #20c997;
-	--bs-btn-border-color: #20c997;
-	--bs-btn-hover-color: #fff;
-	--bs-btn-hover-bg: #1aa179;
-	--bs-btn-hover-border-color: #1aa179;
-	--bs-btn-active-color: #fff;
-	--bs-btn-active-bg: #1aa179;
-	--bs-btn-active-border-color: #1aa179;
-}
-
-.manager-theme .btn-outline-info {
-	--bs-btn-color: #1aa179;
-	--bs-btn-border-color: #20c997;
-	--bs-btn-hover-color: #fff;
-	--bs-btn-hover-bg: #20c997;
-	--bs-btn-hover-border-color: #20c997;
-	--bs-btn-active-color: #fff;
-	--bs-btn-active-bg: #20c997;
-	--bs-btn-active-border-color: #20c997;
-}
-
-.manager-theme .form-control:focus,
-.manager-theme .form-select:focus,
-.manager-theme .form-check-input:focus {
-	border-color: #75b798;
-	box-shadow: 0 0 0 .25rem rgba(25, 135, 84, .25);
-}
-
-.manager-theme .form-check-input:checked {
-	background-color: #198754;
-	border-color: #198754;
-}
-
-.manager-theme .pagination {
-	--bs-pagination-color: #198754;
-	--bs-pagination-hover-color: #146c43;
-	--bs-pagination-focus-color: #146c43;
-	--bs-pagination-focus-box-shadow: 0 0 0 .25rem rgba(25, 135, 84, .25);
-	--bs-pagination-active-bg: #198754;
-	--bs-pagination-active-border-color: #198754;
-}
 </style>
 </head>
 
 
-<body class="d-flex flex-column min-vh-100"
-	th:classappend="${session.user != null and session.user.role != null and session.user.role.name == 'MANAGER'} ? 'manager-theme'">
+<body class="d-flex flex-column min-vh-100">
 
 
 	<!-- =========================
-     HEADER ADMIN
+     HEADER ADMIN (quản lý toàn hệ thống)
      ========================= -->
-	<header class="admin-header"
-		th:with="isManager=${session.user != null and session.user.role != null and session.user.role.name == 'MANAGER'}">
+	<header class="admin-header">
 
-		<!-- Logo: Admin -> tổng quan hệ thống, Manager -> tổng quan chi nhánh -->
-		<a th:href="${isManager} ? @{/manager/dashboard} : @{/admin/dashboard}" class="admin-brand"> <i
+		<!-- Logo -->
+		<a th:href="@{/admin/dashboard}" class="admin-brand"> <i
 			class="bi bi-cup-hot-fill admin-brand-icon"></i> <span>UTETra</span>
 
 		</a>
 
 
-		<!-- Menu -->
+		<!-- Menu: Tổng quan + "Quản lý" (các chức năng Admin theo đề) + Thực đơn -->
 		<nav class="admin-menu">
 
-			<!-- Thực đơn (trang của khách): chỉ Admin. Manager xem món ở mục "Món" -->
-			<a th:unless="${isManager}" th:href="@{/menu}"> <i class="bi bi-journal-text"></i> <span>Thực
+			<a th:href="@{/admin/dashboard}"> <i class="bi bi-speedometer2"></i> <span>Tổng quan</span></a>
+
+			<div class="dropdown">
+				<button class="dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+					<i class="bi bi-grid"></i> <span>Quản lý</span>
+				</button>
+				<ul class="dropdown-menu shadow">
+					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/users}">
+						<i class="bi bi-people"></i> Người dùng</a></li>
+					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/products}">
+						<i class="bi bi-cup-straw"></i> Sản phẩm</a></li>
+					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/categories}">
+						<i class="bi bi-tags"></i> Danh mục</a></li>
+					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/branches}">
+						<i class="bi bi-shop"></i> Chi nhánh &amp; chiết khấu</a></li>
+					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/vouchers}">
+						<i class="bi bi-ticket-perforated"></i> Khuyến mãi</a></li>
+					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/carriers}">
+						<i class="bi bi-truck"></i> Nhà vận chuyển</a></li>
+					<li><hr class="dropdown-divider"></li>
+					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/orders}">
+						<i class="bi bi-receipt"></i> Đơn hàng</a></li>
+					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/reports}">
+						<i class="bi bi-graph-up-arrow"></i> Doanh thu &amp; báo cáo</a></li>
+				</ul>
+			</div>
+
+			<a th:href="@{/menu}"> <i class="bi bi-journal-text"></i> <span>Thực
 					đơn</span>
 
 			</a>
-
-			<!-- Menu của Manager: chỉ chi nhánh của mình -->
-			<th:block th:if="${isManager}">
-				<a th:href="@{/manager/dashboard}"> <i class="bi bi-speedometer2"></i> <span>Tổng quan</span></a>
-				<a th:href="@{/manager/orders}"> <i class="bi bi-bell"></i> <span>Quầy đơn hàng</span></a>
-				<a th:href="@{/manager/products}"> <i class="bi bi-toggles"></i> <span>Món</span></a>
-				<a th:href="@{/manager/vouchers}"> <i class="bi bi-ticket-perforated"></i> <span>Voucher</span></a>
-				<a th:href="@{/manager/reports}"> <i class="bi bi-bar-chart-line"></i> <span>Báo cáo</span></a>
-			</th:block>
 
 		</nav>
 
@@ -336,7 +291,7 @@ body {
 		<div class="admin-actions">
 
 			<a href="#" class="admin-user"> <i class="bi bi-person-gear"></i>
-				<span th:text="${isManager} ? 'Quản lý chi nhánh' : 'Quản trị viên'">Quản trị viên</span>
+				<span>Quản trị viên</span>
 			</a>
 
 			<!-- Đăng xuất -->

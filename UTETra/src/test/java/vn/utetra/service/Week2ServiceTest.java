@@ -23,6 +23,8 @@ import vn.utetra.dto.response.OrderSummaryRes;
 import vn.utetra.dto.response.OrderTab;
 import vn.utetra.dto.response.ProductOptionsRes;
 import vn.utetra.dto.response.ManagerBoardRes;
+import vn.utetra.dto.response.ManagerCustomerDetailRes;
+import vn.utetra.dto.response.ManagerCustomerRes;
 import vn.utetra.dto.response.ManagerHistoryRes;
 import vn.utetra.dto.response.ManagerOrderRes;
 import vn.utetra.dto.response.ManagerTabRes;
@@ -77,6 +79,7 @@ class Week2ServiceTest {
 	@Autowired AddressService addressService;
 	@Autowired OrderFlowService orderFlowService;
 	@Autowired ManagerOrderService managerOrderService;
+	@Autowired ManagerCustomerService managerCustomerService;
 	@Autowired OrderRepository orderRepository;
 	@Autowired VoucherRepository voucherRepository;
 	@Autowired VoucherUsageRepository voucherUsageRepository;
@@ -1204,5 +1207,52 @@ class Week2ServiceTest {
 		assertEquals(0, h.page());
 		assertTrue(co(h, DON_DA_GIAO));
 		assertTrue(h.totalPages() >= 1);
+	}
+
+	// ================= (CHỨC NĂNG MỞ RỘNG) MANAGER KIỂM TRA KHÁCH HÀNG CỦA CHI NHÁNH =================
+
+	@Test
+	void khachHang_chiNhanh1_coUser1_soDonVaTongChiTieu() {
+		List<ManagerCustomerRes> list = managerCustomerService.customers(MANAGER1, 1, null);
+		ManagerCustomerRes c = list.stream().filter(x -> x.userId() == USER1).findFirst().orElseThrow();
+		assertEquals(1, c.orderCount(), "Chi nhánh 1 chỉ có đơn #1 của user1");
+		assertEquals(1, c.deliveredCount());
+		assertEquals(0, c.cancelledCount());
+		assertMoney(153000, c.totalSpent());
+		assertEquals("Thành viên", c.tierName());
+		assertTrue(list.stream().noneMatch(x -> x.userId() == USER2), "user2 chưa đặt đơn ở chi nhánh 1");
+	}
+
+	@Test
+	void khachHang_donChuaGiao_khongTinhVaoChiTieu() {
+		// Chi nhánh 2: user1 có đơn #2 đang chờ xác nhận -> có trong danh sách nhưng chưa có chi tiêu
+		ManagerCustomerRes c = managerCustomerService.customers(MANAGER2, 2, null).stream()
+				.filter(x -> x.userId() == USER1).findFirst().orElseThrow();
+		assertEquals(1, c.orderCount());
+		assertEquals(0, c.deliveredCount());
+		assertMoney(0, c.totalSpent());
+	}
+
+	@Test
+	void khachHang_timTheoTenHoacSdt() {
+		assertEquals(1, managerCustomerService.customers(MANAGER1, 1, "0900000006").size());
+		assertEquals(1, managerCustomerService.customers(MANAGER1, 1, "trần thị").size(), "Tìm không phân biệt hoa thường");
+		assertTrue(managerCustomerService.customers(MANAGER1, 1, "khong-co-ai").isEmpty());
+	}
+
+	@Test
+	void khachHang_chiTiet_chiCoDonCuaChiNhanhMinh() {
+		ManagerCustomerDetailRes d = managerCustomerService.customer(MANAGER2, 2, USER1);
+		assertEquals(1, d.orders().size());
+		assertEquals(DON_CHO, d.orders().get(0).id(), "Không lẫn đơn #1 của chi nhánh 1");
+		assertEquals("PENDING", d.orders().get(0).status());
+	}
+
+	@Test
+	void khachHang_khongXemDuocChiNhanhKhac_vaKhachChuaMua() {
+		assertThrows(ResourceNotFoundException.class, () -> managerCustomerService.customers(MANAGER1, 2, null));
+		assertThrows(ResourceNotFoundException.class, () -> managerCustomerService.customer(MANAGER1, 2, USER1));
+		assertThrows(ResourceNotFoundException.class, () -> managerCustomerService.customer(MANAGER2, 2, USER2),
+				"user2 chưa đặt đơn ở chi nhánh 2");
 	}
 }

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/admin-layout :: main('Tổng quan chi nhánh', 'dashboard', ~{::#admin-content})}">
+	th:replace="~{layout/manager-layout :: main('Tổng quan chi nhánh', 'dashboard', ~{::#admin-content})}">
 
 <section id="admin-content">
 
@@ -50,14 +50,20 @@
 			và không đặt được đơn mới. Liên hệ Admin để mở lại.
 		</div>
 
-		<!-- Đơn hàng: mỗi thẻ mở trang "Đơn hàng của chi nhánh" đúng tab trạng thái.
-		     Nhận và xử lý đơn mới trực tiếp: nút "Quầy đơn hàng" (menu trên cùng / nút bên dưới) -->
-		<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-			<h5 class="fw-bold mb-0"><i class="bi bi-receipt me-2"></i>Đơn hàng</h5>
-			<a th:href="@{/manager/orders}" class="btn btn-sm btn-warning fw-semibold">
-				<i class="bi bi-bell me-1"></i>Mở Quầy đơn hàng
-			</a>
+		<!-- Lối tắt: đặt trên cùng cho dễ thấy -->
+		<div class="d-flex flex-wrap gap-2 mb-4">
+			<a th:href="@{/manager/orders}" class="btn btn-warning fw-semibold"><i class="bi bi-bell me-1"></i>Quầy đơn hàng</a>
+			<a th:href="@{/manager/orders/history}" class="btn btn-outline-primary"><i class="bi bi-receipt-cutoff me-1"></i>Đơn hàng của chi nhánh</a>
+			<a th:href="@{/manager/products}" class="btn btn-outline-primary"><i class="bi bi-toggles me-1"></i>Bật/tắt món</a>
+			<a th:href="@{/manager/vouchers}" class="btn btn-outline-success"><i class="bi bi-ticket-perforated me-1"></i>Voucher chi nhánh</a>
+			<a th:href="@{/manager/customers}" class="btn btn-outline-success"><i class="bi bi-people me-1"></i>Khách hàng</a>
+			<a th:href="@{/manager/reports}" class="btn btn-outline-dark"><i class="bi bi-bar-chart-line me-1"></i>Báo cáo doanh thu</a>
+			<a th:href="@{/manager/branch}" class="btn btn-outline-secondary"><i class="bi bi-info-circle me-1"></i>Thông tin chi nhánh</a>
 		</div>
+
+		<!-- Đơn hàng: mỗi thẻ mở trang "Đơn hàng của chi nhánh" đúng tab trạng thái.
+		     Nhận và xử lý đơn mới trực tiếp: nút "Quầy đơn hàng" (menu trên cùng / hàng lối tắt ở trên) -->
+		<h5 class="fw-bold mb-3"><i class="bi bi-receipt me-2"></i>Đơn hàng</h5>
 		<div class="row g-3 mb-4">
 			<div class="col-6 col-xl-3">
 				<a th:href="@{/manager/orders/history(status='PENDING')}" class="text-decoration-none">
@@ -160,16 +166,6 @@
 					</div>
 				</a>
 			</div>
-		</div>
-
-		<!-- Lối tắt -->
-		<div class="d-flex flex-wrap gap-2">
-			<a th:href="@{/manager/orders}" class="btn btn-warning fw-semibold"><i class="bi bi-bell me-1"></i>Quầy đơn hàng</a>
-			<a th:href="@{/manager/orders/history}" class="btn btn-outline-primary"><i class="bi bi-receipt-cutoff me-1"></i>Đơn hàng của chi nhánh</a>
-			<a th:href="@{/manager/products}" class="btn btn-outline-primary"><i class="bi bi-toggles me-1"></i>Bật/tắt món</a>
-			<a th:href="@{/manager/vouchers}" class="btn btn-outline-success"><i class="bi bi-ticket-perforated me-1"></i>Voucher chi nhánh</a>
-			<a th:href="@{/manager/reports}" class="btn btn-outline-dark"><i class="bi bi-bar-chart-line me-1"></i>Báo cáo doanh thu</a>
-			<a th:href="@{/manager/branch}" class="btn btn-outline-secondary"><i class="bi bi-info-circle me-1"></i>Thông tin chi nhánh</a>
 		</div>
 
 	</th:block>
