@@ -465,8 +465,13 @@
 		btn.disabled = true;
 		btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang đặt hàng...';
 		try {
-			const res = await api('/api/checkout', { method: 'POST', body: JSON.stringify(buildReq()) });
-			location.href = '/checkout/success/' + res.orderId;
+			const res = await api('/api/checkout', {
+			    method: 'POST',
+			    body: JSON.stringify(buildReq())
+			});
+
+			location.href = res.paymentUrl
+			    || ('/checkout/success/' + res.orderId);
 		} catch (e) {
 			showErrors([e.message]);
 			btn.innerHTML = '<i class="bi bi-bag-check me-1"></i> Đặt hàng';

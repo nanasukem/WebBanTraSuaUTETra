@@ -155,7 +155,6 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 			o.setCancelReason(cleanReason);
 			o.setCancelledBy(byCustomer ? CancelledBy.CUSTOMER : CancelledBy.STORE);
 			// Đơn đã trả online thì chuyển sang Đã hoàn tiền (tuần 3 gọi API hoàn tiền VNPAY/MoMo)
-			if (o.getPaymentStatus() == PaymentStatus.PAID) o.setPaymentStatus(PaymentStatus.REFUNDED);
 		}
 		if (to == OrderStatus.DELIVERED) {
 			o.setDeliveredAt(now);
