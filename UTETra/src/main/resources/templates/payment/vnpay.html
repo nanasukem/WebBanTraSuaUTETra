@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Thanh toán - UTETra</title>
+<title>Thanh toán VNPAY - UTETra</title>
 
 <style>
 * {
@@ -151,7 +151,7 @@ h1 {
 
 	<div class="payment-card">
 
-		<div class="brand">UTETra</div>
+		<div class="brand">VNPAY</div>
 		<h1>Thanh toán đơn hàng</h1>
 
 		<div class="info-row">
@@ -159,7 +159,7 @@ h1 {
 		</div>
 
 		<div class="info-row">
-			<span>Phương thức</span> <strong>VNPAY</strong>
+			<span>Phương thức</span> <strong>VNPAY (mô phỏng)</strong>
 		</div>
 
 		<div class="info-row">
@@ -172,20 +172,13 @@ h1 {
 			Thời gian còn lại để thanh toán <span id="countdown">05:00</span>
 		</div>
 
-		<div id="expiredMessage">Đã hết thời gian thanh toán. Vui lòng
-			kiểm tra kết quả giao dịch.</div>
+		<div id="expiredMessage" role="alert">Đã hết thời gian thanh
+			toán. Vui lòng thử thanh toán lại nếu đơn hàng vẫn còn hiệu lực.</div>
 
 		<div id="errorMessage" role="alert"></div>
 
-		<!--
-        Gửi POST đến:
-        /payment/mock/{orderId}/process
-
-        Controller nhận:
-        result=success
-    -->
 		<form id="paymentForm"
-			th:action="@{/payment/mock/{id}/process(id=${order.id})}"
+			th:action="@{/payment/vnpay/{id}/process(id=${order.id})}"
 			method="post">
 
 			<input type="hidden" th:if="${_csrf != null}"
@@ -196,11 +189,12 @@ h1 {
 			<button type="submit" class="button button-primary" id="payButton">
 				Xác nhận thanh toán</button>
 		</form>
+
 		<a class="button button-secondary" th:href="@{/checkout}"
 			id="backButton"> Quay lại trang đặt hàng </a>
 
-		<div class="note">Đây là trang thanh toán mô phỏng phục vụ kiểm
-			thử. Không nhập thông tin tài khoản ngân hàng thật.</div>
+		<div class="note">Đây là trang thanh toán VNPAY mô phỏng phục vụ
+			kiểm thử. Không nhập thông tin tài khoản ngân hàng thật.</div>
 
 		<div id="paymentTimerData" hidden
 			th:attr="data-expires-at=${expiresAtMillis}"></div>
@@ -216,13 +210,13 @@ h1 {
 			const expiredMessage = document.getElementById("expiredMessage");
 			const paymentForm = document.getElementById("paymentForm");
 			const payButton = document.getElementById("payButton");
-			const backButton = document.getElementById("backButton");
 			const errorMessage = document.getElementById("errorMessage");
 
 			const expiresAt = Number(timerData.dataset.expiresAt);
 
 			let submitting = false;
 			let timer = null;
+			let expired = false;
 
 			function formatTime(seconds) {
 				const minutes = Math.floor(seconds / 60);
@@ -233,9 +227,11 @@ h1 {
 			}
 
 			function expirePayment() {
-				if (submitting) {
+				if (submitting || expired) {
 					return;
 				}
+
+				expired = true;
 
 				if (timer !== null) {
 					clearInterval(timer);
@@ -244,18 +240,18 @@ h1 {
 				countdown.textContent = "00:00";
 				expiredMessage.style.display = "block";
 				payButton.disabled = true;
-
-				// Không tự chuyển về trang thanh toán rồi tạo giao dịch mới.
-				// Server vẫn là nơi quyết định giao dịch đã hết hạn hay chưa.
+				payButton.textContent = "Đã hết thời gian thanh toán";
 			}
 
 			function updateCountdown() {
-				if (submitting) {
+				if (submitting || expired) {
 					return;
 				}
 
 				if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
 					countdown.textContent = "--:--";
+					expiredMessage.style.display = "block";
+					payButton.disabled = true;
 					return;
 				}
 
@@ -270,14 +266,14 @@ h1 {
 			}
 
 			paymentForm.addEventListener("submit", function(event) {
-				// Nếu hết hạn, không gửi một giao dịch đã quá hạn.
-				if (Date.now() >= expiresAt) {
+				if (!Number.isFinite(expiresAt) || expiresAt <= 0
+						|| Date.now() >= expiresAt || expired) {
+
 					event.preventDefault();
 					expirePayment();
 					return;
 				}
 
-				// Chặn người dùng bấm nhiều lần nhưng không chặn lần submit đầu.
 				if (submitting) {
 					event.preventDefault();
 					return;
@@ -290,21 +286,13 @@ h1 {
 				if (timer !== null) {
 					clearInterval(timer);
 				}
-
-				// Không gọi preventDefault() ở lần submit hợp lệ.
-				// Trình duyệt sẽ gửi POST đến MockPaymentController.
 			});
 
-			if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
-				countdown.textContent = "--:--";
-				expiredMessage.style.display = "block";
-				payButton.disabled = true;
-				return;
-			}
-
 			updateCountdown();
-			timer = setInterval(updateCountdown, 1000);
 
+			if (!expired) {
+				timer = setInterval(updateCountdown, 1000);
+			}
 		})();
 	</script>
 

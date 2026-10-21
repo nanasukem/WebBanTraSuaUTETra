@@ -55,8 +55,7 @@ public class CheckoutApiController {
 		this.cartService = cartService;
 	}
 
-	// ================= KHỞI TẠO TRANG CHECKOUT =================
-
+	// Khởi tạo trang checkout
 	@GetMapping("/init")
 	public CheckoutInitRes init(Principal principal, HttpSession session) {
 
@@ -69,8 +68,7 @@ public class CheckoutApiController {
 				memberService.getTierInfo(user.getId()), memberService.isNewCustomer(user.getId()));
 	}
 
-	// ================= TÍNH TRƯỚC ĐƠN HÀNG =================
-
+	// Tính trước đơn hàng
 	@PostMapping("/preview")
 	public CheckoutPageRes preview(@RequestBody CheckoutReq req, Principal principal, HttpSession session) {
 
@@ -79,8 +77,7 @@ public class CheckoutApiController {
 		return new CheckoutPageRes(orderService.preview(userId, req), orderService.voucherOptions(userId, req));
 	}
 
-	// ================= KIỂM TRA LOẠI VOUCHER =================
-
+	// Kiểm tra loại voucher
 	@GetMapping("/voucher-type")
 	public Map<String, String> voucherType(@RequestParam String code) {
 
@@ -89,8 +86,7 @@ public class CheckoutApiController {
 				.orElseThrow(() -> new BusinessException("Mã " + code.trim().toUpperCase() + " không tồn tại"));
 	}
 
-	// ================= ĐẶT HÀNG =================
-
+	// Đặt hàng
 	@PostMapping
 	public Map<String, Object> placeOrder(@Valid @RequestBody CheckoutReq req, Principal principal,
 			HttpSession session) {
@@ -98,17 +94,17 @@ public class CheckoutApiController {
 		Integer userId = currentUserService.requireUserId(principal, session);
 
 		Order order = orderService.placeOrder(userId, req);
-
 		PaymentMethod method = order.getPaymentMethod();
 
 		Map<String, Object> result = new HashMap<>();
-
 		result.put("orderId", order.getId());
 		result.put("message", "Đặt hàng thành công");
 		result.put("paymentMethod", method != null ? method.name() : "COD");
 
 		if (method == PaymentMethod.VNPAY) {
-			result.put("paymentUrl", "/payment/mock/" + order.getId());
+			result.put("paymentUrl", "/payment/vnpay/" + order.getId());
+		} else if (method == PaymentMethod.MOMO) {
+			result.put("paymentUrl", "/payment/momo/" + order.getId());
 		} else {
 			result.put("paymentUrl", "/checkout/success/" + order.getId());
 		}
@@ -116,8 +112,7 @@ public class CheckoutApiController {
 		return result;
 	}
 
-	// ================= QUAY LẠI CHECKOUT SAU KHI THANH TOÁN LỖI =================
-
+	// Khôi phục giỏ hàng sau khi thanh toán lỗi
 	@PostMapping("/{orderId}/return-to-checkout")
 	@Transactional
 	public ResponseEntity<Map<String, Object>> returnToCheckout(@PathVariable Integer orderId, Principal principal,
@@ -125,33 +120,26 @@ public class CheckoutApiController {
 
 		Integer userId = currentUserService.requireUserId(principal, session);
 
-		// Chỉ cho phép chủ đơn thực hiện thao tác này.
 		Order order = orderRepository.findById(orderId)
 				.filter(o -> o.getUser() != null && o.getUser().getId().equals(userId))
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + orderId));
 
-		// Chỉ áp dụng cho VNPAY.
-		if (order.getPaymentMethod() != PaymentMethod.VNPAY) {
-			throw new BusinessException("Đơn hàng không sử dụng thanh toán VNPAY");
+		PaymentMethod method = order.getPaymentMethod();
+
+		if (method != PaymentMethod.VNPAY && method != PaymentMethod.MOMO) {
+			throw new BusinessException("Đơn hàng không sử dụng VNPAY hoặc MoMo");
 		}
 
-		// Không cho khôi phục hoặc hủy đơn đã thanh toán.
 		if (order.getPaymentStatus() == PaymentStatus.PAID) {
 			throw new BusinessException("Đơn hàng đã thanh toán thành công, không thể quay lại chỉnh sửa");
 		}
 
-		// Tránh khôi phục lặp lại nếu đơn đã bị hủy.
 		if (order.getStatus() == OrderStatus.CANCELLED) {
 			throw new BusinessException("Đơn hàng này đã bị hủy. Vui lòng đặt đơn hàng mới");
 		}
 
-		// Khôi phục các món từ đơn cũ vào giỏ hàng.
-		// Giữ size, đường, đá, số lượng, ghi chú và các topping còn bán.
-		// CartService.reorder hiện tại cộng dồn nếu giỏ đã có món trùng cấu hình.
 		cartService.reorder(userId, orderId);
 
-		// Hủy đơn VNPAY cũ chưa thanh toán.
-		// Quán sẽ không còn xử lý đơn cũ như đơn đang chờ.
 		order.setStatus(OrderStatus.CANCELLED);
 		orderRepository.save(order);
 
@@ -159,8 +147,7 @@ public class CheckoutApiController {
 				.ok(Map.of("redirectUrl", "/checkout", "message", "Đã khôi phục giỏ hàng và hủy đơn chưa thanh toán"));
 	}
 
-	// ================= XỬ LÝ LỖI API =================
-
+	// Xử lý lỗi nghiệp vụ
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<Map<String, String>> handleBusiness(BusinessException e) {
 
@@ -179,6 +166,6 @@ public class CheckoutApiController {
 		String message = e.getBindingResult().getFieldErrors().isEmpty() ? "Dữ liệu không hợp lệ"
 				: e.getBindingResult().getFieldErrors().get(0).getDefaultMessage();
 
-		return ResponseEntity.badRequest().body(Map.of("message", message));
+		return ResponseEntity.badRequest().body(Map.of("message", message != null ? message : "Dữ liệu không hợp lệ"));
 	}
 }

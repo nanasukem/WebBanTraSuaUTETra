@@ -2,20 +2,18 @@
 package vn.utetra.controller.web;
 
 import jakarta.servlet.http.HttpSession;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+
 import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.service.CurrentUserService;
 import vn.utetra.service.OrderService;
 
 import java.security.Principal;
 
-/**
- * Trang Checkout và trang Đặt hàng thành công. Dữ liệu trang Checkout do
- * checkout.js gọi API.
- */
 @Controller
 public class CheckoutController {
 
@@ -23,6 +21,7 @@ public class CheckoutController {
 	private final CurrentUserService currentUserService;
 
 	public CheckoutController(OrderService orderService, CurrentUserService currentUserService) {
+
 		this.orderService = orderService;
 		this.currentUserService = currentUserService;
 	}
