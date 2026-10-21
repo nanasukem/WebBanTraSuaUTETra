@@ -9,10 +9,10 @@ import java.util.List;
  * đã lấy hàng) và DELIVERING.
  */
 public enum OrderTab {
-	PENDING("Chờ xác nhận", List.of(OrderStatus.PENDING)), CONFIRMED("Đã xác nhận", List.of(OrderStatus.CONFIRMED)),
+	PENDING("Đơn hàng mới", List.of(OrderStatus.PENDING)), CONFIRMED("Đã xác nhận", List.of(OrderStatus.CONFIRMED)),
 	SHIPPING("Đang giao", List.of(OrderStatus.PICKED_UP, OrderStatus.DELIVERING)),
 	DELIVERED("Đã giao", List.of(OrderStatus.DELIVERED)), CANCELLED("Đã huỷ", List.of(OrderStatus.CANCELLED)),
-	RETURNED("Trả hàng", List.of(OrderStatus.RETURNED));
+	RETURNED("Trả hàng - hoàn tiền", List.of(OrderStatus.RETURNED));
 
 	private final String label;
 	private final List<OrderStatus> statuses;

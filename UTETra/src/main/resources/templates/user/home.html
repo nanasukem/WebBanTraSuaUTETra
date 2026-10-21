@@ -33,6 +33,10 @@
 							<i class="bi bi-journal-richtext me-1"></i> Xem thực đơn</a>
 						<a th:if="${isBuyer}" th:href="@{/cart}" class="btn btn-warning fw-bold">
 							<i class="bi bi-cart3 me-1"></i> Giỏ hàng</a>
+						<a th:if="${isBuyer}" th:href="@{/user/favorites}" class="btn btn-outline-light fw-semibold">
+							<i class="bi bi-heart me-1"></i> Yêu thích</a>
+						<a th:if="${isBuyer}" th:href="@{/user/profile}" class="btn btn-outline-light fw-semibold">
+							<i class="bi bi-person me-1"></i> Hồ sơ</a>
 						<a th:if="${role == 'MANAGER'}" th:href="@{/manager/dashboard}" class="btn btn-warning fw-bold">
 							<i class="bi bi-speedometer2 me-1"></i> Về trang quản lý</a>
 						<a th:if="${role == 'ADMIN'}" th:href="@{/admin/dashboard}" class="btn btn-warning fw-bold">
@@ -63,7 +67,7 @@
 							: (${t.name() == 'CANCELLED'} ? 'bi bi-x-circle text-secondary'
 							: 'bi bi-arrow-counterclockwise text-danger'))))"></i>
 						<div class="small fw-semibold mt-1"
-							th:text="${t.name() == 'PENDING'} ? 'Đơn mới' : (${t.name() == 'RETURNED'} ? 'Trả hàng - hoàn tiền' : ${t.label})">Đơn mới</div>
+							th:text="${t.label}">Đơn hàng mới</div>
 						<span th:if="${n > 0}" class="badge rounded-pill bg-danger position-absolute top-0 end-0 m-1"
 							th:text="${n}">1</span>
 					</a>
@@ -113,6 +117,20 @@
 
 		<div th:replace="~{fragments/product-card :: hlAjax('yeu-thich', 'favorite', 'bi bi-heart-fill text-danger',
 			'20 sản phẩm yêu thích nhất', 'Những món được bấm thích nhiều nhất', ${favoritePage}, ${cardMode})}"></div>
+
+		<!-- ==================== ĐÃ XEM GẦN ĐÂY (chỉ USER) ==================== -->
+		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4"
+			th:if="${isBuyer and recentViewed != null and !#lists.isEmpty(recentViewed)}">
+			<div class="d-flex justify-content-between align-items-center mb-3">
+				<h2 class="h5 fw-bold mb-0"><i class="bi bi-clock-history text-success me-1"></i> Bạn đã xem gần đây</h2>
+				<a th:href="@{/user/viewed}" class="small link-success fw-semibold">Xem tất cả <i class="bi bi-chevron-right"></i></a>
+			</div>
+			<div class="row g-3">
+				<div class="col-6 col-md-4 col-lg-3" th:each="p : ${recentViewed}">
+					<div th:replace="~{fragments/product-card :: card(${p}, ${cardMode})}"></div>
+				</div>
+			</div>
+		</section>
 
 		<!-- MODAL CHỌN MÓN (nút "+") -->
 		<div th:replace="~{fragments/product-modal :: productModal}"></div>
