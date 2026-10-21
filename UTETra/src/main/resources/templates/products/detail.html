@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main(${product.name} + ' - UTETra', ~{::#product-detail})}">
+
+<!--
+	TRANG CHI TIẾT SẢN PHẨM /products/{id} - ai cũng xem được.
+	- USER: nút tim (thích), chọn món (modal size/đường/đá/topping), form đánh giá + bình luận nếu đã mua (đơn Đã giao),
+	        mở trang này = ghi vào "Sản phẩm đã xem"
+	- Guest: nút đặt món / thích dẫn tới đăng nhập
+	- Manager/Admin: chỉ xem
+-->
+<body>
+	<div id="product-detail" th:with="price=${#numbers.formatDecimal(product.basePrice, 0, 'POINT', 0, 'COMMA')}">
+
+		<!-- Đường dẫn -->
+		<nav aria-label="breadcrumb" class="mb-3">
+			<ol class="breadcrumb mb-0">
+				<li class="breadcrumb-item"><a th:href="@{/}" class="link-success">Trang chủ</a></li>
+				<li class="breadcrumb-item"><a th:href="@{/menu}" class="link-success">Thực đơn</a></li>
+				<li class="breadcrumb-item" th:if="${product.categoryId != null}">
+					<a th:href="@{/category/{id}(id=${product.categoryId})}" class="link-success" th:text="${product.categoryName}">Trà sữa</a></li>
+				<li class="breadcrumb-item active" aria-current="page" th:text="${product.name}">Tên món</li>
+			</ol>
+		</nav>
+
+		<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+		<!-- ===================== THÔNG TIN MÓN ===================== -->
+		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4">
+			<div class="row g-4">
+				<div class="col-md-5">
+					<div class="ratio ratio-1x1 bg-light rounded-4 overflow-hidden">
+						<img th:if="${product.imageCloudinaryId != null and !#strings.isEmpty(product.imageCloudinaryId)}"
+							th:src="${product.imageCloudinaryId}" th:alt="${product.name}" class="w-100 h-100" style="object-fit: cover;">
+						<div th:unless="${product.imageCloudinaryId != null and !#strings.isEmpty(product.imageCloudinaryId)}"
+							class="d-flex justify-content-center align-items-center text-secondary">
+							<i class="bi bi-cup-hot" style="font-size: 6rem;"></i>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-md-7 d-flex flex-column">
+					<div class="small text-muted mb-1" th:text="${product.categoryName}">Trà sữa</div>
+					<h1 class="h2 fw-bold mb-2" th:text="${product.name}">Tên món</h1>
+
+					<!-- Sao · đã bán · lượt thích -->
+					<div class="d-flex flex-wrap align-items-center gap-3 mb-3 small">
+						<a href="#danh-gia" class="text-decoration-none text-dark">
+							<span class="text-warning" th:text="${#strings.repeat('★', product.fullStars())} + ${#strings.repeat('☆', 5 - product.fullStars())}">★★★★☆</span>
+							<strong th:text="${product.reviewCount > 0} ? ${#numbers.formatDecimal(product.avgRating, 1, 1, 'POINT')} : 'Chưa có'">4.5</strong>
+							<span class="text-muted" th:text="|(${product.reviewCount} đánh giá)|">(3 đánh giá)</span>
+						</a>
+						<span class="text-muted">|</span>
+						<span><i class="bi bi-bag-check text-success me-1"></i>Đã bán <strong th:text="${product.soldCount}">0</strong></span>
+						<span class="text-muted">|</span>
+						<span><i class="bi bi-heart-fill text-danger me-1"></i><strong data-fav-count th:text="${product.favoriteCount}">0</strong> lượt thích</span>
+					</div>
+
+					<div class="fs-3 fw-bold text-success mb-3" th:text="${price} + ' đ'">35.000 đ</div>
+
+					<!-- Giá theo size -->
+					<div class="mb-3" th:unless="${#lists.isEmpty(product.sizes)}">
+						<div class="small fw-semibold mb-2">Giá theo size</div>
+						<div class="d-flex flex-wrap gap-2">
+							<span class="border rounded-3 px-3 py-2" th:each="s : ${product.sizes}">
+								<strong th:text="'Size ' + ${s.size}">Size M</strong>
+								<span class="text-muted ms-1" th:text="${#numbers.formatDecimal(s.price, 0, 'POINT', 0, 'COMMA')} + ' đ'">35.000 đ</span>
+							</span>
+						</div>
+					</div>
+
+					<p class="text-muted" th:if="${product.description != null and !#strings.isEmpty(product.description)}"
+						th:text="${product.description}">Mô tả</p>
+					<p class="small text-muted mb-3">Chọn được size, mức đường, mức đá và topping khi đặt món.</p>
+
+					<div class="alert alert-warning py-2" th:unless="${product.available}">
+						<i class="bi bi-pause-circle me-1"></i> Món này đang tạm ngưng bán.
+					</div>
+
+					<!-- Nút -->
+					<div class="mt-auto d-flex flex-wrap gap-2">
+						<button th:if="${isBuyer and product.available}" type="button" class="btn btn-success btn-lg px-4 js-open-product"
+							th:attr="data-id=${product.id}, data-name=${product.name}, data-price=${product.basePrice},
+							         data-image=${product.imageCloudinaryId}, data-description=${product.description}">
+							<i class="bi bi-cart-plus me-1"></i> Chọn món
+						</button>
+						<button th:if="${isBuyer}" type="button" class="btn btn-lg js-favorite"
+							th:classappend="${isFavorite} ? 'btn-danger' : 'btn-outline-danger'"
+							th:attr="data-id=${product.id}, aria-pressed=${isFavorite}">
+							<i class="bi" th:classappend="${isFavorite} ? 'bi-heart-fill' : 'bi-heart'"></i>
+							<span class="fav-label" th:text="${isFavorite} ? 'Đã thích' : 'Thích'">Thích</span>
+						</button>
+
+						<a th:if="${isGuest}" th:href="@{/auth/login}" class="btn btn-success btn-lg px-4">
+							<i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập để đặt món</a>
+						<a th:if="${isGuest}" th:href="@{/auth/login}" class="btn btn-outline-danger btn-lg">
+							<i class="bi bi-heart"></i> Thích</a>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ===================== ĐÁNH GIÁ ===================== -->
+		<section id="danh-gia" class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" style="scroll-margin-top: 90px;">
+			<h2 class="h5 fw-bold mb-3"><i class="bi bi-star-fill text-warning me-1"></i> Đánh giá sản phẩm</h2>
+
+			<div class="row g-4">
+				<!-- Tổng quan -->
+				<div class="col-lg-4">
+					<div class="text-center border rounded-4 p-3 mb-3">
+						<div class="display-5 fw-bold text-warning"
+							th:text="${product.reviewCount > 0} ? ${#numbers.formatDecimal(product.avgRating, 1, 1, 'POINT')} : '–'">4.5</div>
+						<div class="text-muted small" th:text="|${product.reviewCount} đánh giá|">3 đánh giá</div>
+					</div>
+					<div class="d-flex align-items-center gap-2 small mb-1" th:each="n, st : ${product.starCounts}">
+						<span class="text-nowrap" style="width: 42px;" th:text="${6 - st.count} + ' ★'">5 ★</span>
+						<div class="progress flex-grow-1" style="height: 8px;">
+							<div class="progress-bar bg-warning"
+								th:style="'width:' + (${product.reviewCount > 0} ? ${n * 100 / product.reviewCount} : 0) + '%'"></div>
+						</div>
+						<span class="text-muted text-end" style="width: 24px;" th:text="${n}">0</span>
+					</div>
+				</div>
+
+				<!-- Danh sách đánh giá -->
+				<div class="col-lg-8">
+					<p class="text-muted" th:if="${#lists.isEmpty(reviews)}">Chưa có đánh giá nào. Hãy là người đầu tiên!</p>
+
+					<div class="border-bottom pb-3 mb-3" th:each="r : ${reviews}">
+						<div class="d-flex align-items-center gap-2 mb-1">
+							<img th:if="${r.reviewerAvatar != null}" th:src="${r.reviewerAvatar}" alt="" class="rounded-circle"
+								style="width: 36px; height: 36px; object-fit: cover;">
+							<span th:unless="${r.reviewerAvatar != null}"
+								class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center fw-bold"
+								style="width: 36px; height: 36px;" th:text="${#strings.substring(r.reviewerName, 0, 1)}">A</span>
+							<div>
+								<div class="fw-semibold" th:text="${r.reviewerName}">Khách</div>
+								<div class="small">
+									<span class="text-warning" th:text="${#strings.repeat('★', r.rating)} + ${#strings.repeat('☆', 5 - r.rating)}">★★★★★</span>
+									<span class="text-muted ms-1" th:text="${r.createdAt}">01/10/2026</span>
+								</div>
+							</div>
+						</div>
+						<div class="small text-muted mb-1" th:if="${!#strings.isEmpty(r.purchasedInfo)}"
+							th:text="'Đã mua: ' + ${r.purchasedInfo}">Đã mua: Size M</div>
+						<p class="mb-2" style="white-space: pre-line;" th:text="${r.content}">Nội dung</p>
+						<div class="d-flex flex-wrap gap-2" th:unless="${#lists.isEmpty(r.media)}">
+							<th:block th:each="m : ${r.media}">
+								<a th:if="${m.type == 'IMAGE'}" th:href="${m.url}" target="_blank" rel="noopener">
+									<img th:src="${m.url}" alt="Ảnh đánh giá" class="rounded-3 border" loading="lazy"
+										style="width: 96px; height: 96px; object-fit: cover;"></a>
+								<video th:if="${m.type == 'VIDEO'}" th:src="${m.url}" controls preload="metadata"
+									class="rounded-3 border bg-dark" style="width: 180px; height: 120px;"></video>
+							</th:block>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ===================== VIẾT ĐÁNH GIÁ ===================== -->
+		<section id="viet-danh-gia" class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" style="scroll-margin-top: 90px;"
+			th:unless="${cardMode == 'view'}">
+			<h2 class="h5 fw-bold mb-3"><i class="bi bi-pencil-square text-success me-1"></i> Viết đánh giá</h2>
+
+			<p class="text-muted mb-0" th:if="${isGuest}">
+				<a th:href="@{/auth/login}" class="link-success fw-semibold">Đăng nhập</a> để đánh giá món bạn đã mua.</p>
+
+			<p class="text-muted mb-0" th:if="${isBuyer and #lists.isEmpty(purchased)}">
+				<i class="bi bi-info-circle me-1"></i> Chỉ khách đã mua và đã nhận món (đơn <b>Đã giao</b>) mới đánh giá được.</p>
+
+			<p class="text-success mb-0" th:if="${isBuyer and !#lists.isEmpty(purchased) and #lists.isEmpty(pendingItems)}">
+				<i class="bi bi-check-circle me-1"></i> Bạn đã đánh giá tất cả các ly đã mua của món này. Cảm ơn bạn!</p>
+
+			<form th:if="${isBuyer and !#lists.isEmpty(pendingItems)}" id="reviewForm" th:action="@{/user/reviews}"
+				method="post" enctype="multipart/form-data" novalidate>
+				<input type="hidden" name="productId" th:value="${product.id}">
+
+				<div class="alert alert-danger py-2" th:if="${reviewError}" th:text="${reviewError}"></div>
+
+				<!-- Ly nào (mỗi ly đã mua đánh giá 1 lần) -->
+				<div class="mb-3">
+					<label for="orderDetailId" class="form-label fw-semibold">Ly bạn đã mua</label>
+					<select id="orderDetailId" name="orderDetailId" class="form-select">
+						<option th:each="it : ${pendingItems}" th:value="${it.orderDetailId}"
+							th:selected="${it.orderDetailId == selectedOd}"
+							th:text="|Đơn #${it.orderId} · ${it.info} · nhận ${it.deliveredAt}|">Đơn #1</option>
+					</select>
+				</div>
+
+				<!-- Số sao -->
+				<div class="mb-3">
+					<div class="form-label fw-semibold mb-1">Chấm điểm</div>
+					<input type="hidden" name="rating" id="ratingInput" th:value="${draftRating != null ? draftRating : 5}">
+					<div class="d-flex align-items-center gap-1" id="starPicker">
+						<button type="button" class="btn btn-link p-0 text-warning fs-3 star-btn" th:each="i : ${#numbers.sequence(1, 5)}"
+							th:attr="data-value=${i}, aria-label=|${i} sao|"><i class="bi bi-star-fill"></i></button>
+						<span class="ms-2 small text-muted" id="ratingText">Tuyệt vời</span>
+					</div>
+				</div>
+
+				<!-- Nội dung -->
+				<div class="mb-3">
+					<label for="reviewContent" class="form-label fw-semibold">Bình luận <span class="text-muted fw-normal">(tối thiểu 50 ký tự)</span></label>
+					<textarea id="reviewContent" name="content" class="form-control" rows="4" maxlength="2000"
+						placeholder="Vị trà, độ ngọt, topping, thời gian giao... chia sẻ cảm nhận của bạn"
+						th:text="${draftContent}"></textarea>
+					<div class="d-flex justify-content-between small mt-1">
+						<span id="contentHint" class="text-danger">Cần thêm 50 ký tự</span>
+						<span class="text-muted"><span id="contentCount">0</span>/2000</span>
+					</div>
+				</div>
+
+				<!-- Ảnh / video -->
+				<div class="mb-3">
+					<label for="reviewMedia" class="form-label fw-semibold">Hình ảnh / video <span class="text-muted fw-normal">(tuỳ chọn, tối đa 5 file · ảnh ≤ 5MB, video ≤ 30MB)</span></label>
+					<input type="file" id="reviewMedia" name="media" class="form-control" accept="image/*,video/*" multiple>
+					<div id="mediaError" class="small text-danger mt-1"></div>
+					<div id="mediaPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+				</div>
+
+				<button type="submit" class="btn btn-success px-4" id="reviewSubmit">
+					<i class="bi bi-send me-1"></i> Gửi đánh giá</button>
+			</form>
+		</section>
+
+		<!-- ===================== MÓN CÙNG DANH MỤC ===================== -->
+		<section class="mb-4" th:unless="${#lists.isEmpty(related)}">
+			<h2 class="h5 fw-bold mb-3">Món cùng danh mục</h2>
+			<div class="row g-3">
+				<div class="col-6 col-md-4 col-lg-3" th:each="p : ${related}">
+					<div th:replace="~{fragments/product-card :: card(${p}, ${cardMode})}"></div>
+				</div>
+			</div>
+		</section>
+
+		<!-- MODAL CHỌN MÓN -->
+		<div th:replace="~{fragments/product-modal :: productModal}"></div>
+
+		<script th:src="@{/js/favorite.js}"></script>
+		<script th:src="@{/js/review-form.js}"></script>
+	</div>
+</body>
+</html>

@@ -3,9 +3,12 @@ package vn.utetra.controller.web;
 
 import jakarta.servlet.http.HttpSession;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -13,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,8 +23,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import vn.utetra.dto.response.CategoryCardRes;
+import vn.utetra.dto.response.MenuSectionRes;
+import vn.utetra.dto.response.ProductCardRes;
+import vn.utetra.dto.response.OrderTab;
 import vn.utetra.entity.Category;
 import vn.utetra.entity.Product;
 import vn.utetra.entity.User;
@@ -30,6 +37,9 @@ import vn.utetra.entity.User;
 import vn.utetra.repository.CategoryRepository;
 import vn.utetra.repository.ProductRepository;
 import vn.utetra.repository.UserRepository;
+import vn.utetra.service.OrderFlowService;
+import vn.utetra.service.ProductHighlightService;
+import vn.utetra.service.ViewedProductService;
 
 @Controller
 public class HomeController {
@@ -38,23 +48,39 @@ public class HomeController {
 
 	private static final int PAGE_SIZE = 20;
 
+	/** Đề - Guest: trang chủ hiện sản phẩm bán TRÊN 10 */
+	private static final int GUEST_MIN_SOLD = 10;
+
+	/** Trang chủ User: mỗi trang của khối "20 món nhất" hiện 8 món (20 món = 3 trang) */
+	private static final int HIGHLIGHT_PAGE_SIZE = 8;
+
 	private final UserRepository userRepository;
 	private final ProductRepository productRepository;
 	private final CategoryRepository categoryRepository;
+	private final ProductHighlightService productHighlightService;
+	private final OrderFlowService orderFlowService;
+	private final ViewedProductService viewedProductService;
 
 	public HomeController(UserRepository userRepository, ProductRepository productRepository,
-			CategoryRepository categoryRepository) {
+			CategoryRepository categoryRepository, ProductHighlightService productHighlightService,
+			OrderFlowService orderFlowService, ViewedProductService viewedProductService) {
 		this.userRepository = userRepository;
 		this.productRepository = productRepository;
 		this.categoryRepository = categoryRepository;
+		this.productHighlightService = productHighlightService;
+		this.orderFlowService = orderFlowService;
+		this.viewedProductService = viewedProductService;
 	}
 
 	/**
-	 * Trang chủ: Guest -> home.html USER -> /menu ADMIN -> /admin/dashboard MANAGER
-	 * -> /manager/dashboard
+	 * Trang chủ "/" = trang TRƯNG BÀY (món nổi bật); toàn bộ món nằm ở trang Thực đơn (/menu).
+	 * - Guest         -> home.html: sản phẩm bán trên 10, xếp từ nhiều đến ít, 20 món / trang (?page=)
+	 * - USER          -> user/home.html: đơn hàng theo trạng thái, danh mục, 4 khối 20 món nhất (phân trang)
+	 * - MANAGER/ADMIN -> user/home.html chế độ CHỈ XEM (không có đơn hàng, không có nút đặt món)
+	 * Đăng nhập xong đi qua /login-success (Manager/Admin vào trang quản lý, USER về đây).
 	 */
 	@GetMapping("/")
-	public String index(HttpSession session, Model model) {
+	public String index(@RequestParam(defaultValue = "0") int page, HttpSession session, Model model) {
 
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -77,16 +103,9 @@ public class HomeController {
 					roleName = user.getRole().getName().trim();
 				}
 
-				if ("ADMIN".equalsIgnoreCase(roleName)) {
-					return "redirect:/admin/dashboard";
-				}
-
-				if ("MANAGER".equalsIgnoreCase(roleName)) {
-					return "redirect:/manager/dashboard";
-				}
-
-				if ("USER".equalsIgnoreCase(roleName)) {
-					return "redirect:/menu";
+				if ("USER".equalsIgnoreCase(roleName) || "MANAGER".equalsIgnoreCase(roleName)
+						|| "ADMIN".equalsIgnoreCase(roleName)) {
+					return userHome(user, roleName.toUpperCase(), model);
 				}
 
 			} else {
@@ -97,113 +116,236 @@ public class HomeController {
 			session.removeAttribute("user");
 		}
 
-		// Sản phẩm bán chạy dành cho Guest.
-		List<Product> bestSellerProducts = Collections.emptyList();
-
-		try {
-			List<Product> products = productRepository.filterProducts(null, null, "sold");
-
-			if (products != null) {
-				bestSellerProducts = products.stream().filter(Objects::nonNull).limit(8).toList();
-			}
-
-		} catch (Exception e) {
-			logger.error("Không thể tải danh sách sản phẩm bán chạy", e);
-		}
-
-		// Sản phẩm mới nhất dành cho Guest.
-		List<Product> newestProducts = Collections.emptyList();
-
-		try {
-			List<Product> products = productRepository.filterProducts(null, null, "newest");
-
-			if (products != null) {
-				newestProducts = products.stream().filter(Objects::nonNull).limit(8).toList();
-			}
-
-		} catch (Exception e) {
-			logger.error("Không thể tải danh sách sản phẩm mới nhất", e);
-		}
-
-		model.addAttribute("bestSellerProducts", bestSellerProducts);
-		model.addAttribute("newestProducts", newestProducts);
-		model.addAttribute("isBuyer", false);
-		model.addAttribute("isGuest", true);
-
-		return "home";
+		return guestHome(page, model);
 	}
 
 	/**
-	 * Trang thực đơn dành cho USER.
-	 *
-	 * Ví dụ: /menu /menu?page=1 /menu?keyword=tra&sortBy=sold&page=0
-	 * /menu?categoryId=1&sortBy=price_asc&page=0
+	 * Đăng nhập thành công (SecurityConfiguration.defaultSuccessUrl) -> lưu session.user rồi chia theo vai trò:
+	 * ADMIN -> /admin/dashboard, MANAGER -> /manager/dashboard, còn lại -> trang chủ.
 	 */
-	@GetMapping("/menu")
-	public String menu(@RequestParam(required = false) String keyword,
-			@RequestParam(required = false) Integer categoryId, @RequestParam(defaultValue = "newest") String sortBy,
-			@RequestParam(defaultValue = "0") int page, HttpSession session, Model model) {
-
-		// Chuẩn hóa từ khóa tìm kiếm.
-		keyword = keyword == null ? "" : keyword.trim();
-
-		if (keyword.isEmpty()) {
-			keyword = null;
+	@GetMapping("/login-success")
+	public String loginSuccess(HttpSession session) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || "anonymousUser".equals(authentication.getName())) {
+			return "redirect:/auth/login";
 		}
-
-		// Bỏ qua mã danh mục không hợp lệ.
-		if (categoryId != null && categoryId <= 0) {
-			categoryId = null;
+		Optional<User> userOptional = userRepository.findByUsername(authentication.getName());
+		if (userOptional.isEmpty()) {
+			return "redirect:/";
 		}
+		User user = userOptional.get();
+		session.setAttribute("user", user);
+		String role = user.getRole() != null && user.getRole().getName() != null
+				? user.getRole().getName().trim().toUpperCase()
+				: "";
+		return switch (role) {
+		case "ADMIN" -> "redirect:/admin/dashboard";
+		case "MANAGER" -> "redirect:/manager/dashboard";
+		default -> "redirect:/";
+		};
+	}
 
-		// Chỉ chấp nhận các kiểu sắp xếp hợp lệ.
-		List<String> allowedSorts = List.of("newest", "sold", "price_asc", "price_desc");
-
-		if (sortBy == null || !allowedSorts.contains(sortBy)) {
-			sortBy = "newest";
-		}
-
-		// Trang bắt đầu từ 0; không chấp nhận số trang âm.
+	/** Trang chủ Guest: chỉ món bán trên 10 ly, nhiều nhất trước, phân trang */
+	private String guestHome(int page, Model model) {
 		page = Math.max(page, 0);
+		Page<Product> productPage = productRepository
+				.findBySoldCountGreaterThanAndIsAvailableTrueOrderBySoldCountDescIdAsc(GUEST_MIN_SOLD,
+						PageRequest.of(page, PAGE_SIZE));
 
-		Pageable pageable = PageRequest.of(page, PAGE_SIZE);
-
-		Page<Product> productPage = productRepository.filterProductsPaged(keyword, categoryId, sortBy, pageable);
-
-		// Nếu URL yêu cầu vượt quá trang cuối, chuyển về trang cuối.
+		// Trang vượt quá trang cuối -> về trang cuối
 		if (productPage.getTotalPages() > 0 && page >= productPage.getTotalPages()) {
-
 			page = productPage.getTotalPages() - 1;
-
-			pageable = PageRequest.of(page, PAGE_SIZE);
-
-			productPage = productRepository.filterProductsPaged(keyword, categoryId, sortBy, pageable);
+			productPage = productRepository.findBySoldCountGreaterThanAndIsAvailableTrueOrderBySoldCountDescIdAsc(
+					GUEST_MIN_SOLD, PageRequest.of(page, PAGE_SIZE));
 		}
 
-		// Danh mục phục vụ bộ lọc trên menu.html.
-		List<Category> categories = categoryRepository.findAll();
-
-		// Giữ tên thuộc tính products để tương thích template hiện tại.
-		model.addAttribute("products", productPage.getContent());
-		model.addAttribute("productPage", productPage);
-		model.addAttribute("categories", categories);
-
-		model.addAttribute("keyword", keyword == null ? "" : keyword);
-
-		model.addAttribute("selectedCategory", categoryId);
-		model.addAttribute("sortBy", sortBy);
-
+		model.addAttribute("products", productHighlightService.toCards(productPage.getContent()));
 		model.addAttribute("currentPage", page);
-		model.addAttribute("pageSize", PAGE_SIZE);
 		model.addAttribute("totalPages", productPage.getTotalPages());
 		model.addAttribute("totalItems", productPage.getTotalElements());
+		model.addAttribute("rankOffset", page * PAGE_SIZE);
+		model.addAttribute("minSold", GUEST_MIN_SOLD);
+		model.addAttribute("isBuyer", false);
+		model.addAttribute("isGuest", true);
+		model.addAttribute("cardMode", "guest");
+		return "home";
+	}
 
-		model.addAttribute("isBuyer", true);
+	/** Trang chủ trưng bày: USER (có đơn hàng + đặt món) hoặc MANAGER/ADMIN (chỉ xem) */
+	private String userHome(User user, String role, Model model) {
+		boolean isBuyer = "USER".equals(role);
+		model.addAttribute("me", user);
+		model.addAttribute("role", role);
+
+		// USER: lịch sử mua hàng theo trạng thái (đơn mới, đã xác nhận, đang giao, đã giao, huỷ, trả hàng)
+		if (isBuyer) {
+			model.addAttribute("orderTabs", OrderTab.values());
+			try {
+				model.addAttribute("orderCounts", orderFlowService.myOrderCounts(user.getId()));
+			} catch (Exception e) {
+				logger.error("Không đếm được đơn của user {}", user.getId(), e);
+				model.addAttribute("orderCounts", Map.of());
+			}
+			// Sản phẩm đã xem gần đây (8 món)
+			model.addAttribute("recentViewed", viewedProductService.recent(user.getId(), 8));
+		}
+
+		// Danh mục -> trang sản phẩm theo danh mục
+		model.addAttribute("categories", categoryCards());
+
+		// 4 khối 20 món nhất, trang đầu (các trang sau tải bằng /menu/highlight/{type}?page=)
+		model.addAttribute("newestPage", productHighlightService.page("newest", 0, HIGHLIGHT_PAGE_SIZE));
+		model.addAttribute("soldPage", productHighlightService.page("sold", 0, HIGHLIGHT_PAGE_SIZE));
+		model.addAttribute("ratingPage", productHighlightService.page("rating", 0, HIGHLIGHT_PAGE_SIZE));
+		model.addAttribute("favoritePage", productHighlightService.page("favorite", 0, HIGHLIGHT_PAGE_SIZE));
+
+		model.addAttribute("isBuyer", isBuyer);
 		model.addAttribute("isGuest", false);
+		model.addAttribute("cardMode", cardModeOf(role));
+		return "user/home";
+	}
 
-		// Giữ session.user để layout và các chức năng hiện tại
-		// như giỏ hàng có thể tiếp tục sử dụng.
+	/**
+	 * Phân trang (lazy loading) cho 4 khối 20 món nhất trên trang chủ User:
+	 * trả về đoạn HTML 1 trang, JS trên trang chủ thay vào khối. Vd /menu/highlight/sold?page=1
+	 */
+	@GetMapping("/menu/highlight/{type}")
+	public String highlightPage(@PathVariable("type") String type,
+			@RequestParam(name = "page", defaultValue = "0") int page, HttpSession session, Model model) {
+		model.addAttribute("pg", productHighlightService.page(type, page, HIGHLIGHT_PAGE_SIZE));
+		model.addAttribute("mode", cardModeOf(roleOf(session)));
+		return "fragments/product-card :: hlBody";
+	}
 
+	/**
+	 * Trang sản phẩm theo danh mục (ai cũng xem được): /category/1?sortBy=sold&page=0
+	 */
+	@GetMapping("/category/{id}")
+	public String category(@PathVariable("id") Integer id,
+			@RequestParam(name = "sortBy", defaultValue = "sold") String sortBy,
+			@RequestParam(name = "page", defaultValue = "0") int page, HttpSession session, Model model) {
+
+		Optional<Category> categoryOpt = categoryRepository.findById(id);
+		if (categoryOpt.isEmpty()) {
+			return "redirect:/menu#thuc-don";
+		}
+
+		if (!List.of("newest", "sold", "price_asc", "price_desc").contains(sortBy)) {
+			sortBy = "sold";
+		}
+		page = Math.max(page, 0);
+
+		Page<Product> productPage = productRepository.filterProductsPaged(null, id, sortBy,
+				PageRequest.of(page, PAGE_SIZE));
+		if (productPage.getTotalPages() > 0 && page >= productPage.getTotalPages()) {
+			page = productPage.getTotalPages() - 1;
+			productPage = productRepository.filterProductsPaged(null, id, sortBy, PageRequest.of(page, PAGE_SIZE));
+		}
+
+		String role = roleOf(session);
+		model.addAttribute("category", categoryOpt.get());
+		model.addAttribute("categories", categoryCards());
+		model.addAttribute("products", productHighlightService.toCards(productPage.getContent()));
+		model.addAttribute("sortBy", sortBy);
+		model.addAttribute("currentPage", page);
+		model.addAttribute("totalPages", productPage.getTotalPages());
+		model.addAttribute("totalItems", productPage.getTotalElements());
+		model.addAttribute("isBuyer", "USER".equals(role));
+		model.addAttribute("isGuest", role.isEmpty());
+		model.addAttribute("cardMode", cardModeOf(role));
+		return "category";
+	}
+
+	/** Danh mục kèm số món đang bán */
+	private List<CategoryCardRes> categoryCards() {
+		Map<Integer, Long> counts = new HashMap<>();
+		try {
+			for (Object[] row : productRepository.countAvailableByCategory()) {
+				if (row[0] != null) {
+					counts.put(((Number) row[0]).intValue(), ((Number) row[1]).longValue());
+				}
+			}
+		} catch (Exception e) {
+			logger.error("Không đếm được số món theo danh mục", e);
+		}
+		return categoryRepository.findAll().stream()
+				.map(c -> new CategoryCardRes(c.getId(), c.getName(), c.getImageCloudinaryId(),
+						counts.getOrDefault(c.getId(), 0L)))
+				.toList();
+	}
+
+	/** buy = USER chọn món | guest = "+" dẫn tới đăng nhập | view = Manager/Admin chỉ xem */
+	private static String cardModeOf(String role) {
+		return "USER".equals(role) ? "buy" : (role.isEmpty() ? "guest" : "view");
+	}
+
+	/** Vai trò của người đang xem (lấy từ session do "/" lưu lúc đăng nhập); chưa đăng nhập = "" */
+	private String roleOf(HttpSession session) {
+		Object u = session.getAttribute("user");
+		if (!(u instanceof User user) || user.getRole() == null || user.getRole().getName() == null) {
+			return "";
+		}
+		return user.getRole().getName().trim().toUpperCase();
+	}
+
+	/**
+	 * Trang Thực đơn - AI CŨNG XEM ĐƯỢC: TOÀN BỘ món đang bán, xếp theo từng danh mục như tờ menu ở quán
+	 * (thanh danh mục bấm để cuộn tới, tìm kiếm, sắp xếp trong từng danh mục).
+	 * - USER: bấm "+" để chọn món, thêm vào giỏ
+	 * - Chưa đăng nhập: bấm "+" -> sang trang đăng nhập
+	 * - MANAGER / ADMIN: chỉ xem, không có nút mua
+	 * Ví dụ: /menu   /menu?keyword=tra   /menu?sortBy=price_asc
+	 * (link cũ /menu?categoryId=2 -> chuyển sang trang danh mục /category/2)
+	 */
+	@GetMapping("/menu")
+	public String menu(@RequestParam(name = "keyword", required = false) String keyword,
+			@RequestParam(name = "categoryId", required = false) Integer categoryId,
+			@RequestParam(name = "sortBy", defaultValue = "default") String sortBy, HttpSession session,
+			Model model) {
+
+		if (categoryId != null && categoryId > 0) {
+			return "redirect:/category/" + categoryId;
+		}
+
+		String role = roleOf(session);
+
+		keyword = keyword == null ? "" : keyword.trim();
+
+		// default = thứ tự trong menu (theo mã món); còn lại giống trang danh mục
+		if (!List.of("default", "newest", "sold", "price_asc", "price_desc").contains(sortBy)) {
+			sortBy = "default";
+		}
+
+		List<Product> products = productRepository.filterProducts(keyword.isEmpty() ? null : keyword, null,
+				"default".equals(sortBy) ? "id" : sortBy);
+		if ("default".equals(sortBy)) {
+			products = products.stream().sorted(Comparator.comparing(Product::getId)).toList();
+		}
+		List<ProductCardRes> cards = productHighlightService.toCards(products);
+
+		// Gom món theo danh mục, giữ thứ tự danh mục và thứ tự đã sắp xếp
+		Map<Integer, List<ProductCardRes>> byCategory = new LinkedHashMap<>();
+		for (int i = 0; i < products.size() && i < cards.size(); i++) {
+			Category c = products.get(i).getCategory();
+			byCategory.computeIfAbsent(c != null ? c.getId() : 0, k -> new ArrayList<>()).add(cards.get(i));
+		}
+		List<MenuSectionRes> sections = new ArrayList<>();
+		for (Category c : categoryRepository.findAll()) {
+			List<ProductCardRes> items = byCategory.remove(c.getId());
+			if (items != null && !items.isEmpty()) {
+				sections.add(new MenuSectionRes(c.getId(), c.getName(), items));
+			}
+		}
+		byCategory.values().stream().filter(l -> !l.isEmpty()).findFirst()
+				.ifPresent(rest -> sections.add(new MenuSectionRes(0, "Khác", rest)));
+
+		model.addAttribute("sections", sections);
+		model.addAttribute("totalItems", cards.size());
+		model.addAttribute("keyword", keyword);
+		model.addAttribute("sortBy", sortBy);
+		model.addAttribute("isBuyer", "USER".equals(role));
+		model.addAttribute("isGuest", role.isEmpty());
+		model.addAttribute("cardMode", cardModeOf(role));
 		return "menu";
 	}
 }

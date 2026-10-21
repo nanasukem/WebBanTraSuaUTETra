@@ -1,6 +1,8 @@
 package vn.utetra.service.impl;
 
 import vn.utetra.dto.request.VoucherReq;
+import vn.utetra.dto.response.ManagerVoucherRes;
+import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.entity.Branch;
 import vn.utetra.entity.MemberTier;
 import vn.utetra.entity.Voucher;
@@ -24,7 +26,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -56,6 +63,76 @@ public class VoucherServiceImpl implements VoucherService {
 	@Override
 	public List<Voucher> findByBranch(Integer branchId) {
 		return voucherRepository.findByBranch_IdOrderByCreatedAtDesc(branchId);
+	}
+
+	@Override
+	public List<Voucher> findAllVouchers() {
+		return voucherRepository.findAllByOrderByCreatedAtDesc();
+	}
+
+	@Override
+	public List<ManagerVoucherRes> branchView(Integer branchId) {
+		Map<Integer, Object[]> stats = new HashMap<>();
+		List<Object[]> rows = new ArrayList<>(orderRepository.productVoucherStatsOfBranch(branchId, OrderStatus.CANCELLED));
+		rows.addAll(orderRepository.shippingVoucherStatsOfBranch(branchId, OrderStatus.CANCELLED));
+		for (Object[] r : rows) {
+			stats.put(((Number) r[0]).intValue(), r);
+		}
+		LocalDateTime now = LocalDateTime.now();
+		List<String> order = List.of("RUNNING", "UPCOMING", "SOLD_OUT", "OFF", "ENDED");
+		return voucherRepository.findApplicableToBranch(branchId).stream().map(v -> {
+			Object[] s = stats.get(v.getId());
+			String status = voucherStatus(v, now);
+			return new ManagerVoucherRes(v.getId(), v.getCode(), v.getName(), v.getBranch() == null,
+					v.getApplyTo() == VoucherApplyTo.SHIPPING ? "Giảm phí ship" : "Giảm tiền món", discountText(v),
+					conditionText(v), DAY.format(v.getStartDate()) + " – " + DAY.format(v.getEndDate()), status,
+					STATUS_LABEL.get(status), STATUS_BADGE.get(status), nz(v.getQuantity()), nz(v.getUsedCount()),
+					s == null ? 0 : ((Number) s[1]).longValue(),
+					s == null ? BigDecimal.ZERO : new BigDecimal(s[2].toString()));
+		}).sorted(Comparator.comparingInt((ManagerVoucherRes r) -> order.indexOf(r.status()))).toList();
+	}
+
+	private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+	private static final Map<String, String> STATUS_LABEL = Map.of("RUNNING", "Đang chạy", "UPCOMING", "Sắp diễn ra",
+			"SOLD_OUT", "Hết lượt", "OFF", "Đã tắt", "ENDED", "Đã kết thúc");
+	private static final Map<String, String> STATUS_BADGE = Map.of("RUNNING", "text-bg-success", "UPCOMING",
+			"text-bg-info", "SOLD_OUT", "text-bg-warning", "OFF", "text-bg-secondary", "ENDED", "text-bg-light border");
+
+	/** RUNNING | UPCOMING | ENDED | SOLD_OUT | OFF */
+	static String voucherStatus(Voucher v, LocalDateTime now) {
+		if (!Boolean.TRUE.equals(v.getIsActive())) return "OFF";
+		if (v.getEndDate() != null && v.getEndDate().isBefore(now)) return "ENDED";
+		if (v.getStartDate() != null && v.getStartDate().isAfter(now)) return "UPCOMING";
+		if (nz(v.getUsedCount()) >= nz(v.getQuantity())) return "SOLD_OUT";
+		return "RUNNING";
+	}
+
+	private static String money(BigDecimal x) {
+		return String.format("%,d", x.setScale(0, RoundingMode.HALF_UP).longValue()).replace(',', '.') + "đ";
+	}
+
+	private static String discountText(Voucher v) {
+		if (v.getDiscountType() == DiscountType.PERCENT) {
+			String s = v.getDiscountValue().stripTrailingZeros().toPlainString() + "%";
+			return v.getMaxDiscount() == null ? s : s + " (tối đa " + money(v.getMaxDiscount()) + ")";
+		}
+		return money(v.getDiscountValue());
+	}
+
+	private static String conditionText(Voucher v) {
+		List<String> parts = new ArrayList<>();
+		parts.add(v.getMinOrderValue() == null || v.getMinOrderValue().signum() == 0 ? "Mọi đơn"
+				: "Đơn từ " + money(v.getMinOrderValue()));
+		if (v.getPerUserLimit() != null) parts.add("Mỗi khách " + v.getPerUserLimit() + " lần");
+		if (v.getAudience() == VoucherAudience.NEW_USER) parts.add("Chỉ khách mới");
+		if (v.getAudience() == VoucherAudience.MIN_TIER && v.getMinTier() != null)
+			parts.add("Hạng " + v.getMinTier().getName() + " trở lên");
+		if (v.getPaymentMethod() != null) parts.add("Chỉ " + (v.getPaymentMethod() == PaymentMethod.COD ? "COD" : v.getPaymentMethod().name()));
+		return String.join(" · ", parts);
+	}
+
+	private static int nz(Integer x) {
+		return x == null ? 0 : x;
 	}
 
 	@Override

@@ -12,6 +12,7 @@ import vn.utetra.entity.Voucher;
 import vn.utetra.entity.enums.DiscountType;
 import vn.utetra.entity.enums.VoucherApplyTo;
 import vn.utetra.exception.BusinessException;
+import vn.utetra.repository.BranchRepository;
 import vn.utetra.service.VoucherService;
 
 import java.time.LocalDateTime;
@@ -21,15 +22,18 @@ import java.time.LocalDateTime;
 public class AdminVoucherController {
 
 	private final VoucherService voucherService;
+	private final BranchRepository branchRepository;
 
-	public AdminVoucherController(VoucherService voucherService) {
+	public AdminVoucherController(VoucherService voucherService, BranchRepository branchRepository) {
 		this.voucherService = voucherService;
+		this.branchRepository = branchRepository;
 	}
 
-	// Danh sách voucher toàn hệ thống
+	// Danh sách TẤT CẢ voucher: toàn chuỗi + riêng từng chi nhánh (Admin là người duy nhất tạo / sửa voucher)
 	@GetMapping
 	public String index(Model model) {
-		model.addAttribute("vouchers", voucherService.findAppVouchers());
+		model.addAttribute("vouchers", voucherService.findAllVouchers());
+		model.addAttribute("branches", branchRepository.findAll());
 		return "admin/vouchers/index";
 	}
 
@@ -61,8 +65,7 @@ public class AdminVoucherController {
 		}
 
 		try {
-			// Voucher toàn hệ thống: branchId luôn null
-			req.setBranchId(null);
+			// branchId trống = toàn chuỗi; chọn chi nhánh = khuyến mãi riêng của chi nhánh đó
 			voucherService.create(req);
 
 			redirectAttributes.addFlashAttribute("successMessage", "Tạo voucher thành công!");
@@ -82,11 +85,6 @@ public class AdminVoucherController {
 
 		Voucher voucher = voucherService.findById(id);
 
-		// Admin chỉ chỉnh sửa voucher toàn hệ thống
-		if (voucher.getBranch() != null) {
-			return "redirect:/admin/vouchers";
-		}
-
 		model.addAttribute("voucherReq", voucherService.toReq(voucher));
 		model.addAttribute("voucherId", id);
 		addFormOptions(model);
@@ -99,13 +97,7 @@ public class AdminVoucherController {
 	public String update(@PathVariable Integer id, @Valid @ModelAttribute("voucherReq") VoucherReq req,
 			BindingResult result, Model model, RedirectAttributes redirectAttributes) {
 
-		Voucher existing = voucherService.findById(id);
-
-		if (existing.getBranch() != null) {
-			redirectAttributes.addFlashAttribute("errorMessage",
-					"Bạn không có quyền chỉnh sửa voucher riêng của chi nhánh.");
-			return "redirect:/admin/vouchers";
-		}
+		voucherService.findById(id); // không tồn tại -> báo lỗi
 
 		if (result.hasErrors()) {
 			model.addAttribute("voucherId", id);
@@ -114,8 +106,6 @@ public class AdminVoucherController {
 		}
 
 		try {
-			// Giữ voucher thuộc phạm vi toàn hệ thống
-			req.setBranchId(null);
 			voucherService.update(id, req);
 
 			redirectAttributes.addFlashAttribute("successMessage", "Cập nhật voucher thành công!");
@@ -133,13 +123,6 @@ public class AdminVoucherController {
 	@PostMapping("/{id}/toggle")
 	public String toggle(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 
-		Voucher voucher = voucherService.findById(id);
-
-		if (voucher.getBranch() != null) {
-			redirectAttributes.addFlashAttribute("errorMessage", "Không thể thay đổi voucher riêng của chi nhánh.");
-			return "redirect:/admin/vouchers";
-		}
-
 		voucherService.toggleActive(id);
 
 		redirectAttributes.addFlashAttribute("successMessage", "Đã thay đổi trạng thái voucher.");
@@ -151,11 +134,6 @@ public class AdminVoucherController {
 	public String delete(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 
 		Voucher voucher = voucherService.findById(id);
-
-		if (voucher.getBranch() != null) {
-			redirectAttributes.addFlashAttribute("errorMessage", "Không thể xóa voucher riêng của chi nhánh.");
-			return "redirect:/admin/vouchers";
-		}
 
 		boolean wasUsed = voucher.getUsedCount() != null && voucher.getUsedCount() > 0;
 
@@ -170,5 +148,6 @@ public class AdminVoucherController {
 	private void addFormOptions(Model model) {
 		model.addAttribute("discountTypes", DiscountType.values());
 		model.addAttribute("applyToOptions", VoucherApplyTo.values());
+		model.addAttribute("branches", branchRepository.findAll());
 	}
 }

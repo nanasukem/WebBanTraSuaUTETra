@@ -465,7 +465,7 @@ INSERT INTO Branches (owner_id, name, address, latitude, longitude, phone, descr
 
 INSERT INTO Categories (name) VALUES (N'Trà sữa'), (N'Trà trái cây'), (N'Cà phê'), (N'Đá xay');
 
--- Menu chung: cả 2 chi nhánh đều bán 8 món này
+-- Menu chung: cả 2 chi nhánh đều bán chung menu (8 món đầu + 32 món thêm bên dưới = 40 món)
 INSERT INTO Products (category_id, name, base_price, description, sold_count) VALUES
  (1, N'Trà sữa trân châu đường đen', 35000, N'Best seller của quán', 152),
  (2, N'Trà đào cam sả',              40000, N'Thanh mát, giải nhiệt', 87),
@@ -475,6 +475,44 @@ INSERT INTO Products (category_id, name, base_price, description, sold_count) VA
  (2, N'Trà vải hoa hồng',            38000, NULL, 23),
  (3, N'Cà phê muối',                 32000, NULL, 110),
  (4, N'Cookie đá xay',               49000, NULL, 3);
+
+-- Thêm 32 món (id 9-40): đủ để thấy phân trang (20 món/trang), lọc theo danh mục,
+-- danh sách mới nhất (created_at), bán chạy (sold_count; trang chủ khách chỉ hiện món bán trên 10)
+INSERT INTO Products (category_id, name, base_price, description, sold_count, created_at) VALUES
+ (1, N'Trà sữa Oolong nướng', 39000, N'Oolong rang thơm khói, sữa béo nhẹ', 96, '2026-06-05'),
+ (1, N'Trà sữa matcha', 37000, N'Matcha Nhật pha sữa tươi', 58, '2026-06-12'),
+ (1, N'Trà sữa socola', 33000, N'Socola đậm vị, hợp trẻ em', 27, '2026-06-20'),
+ (1, N'Hồng trà sữa', 31000, N'Hồng trà Ceylon, vị trà rõ', 74, '2026-07-01'),
+ (1, N'Trà sữa caramel', 36000, N'Caramel cháy thơm, ngọt dịu', 15, '2026-07-15'),
+ (1, N'Trà sữa dâu tây', 34000, N'Dâu tây Đà Lạt xay cùng sữa', 9, '2026-08-02'),
+ (1, N'Trà sữa hạnh nhân', 38000, N'Sữa hạnh nhân, ít béo', 6, '2026-09-10'),
+ (1, N'Trà sữa kem trứng nướng', 42000, N'Lớp kem trứng khò lửa phía trên', 4, '2026-10-12'),
+ (2, N'Trà chanh dây', 32000, N'Chanh dây tươi, chua ngọt', 68, '2026-06-03'),
+ (2, N'Trà dứa nhiệt đới', 35000, N'Dứa tươi, thạch dừa', 41, '2026-06-18'),
+ (2, N'Trà ổi hồng', 36000, N'Ổi hồng ép, thanh mát', 33, '2026-07-05'),
+ (2, N'Trà xoài chanh leo', 39000, N'Xoài cát chín, chanh leo', 22, '2026-07-22'),
+ (2, N'Trà táo xanh bạc hà', 34000, N'Táo xanh và lá bạc hà', 12, '2026-08-14'),
+ (2, N'Trà dưa hấu', 33000, N'Dưa hấu ép mát lạnh', 8, '2026-09-02'),
+ (2, N'Trà nho xanh', 37000, N'Nho xanh không hạt, thạch nha đam', 5, '2026-09-28'),
+ (2, N'Trà mãng cầu', 39000, N'Mãng cầu xiêm xay, vị chua dịu', 2, '2026-10-15'),
+ (3, N'Cà phê sữa đá', 25000, N'Phin truyền thống, sữa đặc', 135, '2026-06-01'),
+ (3, N'Cà phê đen đá', 22000, N'Robusta đậm vị', 88, '2026-06-08'),
+ (3, N'Bạc xỉu dừa', 33000, N'Bạc xỉu với nước cốt dừa', 47, '2026-06-25'),
+ (3, N'Cappuccino', 39000, N'Espresso, sữa nóng, bọt sữa mịn', 29, '2026-07-12'),
+ (3, N'Latte caramel', 42000, N'Latte thêm sốt caramel', 18, '2026-08-05'),
+ (3, N'Americano cam', 36000, N'Americano kèm nước cam tươi', 11, '2026-08-25'),
+ (3, N'Cà phê kem trứng', 38000, N'Cốt cà phê phủ kem trứng đánh bông', 7, '2026-09-18'),
+ (3, N'Cold brew đào', 40000, N'Cold brew ủ lạnh 16 giờ, đào ngâm', 3, '2026-10-18'),
+ (4, N'Socola đá xay', 45000, N'Socola đậm, kem tươi', 52, '2026-06-10'),
+ (4, N'Cà phê đá xay', 43000, N'Cà phê xay đá, sốt caramel', 36, '2026-06-28'),
+ (4, N'Khoai môn đá xay', 44000, N'Khoai môn tươi xay mịn', 24, '2026-07-18'),
+ (4, N'Dâu đá xay', 46000, N'Dâu tây xay cùng sữa chua', 16, '2026-08-09'),
+ (4, N'Việt quất đá xay', 47000, N'Việt quất và sữa chua', 10, '2026-08-30'),
+ (4, N'Trà xanh đậu đỏ đá xay', 45000, N'Matcha xay, đậu đỏ ninh', 6, '2026-09-22'),
+ (4, N'Bơ đá xay', 48000, N'Bơ sáp xay cùng sữa đặc', 1, '2026-10-08'),
+ (4, N'Xoài đá xay', 46000, N'Xoài cát xay mịn', 0, '2026-10-20');
+-- 8 món đầu có từ khi mở quán
+UPDATE Products SET created_at = '2026-05-01' WHERE id <= 8;
 
 -- Demo: chi nhánh Quận 1 (id 2) đang hết Matcha đá xay (id 4); các món khác bán bình thường
 INSERT INTO BranchProducts (branch_id, product_id, is_available) VALUES (2, 4, 0);
@@ -539,6 +577,141 @@ VALUES (1, 'VNPAY', 'VNP14567890', 153000, 'SUCCESS', SYSDATETIME());
 
 INSERT INTO Reviews (user_id, product_id, order_detail_id, rating, content) VALUES
  (6, 1, 1, 5, N'Trà sữa trân châu đường đen rất ngon, trân châu dẻo, vị ngọt vừa phải, giao hàng nhanh, sẽ ủng hộ quán dài dài.');
+
+/* ---------- Dữ liệu mẫu thêm: khách, đơn đã giao, đánh giá, yêu thích ----------
+   (dùng cho danh sách Đánh giá cao, Yêu thích nhất, Khách hàng của chi nhánh, Báo cáo doanh thu) */
+INSERT INTO Users (username, password, full_name, email, phone, role_id, carrier_id, is_verified) VALUES
+ ('user3', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Lê Minh Anh', 'user3@gmail.com', '0900000008', 4, NULL, 1),
+ ('user4', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Ngô Gia Bảo', 'user4@gmail.com', '0900000009', 4, NULL, 1),
+ ('user5', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Võ Thanh Hà', 'user5@gmail.com', '0900000010', 4, NULL, 1),
+ ('user6', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Đặng Quốc Huy', 'user6@gmail.com', '0900000011', 4, NULL, 1);
+-- 10 đơn ĐÃ GIAO (id 3-12), đặt trong tháng 9-10/2026 (cũ hơn đơn #1, #2)
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (8, 1, 'DELIVERY', 1, 5, N'Lê Minh Anh', '0900000008', N'12 Đặng Văn Bi, Phường Thủ Đức, Thành phố Hồ Chí Minh',
+        122000, 0, N'Thành viên', 15000, 137000, 6100, 'DELIVERED', 'COD', 'PAID', '2026-09-05 09:15', DATEADD(MINUTE, 45, '2026-09-05 09:15'), DATEADD(MINUTE, 45, '2026-09-05 09:15'));
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (9, 1, 'PICKUP', NULL, NULL, N'Ngô Gia Bảo', '0900000009', NULL,
+        72000, 0, N'Thành viên', 0, 72000, 3600, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-08 14:30', DATEADD(MINUTE, 45, '2026-09-08 14:30'), DATEADD(MINUTE, 45, '2026-09-08 14:30'));
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (10, 2, 'DELIVERY', 1, 5, N'Võ Thanh Hà', '0900000010', N'45 Lê Lợi, Phường Sài Gòn, Thành phố Hồ Chí Minh',
+        94000, 0, N'Thành viên', 15000, 109000, 4700, 'DELIVERED', 'MOMO', 'PAID', '2026-09-12 19:05', DATEADD(MINUTE, 45, '2026-09-12 19:05'), DATEADD(MINUTE, 45, '2026-09-12 19:05'));
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (11, 2, 'DELIVERY', 1, 5, N'Đặng Quốc Huy', '0900000011', N'45 Lê Lợi, Phường Sài Gòn, Thành phố Hồ Chí Minh',
+        135000, 0, N'Thành viên', 15000, 150000, 6750, 'DELIVERED', 'COD', 'PAID', '2026-09-15 10:40', DATEADD(MINUTE, 45, '2026-09-15 10:40'), DATEADD(MINUTE, 45, '2026-09-15 10:40'));
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (8, 2, 'PICKUP', NULL, NULL, N'Lê Minh Anh', '0900000008', NULL,
+        76000, 0, N'Thành viên', 0, 76000, 3800, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-20 16:20', DATEADD(MINUTE, 45, '2026-09-20 16:20'), DATEADD(MINUTE, 45, '2026-09-20 16:20'));
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (9, 1, 'DELIVERY', 1, 5, N'Ngô Gia Bảo', '0900000009', N'12 Đặng Văn Bi, Phường Thủ Đức, Thành phố Hồ Chí Minh',
+        86000, 0, N'Thành viên', 15000, 101000, 4300, 'DELIVERED', 'COD', 'PAID', '2026-09-24 08:50', DATEADD(MINUTE, 45, '2026-09-24 08:50'), DATEADD(MINUTE, 45, '2026-09-24 08:50'));
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (10, 1, 'DELIVERY', 1, 5, N'Võ Thanh Hà', '0900000010', N'12 Đặng Văn Bi, Phường Thủ Đức, Thành phố Hồ Chí Minh',
+        92000, 0, N'Thành viên', 15000, 107000, 4600, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-29 20:10', DATEADD(MINUTE, 45, '2026-09-29 20:10'), DATEADD(MINUTE, 45, '2026-09-29 20:10'));
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (11, 1, 'PICKUP', NULL, NULL, N'Đặng Quốc Huy', '0900000011', NULL,
+        71000, 0, N'Thành viên', 0, 71000, 3550, 'DELIVERED', 'COD', 'PAID', '2026-10-03 07:45', DATEADD(MINUTE, 45, '2026-10-03 07:45'), DATEADD(MINUTE, 45, '2026-10-03 07:45'));
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (8, 1, 'DELIVERY', 1, 5, N'Lê Minh Anh', '0900000008', N'12 Đặng Văn Bi, Phường Thủ Đức, Thành phố Hồ Chí Minh',
+        132000, 0, N'Thành viên', 15000, 147000, 6600, 'DELIVERED', 'MOMO', 'PAID', '2026-10-08 18:30', DATEADD(MINUTE, 45, '2026-10-08 18:30'), DATEADD(MINUTE, 45, '2026-10-08 18:30'));
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
+VALUES (10, 2, 'DELIVERY', 1, 5, N'Võ Thanh Hà', '0900000010', N'45 Lê Lợi, Phường Sài Gòn, Thành phố Hồ Chí Minh',
+        94000, 0, N'Thành viên', 15000, 109000, 4700, 'DELIVERED', 'COD', 'PAID', '2026-10-14 12:00', DATEADD(MINUTE, 45, '2026-10-14 12:00'), DATEADD(MINUTE, 45, '2026-10-14 12:00'));
+INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, quantity, unit_price, subtotal) VALUES
+ (3, 1, 'M', 70, 70, 2, 40000, 80000),
+ (3, 17, 'L', 70, 70, 1, 42000, 42000),
+ (4, 7, 'M', 70, 70, 1, 37000, 37000),
+ (4, 25, 'L', 70, 70, 1, 35000, 35000),
+ (5, 9, 'L', 70, 70, 1, 49000, 49000),
+ (5, 2, 'M', 70, 70, 1, 45000, 45000),
+ (6, 33, 'M', 70, 70, 2, 50000, 100000),
+ (6, 18, 'S', 70, 70, 1, 35000, 35000),
+ (7, 12, 'M', 70, 70, 1, 36000, 36000),
+ (7, 5, 'L', 70, 70, 1, 40000, 40000),
+ (8, 19, 'M', 70, 70, 1, 41000, 41000),
+ (8, 1, 'L', 70, 70, 1, 45000, 45000),
+ (9, 25, 'S', 70, 70, 2, 25000, 50000),
+ (9, 10, 'M', 70, 70, 1, 42000, 42000),
+ (10, 3, 'M', 70, 70, 1, 34000, 34000),
+ (10, 17, 'M', 70, 70, 1, 37000, 37000),
+ (11, 7, 'L', 70, 70, 2, 42000, 84000),
+ (11, 34, 'M', 70, 70, 1, 48000, 48000),
+ (12, 2, 'L', 70, 70, 1, 50000, 50000),
+ (12, 9, 'M', 70, 70, 1, 44000, 44000);
+-- Đơn trả online: ghi giao dịch thành công
+INSERT INTO Payments (order_id, method, transaction_code, amount, status, paid_at) VALUES
+ (4, 'VNPAY', 'VNP2026100004', 72000, 'SUCCESS', '2026-09-08 14:30'),
+ (5, 'MOMO', 'MOM2026100005', 109000, 'SUCCESS', '2026-09-12 19:05'),
+ (7, 'VNPAY', 'VNP2026100007', 76000, 'SUCCESS', '2026-09-20 16:20'),
+ (9, 'VNPAY', 'VNP2026100009', 107000, 'SUCCESS', '2026-09-29 20:10'),
+ (11, 'MOMO', 'MOM2026100011', 147000, 'SUCCESS', '2026-10-08 18:30');
+-- Đánh giá (chỉ món đã mua trong đơn đã giao, nội dung trên 50 ký tự)
+INSERT INTO Reviews (user_id, product_id, order_detail_id, rating, content) VALUES
+ (8, 1, 4, 5, N'Uống rất ngon, vị vừa miệng, đá không bị nhạt, nhân viên đóng gói cẩn thận, giao hàng đúng giờ, sẽ đặt tiếp.'),
+ (8, 17, 5, 5, N'Món này tuyệt vời, thơm và đậm vị đúng như mô tả, size L uống đã, giá hợp lý so với chất lượng của quán.'),
+ (9, 7, 6, 4, N'Khá ngon, vị đậm và thơm, chỉ hơi ngọt một chút so với khẩu vị của mình, lần sau sẽ chọn ít đường hơn.'),
+ (9, 25, 7, 5, N'Uống rất ngon, vị vừa miệng, đá không bị nhạt, nhân viên đóng gói cẩn thận, giao hàng đúng giờ, sẽ đặt tiếp.'),
+ (10, 9, 8, 5, N'Món này tuyệt vời, thơm và đậm vị đúng như mô tả, size L uống đã, giá hợp lý so với chất lượng của quán.'),
+ (10, 2, 9, 4, N'Đồ uống ổn, đóng gói kỹ, giao hơi trễ khoảng mười phút nhưng món vẫn còn lạnh, nhìn chung là hài lòng.'),
+ (11, 33, 10, 3, N'Vị tạm được, không đặc sắc lắm, đá tan hơi nhanh làm nhạt nước, hy vọng quán cải thiện thêm lần sau nhé.'),
+ (11, 18, 11, 5, N'Món này tuyệt vời, thơm và đậm vị đúng như mô tả, size L uống đã, giá hợp lý so với chất lượng của quán.'),
+ (8, 5, 13, 4, N'Khá ngon, vị đậm và thơm, chỉ hơi ngọt một chút so với khẩu vị của mình, lần sau sẽ chọn ít đường hơn.'),
+ (9, 19, 14, 5, N'Uống rất ngon, vị vừa miệng, đá không bị nhạt, nhân viên đóng gói cẩn thận, giao hàng đúng giờ, sẽ đặt tiếp.'),
+ (9, 1, 15, 5, N'Món này tuyệt vời, thơm và đậm vị đúng như mô tả, size L uống đã, giá hợp lý so với chất lượng của quán.'),
+ (10, 25, 16, 4, N'Đồ uống ổn, đóng gói kỹ, giao hơi trễ khoảng mười phút nhưng món vẫn còn lạnh, nhìn chung là hài lòng.'),
+ (10, 10, 17, 5, N'Uống rất ngon, vị vừa miệng, đá không bị nhạt, nhân viên đóng gói cẩn thận, giao hàng đúng giờ, sẽ đặt tiếp.'),
+ (11, 17, 19, 5, N'Món này tuyệt vời, thơm và đậm vị đúng như mô tả, size L uống đã, giá hợp lý so với chất lượng của quán.'),
+ (8, 7, 20, 4, N'Khá ngon, vị đậm và thơm, chỉ hơi ngọt một chút so với khẩu vị của mình, lần sau sẽ chọn ít đường hơn.'),
+ (10, 2, 22, 5, N'Uống rất ngon, vị vừa miệng, đá không bị nhạt, nhân viên đóng gói cẩn thận, giao hàng đúng giờ, sẽ đặt tiếp.');
+-- Lượt thích (cho danh sách Yêu thích nhất)
+INSERT INTO Favorites (user_id, product_id) VALUES
+ (8, 1),
+ (8, 9),
+ (8, 17),
+ (8, 25),
+ (8, 33),
+ (8, 7),
+ (9, 1),
+ (9, 17),
+ (9, 25),
+ (9, 19),
+ (9, 2),
+ (9, 12),
+ (10, 1),
+ (10, 9),
+ (10, 2),
+ (10, 17),
+ (10, 26),
+ (10, 10),
+ (10, 34),
+ (11, 1),
+ (11, 17),
+ (11, 33),
+ (11, 7),
+ (11, 9),
+ (11, 25),
+ (11, 13),
+ (11, 20),
+ (11, 27);
 
 INSERT INTO Notifications (user_id, order_id, title, content) VALUES
  (6, 1, N'Đơn hàng #1 đã giao thành công', N'Cảm ơn bạn đã mua hàng tại UTETra!'),

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<!--
+	Cột trái các trang cá nhân của khách (Profile, Yêu thích, Đã xem).
+	active: 'info' | 'password' | 'address' | 'favorites' | 'viewed'
+	Dùng session.user (HomeController / UserPageController cập nhật khi đổi thông tin)
+-->
+<div th:fragment="sidebar(active)" class="bg-white rounded-4 shadow-sm p-3 mb-4">
+	<div class="d-flex align-items-center gap-3 mb-3" th:with="u=${session.user}">
+		<img th:if="${u.avatarCloudinaryId != null}" th:src="${u.avatarCloudinaryId}" alt="" class="rounded-circle"
+			style="width: 56px; height: 56px; object-fit: cover;">
+		<span th:unless="${u.avatarCloudinaryId != null}"
+			class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center fw-bold fs-4"
+			style="width: 56px; height: 56px;"
+			th:text="${#strings.substring(u.fullName != null and !#strings.isEmpty(u.fullName) ? u.fullName : u.username, 0, 1)}">A</span>
+		<div class="min-w-0">
+			<div class="fw-bold text-truncate" th:text="${u.fullName != null and !#strings.isEmpty(u.fullName) ? u.fullName : u.username}">Tên</div>
+			<div class="small text-muted text-truncate" th:text="${u.email}">email</div>
+		</div>
+	</div>
+	<div class="list-group list-group-flush small">
+		<a th:href="@{/user/profile(tab='info')}" class="list-group-item list-group-item-action"
+			th:classappend="${active == 'info'} ? 'active'"><i class="bi bi-person me-2"></i>Thông tin cá nhân</a>
+		<a th:href="@{/user/profile(tab='password')}" class="list-group-item list-group-item-action"
+			th:classappend="${active == 'password'} ? 'active'"><i class="bi bi-key me-2"></i>Đổi mật khẩu</a>
+		<a th:href="@{/user/profile(tab='address')}" class="list-group-item list-group-item-action"
+			th:classappend="${active == 'address'} ? 'active'"><i class="bi bi-geo-alt me-2"></i>Sổ địa chỉ</a>
+		<a th:href="@{/orders}" class="list-group-item list-group-item-action"><i class="bi bi-receipt me-2"></i>Đơn hàng của tôi</a>
+		<a th:href="@{/user/favorites}" class="list-group-item list-group-item-action"
+			th:classappend="${active == 'favorites'} ? 'active'"><i class="bi bi-heart me-2"></i>Sản phẩm yêu thích</a>
+		<a th:href="@{/user/viewed}" class="list-group-item list-group-item-action"
+			th:classappend="${active == 'viewed'} ? 'active'"><i class="bi bi-clock-history me-2"></i>Sản phẩm đã xem</a>
+	</div>
+	<style>
+		.list-group-item.active { background-color: #198754; border-color: #198754; }
+	</style>
+</div>
+</html>
