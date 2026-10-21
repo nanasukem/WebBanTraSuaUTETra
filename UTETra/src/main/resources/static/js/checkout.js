@@ -397,6 +397,7 @@
 			<div class="d-flex justify-content-between small mb-2 ${het ? 'text-danger' : ''}">
 				<div class="me-2"><b>${i.quantity}×</b> ${esc(i.productName)}
 					<span class="text-muted">(${esc(i.size)}${toppings ? ', ' + toppings : ''})</span>
+					${i.note ? `<div class="text-muted"><i class="bi bi-pencil-square me-1"></i>${esc(i.note)}</div>` : ''}
 					${het ? '<div><i class="bi bi-x-circle"></i> Hết tại chi nhánh này</div>' : ''}</div>
 				<div class="text-nowrap">${fmt(i.lineTotal)}</div>
 			</div>`;

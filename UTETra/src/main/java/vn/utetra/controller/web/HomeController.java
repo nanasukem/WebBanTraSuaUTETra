@@ -60,10 +60,13 @@ public class HomeController {
 	private final ProductHighlightService productHighlightService;
 	private final OrderFlowService orderFlowService;
 	private final ViewedProductService viewedProductService;
+	private final vn.utetra.service.ReviewService reviewService;
 
 	public HomeController(UserRepository userRepository, ProductRepository productRepository,
 			CategoryRepository categoryRepository, ProductHighlightService productHighlightService,
-			OrderFlowService orderFlowService, ViewedProductService viewedProductService) {
+			OrderFlowService orderFlowService, ViewedProductService viewedProductService,
+			vn.utetra.service.ReviewService reviewService) {
+		this.reviewService = reviewService;
 		this.userRepository = userRepository;
 		this.productRepository = productRepository;
 		this.categoryRepository = categoryRepository;
@@ -186,6 +189,8 @@ public class HomeController {
 				logger.error("Không đếm được đơn của user {}", user.getId(), e);
 				model.addAttribute("orderCounts", Map.of());
 			}
+			// Nhắc đánh giá: số đơn đã giao còn món chưa đánh giá (còn hạn 30 ngày)
+			model.addAttribute("reviewReminder", reviewService.pendingOrderCount(user.getId()));
 			// Sản phẩm đã xem gần đây (8 món)
 			model.addAttribute("recentViewed", viewedProductService.recent(user.getId(), 8));
 		}

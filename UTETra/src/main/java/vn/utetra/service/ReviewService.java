@@ -3,62 +3,88 @@ package vn.utetra.service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import vn.utetra.dto.request.OrderReviewReq;
+import vn.utetra.dto.request.ReviewItemReq;
+import vn.utetra.dto.response.OrderReviewPageRes;
 import vn.utetra.dto.response.ReviewRes;
+import vn.utetra.dto.response.ReviewSubmitRes;
 import vn.utetra.dto.response.ReviewableItemRes;
+import vn.utetra.entity.Order;
 import vn.utetra.entity.OrderDetail;
+import vn.utetra.entity.OrderReview;
 import vn.utetra.entity.Review;
 import vn.utetra.entity.ReviewMedia;
 import vn.utetra.entity.User;
+import vn.utetra.entity.enums.DeliveryType;
 import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.OrderDetailRepository;
+import vn.utetra.repository.OrderRepository;
+import vn.utetra.repository.OrderReviewRepository;
 import vn.utetra.repository.ReviewMediaRepository;
 import vn.utetra.repository.ReviewRepository;
+import vn.utetra.service.impl.OrderFlowServiceImpl;
 
 /**
- * Đánh giá + bình luận sản phẩm ĐÃ MUA:
- * - Chỉ ly thuộc đơn ĐÃ GIAO của chính khách, mỗi ly đánh giá 1 lần (Reviews.order_detail_id UNIQUE)
- * - Số sao 1..5, nội dung tối thiểu 50 ký tự (tối đa 2000)
- * - Đính kèm tối đa 5 ảnh/video, tải lên Cloudinary (thư mục utetra/reviews)
+ * Đánh giá sản phẩm đã mua - như app Katinat / Highlands:
+ * - Chỉ đơn ĐÃ GIAO của chính khách, trong 30 ngày kể từ lúc nhận; mỗi ly đánh giá 1 lần
+ * - Đánh giá CẢ ĐƠN trong 1 lượt (đơn nhiều món thì nhắc đánh giá hết)
+ * - Bắt buộc chấm sao 1..5; bình luận và ảnh/video KHÔNG bắt buộc, không giới hạn số chữ tối thiểu
+ *   (tối đa 5 file / ly, ảnh <= 5MB, video <= 30MB)
+ * - Đánh giá quán (phục vụ, đóng gói) + góp ý: 1 lần / đơn
  */
 @Service
 @Transactional(readOnly = true)
 public class ReviewService {
 
-	public static final int MIN_CONTENT = 50;
 	public static final int MAX_CONTENT = 2000;
 	public static final int MAX_FILES = 5;
 	public static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;   // 5MB
 	public static final long MAX_VIDEO_BYTES = 30L * 1024 * 1024;  // 30MB
+	public static final int REVIEW_DAYS = OrderFlowServiceImpl.REVIEW_DAYS;
+
+	/** Gợi ý chọn nhanh khi đánh giá món / quán (bấm để tô sáng, lưu thành nhãn) */
+	public static final List<String> PRODUCT_TAGS = List.of("Đúng vị, rất ngon", "Độ ngọt vừa phải", "Topping nhiều",
+			"Hơi ngọt", "Hơi nhạt", "Sẽ mua lại");
+	public static final List<String> STORE_TAGS = List.of("Nhân viên thân thiện", "Đóng gói cẩn thận", "Làm món nhanh",
+			"Quán sạch sẽ", "Giao đúng giờ");
 
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+	private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 	private static final Set<String> VIDEO_EXT = Set.of("mp4", "mov", "webm", "m4v", "avi", "mkv");
 	private static final Set<String> IMAGE_EXT = Set.of("jpg", "jpeg", "png", "gif", "webp", "heic", "bmp");
 
 	private final ReviewRepository reviewRepository;
 	private final ReviewMediaRepository reviewMediaRepository;
 	private final OrderDetailRepository orderDetailRepository;
+	private final OrderRepository orderRepository;
+	private final OrderReviewRepository orderReviewRepository;
 	private final CloudinaryService cloudinaryService;
 
 	public ReviewService(ReviewRepository reviewRepository, ReviewMediaRepository reviewMediaRepository,
-			OrderDetailRepository orderDetailRepository, CloudinaryService cloudinaryService) {
+			OrderDetailRepository orderDetailRepository, OrderRepository orderRepository,
+			OrderReviewRepository orderReviewRepository, CloudinaryService cloudinaryService) {
 		this.reviewRepository = reviewRepository;
 		this.reviewMediaRepository = reviewMediaRepository;
 		this.orderDetailRepository = orderDetailRepository;
+		this.orderRepository = orderRepository;
+		this.orderReviewRepository = orderReviewRepository;
 		this.cloudinaryService = cloudinaryService;
 	}
 
-	// ================= XEM =================
+	// ================= XEM ĐÁNH GIÁ CỦA MÓN =================
 
 	/** Đánh giá của 1 món, mới nhất lên đầu (kèm ảnh/video) */
 	public List<ReviewRes> listByProduct(Integer productId) {
@@ -66,13 +92,11 @@ public class ReviewService {
 		if (reviews.isEmpty()) {
 			return List.of();
 		}
-		Map<Integer, List<ReviewRes.Media>> media = reviewMediaRepository
-				.findByReviewIdInOrderByIdAsc(reviews.stream().map(Review::getId).toList()).stream()
-				.collect(Collectors.groupingBy(m -> m.getReview().getId(),
-						Collectors.mapping(m -> new ReviewRes.Media(m.getCloudinaryId(), m.getMediaType()),
-								Collectors.toList())));
+		Map<Integer, List<ReviewRes.Media>> media = mediaOf(reviews.stream().map(Review::getId).toList());
 		return reviews.stream().map(r -> toRes(r, media.getOrDefault(r.getId(), List.of()))).toList();
 	}
+
+	// ================= MÓN ĐÃ MUA (trang chi tiết món, chi tiết đơn) =================
 
 	/**
 	 * Các ly khách đã mua + đã nhận (đơn Đã giao). productId = null: mọi món.
@@ -86,94 +110,223 @@ public class ReviewService {
 		if (details.isEmpty()) {
 			return List.of();
 		}
-		Set<Integer> reviewed = reviewRepository.findByOrderDetailIdIn(details.stream().map(OrderDetail::getId).toList())
-				.stream().map(r -> r.getOrderDetail().getId()).collect(Collectors.toSet());
+		Set<Integer> reviewed = reviewedIds(details.stream().map(OrderDetail::getId).toList());
 		return details.stream().map(d -> new ReviewableItemRes(d.getId(), d.getOrder().getId(), d.getProduct().getId(),
 				d.getProduct().getName(), d.getProduct().getImageCloudinaryId(), info(d),
 				time(d.getOrder().getDeliveredAt()), reviewed.contains(d.getId()))).toList();
 	}
 
-	/** Chỉ các ly CHƯA đánh giá (để hiện form) */
+	/** Các ly CHƯA đánh giá và CÒN HẠN (để nhắc đánh giá) */
 	public List<ReviewableItemRes> pendingItems(Integer userId, Integer productId) {
-		return purchasedItems(userId, productId).stream().filter(i -> !i.reviewed()).toList();
+		if (userId == null) return List.of();
+		List<OrderDetail> details = orderDetailRepository.findPurchased(userId, productId, OrderStatus.DELIVERED);
+		Set<Integer> reviewed = reviewedIds(details.stream().map(OrderDetail::getId).toList());
+		return details.stream().filter(d -> !reviewed.contains(d.getId()) && inWindow(d.getOrder()))
+				.map(d -> new ReviewableItemRes(d.getId(), d.getOrder().getId(), d.getProduct().getId(),
+						d.getProduct().getName(), d.getProduct().getImageCloudinaryId(), info(d),
+						time(d.getOrder().getDeliveredAt()), false))
+				.toList();
 	}
 
-	// ================= VIẾT ĐÁNH GIÁ =================
+	/** Nhắc đánh giá: số đơn còn món chưa đánh giá (còn hạn) */
+	public int pendingOrderCount(Integer userId) {
+		return (int) pendingItems(userId, null).stream().map(ReviewableItemRes::orderId).distinct().count();
+	}
+
+	// ================= TRANG ĐÁNH GIÁ ĐƠN =================
+
+	public OrderReviewPageRes reviewPage(Integer userId, Integer orderId) {
+		Order o = ownOrder(userId, orderId);
+		List<OrderDetail> details = o.getDetails();
+		List<Review> reviews = reviewRepository.findByOrderDetailIdIn(details.stream().map(OrderDetail::getId).toList());
+		Map<Integer, Review> byDetail = reviews.stream()
+				.collect(Collectors.toMap(r -> r.getOrderDetail().getId(), Function.identity(), (a, b) -> a));
+		Map<Integer, List<ReviewRes.Media>> media = mediaOf(reviews.stream().map(Review::getId).toList());
+
+		List<OrderReviewPageRes.Item> items = details.stream().map(d -> {
+			Review r = byDetail.get(d.getId());
+			return new OrderReviewPageRes.Item(d.getId(), d.getProduct().getId(), d.getProduct().getName(),
+					d.getProduct().getImageCloudinaryId(), info(d), d.getQuantity(), r != null,
+					r == null ? null : r.getRating(), r == null ? List.of() : splitTags(r.getTags()),
+					r == null ? null : r.getContent(),
+					r == null ? List.of() : media.getOrDefault(r.getId(), List.of()));
+		}).toList();
+
+		int pending = (int) items.stream().filter(i -> !i.reviewed()).count();
+		OrderReview or = orderReviewRepository.findByOrderId(orderId).orElse(null);
+		boolean can = o.getStatus() == OrderStatus.DELIVERED && inWindow(o);
+		return new OrderReviewPageRes(o.getId(), isPickup(o), o.getBranch().getName(), time(o.getDeliveredAt()),
+				o.getDeliveredAt() == null ? null : o.getDeliveredAt().plusDays(REVIEW_DAYS).format(DAY), can, items,
+				pending, or != null, or == null ? null : or.getStoreRating(),
+				or == null ? List.of() : splitTags(or.getTags()), or == null ? null : or.getComment());
+	}
+
+	// ================= GỬI ĐÁNH GIÁ =================
 
 	/**
-	 * Khách đánh giá 1 ly đã mua.
-	 * Kiểm tra hết (sao, nội dung, quyền, trạng thái đơn, file) TRƯỚC khi tải file lên Cloudinary.
+	 * Gửi đánh giá cả đơn 1 lượt. Kiểm tra hết TRƯỚC khi tải ảnh/video lên Cloudinary;
+	 * lỗi giữa chừng -> xoá file đã tải và huỷ cả lượt đánh giá (rollback).
 	 */
 	@Transactional
-	public ReviewRes create(Integer userId, Integer orderDetailId, Integer rating, String content,
-			List<MultipartFile> files) {
-		if (rating == null || rating < 1 || rating > 5) {
-			throw new BusinessException("Vui lòng chọn số sao từ 1 đến 5");
+	public ReviewSubmitRes submit(Integer userId, Integer orderId, OrderReviewReq req) {
+		Order o = ownOrder(userId, orderId);
+		if (o.getStatus() != OrderStatus.DELIVERED) {
+			throw new BusinessException("Chỉ đánh giá được đơn đã giao");
 		}
-		String text = content == null ? "" : content.trim();
-		if (text.length() < MIN_CONTENT) {
-			throw new BusinessException("Nội dung đánh giá tối thiểu " + MIN_CONTENT + " ký tự (bạn mới viết "
-					+ text.length() + " ký tự)");
-		}
-		if (text.length() > MAX_CONTENT) {
-			throw new BusinessException("Nội dung đánh giá tối đa " + MAX_CONTENT + " ký tự");
+		if (!inWindow(o)) {
+			throw new BusinessException("Đơn #" + orderId + " đã quá hạn đánh giá (" + REVIEW_DAYS + " ngày sau khi nhận)");
 		}
 
-		OrderDetail od = orderDetailId == null ? null : orderDetailRepository.findById(orderDetailId).orElse(null);
-		if (od == null || !od.getOrder().getUser().getId().equals(userId)) {
-			throw new ResourceNotFoundException("Không tìm thấy món bạn đã mua");
-		}
-		if (od.getOrder().getStatus() != OrderStatus.DELIVERED) {
-			throw new BusinessException("Chỉ đánh giá được món trong đơn đã giao");
-		}
-		if (reviewRepository.existsByOrderDetailId(od.getId())) {
-			throw new BusinessException("Bạn đã đánh giá ly này rồi");
+		Map<Integer, OrderDetail> details = o.getDetails().stream()
+				.collect(Collectors.toMap(OrderDetail::getId, Function.identity()));
+		Set<Integer> reviewed = reviewedIds(new ArrayList<>(details.keySet()));
+
+		// 1. Kiểm tra từng ly (chỉ ly có chấm sao mới tính)
+		List<ReviewItemReq> toSave = new ArrayList<>();
+		Map<Integer, List<MultipartFile>> files = new HashMap<>();
+		for (ReviewItemReq it : req.items() == null ? List.<ReviewItemReq>of() : req.items()) {
+			if (it == null || it.rating() == null) continue;
+			OrderDetail d = details.get(it.orderDetailId());
+			if (d == null) throw new ResourceNotFoundException("Ly #" + it.orderDetailId() + " không thuộc đơn #" + orderId);
+			if (reviewed.contains(d.getId())) {
+				throw new BusinessException("Bạn đã đánh giá " + d.getProduct().getName() + " (" + info(d) + ") rồi");
+			}
+			if (it.rating() < 1 || it.rating() > 5) throw new BusinessException("Số sao phải từ 1 đến 5");
+			String text = clean(it.content());
+			if (text != null && text.length() > MAX_CONTENT) {
+				throw new BusinessException("Bình luận tối đa " + MAX_CONTENT + " ký tự");
+			}
+			files.put(d.getId(), validFiles(it.media()));
+			toSave.add(it);
 		}
 
-		List<MultipartFile> uploads = validFiles(files);
+		// 2. Đánh giá quán (1 lần / đơn)
+		Integer store = req.storeRating();
+		boolean service = store != null && !orderReviewRepository.existsByOrderId(orderId);
+		if (store != null && (store < 1 || store > 5)) throw new BusinessException("Đánh giá quán phải từ 1 đến 5 sao");
+		String storeComment = clean(req.storeComment());
+		if (storeComment != null && storeComment.length() > 1000) throw new BusinessException("Góp ý cho quán tối đa 1000 ký tự");
 
-		Review r = new Review();
-		r.setUser(od.getOrder().getUser());
-		r.setProduct(od.getProduct());
-		r.setOrderDetail(od);
-		r.setRating(rating);
-		r.setContent(text);
-		r.setCreatedAt(LocalDateTime.now());
-		r = reviewRepository.saveAndFlush(r);
+		if (toSave.isEmpty() && !service) {
+			throw new BusinessException("Vui lòng chấm sao ít nhất 1 món hoặc đánh giá quán");
+		}
 
-		// Tải ảnh/video. Lỗi giữa chừng -> xoá các file đã tải, huỷ cả đánh giá (rollback)
+		// 3. Lưu đánh giá từng ly + tải ảnh/video
 		List<String> uploaded = new ArrayList<>();
-		List<ReviewRes.Media> media = new ArrayList<>();
 		try {
-			for (MultipartFile f : uploads) {
-				String type = mediaType(f);
-				String url = cloudinaryService.uploadImage(f, "reviews");
-				if (url == null) {
-					continue;
+			for (ReviewItemReq it : toSave) {
+				OrderDetail d = details.get(it.orderDetailId());
+				List<MultipartFile> fs = files.get(d.getId());
+				String text = clean(it.content());
+
+				Review r = new Review();
+				r.setUser(o.getUser());
+				r.setProduct(d.getProduct());
+				r.setOrderDetail(d);
+				r.setRating(it.rating());
+				r.setContent(text);
+				r.setTags(joinTags(it.tags()));
+				r.setCreatedAt(LocalDateTime.now());
+				r = reviewRepository.save(r);
+
+				for (MultipartFile f : fs) {
+					String url = cloudinaryService.uploadImage(f, "reviews");
+					if (url == null) continue;
+					uploaded.add(url);
+					ReviewMedia m = new ReviewMedia();
+					m.setReview(r);
+					m.setCloudinaryId(url);
+					m.setMediaType(mediaType(f));
+					reviewMediaRepository.save(m);
 				}
-				uploaded.add(url);
-				ReviewMedia m = new ReviewMedia();
-				m.setReview(r);
-				m.setCloudinaryId(url);
-				m.setMediaType(type);
-				reviewMediaRepository.save(m);
-				media.add(new ReviewRes.Media(url, type));
 			}
 		} catch (RuntimeException e) {
 			uploaded.forEach(cloudinaryService::deleteImage);
+			if (e instanceof BusinessException be) throw be;
 			throw new BusinessException("Không tải được ảnh/video lên, vui lòng thử lại");
 		}
-		return toRes(r, media);
+
+		if (service) {
+			OrderReview or = new OrderReview();
+			or.setOrder(o);
+			or.setUser(o.getUser());
+			or.setStoreRating(store);
+			or.setComment(storeComment);
+			or.setTags(joinTags(req.storeTags()));
+			orderReviewRepository.save(or);
+		}
+		reviewRepository.flush();
+		return new ReviewSubmitRes(toSave.size(), service);
+	}
+
+	/** Đánh giá nhanh 1 ly (giữ cho chỗ khác / test dùng) */
+	@Transactional
+	public ReviewSubmitRes create(Integer userId, Integer orderDetailId, Integer rating, String content,
+			List<MultipartFile> files) {
+		OrderDetail d = orderDetailId == null ? null : orderDetailRepository.findById(orderDetailId).orElse(null);
+		if (d == null || !d.getOrder().getUser().getId().equals(userId)) {
+			throw new ResourceNotFoundException("Không tìm thấy món bạn đã mua");
+		}
+		if (rating == null) throw new BusinessException("Vui lòng chọn số sao từ 1 đến 5");
+		return submit(userId, d.getOrder().getId(),
+				new OrderReviewReq(List.of(new ReviewItemReq(orderDetailId, rating, List.of(), content, files)), null,
+						List.of(), null));
 	}
 
 	// ================= HÀM PHỤ =================
+
+	private Order ownOrder(Integer userId, Integer orderId) {
+		return orderRepository.findById(orderId).filter(o -> o.getUser().getId().equals(userId))
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + orderId));
+	}
+
+	static boolean inWindow(Order o) {
+		return o.getDeliveredAt() != null && !o.getDeliveredAt().plusDays(REVIEW_DAYS).isBefore(LocalDateTime.now());
+	}
+
+	private static boolean isPickup(Order o) {
+		return o.getDeliveryType() == DeliveryType.PICKUP;
+	}
+
+	private Set<Integer> reviewedIds(List<Integer> detailIds) {
+		if (detailIds.isEmpty()) return Set.of();
+		return reviewRepository.findByOrderDetailIdIn(detailIds).stream().map(r -> r.getOrderDetail().getId())
+				.collect(Collectors.toSet());
+	}
+
+	private Map<Integer, List<ReviewRes.Media>> mediaOf(List<Integer> reviewIds) {
+		if (reviewIds.isEmpty()) return Map.of();
+		return reviewMediaRepository.findByReviewIdInOrderByIdAsc(reviewIds).stream()
+				.collect(Collectors.groupingBy(m -> m.getReview().getId(),
+						Collectors.mapping(m -> new ReviewRes.Media(m.getCloudinaryId(), m.getMediaType()),
+								Collectors.toList())));
+	}
+
+	/** Gợi ý đã chọn -> "a|b|c" (tối đa 6 gợi ý, mỗi gợi ý 50 ký tự, cả chuỗi 255) */
+	static String joinTags(List<String> tags) {
+		if (tags == null) return null;
+		List<String> list = tags.stream().filter(t -> t != null && !t.isBlank())
+				.map(t -> t.trim().replace("|", " ")).map(t -> t.length() > 50 ? t.substring(0, 50) : t).distinct()
+				.limit(6).toList();
+		if (list.isEmpty()) return null;
+		String s = String.join("|", list);
+		return s.length() > 255 ? s.substring(0, 255) : s;
+	}
+
+	static List<String> splitTags(String s) {
+		return s == null || s.isBlank() ? List.of() : List.of(s.split("\\|"));
+	}
+
+	private static String clean(String s) {
+		return s == null || s.isBlank() ? null : s.trim();
+	}
 
 	/** Bỏ file rỗng, kiểm tra số lượng, loại (ảnh/video) và dung lượng */
 	private List<MultipartFile> validFiles(List<MultipartFile> files) {
 		List<MultipartFile> list = files == null ? List.of()
 				: files.stream().filter(f -> f != null && !f.isEmpty()).toList();
 		if (list.size() > MAX_FILES) {
-			throw new BusinessException("Chỉ đính kèm tối đa " + MAX_FILES + " ảnh/video");
+			throw new BusinessException("Mỗi món chỉ đính kèm tối đa " + MAX_FILES + " ảnh/video");
 		}
 		for (MultipartFile f : list) {
 			String type = mediaType(f);
@@ -204,7 +357,8 @@ public class ReviewService {
 		User u = r.getUser();
 		String name = u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername();
 		return new ReviewRes(r.getId(), name, u.getAvatarCloudinaryId(), r.getRating(), r.getContent(),
-				time(r.getCreatedAt()), r.getOrderDetail() == null ? "" : info(r.getOrderDetail()), media);
+				time(r.getCreatedAt()), r.getOrderDetail() == null ? "" : info(r.getOrderDetail()), splitTags(r.getTags()),
+				media);
 	}
 
 	/** "Size L · 70% đường · 50% đá" */

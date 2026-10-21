@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Đánh giá đơn hàng - UTETra', ~{::#review-content})}">
+
+<!--
+	ĐÁNH GIÁ ĐƠN HÀNG /orders/{id}/review - như app Katinat / Highlands:
+	- Chấm sao TẤT CẢ món của đơn trong 1 lượt (mặc định 5 sao); món nào chưa muốn đánh giá thì bấm "Để sau"
+	- Bình luận, ảnh/video không bắt buộc, không giới hạn số chữ tối thiểu
+	- Đánh giá quán (phục vụ, đóng gói, tốc độ) + góp ý
+-->
+<body>
+	<div id="review-content">
+
+		<a th:href="@{/orders/{id}(id=${page.orderId})}" class="text-decoration-none text-success small">
+			<i class="bi bi-arrow-left"></i> Chi tiết đơn hàng</a>
+
+		<div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-3">
+			<h1 class="h4 fw-bold text-success mb-0">Đánh giá đơn #<span th:text="${page.orderId}">1</span></h1>
+			<span class="badge text-bg-light border" th:text="${page.pickup} ? 'Đến lấy tại quán' : 'Giao tận nơi'">Giao tận nơi</span>
+			<span class="small text-muted ms-auto"><i class="bi bi-shop"></i> <span th:text="${page.branchName}"></span>
+				· nhận lúc <span th:text="${page.deliveredAt}"></span></span>
+		</div>
+
+		<div th:if="${success}" class="alert alert-success"><i class="bi bi-heart-fill me-1"></i><span th:text="${success}"></span></div>
+		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+		<div class="alert alert-secondary" th:unless="${page.canReview}">
+			<i class="bi bi-info-circle me-1"></i>
+			<span th:if="${page.deliveredAt == null or #strings.isEmpty(page.deliveredAt)}">Đơn chưa giao xong nên chưa đánh giá được.</span>
+			<span th:unless="${page.deliveredAt == null or #strings.isEmpty(page.deliveredAt)}">Đơn đã quá hạn đánh giá (hạn tới <b th:text="${page.deadline}"></b>).</span>
+		</div>
+
+		<div class="alert alert-warning d-flex align-items-center gap-2" th:if="${page.canReview and page.pendingCount > 0}">
+			<i class="bi bi-star-half fs-4"></i>
+			<div>Đơn này còn <b th:text="${page.pendingCount}">2</b> món chưa đánh giá. Bạn chấm sao một lượt cho tất cả nhé!
+				<span class="small text-muted">Hạn đánh giá: <b th:text="${page.deadline}">01/11/2026</b></span></div>
+		</div>
+
+		<form id="orderReviewForm" th:action="@{/orders/{id}/review(id=${page.orderId})}" method="post"
+			enctype="multipart/form-data" novalidate>
+
+			<!-- ===================== TỪNG MÓN ===================== -->
+			<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3">
+				<h2 class="h5 fw-bold mb-3"><i class="bi bi-cup-straw text-success me-1"></i> Món bạn đã mua
+					<small class="text-muted fw-normal fs-6" th:text="|(${#lists.size(page.items)} món)|">(2 món)</small></h2>
+
+				<div class="border rounded-4 p-3 mb-3 rv-item" th:each="it : ${page.items}"
+					th:classappend="${it.reviewed} ? 'bg-light' : ''" th:attr="data-id=${it.orderDetailId}">
+
+					<div class="d-flex gap-3 align-items-start">
+						<a th:href="@{/products/{p}(p=${it.productId})}" class="flex-shrink-0">
+							<img th:if="${it.productImage != null}" th:src="${it.productImage}" alt="" class="rounded-3"
+								style="width: 64px; height: 64px; object-fit: cover;">
+							<span th:unless="${it.productImage != null}"
+								class="rounded-3 bg-light d-inline-flex align-items-center justify-content-center text-secondary"
+								style="width: 64px; height: 64px;"><i class="bi bi-cup-hot fs-3"></i></span>
+						</a>
+						<div class="flex-grow-1 min-w-0">
+							<div class="fw-semibold" th:text="|${it.quantity}× ${it.productName}|">1× Trà sữa</div>
+							<div class="small text-muted" th:text="${it.info}">Size M</div>
+
+							<!-- ĐÃ ĐÁNH GIÁ -->
+							<th:block th:if="${it.reviewed}">
+								<div class="mt-1">
+									<span class="text-warning" th:text="${#strings.repeat('★', it.rating)} + ${#strings.repeat('☆', 5 - it.rating)}">★★★★★</span>
+									<span class="badge text-bg-success ms-1">Đã đánh giá</span>
+								</div>
+								<div class="d-flex flex-wrap gap-1 my-1" th:unless="${#lists.isEmpty(it.tags)}">
+									<span class="badge rounded-pill text-bg-light border fw-normal" th:each="tag : ${it.tags}" th:text="${tag}"></span>
+								</div>
+								<p class="mb-1 small" style="white-space: pre-line;" th:if="${it.content}" th:text="${it.content}"></p>
+								<div class="d-flex flex-wrap gap-2" th:unless="${#lists.isEmpty(it.media)}">
+									<th:block th:each="m : ${it.media}">
+										<img th:if="${m.type == 'IMAGE'}" th:src="${m.url}" alt="" class="rounded-3 border"
+											style="width: 72px; height: 72px; object-fit: cover;">
+										<video th:if="${m.type == 'VIDEO'}" th:src="${m.url}" controls preload="metadata"
+											class="rounded-3 border bg-dark" style="width: 120px; height: 72px;"></video>
+									</th:block>
+								</div>
+							</th:block>
+						</div>
+					</div>
+
+					<!-- CHƯA ĐÁNH GIÁ: form -->
+					<div class="mt-3 rv-form" th:if="${!it.reviewed and page.canReview}">
+						<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+							<input type="hidden" th:name="|rating_${it.orderDetailId}|" value="5" class="rv-rating">
+							<span class="rv-stars">
+								<button type="button" class="btn btn-link p-0 text-warning fs-3 rv-star" th:each="i : ${#numbers.sequence(1, 5)}"
+									th:attr="data-value=${i}, aria-label=|${i} sao|"><i class="bi bi-star-fill"></i></button>
+							</span>
+							<span class="small text-muted rv-star-text">Tuyệt vời</span>
+							<button type="button" class="btn btn-sm btn-link text-secondary ms-auto rv-skip">Để sau</button>
+						</div>
+
+						<div class="rv-body">
+							<!-- Gợi ý nhanh: bấm để chọn / bỏ chọn (tô sáng), lưu riêng thành nhãn - không chèn vào nhận xét -->
+							<div class="d-flex flex-wrap gap-1 mb-2">
+								<th:block th:each="tag, st : ${productTags}">
+									<input type="checkbox" class="btn-check" autocomplete="off" th:name="|tags_${it.orderDetailId}|"
+										th:value="${tag}" th:id="|tag_${it.orderDetailId}_${st.index}|">
+									<label class="btn btn-sm btn-outline-success rounded-pill" th:for="|tag_${it.orderDetailId}_${st.index}|"
+										th:text="${tag}">Đúng vị</label>
+								</th:block>
+							</div>
+							<textarea class="form-control rv-content" rows="2" maxlength="2000" th:name="|content_${it.orderDetailId}|"
+								placeholder="Nhận xét về món (không bắt buộc)"></textarea>
+							<div class="mt-2">
+								<label class="btn btn-sm btn-outline-success mb-0">
+									<i class="bi bi-camera me-1"></i> Thêm ảnh / video
+									<input type="file" class="d-none rv-media" th:name="|media_${it.orderDetailId}|" accept="image/*,video/*" multiple>
+								</label>
+								<span class="small text-muted ms-1">không bắt buộc · tối đa 5 file · ảnh ≤ 5MB · video ≤ 30MB</span>
+								<div class="small text-danger rv-media-error"></div>
+								<div class="d-flex flex-wrap gap-2 mt-2 rv-preview"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===================== ĐÁNH GIÁ QUÁN ===================== -->
+			<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3" th:if="${page.canReview or page.storeReviewed}">
+				<h2 class="h5 fw-bold mb-1"><i class="bi bi-shop text-success me-1"></i> Đánh giá quán</h2>
+				<p class="small text-muted mb-3" th:text="${page.branchName} + ' · phục vụ, đóng gói, tốc độ'">Chi nhánh</p>
+
+				<th:block th:if="${page.storeReviewed}">
+					<div class="mb-1"><span class="text-warning fs-5"
+						th:text="${#strings.repeat('★', page.storeRating)} + ${#strings.repeat('☆', 5 - page.storeRating)}"></span>
+						<span class="badge text-bg-success ms-1">Đã đánh giá</span></div>
+					<div class="d-flex flex-wrap gap-1 my-1" th:unless="${#lists.isEmpty(page.storeTags)}">
+						<span class="badge rounded-pill text-bg-light border fw-normal" th:each="tag : ${page.storeTags}" th:text="${tag}"></span>
+					</div>
+					<p class="small mb-0" th:if="${page.storeComment}" th:text="${page.storeComment}"></p>
+				</th:block>
+
+				<th:block th:unless="${page.storeReviewed}">
+					<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+						<input type="hidden" name="storeRating" value="5" class="rv-rating">
+						<span class="rv-stars">
+							<button type="button" class="btn btn-link p-0 text-warning fs-3 rv-star" th:each="i : ${#numbers.sequence(1, 5)}"
+								th:attr="data-value=${i}, aria-label=|${i} sao|"><i class="bi bi-star-fill"></i></button>
+						</span>
+						<span class="small text-muted rv-star-text">Tuyệt vời</span>
+					</div>
+					<div class="d-flex flex-wrap gap-1 mb-2">
+						<th:block th:each="tag, st : ${storeTags}">
+							<input type="checkbox" class="btn-check" autocomplete="off" name="storeTags" th:value="${tag}"
+								th:id="|stag_${st.index}|">
+							<label class="btn btn-sm btn-outline-success rounded-pill" th:for="|stag_${st.index}|" th:text="${tag}">Nhân viên thân thiện</label>
+						</th:block>
+					</div>
+					<textarea name="storeComment" id="storeComment" class="form-control" rows="2" maxlength="1000"
+						placeholder="Góp ý cho quán (không bắt buộc)"></textarea>
+				</th:block>
+			</section>
+
+			<div class="d-flex justify-content-end mb-4"
+				th:if="${page.canReview and (page.pendingCount > 0 or !page.storeReviewed)}">
+				<button type="submit" class="btn btn-success btn-lg px-4" id="rvSubmit"><i class="bi bi-send me-1"></i> Gửi đánh giá</button>
+			</div>
+			<p class="text-success text-end mb-4" th:if="${page.pendingCount == 0 and page.storeReviewed}">
+				<i class="bi bi-check-circle me-1"></i> Bạn đã đánh giá xong đơn này. Cảm ơn bạn!</p>
+		</form>
+
+		<script th:src="@{/js/order-review.js}"></script>
+	</div>
+</body>
+</html>

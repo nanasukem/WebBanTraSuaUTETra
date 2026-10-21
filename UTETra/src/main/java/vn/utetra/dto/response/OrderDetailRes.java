@@ -36,7 +36,8 @@ public record OrderDetailRes(
 		String cancelReason,
 		String createdAt,
 		String deliveredAt,
-		boolean canCancel) {
+		boolean canCancel,
+		String cancelledBy) {      // CUSTOMER / STORE / SYSTEM (null = chưa huỷ)
 
 	/** 1 dòng món: "2× Cà phê muối · Size L · 70% đường · 50% đá + Kem cheese" */
 	public record Item(
@@ -46,7 +47,8 @@ public record OrderDetailRes(
 			String toppings,
 			int quantity,
 			BigDecimal unitPrice,
-			BigDecimal subtotal) {
+			BigDecimal subtotal,
+			String note) {         // ghi chú món
 	}
 
 	/** 1 bước trên thanh tiến trình */

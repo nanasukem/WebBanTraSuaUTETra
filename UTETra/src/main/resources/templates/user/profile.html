@@ -29,6 +29,39 @@
 						th:href="@{/user/profile(tab='address')}">Sổ địa chỉ</a></li>
 				</ul>
 
+				<!-- ===================== HẠNG THÀNH VIÊN ===================== -->
+				<section class="bg-white rounded-4 shadow-sm p-4 mb-3" th:if="${tab == 'info'}">
+					<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+						<div>
+							<span class="text-muted small">Hạng thành viên</span>
+							<h2 class="h4 fw-bold text-success mb-0"><i class="bi bi-award me-1"></i><span th:text="${tier.tierName}">Bạc</span></h2>
+						</div>
+						<div class="text-end">
+							<div class="fw-bold" th:if="${tier.discountPercent > 0}">
+								Giảm <span th:text="${#numbers.formatDecimal(tier.discountPercent, 1, 0)}">3</span>% tiền món mỗi đơn
+								<span class="text-muted small" th:if="${tier.maxDiscount != null}"
+									th:text="|(tối đa ${#numbers.formatInteger(tier.maxDiscount, 1, 'POINT')}đ)|"></span></div>
+							<div class="text-muted small" th:unless="${tier.discountPercent > 0}">Chưa có ưu đãi giảm giá theo hạng</div>
+							<div class="small text-muted">Chi tiêu 12 tháng: <b th:text="${#numbers.formatInteger(tier.spentLast12Months, 1, 'POINT')} + 'đ'">0đ</b></div>
+						</div>
+					</div>
+					<div class="small" th:if="${tier.nextTierName != null}">Mua thêm
+						<b th:text="${#numbers.formatInteger(tier.amountToNextTier, 1, 'POINT')} + 'đ'">300.000đ</b> để lên hạng
+						<b th:text="${tier.nextTierName}">Vàng</b></div>
+					<div class="table-responsive mt-2">
+						<table class="table table-sm small mb-0">
+							<thead><tr><th>Hạng</th><th>Chi tiêu 12 tháng</th><th>Giảm mỗi đơn</th></tr></thead>
+							<tbody>
+								<tr th:each="t : ${tiers}" th:classappend="${t.name == tier.tierName} ? 'table-success fw-semibold'">
+									<td th:text="${t.name}">Bạc</td>
+									<td th:text="'Từ ' + ${#numbers.formatInteger(t.minSpent, 1, 'POINT')} + 'đ'">300.000đ</td>
+									<td th:text="${t.discountPercent > 0} ? (${#numbers.formatDecimal(t.discountPercent, 1, 0)} + '%' + (${t.maxDiscount != null} ? ', tối đa ' + ${#numbers.formatInteger(t.maxDiscount, 1, 'POINT')} + 'đ' : '')) : 'Không'">3%</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
+
 				<!-- ===================== THÔNG TIN CÁ NHÂN ===================== -->
 				<section class="bg-white rounded-4 shadow-sm p-4" th:if="${tab == 'info'}">
 					<h1 class="h5 fw-bold mb-3">Thông tin cá nhân</h1>

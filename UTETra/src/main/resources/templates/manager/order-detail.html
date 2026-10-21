@@ -22,7 +22,8 @@
 		<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
 		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 		<div th:if="${order.status == 'CANCELLED'}" class="alert alert-secondary">
-			<i class="bi bi-x-circle me-1"></i> Đơn đã huỷ.
+			<i class="bi bi-x-circle me-1"></i>
+			<b th:text="${order.cancelledBy == 'CUSTOMER'} ? 'Khách tự huỷ đơn.' : (${order.cancelledBy == 'STORE'} ? 'Quán đã huỷ đơn.' : 'Đơn đã huỷ.')">Đơn đã huỷ.</b>
 			<span th:if="${order.cancelReason}">Lý do: <b th:text="${order.cancelReason}"></b></span>
 		</div>
 
@@ -40,6 +41,9 @@
 								</div>
 								<div class="small text-muted" th:if="${!#strings.isEmpty(it.toppings)}">
 									+ <span th:text="${it.toppings}"></span>
+								</div>
+								<div class="small fw-semibold text-danger" th:if="${!#strings.isEmpty(it.note)}">
+									<i class="bi bi-pencil-square me-1"></i>Ghi chú: <span th:text="${it.note}"></span>
 								</div>
 							</div>
 							<div class="fw-semibold text-nowrap"

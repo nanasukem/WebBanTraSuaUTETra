@@ -11,6 +11,7 @@ public record ReviewRes(
 		String content,
 		String createdAt,
 		String purchasedInfo,      // "Size L · 70% đường · 50% đá"
+		List<String> tags,         // gợi ý khách chọn: "Đúng vị, rất ngon", "Sẽ mua lại"
 		List<Media> media) {
 
 	/** type: IMAGE | VIDEO */

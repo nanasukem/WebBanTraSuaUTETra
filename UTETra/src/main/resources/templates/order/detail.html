@@ -24,10 +24,14 @@
 		</a>
 		<div class="d-flex align-items-center gap-2 mt-2 mb-3 flex-wrap">
 			<h1 class="h4 fw-bold text-success mb-0">Đơn #<span th:text="${order.id}"></span></h1>
-			<span class="badge" th:classappend="${order.badgeClass}" th:text="${order.statusLabel}"></span>
+			<span class="badge" th:classappend="${order.badgeClass}" th:text="${order.status == 'CANCELLED'} ? (${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ' : 'Đã huỷ')) : ${order.statusLabel}"></span>
 			<span class="small text-muted ms-auto">Đặt lúc <span th:text="${order.createdAt}"></span></span>
 			<a th:unless="${#lists.isEmpty(order.steps)}" th:href="@{/orders/{id}/tracking(id=${order.id})}"
 				class="btn btn-sm btn-success"><i class="bi bi-geo-alt me-1"></i> Theo dõi đơn</a>
+			<form th:if="${order.status == 'DELIVERED' or order.status == 'CANCELLED'}" method="post"
+				th:action="@{/orders/{id}/reorder(id=${order.id})}" class="d-inline">
+				<button type="submit" class="btn btn-sm btn-success"><i class="bi bi-arrow-repeat me-1"></i> Mua lại</button>
+			</form>
 		</div>
 
 		<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
@@ -37,7 +41,8 @@
 		<div class="card od-card mb-3">
 			<div class="card-body">
 				<div th:if="${order.status == 'CANCELLED'}" class="alert alert-secondary mb-0">
-					<i class="bi bi-x-circle me-1"></i> Đơn đã huỷ.
+					<i class="bi bi-x-circle me-1"></i>
+					<b th:text="${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ đơn này.' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ đơn này.' : 'Đơn đã huỷ.')">Đơn đã huỷ.</b>
 					<span th:if="${order.cancelReason}">Lý do: <b th:text="${order.cancelReason}"></b></span>
 				</div>
 				<div th:if="${order.status == 'RETURNED'}" class="alert alert-danger mb-0">
@@ -74,6 +79,9 @@
 								</div>
 								<div class="small text-muted" th:if="${!#strings.isEmpty(it.toppings)}">
 									+ <span th:text="${it.toppings}"></span>
+								</div>
+								<div class="small text-warning-emphasis" th:if="${!#strings.isEmpty(it.note)}">
+									<i class="bi bi-pencil-square me-1"></i>Ghi chú: <span th:text="${it.note}"></span>
 								</div>
 								<div class="small text-muted"
 									th:text="|${#numbers.formatInteger(it.unitPrice, 1, 'POINT')}đ / ly|"></div>
@@ -160,13 +168,17 @@
 				<div class="card od-card mb-3" id="danh-gia" th:if="${reviewItems != null and !#lists.isEmpty(reviewItems)}">
 					<div class="card-body">
 						<div class="od-title"><i class="bi bi-star me-1"></i>Đánh giá món đã mua</div>
+						<a th:href="@{/orders/{id}/review(id=${order.id})}" class="btn btn-warning w-100 fw-semibold mb-2"
+							th:if="${pendingReview > 0}">
+							<i class="bi bi-star me-1"></i> Đánh giá ngay
+							(<span th:text="${pendingReview}">1</span> món chưa đánh giá)</a>
 						<div class="d-flex justify-content-between align-items-center gap-2 border-bottom py-2" th:each="it : ${reviewItems}">
 							<div class="small">
 								<div class="fw-semibold" th:text="${it.productName}">Món</div>
 								<div class="text-muted" th:text="${it.info}">Size M</div>
 							</div>
 							<a th:unless="${it.reviewed}" class="btn btn-sm btn-outline-success text-nowrap"
-								th:href="@{/products/{p}(p=${it.productId},od=${it.orderDetailId})} + '#viet-danh-gia'">
+								th:href="@{/orders/{id}/review(id=${order.id})}">
 								<i class="bi bi-pencil me-1"></i>Đánh giá</a>
 							<a th:if="${it.reviewed}" class="small text-success text-nowrap text-decoration-none"
 								th:href="@{/products/{p}(p=${it.productId})} + '#danh-gia'"><i class="bi bi-check-circle me-1"></i>Đã đánh giá</a>

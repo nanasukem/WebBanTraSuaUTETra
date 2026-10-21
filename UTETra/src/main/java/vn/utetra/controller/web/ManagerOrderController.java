@@ -31,7 +31,8 @@ public class ManagerOrderController {
 			"Quán hết nguyên liệu / hết món",
 			"Quán đang quá tải, không kịp làm",
 			"Ngoài giờ phục vụ",
-			"Không liên lạc được với khách");
+			"Không liên lạc được với khách",
+			"Khách không đến lấy món");
 	private static final String OTHER = "OTHER";
 
 	private final ManagerOrderService managerOrderService;

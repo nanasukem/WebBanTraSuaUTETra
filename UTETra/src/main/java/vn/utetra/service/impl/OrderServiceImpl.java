@@ -205,6 +205,7 @@ public class OrderServiceImpl implements OrderService {
 			d.setQuantity(line.quantity());
 			d.setUnitPrice(line.unitPrice());
 			d.setSubtotal(line.lineTotal());
+			d.setNote(line.note()); // ghi chú món cho quán
 			for (CartItemRes.ToppingRes t : line.toppings()) {
 				OrderDetailTopping odt = new OrderDetailTopping();
 				odt.setTopping(toppingRepository.getReferenceById(t.id()));

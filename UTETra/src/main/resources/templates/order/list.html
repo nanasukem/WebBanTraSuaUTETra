@@ -53,7 +53,7 @@
 							<span th:text="${o.pickup} ? 'Đến lấy tại cửa hàng' : 'Giao tận nơi'"></span>
 						</div>
 					</div>
-					<span class="badge" th:classappend="${o.badgeClass}" th:text="${o.statusLabel}"></span>
+					<span class="badge" th:classappend="${o.badgeClass}" th:text="${o.status == 'CANCELLED'} ? (${o.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ' : (${o.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ' : 'Đã huỷ')) : ${o.statusLabel}"></span>
 				</div>
 
 				<div class="border-top pt-2">
@@ -74,12 +74,20 @@
 				<div class="d-flex justify-content-end gap-2 mt-3">
 					<a th:if="${o.canCancel}" class="btn btn-sm btn-outline-danger"
 						th:href="@{|/orders/${o.id}#huy-don|}">Huỷ đơn</a>
-					<a th:if="${o.status == 'DELIVERED'}" class="btn btn-sm btn-outline-warning"
-						th:href="@{|/orders/${o.id}#danh-gia|}"><i class="bi bi-star me-1"></i>Đánh giá</a>
-					<a th:if="${o.status == 'PENDING' or o.status == 'CONFIRMED' or o.status == 'PICKED_UP' or o.status == 'DELIVERING'}"
+					<!-- Đã giao: Mua lại / Đánh giá / Xem chi tiết; Đã huỷ: Mua lại / Xem chi tiết; Trả hàng: Xem chi tiết -->
+					<form th:if="${o.status == 'DELIVERED' or o.status == 'CANCELLED'}" method="post"
+						th:action="@{/orders/{id}/reorder(id=${o.id})}" class="d-inline">
+						<button type="submit" class="btn btn-sm btn-success"><i class="bi bi-arrow-repeat me-1"></i>Mua lại</button>
+					</form>
+					<a th:if="${o.status == 'DELIVERED' and o.toReview > 0}" class="btn btn-sm btn-warning fw-semibold"
+						th:href="@{/orders/{id}/review(id=${o.id})}"><i class="bi bi-star me-1"></i>
+						<span th:text="|Đánh giá (${o.toReview} món)|">Đánh giá</span></a>
+					<a th:if="${o.status == 'DELIVERED' and o.toReview == 0}" class="btn btn-sm btn-outline-secondary"
+						th:href="@{/orders/{id}/review(id=${o.id})}"><i class="bi bi-star me-1"></i>Xem đánh giá</a>
+					<a th:if="${o.status == 'PENDING' or o.status == 'CONFIRMED' or o.status == 'READY' or o.status == 'PICKED_UP' or o.status == 'DELIVERING'}"
 						class="btn btn-sm btn-outline-success" th:href="@{/orders/{id}/tracking(id=${o.id})}">
 						<i class="bi bi-geo-alt me-1"></i>Theo dõi đơn</a>
-					<a class="btn btn-sm btn-success" th:href="@{/orders/{id}(id=${o.id})}">Xem chi tiết</a>
+					<a class="btn btn-sm btn-outline-success" th:href="@{/orders/{id}(id=${o.id})}">Xem chi tiết</a>
 				</div>
 			</div>
 		</div>

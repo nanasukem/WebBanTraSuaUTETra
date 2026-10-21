@@ -154,7 +154,8 @@
         function resetOptions() {
             modalEl.querySelectorAll('input[name="pmSugar"][value="100"], input[name="pmIce"][value="100"]')
                 .forEach(r => (r.checked = true));
-            modalEl.querySelectorAll('.pm-topping').forEach(c => (c.checked = false));
+            modalEl.querySelectorAll('.pm-topping, .pm-note-tag').forEach(c => (c.checked = false));
+            if ($('pmNote')) { $('pmNote').value = ''; $('pmNoteCount').textContent = '0'; }
             $('pmQty').value = 1;
         }
 
@@ -167,7 +168,11 @@
             const toppingSum = checked.reduce((s, c) => s + Number(c.dataset.price), 0);
             const quantity = clampQty($('pmQty').value);
             const unitPrice = current.basePrice + Number(current.sizes[size] || 0) + toppingSum; // chỉ để xem trước
-            return { size, sugarLevel, iceLevel, toppingIds, quantity, unitPrice };
+            // Ghi chú = các gợi ý đã chọn + phần khách tự gõ, vd "Đá để riêng, Ít sữa · cho thêm đá"
+            const tags = [...modalEl.querySelectorAll('.pm-note-tag:checked')].map(c => c.value);
+            const extra = ($('pmNote')?.value || '').trim();
+            const note = [tags.join(', '), extra].filter(Boolean).join(' · ').slice(0, 200);
+            return { size, sugarLevel, iceLevel, toppingIds, quantity, unitPrice, note };
         }
 
         function refreshTotal() {
@@ -212,6 +217,7 @@
 
         modalEl.addEventListener('change', refreshTotal);
         $('pmQty').addEventListener('input', refreshTotal);
+        $('pmNote')?.addEventListener('input', () => { $('pmNoteCount').textContent = $('pmNote').value.length; });
         $('pmMinus').addEventListener('click', () => { $('pmQty').value = clampQty($('pmQty').value - 1); refreshTotal(); });
         $('pmPlus').addEventListener('click', () => { $('pmQty').value = clampQty(+$('pmQty').value + 1); refreshTotal(); });
 
@@ -228,7 +234,8 @@
                     sugarLevel: sel.sugarLevel,
                     iceLevel: sel.iceLevel,
                     toppingIds: sel.toppingIds,
-                    quantity: sel.quantity
+                    quantity: sel.quantity,
+                    note: sel.note || null
                 });
                 modal.hide();
                 toast(`Đã thêm ${sel.quantity} × ${current.name} vào giỏ`);
@@ -252,6 +259,7 @@
         function optionText(i) {
             const parts = [`Size ${i.size}`, `${i.sugarLevel}% đường`, `${i.iceLevel}% đá`];
             if (i.toppings.length) parts.push('Topping: ' + i.toppings.map(t => t.name).join(', '));
+            if (i.note) parts.push('Ghi chú: ' + i.note);
             return parts.join(' · ');
         }
 

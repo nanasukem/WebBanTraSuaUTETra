@@ -6,14 +6,14 @@
 	THEO DÕI ĐƠN /orders/{id}/tracking (USER).
 	Thanh tiến trình nhảy NGAY khi quán / shipper đổi trạng thái, không cần tải lại trang:
 	server đẩy WebSocket tới /user/queue/orders (OrderNotifier) -> static/js/order-tracking.js cập nhật giao diện.
-	Giao tận nơi: Đơn mới -> Đã xác nhận -> Đã lấy hàng -> Đang giao -> Đã giao
-	Đến lấy     : Đơn mới -> Đang pha chế -> Đã nhận món
+	Giao tận nơi: Đơn mới -> Đang pha chế (đã xác nhận) -> Pha xong -> Đã lấy hàng -> Đang giao -> Đã giao
+	Đến lấy     : Đơn mới -> Đang pha chế -> Đã xong, chờ bạn đến lấy -> Đã nhận món
 -->
 <body>
 	<div id="tracking-content"
-		th:with="flow=${order.pickup} ? 'PENDING,CONFIRMED,DELIVERED' : 'PENDING,CONFIRMED,PICKED_UP,DELIVERING,DELIVERED',
-		         labels=${order.pickup} ? 'Đơn mới,Đang pha chế,Đã nhận món' : 'Đơn mới,Đã xác nhận,Đã lấy hàng,Đang giao,Đã giao',
-		         icons=${order.pickup} ? 'bi-receipt,bi-cup-hot,bi-bag-check' : 'bi-receipt,bi-check2-circle,bi-box-seam,bi-truck,bi-house-check'">
+		th:with="flow=${order.pickup} ? 'PENDING,CONFIRMED,READY,DELIVERED' : 'PENDING,CONFIRMED,READY,PICKED_UP,DELIVERING,DELIVERED',
+		         labels=${order.pickup} ? 'Đơn mới,Đang pha chế,Chờ bạn đến lấy,Đã nhận món' : 'Đơn mới,Đang pha chế,Pha xong,Đã lấy hàng,Đang giao,Đã giao',
+		         icons=${order.pickup} ? 'bi-receipt,bi-cup-hot,bi-bell,bi-bag-check' : 'bi-receipt,bi-cup-hot,bi-check2-all,bi-box-seam,bi-truck,bi-house-check'">
 
 		<style>
 			.trk { display: flex; position: relative; margin: 8px 0 4px; }
@@ -37,7 +37,7 @@
 
 		<div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-3">
 			<h1 class="h4 fw-bold text-success mb-0">Theo dõi đơn #<span th:text="${order.id}">1</span></h1>
-			<span id="trkBadge" class="badge" th:classappend="${order.badgeClass}" th:text="${order.statusLabel}">Chờ xác nhận</span>
+			<span id="trkBadge" class="badge" th:classappend="${order.badgeClass}" th:text="${order.status == 'CANCELLED'} ? (${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ' : 'Đã huỷ')) : ${order.statusLabel}">Chờ xác nhận</span>
 			<span class="small text-muted ms-auto"><span id="trkLive" class="trk-live me-1"></span><span id="trkLiveText">Đang kết nối...</span></span>
 		</div>
 
@@ -47,7 +47,8 @@
 
 			<div id="trkStopped" class="alert mb-3"
 				th:classappend="${order.status == 'CANCELLED'} ? 'alert-secondary' : (${order.status == 'RETURNED'} ? 'alert-danger' : 'd-none')">
-				<span th:if="${order.status == 'CANCELLED'}"><i class="bi bi-x-circle me-1"></i> Đơn đã huỷ.
+				<span th:if="${order.status == 'CANCELLED'}"><i class="bi bi-x-circle me-1"></i>
+					<b th:text="${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ đơn này.' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ đơn này.' : 'Đơn đã huỷ.')">Đơn đã huỷ.</b>
 					<span th:if="${order.cancelReason}" th:text="'Lý do: ' + ${order.cancelReason}"></span></span>
 				<span th:if="${order.status == 'RETURNED'}"><i class="bi bi-arrow-counterclockwise me-1"></i> Đơn đã trả hàng - hoàn tiền.</span>
 			</div>
@@ -61,7 +62,8 @@
 			</div>
 
 			<p class="text-center text-muted small mt-3 mb-0" id="trkHint">
-				Trang tự cập nhật khi quán xác nhận, shipper lấy hàng và giao tới - bạn không cần tải lại.</p>
+				<span th:if="${order.pickup}">Trang tự cập nhật khi quán nhận đơn, pha xong và báo bạn đến lấy - không cần tải lại.</span>
+				<span th:unless="${order.pickup}">Trang tự cập nhật khi quán nhận đơn, pha xong, shipper lấy hàng và giao tới - không cần tải lại.</span></p>
 		</section>
 
 		<div class="row g-3">
@@ -92,7 +94,8 @@
 					<div class="small mb-2" th:if="${order.carrierName}"><i class="bi bi-truck me-1"></i> <span th:text="${order.carrierName}"></span></div>
 					<div class="border-top pt-2 mt-2 small">
 						<div class="d-flex justify-content-between" th:each="it : ${order.items}">
-							<span th:text="|${it.quantity}× ${it.productName} (${it.size})|"></span>
+							<span><span th:text="|${it.quantity}× ${it.productName} (${it.size})|"></span>
+								<span class="d-block text-muted" th:if="${!#strings.isEmpty(it.note)}" th:text="|Ghi chú: ${it.note}|"></span></span>
 							<span th:text="|${#numbers.formatInteger(it.subtotal, 1, 'POINT')}đ|"></span>
 						</div>
 					</div>

@@ -13,7 +13,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import vn.utetra.dto.request.CartAddReq;
+import vn.utetra.dto.request.CheckoutReq;
+import vn.utetra.dto.request.OrderReviewReq;
+import vn.utetra.dto.request.ReviewItemReq;
 import vn.utetra.dto.response.HighlightPageRes;
+import vn.utetra.dto.response.NotificationRes;
+import vn.utetra.dto.response.OrderReviewPageRes;
+import vn.utetra.dto.response.ReviewSubmitRes;
+import vn.utetra.entity.MemberTier;
+import vn.utetra.entity.enums.CancelledBy;
+import vn.utetra.entity.enums.DeliveryType;
+import vn.utetra.entity.enums.OrderStatus;
+import vn.utetra.entity.enums.PaymentMethod;
+import vn.utetra.service.impl.OrderFlowServiceImpl;
 import vn.utetra.dto.response.ManagerVoucherRes;
 import vn.utetra.dto.response.OrderTab;
 import vn.utetra.dto.response.ProductCardRes;
@@ -35,7 +48,7 @@ import vn.utetra.repository.UserRepository;
  * Không test phần tải file thật lên Cloudinary (chỉ test các trường hợp file bị từ chối TRƯỚC khi tải).
  *
  * Dữ liệu mẫu dùng ở đây:
- * - user1 (id 6, mật khẩu 123456): thích món 1, 7; đã xem món 1, 2, 5
+ * - user1 (id 6, mật khẩu 123456): giỏ 1 Bạc xỉu M = 34.000; thích món 1, 7; đã xem món 1, 2, 5
  *   đơn #1 ĐÃ GIAO: ly #1 = món 1 (ĐÃ đánh giá), ly #2 = món 2 (CHƯA đánh giá)
  *   đơn #2 CHỜ XÁC NHẬN: ly #3 = món 5
  * - user2 (id 7)
@@ -57,6 +70,12 @@ class Week3ServiceTest {
 	@Autowired UserRepository userRepository;
 	@Autowired PasswordEncoder passwordEncoder;
 	@Autowired VoucherService voucherService;
+	@Autowired OrderService orderService;
+	@Autowired OrderFlowService orderFlowService;
+	@Autowired CartService cartService;
+	@Autowired NotificationService notificationService;
+	@Autowired MemberService memberService;
+	@Autowired vn.utetra.repository.MemberTierRepository memberTierRepository;
 
 	// ======================= 20 SẢN PHẨM NHẤT (PHÂN TRANG) =======================
 
@@ -184,7 +203,7 @@ class Week3ServiceTest {
 		assertTrue(viewedProductService.recent(USER1, 40).isEmpty());
 	}
 
-	// ======================= ĐÁNH GIÁ + BÌNH LUẬN =======================
+	// ======================= ĐÁNH GIÁ (NHƯ APP KATINAT / HIGHLANDS) =======================
 
 	@Test
 	void danhGia_lyDaMua_chiDonDaGiao() {
@@ -203,55 +222,82 @@ class Week3ServiceTest {
 	}
 
 	@Test
-	void danhGia_thanhCong_hienTrenTrangMon() {
-		int before = reviewService.listByProduct(2).size();
-		ReviewRes r = reviewService.create(USER1, 2, 4, "  " + CONTENT_OK + "  ", List.of());
-		assertEquals(4, r.rating());
-		assertEquals(CONTENT_OK, r.content(), "bỏ khoảng trắng đầu/cuối");
-		assertEquals("Size M · 50% đường · 100% đá", r.purchasedInfo());
-		assertTrue(r.media().isEmpty());
+	void danhGia_trangDanhGiaDon_nhacMonChuaDanhGia() {
+		OrderReviewPageRes page = reviewService.reviewPage(USER1, 1);
+		assertTrue(page.canReview());
+		assertEquals(2, page.items().size(), "đơn #1 có 2 ly");
+		assertEquals(1, page.pendingCount(), "còn Trà đào cam sả chưa đánh giá");
+		assertTrue(page.storeReviewed(), "dữ liệu mẫu đã đánh giá quán đơn #1");
+		assertEquals(5, page.storeRating());
+		assertFalse(reviewService.reviewPage(USER1, 2).canReview(), "đơn #2 chưa giao");
+		assertThrows(ResourceNotFoundException.class, () -> reviewService.reviewPage(USER2, 1));
 
-		List<ReviewRes> list = reviewService.listByProduct(2);
-		assertEquals(before + 1, list.size());
-		assertEquals(r.id(), list.get(0).id(), "mới nhất lên đầu");
-		assertTrue(reviewService.purchasedItems(USER1, 2).get(0).reviewed());
-		assertEquals(1, productService.getDetail(2).reviewCount() - (before));
+		assertEquals(1, reviewService.pendingOrderCount(USER1), "1 đơn chờ đánh giá");
+		assertEquals(1, orderFlowService.myOrders(USER1, OrderTab.DELIVERED).stream()
+				.filter(o -> o.id() == 1).findFirst().orElseThrow().toReview(), "danh sách đơn nhắc còn 1 món");
 	}
 
 	@Test
-	void danhGia_noiDungDuoi50KyTu_baoLoi() {
-		String s49 = "a".repeat(49);
-		BusinessException e = assertThrows(BusinessException.class,
-				() -> reviewService.create(USER1, 2, 5, "     " + s49 + "     ", List.of()));
-		assertTrue(e.getMessage().contains("50"));
-		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, 5, null, List.of()));
-		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, 5, "a".repeat(2001), List.of()));
-		assertNotNull(reviewService.create(USER1, 2, 5, "b".repeat(50), List.of()), "đúng 50 ký tự là được");
+	void danhGia_chiChamSao_khongCanChu_chuNganCungDuoc() {
+		ReviewSubmitRes r = reviewService.create(USER1, 2, 4, null, List.of());
+		assertEquals(1, r.reviewedItems());
+		ReviewRes moi = reviewService.listByProduct(2).get(0);
+		assertEquals(4, moi.rating());
+		assertNull(moi.content(), "không viết chữ vẫn đánh giá được");
+		assertEquals("Size M · 50% đường · 100% đá", moi.purchasedInfo());
 	}
 
 	@Test
-	void danhGia_soSaoSai_baoLoi() {
-		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, 0, CONTENT_OK, List.of()));
-		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, 6, CONTENT_OK, List.of()));
+	void danhGia_chuNgan_khongGioiHanSoChu() {
+		assertEquals(1, reviewService.create(USER1, 2, 5, "Ngon", List.of()).reviewedItems(), "viết 1 chữ cũng được");
+		assertEquals("Ngon", reviewService.listByProduct(2).get(0).content());
+	}
+
+	@Test
+	void danhGia_caDon1Luot_monVaQuan() {
+		// Đơn mới của user1: đến lấy -> quán nhận -> pha xong -> khách nhận
+		int id = orderService.placeOrder(USER1, denLayUser1(false)).getId();
+		orderFlowService.updateStatus(id, OrderStatus.CONFIRMED, null);
+		orderFlowService.updateStatus(id, OrderStatus.READY, null);
+		orderFlowService.updateStatus(id, OrderStatus.DELIVERED, null);
+		OrderReviewPageRes page = reviewService.reviewPage(USER1, id);
+		assertTrue(page.pickup());
+		assertFalse(page.storeReviewed());
+		Integer ly = page.items().get(0).orderDetailId();
+
+		ReviewSubmitRes r = reviewService.submit(USER1, id, new OrderReviewReq(
+				List.of(new ReviewItemReq(ly, 5, List.of("Đúng vị, rất ngon", "Sẽ mua lại"), CONTENT_OK, List.of())), 4,
+				List.of("Đóng gói cẩn thận"), "  Nhân viên thân thiện  "));
+		assertEquals(1, r.reviewedItems());
+		assertTrue(r.storeReviewed());
+
+		OrderReviewPageRes sau = reviewService.reviewPage(USER1, id);
+		assertEquals(0, sau.pendingCount());
+		assertEquals(4, sau.storeRating());
+		assertEquals("Nhân viên thân thiện", sau.storeComment());
+		assertEquals(List.of("Đóng gói cẩn thận"), sau.storeTags());
+		assertEquals(List.of("Đúng vị, rất ngon", "Sẽ mua lại"), sau.items().get(0).tags(), "gợi ý được lưu riêng, không chèn vào nội dung");
+		assertEquals(CONTENT_OK, sau.items().get(0).content());
+
+		assertThrows(BusinessException.class, () -> reviewService.submit(USER1, id, new OrderReviewReq(List.of(), 9, List.of(), null)),
+				"sao của quán phải 1..5");
+	}
+
+	@Test
+	void danhGia_loi_soSao_lyDaDanhGia_donChuaGiao_nguoiKhac_khongChamSao() {
+		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, 0, null, List.of()));
+		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, 6, null, List.of()));
 		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, null, CONTENT_OK, List.of()));
-	}
+		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, 5, "a".repeat(2001), List.of()));
 
-	@Test
-	void danhGia_lyDaDanhGia_donChuaGiao_lyNguoiKhac_baoLoi() {
-		BusinessException again = assertThrows(BusinessException.class,
-				() -> reviewService.create(USER1, 1, 5, CONTENT_OK, List.of()));
-		assertTrue(again.getMessage().contains("đã đánh giá"));
-
-		BusinessException pending = assertThrows(BusinessException.class,
-				() -> reviewService.create(USER1, 3, 5, CONTENT_OK, List.of()));
+		BusinessException again = assertThrows(BusinessException.class, () -> reviewService.create(USER1, 1, 5, null, List.of()));
+		assertTrue(again.getMessage().contains("rồi"));
+		BusinessException pending = assertThrows(BusinessException.class, () -> reviewService.create(USER1, 3, 5, null, List.of()));
 		assertTrue(pending.getMessage().contains("đã giao"));
-
-		assertThrows(ResourceNotFoundException.class, () -> reviewService.create(USER2, 2, 5, CONTENT_OK, List.of()));
-		assertThrows(ResourceNotFoundException.class, () -> reviewService.create(USER1, 99999, 5, CONTENT_OK, List.of()));
-
-		// Đánh giá lần 2 cùng 1 ly
-		reviewService.create(USER1, 2, 5, CONTENT_OK, List.of());
-		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, 5, CONTENT_OK, List.of()));
+		assertThrows(ResourceNotFoundException.class, () -> reviewService.create(USER2, 2, 5, null, List.of()));
+		assertThrows(BusinessException.class,
+				() -> reviewService.submit(USER1, 1, new OrderReviewReq(List.of(), null, List.of(), null)),
+				"không chấm sao món nào, quán đã đánh giá -> không có gì để gửi");
 	}
 
 	@Test
@@ -266,8 +312,7 @@ class Week3ServiceTest {
 		MultipartFile bigImg = new MockMultipartFile("media", "to.jpg", "image/jpeg", new byte[6 * 1024 * 1024]);
 		assertThrows(BusinessException.class, () -> reviewService.create(USER1, 2, 5, CONTENT_OK, List.of(bigImg)));
 
-		// Bị từ chối thì chưa lưu gì: ly #2 vẫn chưa đánh giá
-		assertFalse(reviewService.purchasedItems(USER1, 2).get(0).reviewed());
+		assertFalse(reviewService.purchasedItems(USER1, 2).get(0).reviewed(), "bị từ chối thì chưa lưu gì");
 	}
 
 	@Test
@@ -276,6 +321,162 @@ class Week3ServiceTest {
 		assertEquals("VIDEO", ReviewService.mediaType(new MockMultipartFile("m", "a.mp4", "video/mp4", new byte[1])));
 		assertEquals("VIDEO", ReviewService.mediaType(new MockMultipartFile("m", "clip.MOV", null, new byte[1])));
 		assertNull(ReviewService.mediaType(new MockMultipartFile("m", "a.txt", "text/plain", new byte[1])));
+	}
+
+	// ======================= AI HUỶ ĐƠN =======================
+
+	@Test
+	void huyDon_ghiRoKhachTuHuyHayQuanHuy() {
+		orderFlowService.cancelByCustomer(USER1, 2, "Đặt nhầm, không còn nhu cầu");
+		assertEquals("CUSTOMER", orderFlowService.myOrder(USER1, 2).cancelledBy());
+		assertEquals("Bạn đã huỷ đơn", OrderFlowServiceImpl.cancelledByLabel(CancelledBy.CUSTOMER, true));
+		assertEquals("Khách tự huỷ", OrderFlowServiceImpl.cancelledByLabel(CancelledBy.CUSTOMER, false));
+
+		int id = orderService.placeOrder(USER1, denLayUser1(false)).getId();
+		orderFlowService.updateStatus(id, OrderStatus.CONFIRMED, null);
+		orderFlowService.updateStatus(id, OrderStatus.CANCELLED, "Quán hết nguyên liệu / hết món");
+		assertEquals("STORE", orderFlowService.myOrder(USER1, id).cancelledBy(), "quán huỷ khi đang pha chế");
+		assertEquals("Cửa hàng đã huỷ đơn", OrderFlowServiceImpl.cancelledByLabel(CancelledBy.STORE, true));
+	}
+
+	// ======================= CHUÔNG THÔNG BÁO =======================
+
+	@Test
+	void thongBao_moiNhatLenDau_daDoc() {
+		long truoc = notificationService.unreadCount(USER1);
+		int id = orderService.placeOrder(USER1, denLayUser1(false)).getId();
+		orderFlowService.updateStatus(id, OrderStatus.CONFIRMED, null);
+		orderFlowService.updateStatus(id, OrderStatus.READY, null);
+		List<NotificationRes> list = notificationService.latest(USER1);
+		assertTrue(list.get(0).title().contains("mời bạn đến lấy"), "đơn đến lấy pha xong: báo khách đến lấy");
+		assertEquals("/orders/" + id, list.get(0).link());
+		assertEquals(truoc + 2, notificationService.unreadCount(USER1));
+
+		assertEquals("/orders/" + id, notificationService.markRead(USER1, list.get(0).id()));
+		assertNull(notificationService.markRead(USER2, list.get(1).id()), "không đọc được thông báo người khác");
+		notificationService.markAllRead(USER1);
+		assertEquals(0, notificationService.unreadCount(USER1));
+	}
+
+	@Test
+	void thongBao_admin_khongBaoTrung() {
+		long truoc = notificationService.unreadCount(1);
+		assertEquals(1, notificationService.notifyAdmins("VOUCHER", "Voucher X sắp hết lượt", "Còn 1/10", "/admin/vouchers", "TEST:1"));
+		assertEquals(0, notificationService.notifyAdmins("VOUCHER", "Voucher X sắp hết lượt", "Còn 1/10", "/admin/vouchers", "TEST:1"),
+				"cùng ref_key thì không báo lại");
+		assertEquals(truoc + 1, notificationService.unreadCount(1));
+	}
+
+	// ======================= GIẢM GIÁ THEO HẠNG THÀNH VIÊN =======================
+
+	@Test
+	void hangThanhVien_giamDungPhanTram_vaToiDa() {
+		List<MemberTier> tiers = memberTierRepository.findAllByOrderByMinSpentAsc();
+		assertEquals(List.of("Thành viên", "Bạc", "Vàng", "Kim cương"), tiers.stream().map(MemberTier::getName).toList());
+		java.math.BigDecimal tram = new java.math.BigDecimal("100000");
+		java.math.BigDecimal trieu = new java.math.BigDecimal("1000000");
+		assertMoney(0, memberService.calculateDiscount(tiers.get(0), tram));       // 0%
+		assertMoney(3000, memberService.calculateDiscount(tiers.get(1), tram));    // Bạc 3%
+		assertMoney(10000, memberService.calculateDiscount(tiers.get(1), trieu));  // Bạc tối đa 10.000
+		assertMoney(5000, memberService.calculateDiscount(tiers.get(2), tram));    // Vàng 5%
+		assertMoney(20000, memberService.calculateDiscount(tiers.get(2), trieu));  // Vàng tối đa 20.000
+		assertMoney(8000, memberService.calculateDiscount(tiers.get(3), tram));    // Kim cương 8%
+		assertMoney(30000, memberService.calculateDiscount(tiers.get(3), trieu));  // Kim cương tối đa 30.000
+		assertEquals("Thành viên", memberService.getTierInfo(USER1).tierName(), "user1 mới chi 153.000đ");
+	}
+
+	/** user1 đến lấy ở chi nhánh 1 (giỏ mẫu: 1 Bạc xỉu M = 34.000) */
+	// ======================= GHI CHÚ MÓN + MUA LẠI =======================
+
+	@Test
+	void ghiChuMon_khacGhiChuThiTachDong_giongThiCongDon_theoVaoDon() {
+		cartService.clear(USER1);
+		cartService.addItem(USER1, ly3("Đá để riêng · ít ngọt"));
+		cartService.addItem(USER1, ly3(null));
+		cartService.addItem(USER1, ly3("  Đá để riêng · ít ngọt  "));
+		var cart = cartService.getCart(USER1);
+		assertEquals(2, cart.items().size(), "khác ghi chú -> 2 dòng");
+		assertEquals(3, cart.totalQty());
+		assertTrue(cart.items().stream().anyMatch(i -> "Đá để riêng · ít ngọt".equals(i.note()) && i.quantity() == 2));
+
+		CartAddReq dai = ly3("a".repeat(201));
+		assertThrows(BusinessException.class, () -> cartService.addItem(USER1, dai));
+
+		int id = orderService.placeOrder(USER1, denLayUser1(false)).getId();
+		var items = orderFlowService.myOrder(USER1, id).items();
+		assertTrue(items.stream().anyMatch(i -> "Đá để riêng · ít ngọt".equals(i.note())), "ghi chú theo món vào đơn");
+		assertTrue(items.stream().anyMatch(i -> i.note() == null));
+	}
+
+	@Test
+	void muaLai_donDaGiao_choLaiDungCauHinhVaoGio() {
+		cartService.clear(USER1);
+		int id = orderService.placeOrder(USER1, napGio(ly3("Không lấy ống hút"))).getId();
+		orderFlowService.updateStatus(id, OrderStatus.CONFIRMED, null);
+		orderFlowService.updateStatus(id, OrderStatus.READY, null);
+		orderFlowService.updateStatus(id, OrderStatus.DELIVERED, null);
+		assertTrue(cartService.getCart(USER1).items().isEmpty(), "đặt xong thì giỏ trống");
+
+		var res = cartService.reorder(USER1, id);
+		assertEquals(1, res.addedQty());
+		assertTrue(res.notes().isEmpty());
+		var line = cartService.getCart(USER1).items().get(0);
+		assertEquals(3, line.productId());
+		assertEquals("M", line.size());
+		assertEquals(50, line.sugarLevel());
+		assertEquals(70, line.iceLevel());
+		assertEquals("Không lấy ống hút", line.note());
+
+		cartService.reorder(USER1, id);
+		assertEquals(2, cartService.getCart(USER1).items().get(0).quantity(), "mua lại lần nữa -> cộng dồn");
+	}
+
+	@Test
+	void muaLai_donDaHuy_duoc_donNguoiKhac_khongDuoc() {
+		cartService.clear(USER1);
+		int id = orderService.placeOrder(USER1, denLayUser1(false)).getId();
+		orderFlowService.cancelByCustomer(USER1, id, "Đặt nhầm");
+		assertEquals(1, cartService.reorder(USER1, id).addedQty());
+		assertThrows(ResourceNotFoundException.class, () -> cartService.reorder(USER2, id));
+	}
+
+	private static CartAddReq ly3(String note) {
+		CartAddReq c = new CartAddReq();
+		c.setProductId(3);
+		c.setSize("M");
+		c.setSugarLevel(50);
+		c.setIceLevel(70);
+		c.setQuantity(1);
+		c.setNote(note);
+		return c;
+	}
+
+	private CheckoutReq napGio(CartAddReq c) {
+		cartService.addItem(USER1, c);
+		return denLayUser1(false);
+	}
+
+	private CheckoutReq denLayUser1(boolean useCoins) {
+		if (cartService.getCart(USER1).items().isEmpty()) {
+			CartAddReq c = new CartAddReq();
+			c.setProductId(3);
+			c.setSize("M");
+			c.setSugarLevel(50);
+			c.setIceLevel(70);
+			c.setQuantity(1);
+			cartService.addItem(USER1, c);
+		}
+		CheckoutReq r = new CheckoutReq();
+		r.setDeliveryType(DeliveryType.PICKUP);
+		r.setBranchId(1);
+		r.setReceiverName("Trần Thị Khách");
+		r.setReceiverPhone("0900000006");
+		r.setPaymentMethod(PaymentMethod.COD);
+		return r;
+	}
+
+	private static void assertMoney(long expected, java.math.BigDecimal actual) {
+		assertEquals(0, java.math.BigDecimal.valueOf(expected).compareTo(actual), "mong đợi " + expected + " nhưng là " + actual);
 	}
 
 	// ======================= THÔNG TIN CÁ NHÂN + ĐỔI MẬT KHẨU =======================

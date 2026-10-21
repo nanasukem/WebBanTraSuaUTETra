@@ -4,7 +4,7 @@
 
 <!--
 	TRANG CHI TIẾT SẢN PHẨM /products/{id} - ai cũng xem được.
-	- USER: nút tim (thích), chọn món (modal size/đường/đá/topping), form đánh giá + bình luận nếu đã mua (đơn Đã giao),
+	- USER: nút tim (thích), chọn món (modal size/đường/đá/topping), nhắc đánh giá nếu đã mua (đánh giá ở /orders/{id}/review),
 	        mở trang này = ghi vào "Sản phẩm đã xem"
 	- Guest: nút đặt món / thích dẫn tới đăng nhập
 	- Manager/Admin: chỉ xem
@@ -143,7 +143,10 @@
 						</div>
 						<div class="small text-muted mb-1" th:if="${!#strings.isEmpty(r.purchasedInfo)}"
 							th:text="'Đã mua: ' + ${r.purchasedInfo}">Đã mua: Size M</div>
-						<p class="mb-2" style="white-space: pre-line;" th:text="${r.content}">Nội dung</p>
+						<div class="d-flex flex-wrap gap-1 mb-1" th:unless="${#lists.isEmpty(r.tags)}">
+							<span class="badge rounded-pill text-bg-light border fw-normal" th:each="tag : ${r.tags}" th:text="${tag}"></span>
+						</div>
+						<p class="mb-2" style="white-space: pre-line;" th:if="${r.content != null}" th:text="${r.content}">Nội dung</p>
 						<div class="d-flex flex-wrap gap-2" th:unless="${#lists.isEmpty(r.media)}">
 							<th:block th:each="m : ${r.media}">
 								<a th:if="${m.type == 'IMAGE'}" th:href="${m.url}" target="_blank" rel="noopener">
@@ -161,7 +164,7 @@
 		<!-- ===================== VIẾT ĐÁNH GIÁ ===================== -->
 		<section id="viet-danh-gia" class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" style="scroll-margin-top: 90px;"
 			th:unless="${cardMode == 'view'}">
-			<h2 class="h5 fw-bold mb-3"><i class="bi bi-pencil-square text-success me-1"></i> Viết đánh giá</h2>
+			<h2 class="h5 fw-bold mb-3"><i class="bi bi-pencil-square text-success me-1"></i> Đánh giá của bạn</h2>
 
 			<p class="text-muted mb-0" th:if="${isGuest}">
 				<a th:href="@{/auth/login}" class="link-success fw-semibold">Đăng nhập</a> để đánh giá món bạn đã mua.</p>
@@ -170,58 +173,17 @@
 				<i class="bi bi-info-circle me-1"></i> Chỉ khách đã mua và đã nhận món (đơn <b>Đã giao</b>) mới đánh giá được.</p>
 
 			<p class="text-success mb-0" th:if="${isBuyer and !#lists.isEmpty(purchased) and #lists.isEmpty(pendingItems)}">
-				<i class="bi bi-check-circle me-1"></i> Bạn đã đánh giá tất cả các ly đã mua của món này. Cảm ơn bạn!</p>
+				<i class="bi bi-check-circle me-1"></i> Bạn đã đánh giá các ly đã mua của món này (hoặc đã quá hạn 30 ngày). Cảm ơn bạn!</p>
 
-			<form th:if="${isBuyer and !#lists.isEmpty(pendingItems)}" id="reviewForm" th:action="@{/user/reviews}"
-				method="post" enctype="multipart/form-data" novalidate>
-				<input type="hidden" name="productId" th:value="${product.id}">
-
-				<div class="alert alert-danger py-2" th:if="${reviewError}" th:text="${reviewError}"></div>
-
-				<!-- Ly nào (mỗi ly đã mua đánh giá 1 lần) -->
-				<div class="mb-3">
-					<label for="orderDetailId" class="form-label fw-semibold">Ly bạn đã mua</label>
-					<select id="orderDetailId" name="orderDetailId" class="form-select">
-						<option th:each="it : ${pendingItems}" th:value="${it.orderDetailId}"
-							th:selected="${it.orderDetailId == selectedOd}"
-							th:text="|Đơn #${it.orderId} · ${it.info} · nhận ${it.deliveredAt}|">Đơn #1</option>
-					</select>
+			<!-- Đã mua, chưa đánh giá: dẫn tới trang đánh giá cả đơn (kiểu Shopee) -->
+			<div th:if="${isBuyer and !#lists.isEmpty(pendingItems)}">
+				<p class="mb-2">Bạn đã mua món này và chưa đánh giá. Chia sẻ cảm nhận của bạn nhé!</p>
+				<div class="d-flex flex-wrap gap-2">
+					<a th:each="it : ${pendingItems}" th:href="@{/orders/{o}/review(o=${it.orderId})}"
+						class="btn btn-outline-success"><i class="bi bi-star me-1"></i>
+						<span th:text="|Đánh giá đơn #${it.orderId} · ${it.info}|">Đánh giá đơn #1</span></a>
 				</div>
-
-				<!-- Số sao -->
-				<div class="mb-3">
-					<div class="form-label fw-semibold mb-1">Chấm điểm</div>
-					<input type="hidden" name="rating" id="ratingInput" th:value="${draftRating != null ? draftRating : 5}">
-					<div class="d-flex align-items-center gap-1" id="starPicker">
-						<button type="button" class="btn btn-link p-0 text-warning fs-3 star-btn" th:each="i : ${#numbers.sequence(1, 5)}"
-							th:attr="data-value=${i}, aria-label=|${i} sao|"><i class="bi bi-star-fill"></i></button>
-						<span class="ms-2 small text-muted" id="ratingText">Tuyệt vời</span>
-					</div>
-				</div>
-
-				<!-- Nội dung -->
-				<div class="mb-3">
-					<label for="reviewContent" class="form-label fw-semibold">Bình luận <span class="text-muted fw-normal">(tối thiểu 50 ký tự)</span></label>
-					<textarea id="reviewContent" name="content" class="form-control" rows="4" maxlength="2000"
-						placeholder="Vị trà, độ ngọt, topping, thời gian giao... chia sẻ cảm nhận của bạn"
-						th:text="${draftContent}"></textarea>
-					<div class="d-flex justify-content-between small mt-1">
-						<span id="contentHint" class="text-danger">Cần thêm 50 ký tự</span>
-						<span class="text-muted"><span id="contentCount">0</span>/2000</span>
-					</div>
-				</div>
-
-				<!-- Ảnh / video -->
-				<div class="mb-3">
-					<label for="reviewMedia" class="form-label fw-semibold">Hình ảnh / video <span class="text-muted fw-normal">(tuỳ chọn, tối đa 5 file · ảnh ≤ 5MB, video ≤ 30MB)</span></label>
-					<input type="file" id="reviewMedia" name="media" class="form-control" accept="image/*,video/*" multiple>
-					<div id="mediaError" class="small text-danger mt-1"></div>
-					<div id="mediaPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
-				</div>
-
-				<button type="submit" class="btn btn-success px-4" id="reviewSubmit">
-					<i class="bi bi-send me-1"></i> Gửi đánh giá</button>
-			</form>
+			</div>
 		</section>
 
 		<!-- ===================== MÓN CÙNG DANH MỤC ===================== -->
@@ -238,7 +200,6 @@
 		<div th:replace="~{fragments/product-modal :: productModal}"></div>
 
 		<script th:src="@{/js/favorite.js}"></script>
-		<script th:src="@{/js/review-form.js}"></script>
 	</div>
 </body>
 </html>

@@ -57,6 +57,17 @@
                             </div>
                         </div>
 
+                        <h6 class="fw-semibold">Ghi chú <span class="fw-normal text-muted small">(không bắt buộc)</span></h6>
+                        <div class="mb-2 d-flex flex-wrap gap-2" id="pmNoteTags">
+                            <th:block th:each="tag, st : ${ {'Ít trà', 'Đậm trà', 'Ít kem sữa', 'Không kem sữa', 'Ít chua', 'Thêm ngọt', 'Đá để riêng'} }">
+                                <input type="checkbox" class="btn-check pm-note-tag" th:id="'pmNote' + ${st.index}" th:value="${tag}" autocomplete="off">
+                                <label class="btn btn-outline-success btn-sm rounded-pill" th:for="'pmNote' + ${st.index}" th:text="${tag}"></label>
+                            </th:block>
+                        </div>
+                        <textarea class="form-control form-control-sm mb-1" id="pmNote" rows="2" maxlength="120"
+                                  placeholder="Ghi chú thêm cho quán, ví dụ: ít ngọt hơn nữa, cho thêm đá..."></textarea>
+                        <div class="text-end small text-muted mb-3"><span id="pmNoteCount">0</span>/120</div>
+
                         <h6 class="fw-semibold">Số lượng</h6>
                         <div class="input-group" style="max-width: 150px">
                             <button class="btn btn-outline-secondary" type="button" id="pmMinus">−</button>

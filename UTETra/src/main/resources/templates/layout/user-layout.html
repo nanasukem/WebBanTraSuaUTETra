@@ -53,5 +53,7 @@
         });
     </script>
 
+	<!-- Chuông thông báo (chỉ khi đã đăng nhập) -->
+	<th:block th:if="${session.user != null}"><th:block th:replace="~{fragments/notification-bell :: scripts}"></th:block></th:block>
 </body>
 </html>

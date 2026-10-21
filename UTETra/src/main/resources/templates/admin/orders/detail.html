@@ -64,7 +64,7 @@
 							<div class="col-12 col-md-6">
 								<div class="text-muted small">Trạng thái đơn hàng</div>
 								<span class="badge bg-primary"
-									th:text="${order.status != null ? order.status : 'Chưa xác định'}"></span>
+									th:text="${order.status == null ? 'Chưa xác định' : (order.status.name() == 'CANCELLED' ? T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(order.cancelledBy, false) : T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(order.status, order.deliveryType != null and order.deliveryType.name() == 'PICKUP'))}"></span>
 							</div>
 
 							<div class="col-12 col-md-6">
@@ -299,16 +299,18 @@
 								mới </label> <select name="status" id="status" class="form-select mb-3"
 								required>
 								<option th:each="s : ${nextStatuses}" th:value="${s.name()}"
-									th:text="${s.name()}"></option>
+									th:text="${s.name() == 'CANCELLED'} ? 'Huỷ đơn' : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(s, order.deliveryType != null and order.deliveryType.name() == 'PICKUP')}"></option>
 							</select>
+							<textarea name="reason" class="form-control mb-3" rows="2" maxlength="200"
+								placeholder="Lý do huỷ (bắt buộc nếu chọn Huỷ đơn)"></textarea>
 
 							<button type="submit" class="btn btn-primary w-100">
 								<i class="bi bi-check-circle me-1"></i> Cập nhật trạng thái
 							</button>
 						</form>
 
-						<p class="small text-muted mt-3 mb-0">Cập nhật trạng thái đơn
-							không tự động thay đổi trạng thái thanh toán.</p>
+						<p class="small text-muted mt-3 mb-0">Đổi trạng thái theo đúng luồng của chi nhánh; khách nhận thông báo.
+							Huỷ đơn sẽ hoàn mã giảm giá cho khách.</p>
 
 					</div>
 				</div>

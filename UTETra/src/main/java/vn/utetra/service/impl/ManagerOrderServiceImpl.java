@@ -38,17 +38,18 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 	private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
 	private static final DateTimeFormatter DAY_HOUR = DateTimeFormatter.ofPattern("HH:mm dd/MM");
 	private static final List<OrderStatus> ACTIVE = List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED,
-			OrderStatus.PICKED_UP, OrderStatus.DELIVERING);
+			OrderStatus.READY, OrderStatus.PICKED_UP, OrderStatus.DELIVERING);
 	private static final List<OrderStatus> FINISHED = List.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED,
 			OrderStatus.RETURNED);
 
 	private static final int PAGE_SIZE = 10;
 
-	/** 7 tab đúng chữ trong đề: mới, đã xác nhận, đã lấy hàng, đang giao, đã giao, huỷ, trả hàng - hoàn tiền */
+	/** 8 tab: mới, đang pha chế, pha xong (chờ lấy / chờ shipper), đã lấy hàng, đang giao, đã giao, huỷ, trả hàng - hoàn tiền */
 	private static final Map<OrderStatus, String> TAB_LABELS = new LinkedHashMap<>();
 	static {
 		TAB_LABELS.put(OrderStatus.PENDING, "Đơn mới");
-		TAB_LABELS.put(OrderStatus.CONFIRMED, "Đã xác nhận");
+		TAB_LABELS.put(OrderStatus.CONFIRMED, "Đang pha chế");
+		TAB_LABELS.put(OrderStatus.READY, "Pha xong / chờ lấy");
 		TAB_LABELS.put(OrderStatus.PICKED_UP, "Đã lấy hàng");
 		TAB_LABELS.put(OrderStatus.DELIVERING, "Đang giao");
 		TAB_LABELS.put(OrderStatus.DELIVERED, "Đã giao");
@@ -97,7 +98,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 			switch (o.getStatus()) {
 				case PENDING -> newOrders.add(card);
 				case CONFIRMED -> making.add(card);
-				default -> shipping.add(card);
+				default -> shipping.add(card); // pha xong (chờ khách lấy / chờ shipper), shipper đang giao
 			}
 		}
 		List<ManagerOrderRes> recent = orderRepository.findTop20ByBranchIdAndStatusInOrderByUpdatedAtDesc(id, FINISHED)
@@ -170,24 +171,40 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 
 		List<ManagerOrderRes.Action> actions = new ArrayList<>();
 		String hint = null;
-		if (o.getStatus() == OrderStatus.PENDING) {
-			actions.add(new ManagerOrderRes.Action("CONFIRMED", "Xác nhận & pha chế", "btn-success"));
-		} else if (o.getStatus() == OrderStatus.CONFIRMED && pickup) {
-			actions.add(new ManagerOrderRes.Action("DELIVERED", "Khách đã nhận món", "btn-primary"));
-			hint = "Pha xong thì gọi khách: " + o.getReceiverPhone();
-		} else if (o.getStatus() == OrderStatus.CONFIRMED) {
-			hint = "Pha xong, chờ shipper đến lấy hàng";
+		switch (o.getStatus()) {
+			case PENDING -> actions.add(new ManagerOrderRes.Action("CONFIRMED", "Nhận đơn & pha chế", "btn-success"));
+			case CONFIRMED -> {
+				actions.add(new ManagerOrderRes.Action("READY",
+						pickup ? "Pha xong, báo khách đến lấy" : "Pha xong, gọi shipper", "btn-warning"));
+				hint = pickup ? "Khách đến lấy tại quán" : "Pha xong thì bấm để shipper đến lấy hàng";
+			}
+			case READY -> {
+				if (pickup) {
+					actions.add(new ManagerOrderRes.Action("DELIVERED", "Khách đã nhận món", "btn-primary"));
+					hint = "Đã báo khách đến lấy. Gọi khách nếu lâu chưa tới: " + o.getReceiverPhone();
+				} else {
+					hint = "Chờ shipper đến lấy hàng";
+				}
+			}
+			case CANCELLED -> hint = OrderFlowServiceImpl.cancelledByLabel(o.getCancelledBy(), false)
+					+ (o.getCancelReason() == null ? "" : ": " + o.getCancelReason());
+			default -> { }
 		}
+		// Quán huỷ được tới khi pha xong; đơn đến lấy: huỷ được cả khi khách không tới lấy
+		boolean canCancel = o.getStatus() == OrderStatus.PENDING || o.getStatus() == OrderStatus.CONFIRMED
+				|| (o.getStatus() == OrderStatus.READY && pickup);
+		String label = o.getStatus() == OrderStatus.CANCELLED
+				? OrderFlowServiceImpl.cancelledByLabel(o.getCancelledBy(), false)
+				: OrderFlowServiceImpl.statusLabel(o.getStatus(), pickup);
 
 		// Đơn đang làm: hiện giờ đặt; đơn đã xong/huỷ: hiện giờ xong
 		LocalDateTime t = FINISHED.contains(o.getStatus()) && o.getUpdatedAt() != null ? o.getUpdatedAt() : o.getCreatedAt();
 		String time = t == null ? "" : t.format(timeFormat);
 
-		return new ManagerOrderRes(o.getId(), time, pickup, o.getStatus().name(), OrderFlowServiceImpl.statusLabel(o.getStatus(), pickup),
+		return new ManagerOrderRes(o.getId(), time, pickup, o.getStatus().name(), label,
 				OrderFlowServiceImpl.badgeClass(o.getStatus()), o.getReceiverName(), o.getReceiverPhone(),
 				o.getDeliveryAddress(), o.getDeliveryNote(), o.getNote(), items, qty, o.getTotalAmount(),
-				OrderFlowServiceImpl.paymentMethodLabel(o.getPaymentMethod()), hint, actions,
-				o.getStatus() == OrderStatus.PENDING);
+				OrderFlowServiceImpl.paymentMethodLabel(o.getPaymentMethod()), hint, actions, canCancel);
 	}
 
 	/** "2× Cà phê muối · L · 70% đường · 50% đá + Kem cheese" */
@@ -195,6 +212,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		String toppings = d.getToppings().stream().map(t -> t.getTopping().getName()).collect(Collectors.joining(", "));
 		return d.getQuantity() + "× " + d.getProduct().getName() + " · " + d.getSize() + " · "
 				+ d.getSugarLevel() + "% đường · " + d.getIceLevel() + "% đá"
-				+ (toppings.isEmpty() ? "" : " + " + toppings);
+				+ (toppings.isEmpty() ? "" : " + " + toppings)
+				+ (d.getNote() == null ? "" : " · Ghi chú: " + d.getNote());
 	}
 }

@@ -11,6 +11,7 @@ import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.*;
 import vn.utetra.service.CartService;
 import vn.utetra.dto.response.ProductOptionsRes;
+import vn.utetra.dto.response.ReorderRes;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -29,10 +30,12 @@ public class CartServiceImpl implements CartService {
 	private final ProductSizeRepository productSizeRepository;
 	private final ToppingRepository toppingRepository;
 	private final UserRepository userRepository;
+	private final OrderRepository orderRepository;
 
 	public CartServiceImpl(CartItemRepository cartItemRepository, CartItemToppingRepository cartItemToppingRepository,
 			ProductRepository productRepository, ProductSizeRepository productSizeRepository,
-			ToppingRepository toppingRepository, UserRepository userRepository) {
+			ToppingRepository toppingRepository, UserRepository userRepository, OrderRepository orderRepository) {
+		this.orderRepository = orderRepository;
 		this.cartItemRepository = cartItemRepository;
 		this.cartItemToppingRepository = cartItemToppingRepository;
 		this.productRepository = productRepository;
@@ -75,11 +78,13 @@ public class CartServiceImpl implements CartService {
 		checkQty(qty);
 		List<Topping> toppings = loadToppings(req.getToppingIds());
 		Set<Integer> wanted = toppings.stream().map(Topping::getId).collect(Collectors.toSet());
+		String note = req.getNote() == null || req.getNote().isBlank() ? null : req.getNote().trim();
+		if (note != null && note.length() > 200) throw new BusinessException("Ghi chú món tối đa 200 ký tự");
 
-		// Trùng cấu hình -> cộng dồn
+		// Trùng cấu hình (cả topping và ghi chú) -> cộng dồn
 		for (CartItem ci : cartItemRepository.findAllByUserIdAndProductIdAndSizeAndSugarLevelAndIceLevel(userId,
 				product.getId(), size, sugar, ice)) {
-			if (toppingIdsOf(ci).equals(wanted)) {
+			if (toppingIdsOf(ci).equals(wanted) && java.util.Objects.equals(ci.getNote(), note)) {
 				int newQty = ci.getQuantity() + qty;
 				checkQty(newQty);
 				ci.setQuantity(newQty);
@@ -95,11 +100,48 @@ public class CartServiceImpl implements CartService {
 		ci.setSugarLevel(sugar);
 		ci.setIceLevel(ice);
 		ci.setQuantity(qty);
+		ci.setNote(note);
 		cartItemRepository.save(ci);
 		for (Topping t : toppings) {
 			cartItemToppingRepository.save(new CartItemTopping(null, ci, t));
 		}
 		return getCart(userId);
+	}
+
+	// ================= MUA LẠI =================
+	@Override
+	@Transactional
+	public ReorderRes reorder(Integer userId, Integer orderId) {
+		Order order = orderRepository.findById(orderId)
+				.filter(o -> o.getUser() != null && o.getUser().getId().equals(userId))
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn #" + orderId));
+		int added = 0;
+		List<String> notes = new ArrayList<>();
+		for (OrderDetail d : order.getDetails()) {
+			String name = d.getProduct().getName();
+			CartAddReq req = new CartAddReq();
+			req.setProductId(d.getProduct().getId());
+			req.setSize(d.getSize());
+			req.setSugarLevel(d.getSugarLevel());
+			req.setIceLevel(d.getIceLevel());
+			req.setQuantity(d.getQuantity());
+			req.setNote(d.getNote());
+			List<Integer> toppingIds = new ArrayList<>();
+			for (OrderDetailTopping t : d.getToppings()) {
+				if (Boolean.TRUE.equals(t.getTopping().getIsAvailable()))
+					toppingIds.add(t.getTopping().getId());
+				else
+					notes.add(name + ": topping " + t.getTopping().getName() + " đã hết nên đã bỏ ra");
+			}
+			req.setToppingIds(toppingIds);
+			try {
+				addItem(userId, req); // gọi trong cùng class -> lỗi 1 món không làm hỏng cả lượt
+				added += d.getQuantity();
+			} catch (BusinessException e) {
+				notes.add(name + ": " + e.getMessage());
+			}
+		}
+		return new ReorderRes(added, notes);
 	}
 
 	// ================= SỬA / XOÁ =================
@@ -203,6 +245,6 @@ public class CartServiceImpl implements CartService {
 		return new CartItemRes(ci.getId(), p.getId(), p.getName(), p.getImageCloudinaryId(), ci.getSize(),
 				ci.getSugarLevel(), ci.getIceLevel(),
 				toppings.stream().map(t -> new CartItemRes.ToppingRes(t.getId(), t.getName(), t.getPrice())).toList(),
-				ci.getQuantity(), unitPrice, unitPrice.multiply(BigDecimal.valueOf(ci.getQuantity())));
+				ci.getQuantity(), unitPrice, unitPrice.multiply(BigDecimal.valueOf(ci.getQuantity())), ci.getNote());
 	}
 }

@@ -5,6 +5,10 @@
           + v3: giao tận nơi / đến lấy, voucher theo phương thức thanh toán, tọa độ chi nhánh & địa chỉ
           + v4: địa chỉ kiểu Shopee (Tỉnh/Thành, Phường/Xã sau sáp nhập 2025, Tên đường, Loại địa chỉ)
           + v5: ghi chú địa chỉ (Addresses.note, Orders.delivery_note)
+          + v7: ghi chú từng món (CartItems.note, OrderDetails.note), gợi ý đánh giá (Reviews.tags, OrderReviews.tags)
+          + v6: luồng đơn có READY (pha xong: chờ khách lấy / chờ shipper), ai huỷ đơn (Orders.cancelled_by),
+                đánh giá như app Katinat / Highlands (chấm sao từng món, chữ/ảnh/video tuỳ ý + đánh giá quán: OrderReviews),
+                chuông thông báo (Notifications.type / link / ref_key)
    CHỈ CẦN CHẠY FILE NÀY (không chạy thêm file v2, v3 nữa).
    LƯU Ý: nếu máy đã có database UTETra, file này sẽ XOÁ và tạo lại từ đầu (mất dữ liệu đang có).
    ========================================================= */
@@ -231,6 +235,7 @@ CREATE TABLE CartItems (
     sugar_level  TINYINT   NOT NULL DEFAULT 100 CHECK (sugar_level IN (0,30,50,70,100)),
     ice_level    TINYINT   NOT NULL DEFAULT 100 CHECK (ice_level   IN (0,30,50,70,100)),
     quantity     INT       NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    note         NVARCHAR(200) NULL,                       -- ghi chú món: "Đá để riêng, Không ống hút · ít sữa thôi"
     created_at   DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_CartItems_Users    FOREIGN KEY (user_id)    REFERENCES Users(id)    ON DELETE CASCADE,
     CONSTRAINT FK_CartItems_Products FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE CASCADE
@@ -299,10 +304,11 @@ CREATE TABLE Orders (
     total_amount         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
     commission_amount    DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (commission_amount >= 0), -- tiền app thu của shop
     status               VARCHAR(20)   NOT NULL DEFAULT 'PENDING'
-        CHECK (status IN ('PENDING','CONFIRMED','PICKED_UP','DELIVERING','DELIVERED','CANCELLED','RETURNED')),
+        CHECK (status IN ('PENDING','CONFIRMED','READY','PICKED_UP','DELIVERING','DELIVERED','CANCELLED','RETURNED')),
     payment_method       VARCHAR(20)   NOT NULL CHECK (payment_method IN ('COD','VNPAY','MOMO')),
     payment_status       VARCHAR(20)   NOT NULL DEFAULT 'UNPAID' CHECK (payment_status IN ('UNPAID','PAID','REFUNDED')),
     cancel_reason        NVARCHAR(255) NULL,
+    cancelled_by         VARCHAR(10)   NULL CHECK (cancelled_by IN ('CUSTOMER','STORE','SYSTEM')), -- ai huỷ đơn
     created_at           DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     updated_at           DATETIME2     NULL,
     delivered_at         DATETIME2     NULL,
@@ -324,6 +330,7 @@ CREATE TABLE OrderDetails (
     quantity     INT           NOT NULL CHECK (quantity > 0),
     unit_price   DECIMAL(12,0) NOT NULL CHECK (unit_price >= 0),  -- base + size + topping lúc đặt
     subtotal     DECIMAL(12,0) NOT NULL CHECK (subtotal >= 0),    -- unit_price * quantity
+    note         NVARCHAR(200) NULL,                               -- ghi chú món, chép từ giỏ lúc đặt
     CONSTRAINT FK_OrderDetails_Orders   FOREIGN KEY (order_id)   REFERENCES Orders(id) ON DELETE CASCADE,
     CONSTRAINT FK_OrderDetails_Products FOREIGN KEY (product_id) REFERENCES Products(id)
 );
@@ -364,7 +371,10 @@ CREATE TABLE Payments (
 );
 
 /* =========================================================
-   6. ĐÁNH GIÁ & BÌNH LUẬN (chỉ món đã mua, mỗi ly đã mua đánh giá 1 lần)
+   6. ĐÁNH GIÁ & BÌNH LUẬN - như app Katinat / Highlands
+   - Chỉ món đã mua (đơn Đã giao, trong 30 ngày), mỗi ly đánh giá 1 lần, đánh giá cả đơn 1 lượt
+   - Bắt buộc chấm sao; chữ / ảnh / video không bắt buộc, không giới hạn số chữ tối thiểu
+   - Đánh giá quán (phục vụ, đóng gói) riêng: OrderReviews (1 dòng / đơn)
    ========================================================= */
 CREATE TABLE Reviews (
     id               INT IDENTITY(1,1) PRIMARY KEY,
@@ -372,9 +382,9 @@ CREATE TABLE Reviews (
     product_id       INT            NOT NULL,
     order_detail_id  INT            NOT NULL UNIQUE,
     rating           TINYINT        NOT NULL CHECK (rating BETWEEN 1 AND 5),
-    content          NVARCHAR(2000) NOT NULL,
+    content          NVARCHAR(2000) NULL,                    -- không bắt buộc
+    tags             NVARCHAR(255)  NULL,                    -- gợi ý khách chọn: "Đúng vị, rất ngon|Sẽ mua lại"
     created_at       DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
-    CONSTRAINT CK_Reviews_Content   CHECK (LEN(content) >= 50),
     CONSTRAINT FK_Reviews_Users     FOREIGN KEY (user_id)         REFERENCES Users(id),
     CONSTRAINT FK_Reviews_Products  FOREIGN KEY (product_id)      REFERENCES Products(id),
     CONSTRAINT FK_Reviews_OrderDet  FOREIGN KEY (order_detail_id) REFERENCES OrderDetails(id)
@@ -388,6 +398,19 @@ CREATE TABLE ReviewMedia (
     CONSTRAINT FK_ReviewMedia_Reviews FOREIGN KEY (review_id) REFERENCES Reviews(id) ON DELETE CASCADE
 );
 
+-- Đánh giá quán của cả đơn (phục vụ, đóng gói, tốc độ): 1 đơn 1 lần
+CREATE TABLE OrderReviews (
+    id                INT IDENTITY(1,1) PRIMARY KEY,
+    order_id          INT           NOT NULL UNIQUE,
+    user_id           INT           NOT NULL,
+    store_rating      TINYINT       NOT NULL CHECK (store_rating BETWEEN 1 AND 5),
+    comment           NVARCHAR(1000) NULL,                   -- góp ý cho quán (không bắt buộc)
+    tags              NVARCHAR(255) NULL,                    -- gợi ý khách chọn: "Nhân viên thân thiện|Làm món nhanh"
+    created_at        DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
+    CONSTRAINT FK_OrderReviews_Orders FOREIGN KEY (order_id) REFERENCES Orders(id),
+    CONSTRAINT FK_OrderReviews_Users  FOREIGN KEY (user_id)  REFERENCES Users(id)
+);
+
 /* =========================================================
    7. THÔNG BÁO (WebSocket đẩy realtime + lưu DB)
    ========================================================= */
@@ -397,6 +420,9 @@ CREATE TABLE Notifications (
     order_id    INT           NULL,
     title       NVARCHAR(150) NOT NULL,
     content     NVARCHAR(500) NULL,
+    type        VARCHAR(20)   NOT NULL DEFAULT 'ORDER',   -- ORDER, REVIEW, COIN, VOUCHER, USER (chọn biểu tượng)
+    link        VARCHAR(255)  NULL,                       -- bấm vào thông báo thì mở trang này
+    ref_key     VARCHAR(100)  NULL,                       -- chống báo trùng (vd VOUCHER_LOW:5)
     is_read     BIT           NOT NULL DEFAULT 0,
     created_at  DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_Notifications_Users  FOREIGN KEY (user_id)  REFERENCES Users(id) ON DELETE CASCADE,
@@ -713,9 +739,14 @@ INSERT INTO Favorites (user_id, product_id) VALUES
  (11, 20),
  (11, 27);
 
-INSERT INTO Notifications (user_id, order_id, title, content) VALUES
- (6, 1, N'Đơn hàng #1 đã giao thành công', N'Cảm ơn bạn đã mua hàng tại UTETra!'),
- (3, 2, N'Có đơn hàng mới #2',             N'Shop UTETra Quận 1 vừa nhận đơn mới.');
+-- user1 đã đánh giá quán cho đơn #1
+INSERT INTO OrderReviews (order_id, user_id, store_rating, comment) VALUES
+ (1, 6, 5, N'Quán đóng gói kỹ, nhân viên dễ thương');
+
+INSERT INTO Notifications (user_id, order_id, type, title, content, link, is_read) VALUES
+ (6, 1, 'REVIEW', N'Đơn #1 đã giao thành công', N'Bạn thấy món và quán thế nào? Đánh giá ngay nhé', '/orders/1/review', 0),
+ (4, 2, 'ORDER',  N'Có đơn hàng mới #2',        N'Giao tận nơi · 1 ly · 50.000đ',           '/manager/orders/2', 0),
+ (1, NULL, 'USER', N'Khách mới đăng ký: user2',  N'Phạm Văn Mua · user2@gmail.com',          '/admin/users', 0);
 GO
 
 /* ---------- Kiểm tra nhanh ---------- */

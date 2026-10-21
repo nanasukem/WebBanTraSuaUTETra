@@ -62,7 +62,7 @@ public class ProductPageController {
 		if (isBuyer) {
 			viewedProductService.record(userId, id);
 			List<ReviewableItemRes> purchased = reviewService.purchasedItems(userId, id);
-			List<ReviewableItemRes> pending = purchased.stream().filter(i -> !i.reviewed()).toList();
+			List<ReviewableItemRes> pending = reviewService.pendingItems(userId, id); // chưa đánh giá + còn hạn
 			model.addAttribute("isFavorite", favoriteService.isFavorite(userId, id));
 			model.addAttribute("purchased", purchased);
 			model.addAttribute("pendingItems", pending);
