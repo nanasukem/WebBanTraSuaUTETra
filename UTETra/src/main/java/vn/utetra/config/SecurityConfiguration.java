@@ -1,3 +1,4 @@
+
 package vn.utetra.config;
 
 import java.util.List;
@@ -12,6 +13,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -27,83 +29,70 @@ public class SecurityConfiguration {
 
 	public SecurityConfiguration(JwtAuthenticationFilter jwtAuthenticationFilter,
 			AuthenticationProvider authenticationProvider) {
+
 		this.authenticationProvider = authenticationProvider;
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
 	}
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		return http.cors(Customizer.withDefaults())
 
-				// Giữ nguyên cấu hình CSRF hiện tại của dự án.
-				// Lưu ý: CSRF đang bị vô hiệu hóa.
+		http.cors(Customizer.withDefaults())
+
+				// Giữ nguyên cách cấu hình hiện tại của dự án.
 				.csrf(csrf -> csrf.disable())
 
 				.authorizeHttpRequests(auth -> auth
 
-						// Tài nguyên tĩnh
-						.requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico", "/error")
+						// Trang Guest, đăng nhập, đăng ký và tài nguyên tĩnh.
+						.requestMatchers("/", "/auth/**", "/api/auth/**", "/css/**", "/js/**", "/images/**",
+								"/webjars/**", "/favicon.ico", "/error")
 						.permitAll()
 
-						// Trang công khai và xác thực
-						.requestMatchers("/", "/menu", "/menu/**", "/auth/**", "/api/auth/**").permitAll()
+						// USER mới được truy cập thực đơn.
+						.requestMatchers("/menu", "/menu/**").hasRole("USER")
 
-						// API xem dữ liệu công khai
-						.requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/toppings/**")
-						.permitAll()
-
-						// WebSocket
-						.requestMatchers("/ws/**").permitAll()
-
-						// =========================================
-						// KHU VỰC ADMIN: quản lý toàn hệ thống (chỉ ADMIN)
-						// =========================================
+						// Chức năng quản trị.
 						.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
 
-						// =========================================
-						// KHU VỰC MANAGER: chỉ quản lý chi nhánh của mình (chỉ MANAGER)
-						// =========================================
+						// Chức năng quản lý.
 						.requestMatchers("/manager/**", "/api/manager/**").hasRole("MANAGER")
 
-						// =========================================
-						// MUA HÀNG: chỉ khách hàng USER (giỏ hàng, sổ địa chỉ, đặt hàng, đơn của tôi)
-						// Admin/Manager/Shipper là tài khoản công việc, không mua hàng
-						// =========================================
-						.requestMatchers("/cart/**", "/api/cart/**", "/checkout/**", "/api/checkout/**",
-								"/orders/**", "/api/addresses/**").hasRole("USER")
+						// Giỏ hàng, thanh toán, đơn hàng và địa chỉ của USER.
+						.requestMatchers("/cart/**", "/api/cart/**", "/checkout/**", "/api/checkout/**", "/orders/**",
+								"/api/addresses/**")
+						.hasRole("USER")
 
-						// =========================================
-						// KHU VỰC SHIPPER
-						// =========================================
+						// Chức năng giao hàng.
 						.requestMatchers("/shipper/**", "/api/shipper/**").hasRole("SHIPPER")
 
-						// Các đường dẫn còn lại yêu cầu đăng nhập
+						// Những đường dẫn còn lại cần đăng nhập.
 						.anyRequest().authenticated())
 
-				// Đăng nhập bằng form
+				// Đăng nhập bằng form.
 				.formLogin(form -> form.loginPage("/auth/login").loginProcessingUrl("/auth/login")
-						// Thành công -> "/" : HomeController lưu session.user rồi chuyển trang theo vai trò
-						.defaultSuccessUrl("/", true).failureUrl("/auth/login?error=true")
-						.permitAll())
+						.defaultSuccessUrl("/", true).failureUrl("/auth/login?error=true").permitAll())
 
-				// Quản lý session
+				// Sử dụng session cho giao diện Thymeleaf.
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
-				// Đăng xuất
+				// Đăng xuất.
 				.logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessUrl("/auth/login?logout")
-						.invalidateHttpSession(true).clearAuthentication(true).deleteCookies("JWT_TOKEN", "JSESSIONID").permitAll())
+						.invalidateHttpSession(true).clearAuthentication(true).deleteCookies("JWT_TOKEN", "JSESSIONID")
+						.permitAll())
 
-				// Authentication provider
+				// Authentication provider hiện tại.
 				.authenticationProvider(authenticationProvider)
 
-				// JWT filter
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+				// Giữ JWT filter hiện tại.
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-				.build();
+		return http.build();
 	}
 
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
+
 		CorsConfiguration configuration = new CorsConfiguration();
 
 		configuration.setAllowedOrigins(List.of("http://localhost:8080"));
