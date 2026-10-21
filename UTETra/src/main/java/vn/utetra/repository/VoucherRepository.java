@@ -23,6 +23,13 @@ public interface VoucherRepository extends JpaRepository<Voucher, Integer> {
 	/** Voucher của app (Admin) */
 	List<Voucher> findByBranchIsNullOrderByCreatedAtDesc();
 
+	/** Admin: tất cả voucher (toàn chuỗi + riêng từng chi nhánh), mới tạo lên đầu */
+	List<Voucher> findAllByOrderByCreatedAtDesc();
+
+	/** Voucher áp dụng tại 1 chi nhánh: voucher toàn chuỗi + voucher riêng của chi nhánh đó */
+	@Query("SELECT v FROM Voucher v WHERE v.branch IS NULL OR v.branch.id = :branchId ORDER BY v.endDate DESC, v.id DESC")
+	List<Voucher> findApplicableToBranch(@Param("branchId") Integer branchId);
+
 	/** Voucher riêng của 1 shop (Manager) */
 	List<Voucher> findByBranch_IdOrderByCreatedAtDesc(Integer branchId);
 

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Sản phẩm yêu thích - UTETra', ~{::#favorites-content})}">
+
+<!-- TRANG SẢN PHẨM YÊU THÍCH (USER) /user/favorites: món đã bấm tim, thích sau cùng lên đầu. Bỏ tim -> món biến khỏi danh sách -->
+<body>
+	<div id="favorites-content">
+		<div class="row g-4">
+			<div class="col-lg-3">
+				<div th:replace="~{fragments/user-sidebar :: sidebar('favorites')}"></div>
+			</div>
+			<div class="col-lg-9">
+				<section class="bg-white rounded-4 shadow-sm p-4 mb-3">
+					<h1 class="h4 fw-bold text-success mb-1"><i class="bi bi-heart-fill text-danger me-1"></i> Sản phẩm yêu thích</h1>
+					<p class="text-muted mb-0"><strong id="favTotal" th:text="${#lists.size(products)}">0</strong> món bạn đã thích</p>
+				</section>
+
+				<div class="row g-3" th:unless="${#lists.isEmpty(products)}">
+					<div class="col-6 col-md-4 fav-item" th:each="p : ${products}">
+						<div class="position-relative h-100">
+							<button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute top-0 end-0 m-2 shadow-sm js-favorite"
+								style="z-index: 3; width: 34px; height: 34px;" data-remove-on-unfav aria-pressed="true"
+								th:attr="data-id=${p.id}" title="Bỏ thích"><i class="bi bi-heart-fill"></i></button>
+							<div th:replace="~{fragments/product-card :: card(${p}, ${cardMode})}"></div>
+						</div>
+					</div>
+				</div>
+
+				<div id="favEmpty" class="card border-0 shadow-sm rounded-4" th:classappend="${!#lists.isEmpty(products)} ? 'd-none'">
+					<div class="card-body text-center py-5">
+						<i class="bi bi-heart text-danger" style="font-size: 3rem;"></i>
+						<h2 class="h5 mt-3">Chưa có món yêu thích</h2>
+						<p class="text-muted">Bấm <i class="bi bi-heart"></i> ở trang chi tiết món để lưu món bạn thích.</p>
+						<a th:href="@{/menu}" class="btn btn-success">Xem thực đơn</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div th:replace="~{fragments/product-modal :: productModal}"></div>
+		<script th:src="@{/js/favorite.js}"></script>
+	</div>
+</body>
+</html>

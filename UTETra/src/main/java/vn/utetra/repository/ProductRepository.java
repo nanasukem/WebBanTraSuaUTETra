@@ -58,6 +58,24 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 	List<Product> findByCategoryId(Integer categoryId);
 
 	/**
+	 * Trang chủ Guest (đề): món đã bán trên minSold ly, xếp từ nhiều đến ít, có phân trang.
+	 */
+	Page<Product> findBySoldCountGreaterThanAndIsAvailableTrueOrderBySoldCountDescIdAsc(Integer minSold,
+			Pageable pageable);
+
+	/** Số món đang bán theo danh mục: [categoryId, số món] (ô danh mục trên trang chủ User) */
+	@Query("SELECT p.category.id, COUNT(p) FROM Product p WHERE p.isAvailable = true GROUP BY p.category.id")
+	List<Object[]> countAvailableByCategory();
+
+	/** Điểm đánh giá theo món: [productId, điểm trung bình, số lượt đánh giá] (trang Thực đơn - Đánh giá cao) */
+	@Query("SELECT r.product.id, AVG(r.rating), COUNT(r) FROM Review r GROUP BY r.product.id")
+	List<Object[]> ratingStats();
+
+	/** Lượt thích theo món: [productId, số lượt thích] (trang Thực đơn - Yêu thích nhất) */
+	@Query("SELECT f.product.id, COUNT(f) FROM Favorite f GROUP BY f.product.id")
+	List<Object[]> favoriteStats();
+
+	/**
 	 * Đơn giao xong: tăng số lượng đã bán.
 	 */
 	@Modifying(flushAutomatically = true, clearAutomatically = true)

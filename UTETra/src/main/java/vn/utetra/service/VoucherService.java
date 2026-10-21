@@ -12,8 +12,17 @@ public interface VoucherService {
 	/** Voucher của app (Admin quản lý) */
 	List<Voucher> findAppVouchers();
 
-	/** Voucher của 1 shop (Manager quản lý) */
+	/** Voucher riêng của 1 chi nhánh (Admin tạo) */
 	List<Voucher> findByBranch(Integer branchId);
+
+	/** Admin: tất cả voucher (toàn chuỗi + riêng từng chi nhánh) */
+	List<Voucher> findAllVouchers();
+
+	/**
+	 * Manager CHỈ XEM: các voucher áp dụng tại chi nhánh (toàn chuỗi + riêng chi nhánh),
+	 * kèm trạng thái và số lượt khách đã dùng / số tiền đã giảm tại chi nhánh. Đang chạy lên đầu.
+	 */
+	List<vn.utetra.dto.response.ManagerVoucherRes> branchView(Integer branchId);
 
 	Voucher findById(Integer id);
 

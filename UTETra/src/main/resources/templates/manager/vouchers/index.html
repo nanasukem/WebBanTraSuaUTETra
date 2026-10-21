@@ -1,184 +1,125 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/manager-layout :: main('Quản lý voucher', 'branches', ~{::#admin-content})}">
+	th:replace="~{layout/manager-layout :: main('Khuyến mãi của chi nhánh', 'branches', ~{::#admin-content})}">
 
+<!--
+	KHUYẾN MÃI CỦA CHI NHÁNH - Manager CHỈ XEM.
+	Chuỗi sở hữu mọi chi nhánh nên voucher do Admin tạo (toàn chuỗi hoặc riêng chi nhánh).
+	Trang này cho quản lý biết đang có mã nào áp dụng tại chi nhánh + khách đã dùng bao nhiêu lượt, giảm bao nhiêu tiền.
+-->
 <section id="admin-content">
 
-	<!-- Tiêu đề trang -->
-	<div
-		class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+	<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
 		<div>
-			<h2 class="fw-bold mb-1">
-				<i class="bi bi-ticket-perforated me-2"></i> Quản lý voucher
-			</h2>
-
-			<p class="text-muted mb-0">
-				Chi nhánh: <strong th:text="${branch.name}">Tên chi nhánh</strong>
-			</p>
+			<h2 class="fw-bold mb-1"><i class="bi bi-ticket-perforated me-2"></i>Khuyến mãi của chi nhánh</h2>
+			<p class="text-muted mb-0">Chi nhánh: <strong th:text="${branch.name}">Tên chi nhánh</strong></p>
 		</div>
+		<a class="btn btn-outline-secondary" th:href="@{/manager/dashboard}"><i class="bi bi-arrow-left me-1"></i> Tổng quan</a>
+	</div>
 
-		<div class="d-flex flex-wrap gap-2">
-			<a class="btn btn-outline-secondary"
-				th:href="@{/manager/dashboard}">
-				<i class="bi bi-arrow-left me-1"></i> Tổng quan
-			</a> <a class="btn btn-primary"
-				th:href="@{/manager/branches/{branchId}/vouchers/new(branchId=${branch.id})}">
-				<i class="bi bi-plus-circle me-1"></i> Tạo voucher
-			</a>
+	<div class="alert alert-info d-flex gap-2 align-items-start">
+		<i class="bi bi-info-circle fs-5"></i>
+		<div>Chương trình khuyến mãi do <b>Admin</b> tạo và quản lý cho cả chuỗi. Bạn xem được các mã đang áp dụng tại chi nhánh
+			để tư vấn cho khách. Muốn chạy khuyến mãi riêng cho chi nhánh (khai trương, giờ vắng khách...), hãy đề xuất với Admin.</div>
+	</div>
+
+	<!-- Tổng quan -->
+	<div class="row g-3 mb-4">
+		<div class="col-md-4">
+			<div class="card border-0 shadow-sm h-100"><div class="card-body">
+				<p class="text-muted mb-1">Mã đang chạy</p>
+				<h3 class="fw-bold mb-0 text-success" th:text="${runningCount}">0</h3>
+			</div></div>
+		</div>
+		<div class="col-md-4">
+			<div class="card border-0 shadow-sm h-100"><div class="card-body">
+				<p class="text-muted mb-1">Lượt khách dùng mã tại chi nhánh</p>
+				<h3 class="fw-bold mb-0" th:text="${usedTotal}">0</h3>
+			</div></div>
+		</div>
+		<div class="col-md-4">
+			<div class="card border-0 shadow-sm h-100"><div class="card-body">
+				<p class="text-muted mb-1">Tổng tiền đã giảm cho khách</p>
+				<h3 class="fw-bold mb-0 text-danger"
+					th:text="${#numbers.formatDecimal(discountTotal, 0, 'POINT', 0, 'COMMA')} + 'đ'">0đ</h3>
+			</div></div>
 		</div>
 	</div>
 
-	<!-- Thông báo thành công -->
-	<div th:if="${success != null}"
-		class="alert alert-success alert-dismissible fade show" role="alert">
-		<i class="bi bi-check-circle me-2"></i> <span th:text="${success}">Thao
-			tác thành công</span>
-
-		<button type="button" class="btn-close" data-bs-dismiss="alert"
-			aria-label="Đóng"></button>
+	<!-- Lọc theo trạng thái -->
+	<div class="d-flex flex-wrap gap-2 mb-3" id="voucherFilter">
+		<button type="button" class="btn btn-sm btn-success" data-filter="ALL">Tất cả</button>
+		<button type="button" class="btn btn-sm btn-outline-success" data-filter="RUNNING">Đang chạy</button>
+		<button type="button" class="btn btn-sm btn-outline-success" data-filter="UPCOMING">Sắp diễn ra</button>
+		<button type="button" class="btn btn-sm btn-outline-success" data-filter="DONE">Đã kết thúc / tắt / hết lượt</button>
 	</div>
 
-	<!-- Thông báo lỗi -->
-	<div th:if="${error != null}"
-		class="alert alert-danger alert-dismissible fade show" role="alert">
-		<i class="bi bi-exclamation-triangle me-2"></i> <span
-			th:text="${error}">Đã xảy ra lỗi</span>
-
-		<button type="button" class="btn-close" data-bs-dismiss="alert"
-			aria-label="Đóng"></button>
-	</div>
-
-	<!-- Danh sách voucher -->
 	<div class="card border-0 shadow-sm">
-
-		<div class="card-header bg-white py-3">
-			<h5 class="fw-bold mb-0">
-				<i class="bi bi-list-ul me-2"></i> Danh sách voucher
-			</h5>
-		</div>
-
 		<div class="card-body p-0">
 			<div class="table-responsive">
-
 				<table class="table table-hover align-middle mb-0">
-
 					<thead class="table-light">
 						<tr>
-							<th class="ps-3">#</th>
-							<th>Mã voucher</th>
-							<th>Tên voucher</th>
-							<th>Loại giảm giá</th>
-							<th>Giá trị</th>
-							<th>Số lượng</th>
-							<th>Trạng thái</th>
-							<th class="text-center">Thao tác</th>
+							<th class="ps-3">Mã</th>
+							<th>Chương trình</th>
+							<th>Áp dụng</th>
+							<th>Mức giảm</th>
+							<th>Điều kiện</th>
+							<th>Thời gian</th>
+							<th class="text-center">Lượt dùng<br><small class="text-muted fw-normal">tại chi nhánh / toàn chuỗi</small></th>
+							<th class="text-end">Đã giảm<br><small class="text-muted fw-normal">tại chi nhánh</small></th>
+							<th class="pe-3">Trạng thái</th>
 						</tr>
 					</thead>
-
 					<tbody>
-
-						<!-- Không có voucher -->
 						<tr th:if="${#lists.isEmpty(vouchers)}">
-							<td colspan="8" class="text-center py-5 text-muted"><i
-								class="bi bi-ticket-perforated fs-2 d-block mb-2"></i> Chưa có
-								voucher nào cho chi nhánh này.</td>
+							<td colspan="9" class="text-center py-5 text-muted">
+								<i class="bi bi-ticket-perforated fs-2 d-block mb-2"></i> Chưa có khuyến mãi nào áp dụng tại chi nhánh.</td>
 						</tr>
-
-						<!-- Danh sách voucher -->
-						<tr th:each="voucher, iter : ${vouchers}">
-
-							<td class="ps-3" th:text="${iter.count}">1</td>
-
-							<!-- Mã voucher -->
-							<td><span class="badge bg-light text-dark border"
-								th:text="${voucher.code}"> WELCOME </span></td>
-
-							<!-- Tên voucher -->
-							<td th:text="${voucher.name}">Tên voucher</td>
-
-							<!-- Loại giảm giá -->
-							<td><span
-								th:if="${voucher.discountType != null
-                                              and voucher.discountType.name() == 'PERCENT'}"
-								class="badge bg-info text-dark"> Phần trăm </span> <span
-								th:unless="${voucher.discountType != null
-                                                  and voucher.discountType.name() == 'PERCENT'}"
-								class="badge bg-primary"> Số tiền </span></td>
-
-							<!-- Giá trị giảm -->
-							<td><span
-								th:if="${voucher.discountType != null
-                                              and voucher.discountType.name() == 'PERCENT'}"
-								th:text="${#numbers.formatDecimal(voucher.discountValue, 1, 0) + '%'}">
-									10% </span> <span
-								th:unless="${voucher.discountType != null
-                                                  and voucher.discountType.name() == 'PERCENT'}"
-								th:text="${#numbers.formatDecimal(voucher.discountValue, 0, 'COMMA', 0, 'POINT') + ' đ'}">
-									10.000 đ </span></td>
-
-							<!-- Số lượng -->
-							<td><span th:text="${voucher.quantity}"> 100 </span></td>
-
-							<!-- Trạng thái: sử dụng đúng thuộc tính isActive -->
-							<td><span th:if="${voucher.isActive}"
-								class="badge bg-success"> <i
-									class="bi bi-check-circle me-1"></i> Đang hoạt động
-							</span> <span th:unless="${voucher.isActive}" class="badge bg-secondary">
-									<i class="bi bi-pause-circle me-1"></i> Đã tắt
-							</span></td>
-
-							<!-- Thao tác -->
-							<td class="text-center">
-								<div class="d-flex justify-content-center gap-1">
-
-									<!-- Sửa voucher -->
-									<a class="btn btn-sm btn-outline-primary" title="Sửa voucher"
-										th:href="@{/manager/branches/{branchId}/vouchers/{voucherId}/edit(
-                                           branchId=${branch.id},
-                                           voucherId=${voucher.id}
-                                       )}">
-										<i class="bi bi-pencil-square"></i>
-									</a>
-
-									<!-- Bật hoặc tắt voucher -->
-									<form method="post"
-										th:action="@{/manager/branches/{branchId}/vouchers/{voucherId}/toggle(
-                                              branchId=${branch.id},
-                                              voucherId=${voucher.id}
-                                          )}">
-
-										<button type="submit" class="btn btn-sm btn-outline-warning"
-											title="Bật hoặc tắt voucher">
-											<i class="bi bi-power"></i>
-										</button>
-									</form>
-
-									<!-- Xóa voucher -->
-									<form method="post"
-										th:action="@{/manager/branches/{branchId}/vouchers/{voucherId}/delete(
-                                              branchId=${branch.id},
-                                              voucherId=${voucher.id}
-                                          )}"
-										onsubmit="return confirm('Bạn có chắc muốn xóa voucher này không?');">
-
-										<button type="submit" class="btn btn-sm btn-outline-danger"
-											title="Xóa voucher">
-											<i class="bi bi-trash"></i>
-										</button>
-									</form>
-
-								</div>
+						<tr th:each="v : ${vouchers}" class="voucher-row" th:attr="data-status=${v.status}">
+							<td class="ps-3"><span class="badge bg-light text-dark border fs-6" th:text="${v.code}">UTETRA20</span></td>
+							<td>
+								<div class="fw-semibold" th:text="${v.name}">Tên chương trình</div>
+								<span class="badge" th:classappend="${v.chainWide} ? 'text-bg-primary' : 'text-bg-warning'"
+									th:text="${v.chainWide} ? 'Toàn chuỗi' : 'Riêng chi nhánh'">Toàn chuỗi</span>
 							</td>
-
+							<td class="small" th:text="${v.applyToLabel}">Giảm tiền món</td>
+							<td class="fw-semibold text-success text-nowrap" th:text="${v.discountText}">20%</td>
+							<td class="small text-muted" th:text="${v.conditionText}">Đơn từ 50.000đ</td>
+							<td class="small text-nowrap" th:text="${v.period}">01/10 – 31/10</td>
+							<td class="text-center">
+								<b th:text="${v.usedAtBranch}">0</b>
+								<span class="text-muted small" th:text="|/ ${v.usedCount} trên ${v.quantity}|">/ 3 trên 100</span>
+							</td>
+							<td class="text-end text-nowrap"
+								th:text="${#numbers.formatDecimal(v.discountAtBranch, 0, 'POINT', 0, 'COMMA')} + 'đ'">0đ</td>
+							<td class="pe-3"><span class="badge" th:classappend="${v.badgeClass}" th:text="${v.statusLabel}">Đang chạy</span></td>
 						</tr>
-
 					</tbody>
 				</table>
-
 			</div>
 		</div>
 	</div>
 
+	<script>
+		(function () {
+			const box = document.getElementById('voucherFilter');
+			box.addEventListener('click', function (e) {
+				const btn = e.target.closest('[data-filter]');
+				if (!btn) return;
+				box.querySelectorAll('[data-filter]').forEach(function (b) {
+					b.classList.toggle('btn-success', b === btn);
+					b.classList.toggle('btn-outline-success', b !== btn);
+				});
+				const f = btn.dataset.filter;
+				document.querySelectorAll('.voucher-row').forEach(function (row) {
+					const s = row.dataset.status;
+					const show = f === 'ALL' || f === s || (f === 'DONE' && ['ENDED', 'OFF', 'SOLD_OUT'].includes(s));
+					row.classList.toggle('d-none', !show);
+				});
+			});
+		})();
+	</script>
 </section>
 
 </html>

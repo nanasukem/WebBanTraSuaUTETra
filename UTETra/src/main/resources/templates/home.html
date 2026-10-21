@@ -3,316 +3,122 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/main :: main('Trang chủ UTETra', ~{::#home-content})}">
 
+<!--
+	TRANG CHỦ GUEST (chưa đăng nhập) - theo đề:
+	"Giao diện Trang chủ (hiển thị sản phẩm bán trên 10 sản phẩm của các shop, sắp xếp từ lớn đến nhỏ)"
+	- Chỉ hiện món có soldCount > 10, xếp số đã bán giảm dần, 20 món / trang (?page=)
+	- Bấm "+" trên món -> trang đăng nhập (Guest không đặt món)
+	USER đăng nhập -> user/home.html; Manager/Admin -> trang quản lý (HomeController)
+-->
 <section id="home-content">
 
-	<!-- Đường dẫn thực đơn: Guest -> đăng nhập, USER -> thực đơn -->
-	<th:block
-		th:with="menuUrl=${session.user == null ? '/auth/login' : '/menu'}">
+	<!-- ==================== BANNER ==================== -->
+	<div class="p-4 p-md-5 mb-4 rounded-4 text-white"
+		style="background: linear-gradient(135deg, #198754, #20c997);">
 
-		<!-- ==================== BANNER ==================== -->
-		<div class="p-4 p-md-5 mb-5 rounded-4 text-white"
-			style="background: linear-gradient(135deg, #198754, #20c997);">
+		<div class="row align-items-center">
+			<div class="col-md-8">
 
-			<div class="row align-items-center">
-				<div class="col-md-8">
+				<span class="badge bg-light text-success mb-3"> <i
+					class="bi bi-shop"></i> Chuỗi trà sữa UTETra
+				</span>
 
-					<span class="badge bg-light text-success mb-3"> <i
-						class="bi bi-shop"></i> Chào mừng đến với UTETra
-					</span>
+				<h1 class="fw-bold display-5">Những món bán chạy nhất</h1>
 
-					<h1 class="fw-bold display-5">Khám phá món ngon mỗi ngày</h1>
+				<p class="lead mb-4">Các món được khách mua hơn 10 ly tại các chi nhánh UTETra,
+					xếp từ bán nhiều đến bán ít.</p>
 
-					<p class="lead">Tìm kiếm sản phẩm yêu thích, xem các món bán
-						chạy và khám phá những sản phẩm mới nhất tại UTETra.</p>
-
-					<a th:href="@{${menuUrl}}"
-						class="btn btn-light btn-lg text-success fw-bold"> <i
-						class="bi bi-grid"></i> Khám phá thực đơn
+				<div class="d-flex flex-wrap gap-2">
+					<a href="#ban-chay" class="btn btn-light btn-lg text-success fw-bold">
+						<i class="bi bi-fire"></i> Xem món bán chạy
 					</a>
-
+					<a th:href="@{/auth/register}" class="btn btn-warning btn-lg fw-bold">
+						<i class="bi bi-person-plus"></i> Đăng ký để đặt món
+					</a>
 				</div>
 
-				<div class="col-md-4 text-center mt-4 mt-md-0">
-					<i class="bi bi-bag-heart-fill" style="font-size: 120px;"></i>
-				</div>
+			</div>
+
+			<div class="col-md-4 text-center mt-4 mt-md-0">
+				<i class="bi bi-cup-straw" style="font-size: 120px;"></i>
 			</div>
 		</div>
+	</div>
 
-		<!-- ==================== DANH MỤC ==================== -->
-		<div class="row g-3 mb-5">
+	<!-- ==================== SẢN PHẨM BÁN TRÊN 10 ==================== -->
+	<div id="ban-chay" style="scroll-margin-top: 90px;"
+		class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
 
-			<!-- Bán chạy -->
-			<div class="col-12 col-md-4">
-				<a
-					th:href="${session.user == null
-                        ? '/auth/login'
-                        : '/menu?sortBy=sold'}"
-					class="text-decoration-none">
-
-					<div class="card border-0 shadow-sm h-100">
-						<div class="card-body d-flex align-items-center gap-3">
-
-							<i class="bi bi-fire text-danger fs-1"></i>
-
-							<div>
-								<h5 class="mb-1 text-dark">Bán chạy</h5>
-								<p class="text-muted mb-0">Sản phẩm được yêu thích</p>
-							</div>
-
-						</div>
-					</div>
-				</a>
-			</div>
-
-			<!-- Sản phẩm mới -->
-			<div class="col-12 col-md-4">
-				<a
-					th:href="${session.user == null
-                        ? '/auth/login'
-                        : '/menu?sortBy=newest'}"
-					class="text-decoration-none">
-
-					<div class="card border-0 shadow-sm h-100">
-						<div class="card-body d-flex align-items-center gap-3">
-
-							<i class="bi bi-stars text-warning fs-1"></i>
-
-							<div>
-								<h5 class="mb-1 text-dark">Sản phẩm mới</h5>
-								<p class="text-muted mb-0">Khám phá sản phẩm mới nhất</p>
-							</div>
-
-						</div>
-					</div>
-				</a>
-			</div>
-
-			<!-- Tất cả sản phẩm -->
-			<div class="col-12 col-md-4">
-				<a th:href="@{${menuUrl}}" class="text-decoration-none">
-
-					<div class="card border-0 shadow-sm h-100">
-						<div class="card-body d-flex align-items-center gap-3">
-
-							<i class="bi bi-grid text-success fs-1"></i>
-
-							<div>
-								<h5 class="mb-1 text-dark">Tất cả sản phẩm</h5>
-								<p class="text-muted mb-0">Xem toàn bộ thực đơn</p>
-							</div>
-
-						</div>
-					</div>
-				</a>
-			</div>
-
+		<div>
+			<h2 class="fw-bold mb-1">
+				<i class="bi bi-fire text-danger"></i> Sản phẩm bán chạy
+			</h2>
+			<p class="text-muted mb-0">
+				Món đã bán trên <strong th:text="${minSold}">10</strong>, sắp xếp từ nhiều đến ít
+				· <strong th:text="${totalItems}">0</strong> món
+			</p>
 		</div>
 
-		<!-- ==================== SẢN PHẨM BÁN CHẠY ==================== -->
-		<div
-			class="d-flex flex-wrap justify-content-between
-                    align-items-center gap-3 mb-3">
+		<a th:href="@{/menu} + '#thuc-don'" class="btn btn-outline-success">
+			Xem toàn bộ thực đơn <i class="bi bi-arrow-right"></i>
+		</a>
+	</div>
 
+	<!-- Danh sách: đánh số hạng #1, #2... theo số đã bán -->
+	<div class="row g-3 g-md-4" th:if="${products != null and !#lists.isEmpty(products)}">
+		<div class="col-6 col-md-4 col-lg-3" th:each="p, st : ${products}">
+			<div class="position-relative h-100">
+				<span class="badge rounded-pill position-absolute top-0 start-0 m-2 shadow-sm"
+					style="z-index: 2;"
+					th:classappend="${rankOffset + st.count <= 3} ? 'bg-danger' : 'bg-success'"
+					th:text="'#' + ${rankOffset + st.count}">#1</span>
+				<div th:replace="~{fragments/product-card :: card(${p}, ${cardMode})}"></div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Chưa có món nào bán trên 10 -->
+	<div class="alert alert-light border text-center py-4"
+		th:if="${products == null or #lists.isEmpty(products)}">
+		<i class="bi bi-inbox fs-1 text-secondary"></i>
+		<h5 class="mt-2">Chưa có sản phẩm bán trên 10</h5>
+		<p class="text-muted mb-0">Các món sẽ hiện ở đây khi có đủ lượt mua.</p>
+	</div>
+
+	<!-- PHÂN TRANG -->
+	<nav class="mt-4" aria-label="Phân trang" th:if="${totalPages > 1}">
+		<ul class="pagination justify-content-center flex-wrap">
+			<li class="page-item" th:classappend="${currentPage <= 0} ? 'disabled'">
+				<a class="page-link" th:href="@{/(page=${currentPage - 1})} + '#ban-chay'">
+					<i class="bi bi-chevron-left"></i> Trước</a>
+			</li>
+			<li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+				th:classappend="${i == currentPage} ? 'active'">
+				<a class="page-link" th:href="@{/(page=${i})} + '#ban-chay'" th:text="${i + 1}">1</a>
+			</li>
+			<li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+				<a class="page-link" th:href="@{/(page=${currentPage + 1})} + '#ban-chay'">
+					Sau <i class="bi bi-chevron-right"></i></a>
+			</li>
+		</ul>
+	</nav>
+
+	<!-- MỜI ĐĂNG NHẬP -->
+	<div class="card border-0 shadow-sm rounded-4 mt-5">
+		<div class="card-body p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
 			<div>
-				<h2 class="fw-bold mb-1">
-					<i class="bi bi-fire text-danger"></i> Sản phẩm bán chạy
-				</h2>
-
-				<p class="text-muted mb-0">Những sản phẩm được mua nhiều nhất</p>
+				<h5 class="fw-bold mb-1">Muốn đặt món?</h5>
+				<p class="text-muted mb-0">Đăng nhập để chọn size, topping, lưu giỏ hàng, dùng mã giảm giá
+					và theo dõi đơn hàng.</p>
 			</div>
-
-			<a
-				th:href="${session.user == null
-                    ? '/auth/login'
-                    : '/menu?sortBy=sold'}"
-				class="btn btn-outline-success"> Xem tất cả <i
-				class="bi bi-arrow-right"></i>
-			</a>
-		</div>
-
-		<!-- Có sản phẩm bán chạy -->
-		<div class="row g-4 mb-5"
-			th:if="${bestSellerProducts != null
-                     and !#lists.isEmpty(bestSellerProducts)}">
-
-			<div class="col-6 col-md-4 col-lg-3"
-				th:each="product : ${bestSellerProducts}">
-
-				<div class="card h-100 border-0 shadow-sm">
-
-					<!-- Ảnh sản phẩm -->
-					<div class="position-relative">
-
-						<img
-							th:if="${product.imageCloudinaryId != null
-                                    and !#strings.isEmpty(product.imageCloudinaryId)}"
-							th:src="${product.imageCloudinaryId}" th:alt="${product.name}"
-							class="card-img-top" loading="lazy"
-							style="height: 190px; object-fit: cover;"
-							onerror="this.style.display='none';
-                                     this.nextElementSibling.style.display='flex';">
-
-						<div class="bg-light align-items-center justify-content-center"
-							th:style="${product.imageCloudinaryId == null
-                                     or #strings.isEmpty(product.imageCloudinaryId)}
-                                     ? 'height:190px;display:flex'
-                                     : 'height:190px;display:none'">
-
-							<i class="bi bi-image text-secondary" style="font-size: 3rem;"></i>
-						</div>
-
-						<span class="badge bg-danger position-absolute top-0 start-0 m-2">
-							<i class="bi bi-fire"></i> Bán chạy
-						</span>
-
-					</div>
-
-					<!-- Thông tin sản phẩm -->
-					<div class="card-body d-flex flex-column">
-
-						<p class="text-muted small mb-1"
-							th:if="${product.category != null}"
-							th:text="${product.category.name}">Danh mục</p>
-
-						<h6 class="fw-bold" th:text="${product.name}">Tên sản phẩm</h6>
-
-						<p class="text-danger fw-bold fs-5 mb-2"
-							th:text="${product.basePrice != null
-                               ? #numbers.formatDecimal(
-                                   product.basePrice, 0, 'COMMA', 0, 'POINT'
-                                 ) + ' ₫'
-                               : 'Liên hệ'}">
-							0 ₫</p>
-
-						<p class="text-muted small mb-3">
-							<i class="bi bi-bag-check"></i> Đã bán: <span
-								th:text="${product.soldCount != null
-                                    ? product.soldCount : 0}">
-								0 </span>
-						</p>
-
-						<a th:href="@{${menuUrl}}"
-							class="btn btn-outline-success mt-auto w-100"> <i
-							class="bi bi-eye"></i> Xem thực đơn
-						</a>
-
-					</div>
-				</div>
+			<div class="d-flex gap-2">
+				<a th:href="@{/auth/login}" class="btn btn-outline-success fw-semibold">
+					<i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập</a>
+				<a th:href="@{/auth/register}" class="btn btn-success fw-semibold">
+					<i class="bi bi-person-plus me-1"></i> Đăng ký</a>
 			</div>
 		</div>
-
-		<!-- Danh sách bán chạy trống -->
-		<div class="alert alert-light border text-center py-4 mb-5"
-			th:if="${bestSellerProducts == null
-                     or #lists.isEmpty(bestSellerProducts)}">
-
-			<i class="bi bi-inbox fs-1 text-secondary"></i>
-
-			<h5 class="mt-2">Chưa có sản phẩm bán chạy</h5>
-
-			<p class="text-muted mb-0">Các sản phẩm sẽ hiển thị tại đây khi
-				có dữ liệu.</p>
-		</div>
-
-		<!-- ==================== SẢN PHẨM MỚI NHẤT ==================== -->
-		<div
-			class="d-flex flex-wrap justify-content-between
-                    align-items-center gap-3 mb-3">
-
-			<div>
-				<h2 class="fw-bold mb-1">
-					<i class="bi bi-stars text-warning"></i> Sản phẩm mới nhất
-				</h2>
-
-				<p class="text-muted mb-0">Những sản phẩm mới được cập nhật</p>
-			</div>
-
-			<a
-				th:href="${session.user == null
-                    ? '/auth/login'
-                    : '/menu?sortBy=newest'}"
-				class="btn btn-outline-success"> Xem tất cả <i
-				class="bi bi-arrow-right"></i>
-			</a>
-		</div>
-
-		<!-- Có sản phẩm mới -->
-		<div class="row g-4"
-			th:if="${newestProducts != null
-                     and !#lists.isEmpty(newestProducts)}">
-
-			<div class="col-6 col-md-4 col-lg-3"
-				th:each="product : ${newestProducts}">
-
-				<div class="card h-100 border-0 shadow-sm">
-
-					<!-- Ảnh sản phẩm -->
-					<div class="position-relative">
-
-						<img
-							th:if="${product.imageCloudinaryId != null
-                                    and !#strings.isEmpty(product.imageCloudinaryId)}"
-							th:src="${product.imageCloudinaryId}" th:alt="${product.name}"
-							class="card-img-top" loading="lazy"
-							style="height: 190px; object-fit: cover;"
-							onerror="this.style.display='none';
-                                     this.nextElementSibling.style.display='flex';">
-
-						<div class="bg-light align-items-center justify-content-center"
-							th:style="${product.imageCloudinaryId == null
-                                     or #strings.isEmpty(product.imageCloudinaryId)}
-                                     ? 'height:190px;display:flex'
-                                     : 'height:190px;display:none'">
-
-							<i class="bi bi-image text-secondary" style="font-size: 3rem;"></i>
-						</div>
-
-						<span class="badge bg-success position-absolute top-0 start-0 m-2">
-							<i class="bi bi-stars"></i> Mới
-						</span>
-
-					</div>
-
-					<!-- Thông tin sản phẩm -->
-					<div class="card-body d-flex flex-column">
-
-						<p class="text-muted small mb-1"
-							th:if="${product.category != null}"
-							th:text="${product.category.name}">Danh mục</p>
-
-						<h6 class="fw-bold" th:text="${product.name}">Tên sản phẩm</h6>
-
-						<p class="text-danger fw-bold fs-5 mb-3"
-							th:text="${product.basePrice != null
-                               ? #numbers.formatDecimal(
-                                   product.basePrice, 0, 'COMMA', 0, 'POINT'
-                                 ) + ' ₫'
-                               : 'Liên hệ'}">
-							0 ₫</p>
-
-						<a th:href="@{${menuUrl}}"
-							class="btn btn-outline-success mt-auto w-100"> <i
-							class="bi bi-eye"></i> Xem thực đơn
-						</a>
-
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Danh sách sản phẩm mới trống -->
-		<div class="alert alert-light border text-center py-4"
-			th:if="${newestProducts == null
-                     or #lists.isEmpty(newestProducts)}">
-
-			<i class="bi bi-inbox fs-1 text-secondary"></i>
-
-			<h5 class="mt-2">Chưa có sản phẩm mới</h5>
-
-			<p class="text-muted mb-0">Vui lòng quay lại sau.</p>
-		</div>
-
-	</th:block>
+	</div>
 
 </section>
 </html>

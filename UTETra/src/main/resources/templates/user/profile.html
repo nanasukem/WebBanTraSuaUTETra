@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Hồ sơ cá nhân - UTETra', ~{::#profile-content})}">
+
+<!--
+	TRANG PROFILE (USER) /user/profile?tab=info|password|address
+	- info     : họ tên, số điện thoại, ảnh đại diện (Cloudinary). Email / tên đăng nhập chỉ xem
+	- password : đổi mật khẩu (nhập đúng mật khẩu hiện tại)
+	- address  : sổ địa chỉ nhận hàng (nhiều địa chỉ, 1 mặc định) - dùng chung modal + /api/addresses với trang Checkout
+-->
+<body>
+	<div id="profile-content">
+		<div class="row g-4">
+			<div class="col-lg-3">
+				<div th:replace="~{fragments/user-sidebar :: sidebar(${tab})}"></div>
+			</div>
+
+			<div class="col-lg-9">
+				<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+				<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+				<!-- Tab -->
+				<ul class="nav nav-pills mb-3 gap-1">
+					<li class="nav-item"><a class="nav-link" th:classappend="${tab == 'info'} ? 'active bg-success' : 'text-success'"
+						th:href="@{/user/profile(tab='info')}">Thông tin cá nhân</a></li>
+					<li class="nav-item"><a class="nav-link" th:classappend="${tab == 'password'} ? 'active bg-success' : 'text-success'"
+						th:href="@{/user/profile(tab='password')}">Đổi mật khẩu</a></li>
+					<li class="nav-item"><a class="nav-link" th:classappend="${tab == 'address'} ? 'active bg-success' : 'text-success'"
+						th:href="@{/user/profile(tab='address')}">Sổ địa chỉ</a></li>
+				</ul>
+
+				<!-- ===================== THÔNG TIN CÁ NHÂN ===================== -->
+				<section class="bg-white rounded-4 shadow-sm p-4" th:if="${tab == 'info'}">
+					<h1 class="h5 fw-bold mb-3">Thông tin cá nhân</h1>
+					<form th:action="@{/user/profile}" method="post" enctype="multipart/form-data" class="row g-3">
+						<div class="col-md-8">
+							<div class="mb-3">
+								<label class="form-label fw-semibold">Tên đăng nhập</label>
+								<input type="text" class="form-control" th:value="${me.username}" disabled>
+							</div>
+							<div class="mb-3">
+								<label class="form-label fw-semibold">Email</label>
+								<input type="email" class="form-control" th:value="${me.email}" disabled>
+								<div class="form-text">Email đã xác thực khi đăng ký, không đổi ở đây.</div>
+							</div>
+							<div class="mb-3">
+								<label for="fullName" class="form-label fw-semibold">Họ và tên</label>
+								<input type="text" id="fullName" name="fullName" class="form-control" maxlength="100" required
+									th:value="${me.fullName}">
+							</div>
+							<div class="mb-3">
+								<label for="phone" class="form-label fw-semibold">Số điện thoại</label>
+								<input type="tel" id="phone" name="phone" class="form-control" maxlength="10" pattern="0[0-9]{9}"
+									placeholder="0xxxxxxxxx" th:value="${me.phone}">
+							</div>
+							<button type="submit" class="btn btn-success px-4"><i class="bi bi-check2 me-1"></i> Lưu thay đổi</button>
+						</div>
+						<div class="col-md-4 text-center">
+							<div class="fw-semibold mb-2">Ảnh đại diện</div>
+							<img id="avatarPreview" th:src="${me.avatarCloudinaryId}" th:classappend="${me.avatarCloudinaryId == null} ? 'd-none'"
+								alt="Ảnh đại diện" class="rounded-circle border mb-2" style="width: 120px; height: 120px; object-fit: cover;">
+							<div id="avatarEmpty" th:classappend="${me.avatarCloudinaryId != null} ? 'd-none'"
+								class="rounded-circle bg-light border d-inline-flex align-items-center justify-content-center mb-2 text-secondary"
+								style="width: 120px; height: 120px;"><i class="bi bi-person fs-1"></i></div>
+							<input type="file" name="avatar" id="avatar" accept="image/*" class="form-control form-control-sm">
+							<div class="form-text">Ảnh JPG/PNG, tối đa 5MB.</div>
+						</div>
+					</form>
+				</section>
+
+				<!-- ===================== ĐỔI MẬT KHẨU ===================== -->
+				<section class="bg-white rounded-4 shadow-sm p-4" th:if="${tab == 'password'}">
+					<h1 class="h5 fw-bold mb-3">Đổi mật khẩu</h1>
+					<form th:action="@{/user/password}" method="post" id="passwordForm" style="max-width: 460px;">
+						<div class="mb-3">
+							<label for="currentPassword" class="form-label fw-semibold">Mật khẩu hiện tại</label>
+							<input type="password" id="currentPassword" name="currentPassword" class="form-control" required
+								autocomplete="current-password">
+						</div>
+						<div class="mb-3">
+							<label for="newPassword" class="form-label fw-semibold">Mật khẩu mới</label>
+							<input type="password" id="newPassword" name="newPassword" class="form-control" required minlength="6"
+								autocomplete="new-password">
+							<div class="form-text">Tối thiểu 6 ký tự, khác mật khẩu hiện tại.</div>
+						</div>
+						<div class="mb-3">
+							<label for="confirmPassword" class="form-label fw-semibold">Nhập lại mật khẩu mới</label>
+							<input type="password" id="confirmPassword" name="confirmPassword" class="form-control" required
+								autocomplete="new-password">
+							<div class="small text-danger mt-1 d-none" id="pwMismatch">Nhập lại mật khẩu mới không khớp</div>
+						</div>
+						<button type="submit" class="btn btn-success px-4"><i class="bi bi-key me-1"></i> Đổi mật khẩu</button>
+					</form>
+				</section>
+
+				<!-- ===================== SỔ ĐỊA CHỈ ===================== -->
+				<section class="bg-white rounded-4 shadow-sm p-4" th:if="${tab == 'address'}" id="addressSection"
+					th:attr="data-name=${me.fullName}, data-phone=${me.phone}">
+					<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+						<div>
+							<h1 class="h5 fw-bold mb-0">Sổ địa chỉ nhận hàng</h1>
+							<small class="text-muted">Lưu nhiều địa chỉ (nhà, văn phòng...), chọn 1 địa chỉ mặc định khi đặt hàng.</small>
+						</div>
+						<button type="button" class="btn btn-success" id="btnAddAddress"><i class="bi bi-plus-lg me-1"></i> Thêm địa chỉ</button>
+					</div>
+					<div id="addressError" class="alert alert-danger py-2 d-none"></div>
+					<div id="addressList">
+						<!-- Lần đầu vẽ bằng server; thêm / sửa / xoá thì profile-address.js vẽ lại -->
+						<div class="border rounded-3 p-3 mb-2" th:each="a : ${addresses}">
+							<div class="fw-semibold"><span th:text="${a.receiverName}"></span> <span class="text-muted fw-normal">| <span th:text="${a.receiverPhone}"></span></span></div>
+							<div class="small" th:text="${a.addressLine}"></div>
+							<span class="badge text-bg-success" th:if="${a.isDefault}">Mặc định</span>
+						</div>
+						<p class="text-muted mb-0" th:if="${#lists.isEmpty(addresses)}">Bạn chưa có địa chỉ nào.</p>
+					</div>
+
+					<!-- Modal thêm / sửa địa chỉ kiểu Shopee (dùng chung với Checkout) -->
+					<th:block th:replace="~{fragments/address-modal :: addressModal}"></th:block>
+					<script th:src="@{/js/profile-address.js}"></script>
+				</section>
+			</div>
+		</div>
+
+		<script>
+			// Xem trước ảnh đại diện + kiểm tra nhập lại mật khẩu
+			(function () {
+				const avatar = document.getElementById('avatar');
+				if (avatar) avatar.addEventListener('change', function () {
+					const f = avatar.files && avatar.files[0];
+					if (!f) return;
+					if (f.size > 5 * 1024 * 1024) { alert('Ảnh đại diện tối đa 5MB'); avatar.value = ''; return; }
+					const img = document.getElementById('avatarPreview');
+					img.src = URL.createObjectURL(f);
+					img.classList.remove('d-none');
+					document.getElementById('avatarEmpty').classList.add('d-none');
+				});
+				const pw = document.getElementById('passwordForm');
+				if (pw) pw.addEventListener('submit', function (e) {
+					const same = pw.newPassword.value === pw.confirmPassword.value;
+					document.getElementById('pwMismatch').classList.toggle('d-none', same);
+					if (!same) e.preventDefault();
+				});
+			})();
+		</script>
+	</div>
+</body>
+</html>
