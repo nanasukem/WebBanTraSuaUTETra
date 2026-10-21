@@ -18,14 +18,14 @@ import vn.utetra.service.impl.OrderFlowServiceImpl;
  * Báo tin về đơn hàng:
  * 1. Lưu vào bảng Notifications (cùng transaction với đơn: đơn lỗi thì thông báo cũng không lưu).
  * 2. Đẩy WebSocket SAU KHI lưu đơn thành công (afterCommit), tới đúng người:
- *    - Quán (chủ chi nhánh): /user/queue/vendor-orders
+ *    - Quán (chủ chi nhánh): /user/queue/manager-orders
  *    - Khách:                /user/queue/orders
  *    Gửi theo tài khoản (convertAndSendToUser) nên người khác không nghe lén được.
  */
 @Component
 public class OrderNotifier {
 
-	public static final String VENDOR_QUEUE = "/queue/vendor-orders";
+	public static final String MANAGER_QUEUE = "/queue/manager-orders";
 	public static final String CUSTOMER_QUEUE = "/queue/orders";
 
 	private final NotificationRepository notificationRepository;
@@ -46,7 +46,7 @@ public class OrderNotifier {
 				+ String.format("%,d", o.getTotalAmount().longValue()).replace(',', '.') + "đ";
 
 		save(owner, o, title, message);
-		push(owner.getUsername(), VENDOR_QUEUE, new OrderEventRes("NEW", o.getId(), o.getBranch().getId(),
+		push(owner.getUsername(), MANAGER_QUEUE, new OrderEventRes("NEW", o.getId(), o.getBranch().getId(),
 				o.getStatus().name(), OrderFlowServiceImpl.statusLabel(o.getStatus(), pickup), title, message));
 	}
 
@@ -72,7 +72,7 @@ public class OrderNotifier {
 		OrderEventRes event = new OrderEventRes("STATUS", o.getId(), o.getBranch().getId(), o.getStatus().name(),
 				label, title, message);
 		push(customer.getUsername(), CUSTOMER_QUEUE, event);
-		push(owner.getUsername(), VENDOR_QUEUE, event);
+		push(owner.getUsername(), MANAGER_QUEUE, event);
 	}
 
 	private void save(User to, Order o, String title, String content) {

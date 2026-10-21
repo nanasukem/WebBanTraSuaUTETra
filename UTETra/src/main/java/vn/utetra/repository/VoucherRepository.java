@@ -20,10 +20,10 @@ public interface VoucherRepository extends JpaRepository<Voucher, Integer> {
 
 	boolean existsByCodeIgnoreCaseAndIdNot(String code, Integer id);
 
-	/** Voucher của app (Manager/Admin) */
+	/** Voucher của app (Admin) */
 	List<Voucher> findByBranchIsNullOrderByCreatedAtDesc();
 
-	/** Voucher riêng của 1 shop (Vendor) */
+	/** Voucher riêng của 1 shop (Manager) */
 	List<Voucher> findByBranch_IdOrderByCreatedAtDesc(Integer branchId);
 
 	/**

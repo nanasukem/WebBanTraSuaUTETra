@@ -21,7 +21,7 @@ import java.util.List;
 @Service
 public class BranchServiceImpl implements BranchService {
 
-	private static final String VENDOR_ROLE = "VENDOR";
+	private static final String MANAGER_ROLE = "MANAGER";
 	private static final BigDecimal DEFAULT_COMMISSION = new BigDecimal("5.00");
 	private static final double EARTH_RADIUS_KM = 6371.0;
 
@@ -58,7 +58,8 @@ public class BranchServiceImpl implements BranchService {
 	public Branch create(BranchReq req) {
 		String name = cleanName(req.getName());
 		checkDuplicateName(name, null);   // luật 2: không trùng tên
-		User owner = findVendor(req.getOwnerId()); // luật 3: chủ shop phải là Vendor
+		User owner = findManager(req.getOwnerId()); // luật 3: người quản lý phải là Manager
+		checkManagerFree(owner, null);              // luật 5: mỗi Manager chỉ quản lý 1 chi nhánh
 		checkCoordinates(req);
 
 		Branch branch = new Branch();
@@ -70,7 +71,7 @@ public class BranchServiceImpl implements BranchService {
 		branch.setPhone(req.getPhone());
 		branch.setDescription(req.getDescription());
 		branch.setCommissionRate(req.getCommissionRate() != null ? req.getCommissionRate() : DEFAULT_COMMISSION);
-		// luật 1: Admin/Manager tạo thì duyệt luôn (form có chọn trạng thái thì theo form)
+		// luật 1: Admin mở chi nhánh thì hoạt động luôn (form có chọn trạng thái thì theo form)
 		branch.setStatus(req.getStatus() != null ? req.getStatus() : BranchStatus.APPROVED);
 
 		if (req.getImageFile() != null && !req.getImageFile().isEmpty()) {
@@ -91,7 +92,9 @@ public class BranchServiceImpl implements BranchService {
 		checkCoordinates(req);
 
 		if (req.getOwnerId() != null && !req.getOwnerId().equals(branch.getOwner().getId())) {
-			branch.setOwner(findVendor(req.getOwnerId()));
+			User owner = findManager(req.getOwnerId());
+			checkManagerFree(owner, id);
+			branch.setOwner(owner);
 		}
 
 		branch.setName(name);
@@ -147,8 +150,8 @@ public class BranchServiceImpl implements BranchService {
 	}
 
 	@Override
-	public List<User> findVendors() {
-		return userRepository.findByRole_Name(VENDOR_ROLE);
+	public List<User> findManagers() {
+		return userRepository.findByRole_Name(MANAGER_ROLE);
 	}
 
 	// ================= GỢI Ý CHI NHÁNH GẦN NHẤT =================
@@ -198,13 +201,27 @@ public class BranchServiceImpl implements BranchService {
 		if (duplicated) throw new BusinessException("Tên chi nhánh \"" + name + "\" đã tồn tại");
 	}
 
-	/** Luật 3: chủ shop phải là tài khoản có role VENDOR */
-	private User findVendor(Integer ownerId) {
-		if (ownerId == null) throw new BusinessException("Vui lòng chọn chủ shop (Vendor)");
+	/** Luật 3: người quản lý chi nhánh phải là tài khoản có role MANAGER */
+	/**
+	 * Luật 5 (chuỗi tự mở chi nhánh): Admin mở chi nhánh rồi chỉ định Manager,
+	 * mỗi Manager chỉ quản lý 1 chi nhánh. exceptBranchId = chi nhánh đang sửa (bỏ qua chính nó).
+	 */
+	private void checkManagerFree(User manager, Integer exceptBranchId) {
+		branchRepository.findByOwnerIdOrderByIdAsc(manager.getId()).stream()
+				.filter(b -> !b.getId().equals(exceptBranchId))
+				.findFirst()
+				.ifPresent(b -> {
+					throw new BusinessException("Manager " + manager.getUsername()
+							+ " đang quản lý chi nhánh \"" + b.getName() + "\". Mỗi Manager chỉ quản lý 1 chi nhánh");
+				});
+	}
+
+	private User findManager(Integer ownerId) {
+		if (ownerId == null) throw new BusinessException("Vui lòng chọn Manager quản lý chi nhánh");
 		User owner = userRepository.findById(ownerId)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng #" + ownerId));
-		if (owner.getRole() == null || !VENDOR_ROLE.equalsIgnoreCase(owner.getRole().getName())) {
-			throw new BusinessException("Chủ shop phải là tài khoản Vendor");
+		if (owner.getRole() == null || !MANAGER_ROLE.equalsIgnoreCase(owner.getRole().getName())) {
+			throw new BusinessException("Người quản lý chi nhánh phải là tài khoản Manager");
 		}
 		return owner;
 	}
@@ -217,28 +234,16 @@ public class BranchServiceImpl implements BranchService {
 	}
 
 	/**
-	 * Luật 4: luồng trạng thái hợp lệ
-	 *   Chờ duyệt  -> Đã duyệt / Từ chối
-	 *   Đã duyệt   -> Tạm ngưng
-	 *   Tạm ngưng  -> Đã duyệt (mở lại)
-	 *   Từ chối    -> Đã duyệt (xét lại)
+	 * Luật 4: Admin bật/tắt chi nhánh
+	 *   Đang hoạt động -> Tạm ngưng
+	 *   Tạm ngưng      -> Đang hoạt động (mở lại)
 	 */
 	private void checkTransition(BranchStatus from, BranchStatus to) {
 		boolean ok = switch (from) {
-			case PENDING -> to == BranchStatus.APPROVED || to == BranchStatus.REJECTED;
 			case APPROVED -> to == BranchStatus.SUSPENDED;
 			case SUSPENDED -> to == BranchStatus.APPROVED;
-			case REJECTED -> to == BranchStatus.APPROVED;
 		};
-		if (!ok) throw new BusinessException("Không thể chuyển chi nhánh từ " + label(from) + " sang " + label(to));
-	}
-
-	private String label(BranchStatus s) {
-		return switch (s) {
-			case PENDING -> "Chờ duyệt";
-			case APPROVED -> "Đã duyệt";
-			case SUSPENDED -> "Tạm ngưng";
-			case REJECTED -> "Từ chối";
-		};
+		if (!ok) throw new BusinessException(
+				"Không thể chuyển chi nhánh từ " + from.getLabel() + " sang " + to.getLabel());
 	}
 }

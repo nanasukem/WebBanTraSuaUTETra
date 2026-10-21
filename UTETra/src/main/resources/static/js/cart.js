@@ -53,6 +53,11 @@
             throw new Error('Vui lòng đăng nhập để dùng giỏ hàng');
         }
 
+        // Đã đăng nhập nhưng không phải khách hàng (Admin/Manager/Shipper): không được mua hàng
+        if (res.status === 403) {
+            throw new Error('Tài khoản này không dùng để mua hàng. Vui lòng đăng nhập bằng tài khoản khách hàng.');
+        }
+
         const data = type.includes('application/json') ? await res.json() : null;
         if (!res.ok) throw new Error((data && data.message) || ('Lỗi máy chủ (' + res.status + ')'));
         return data;

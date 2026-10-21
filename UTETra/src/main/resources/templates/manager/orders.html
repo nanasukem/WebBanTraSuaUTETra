@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/user-layout :: main('Quầy đơn hàng - UTETra', ~{::#vendor-orders})}">
+	th:replace="~{layout/user-layout :: main('Quầy đơn hàng - UTETra', ~{::#manager-orders})}">
 
 <body>
-	<div id="vendor-orders" th:attr="data-branch-id=${branchId}">
+	<div id="manager-orders" th:attr="data-branch-id=${branchId}">
 		<style>
 .vo-col {
 	background: #f1f3f5;
@@ -61,7 +61,7 @@
 			<h1 class="h4 fw-bold text-success mb-0 me-2">
 				<i class="bi bi-bell me-1"></i>Quầy đơn hàng
 			</h1>
-			<form th:if="${#lists.size(branches) > 1}" method="get" th:action="@{/vendor/orders}">
+			<form th:if="${#lists.size(branches) > 1}" method="get" th:action="@{/manager/orders}">
 				<select name="branchId" class="form-select form-select-sm" onchange="this.form.submit()">
 					<option th:each="b : ${branches}" th:value="${b.id}" th:text="${b.name}"
 						th:selected="${b.id == branchId}"></option>
@@ -70,7 +70,7 @@
 			<span th:if="${#lists.size(branches) == 1}" class="fw-semibold" th:text="${branches[0].name}"></span>
 			<span id="vo-live" class="badge text-bg-secondary">Đang kết nối...</span>
 			<div class="ms-auto d-flex gap-2">
-				<a th:if="${branchId != null}" th:href="@{/vendor/orders/history(branchId=${branchId})}"
+				<a th:if="${branchId != null}" th:href="@{/manager/orders/history(branchId=${branchId})}"
 					class="btn btn-sm btn-outline-success">
 					<i class="bi bi-list-ul me-1"></i> Tất cả đơn theo trạng thái
 				</a>
@@ -154,9 +154,9 @@
 		<!-- Popup đơn mới -->
 		<div class="vo-toasts" id="vo-toasts"></div>
 
-		<!-- vendor-orders.js tự nạp thư viện STOMP (WebSocket); mạng chậm thì bảng đơn vẫn hiện bình thường -->
+		<!-- manager-orders.js tự nạp thư viện STOMP (WebSocket); mạng chậm thì bảng đơn vẫn hiện bình thường -->
 		<script th:src="@{/js/live-socket.js}"></script>
-		<script th:src="@{/js/vendor-orders.js}"></script>
+		<script th:src="@{/js/manager-orders.js}"></script>
 	</div>
 </body>
 </html>

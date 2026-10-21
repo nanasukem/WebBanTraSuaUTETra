@@ -86,14 +86,15 @@
 			</div>
 
 			<div class="mb-3">
-				<label class="form-label">Quản lý chi nhánh (Vendor) <span
+				<label class="form-label">Quản lý chi nhánh (Manager) <span
 					class="text-danger">*</span></label> <select th:field="*{ownerId}"
 					class="form-select" th:errorclass="is-invalid">
-					<option value="">-- Chọn tài khoản Vendor --</option>
-					<option th:each="v : ${vendors}" th:value="${v.id}"
+					<option value="">-- Chọn tài khoản Manager --</option>
+					<option th:each="v : ${managers}" th:value="${v.id}"
 						th:text="${v.fullName} + ' (' + ${v.username} + ')'"></option>
 				</select>
 				<div class="invalid-feedback" th:errors="*{ownerId}"></div>
+				<div class="form-text">Mỗi Manager chỉ quản lý 1 chi nhánh: chọn Manager chưa được giao chi nhánh nào.</div>
 			</div>
 
 			<div class="mb-4">

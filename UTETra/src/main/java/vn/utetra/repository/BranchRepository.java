@@ -19,6 +19,6 @@ public interface BranchRepository extends JpaRepository<Branch, Integer> {
 			+ "AND (:status IS NULL OR b.status = :status)")
 	List<Branch> searchBranches(@Param("keyword") String keyword, @Param("status") BranchStatus status);
 	
-	/** Chi nhánh mà vendor sở hữu */
+	/** Chi nhánh mà manager sở hữu */
 	List<Branch> findByOwnerIdOrderByIdAsc(Integer ownerId);
 }

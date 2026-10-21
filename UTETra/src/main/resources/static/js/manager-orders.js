@@ -1,11 +1,11 @@
 /* ============================================================
-   vendor-orders.js - Quầy đơn hàng của Vendor/Barista
+   manager-orders.js - Quầy đơn hàng của Manager/Barista
    - Bảng 4 cột: Đơn mới / Đang pha chế / Shipper đang giao / Gần đây
    - Đơn mới tới qua WebSocket: chuông + popup + nhấp nháy thẻ đơn, không cần tải lại trang
    - Đổi trạng thái 1 click (server kiểm tra quyền và đúng luồng)
    ============================================================ */
 (() => {
-	const root = document.getElementById('vendor-orders');
+	const root = document.getElementById('manager-orders');
 	if (!root || !root.dataset.branchId) return; // chưa có chi nhánh
 	const branchId = Number(root.dataset.branchId);
 	const $ = (id) => document.getElementById(id);
@@ -125,7 +125,7 @@
 	async function load() {
 		const my = ++loadSeq;
 		try {
-			const board = await api('/api/vendor/orders?branchId=' + branchId);
+			const board = await api('/api/manager/orders?branchId=' + branchId);
 			if (my !== loadSeq) return;
 			column('new', board.newOrders, 'Chưa có đơn mới');
 			column('making', board.making, 'Không có đơn đang pha');
@@ -176,7 +176,7 @@
 
 	// ================= ĐỔI TRẠNG THÁI =================
 	async function changeStatus(orderId, to, reason) {
-		await api(`/api/vendor/orders/${orderId}/status`, {
+		await api(`/api/manager/orders/${orderId}/status`, {
 			method: 'POST', body: JSON.stringify({ status: to, reason: reason || null }),
 		});
 		highlight.delete(orderId);
@@ -242,8 +242,8 @@
 		if (online) load(); // vừa kết nối lại: tải lại để không sót đơn
 	}
 
-	LiveSocket.subscribe('/user/queue/vendor-orders', (ev) => {
-		if (ev.branchId !== branchId) return; // đơn của chi nhánh khác (vendor có nhiều chi nhánh)
+	LiveSocket.subscribe('/user/queue/manager-orders', (ev) => {
+		if (ev.branchId !== branchId) return; // đơn của chi nhánh khác (manager có nhiều chi nhánh)
 		if (ev.type === 'NEW') {
 			highlight.add(ev.orderId);
 			ring();

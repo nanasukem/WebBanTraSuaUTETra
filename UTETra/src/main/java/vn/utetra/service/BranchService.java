@@ -27,8 +27,8 @@ public interface BranchService {
 
 	BranchReq toReq(Branch branch);
 
-	/** Danh sách tài khoản Vendor (chọn chủ shop) */
-	List<User> findVendors();
+	/** Danh sách tài khoản Manager (chọn chủ shop) */
+	List<User> findManagers();
 
 	/**
 	 * Chi nhánh đang hoạt động, sắp xếp từ gần đến xa vị trí (lat, lng) của khách.
@@ -37,6 +37,6 @@ public interface BranchService {
 	List<NearbyBranchRes> findNearby(Double lat, Double lng);
 	
 
-	/** username có phải chủ (Vendor) của chi nhánh branchId không. Chi nhánh không tồn tại -> false */
+	/** username có phải chủ (Manager) của chi nhánh branchId không. Chi nhánh không tồn tại -> false */
 	boolean isOwner(Integer branchId, String username);
 }

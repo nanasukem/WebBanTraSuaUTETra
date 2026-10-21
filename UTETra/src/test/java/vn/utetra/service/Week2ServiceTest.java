@@ -22,10 +22,10 @@ import vn.utetra.dto.response.OrderListRes;
 import vn.utetra.dto.response.OrderSummaryRes;
 import vn.utetra.dto.response.OrderTab;
 import vn.utetra.dto.response.ProductOptionsRes;
-import vn.utetra.dto.response.VendorBoardRes;
-import vn.utetra.dto.response.VendorHistoryRes;
-import vn.utetra.dto.response.VendorOrderRes;
-import vn.utetra.dto.response.VendorTabRes;
+import vn.utetra.dto.response.ManagerBoardRes;
+import vn.utetra.dto.response.ManagerHistoryRes;
+import vn.utetra.dto.response.ManagerOrderRes;
+import vn.utetra.dto.response.ManagerTabRes;
 import vn.utetra.dto.response.VoucherOptionRes;
 import vn.utetra.entity.Branch;
 import vn.utetra.entity.Carrier;
@@ -55,14 +55,14 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * TEST TUẦN 2 (gộp): nhà vận chuyển, giỏ hàng, đặt hàng, hạng thành viên + giới hạn voucher,
  * đến lấy / chi nhánh gần nhất, Checkout (mã của bạn, sổ địa chỉ), đơn hàng của tôi, huỷ đơn,
- * luồng trạng thái, Quầy đơn hàng của Vendor + thông báo, đơn hàng của shop theo 7 trạng thái.
+ * luồng trạng thái, Quầy đơn hàng của Manager + thông báo, đơn hàng của shop theo 7 trạng thái.
  *
  * Mỗi test tự rollback, không làm bẩn DB. Chạy lại UTETra.sql trước khi chạy để dữ liệu mẫu đúng.
  *
  * Dữ liệu mẫu:
  * - user1 (id 6): giỏ 1 Bạc xỉu M = 34.000; địa chỉ #1 (mặc định, có ghi chú), #2; đơn #1 ĐÃ GIAO (FREESHIP10K), đơn #2 CHỜ XÁC NHẬN
  * - user2 (id 7): tài khoản mới; giỏ 2 Cà phê muối L + Kem cheese = 104.000; địa chỉ #3
- * - vendor1 (id 3) chủ chi nhánh 1 Võ Văn Ngân; vendor2 (id 4) chủ chi nhánh 2 Quận 1 (đang hết Matcha)
+ * - manager1 (id 3) chủ chi nhánh 1 Võ Văn Ngân; manager2 (id 4) chủ chi nhánh 2 Quận 1 (đang hết Matcha)
  * - Nhà vận chuyển: 1 = Giao Hàng Nhanh 15.000, 2 = Giao Hàng Tiết Kiệm 12.000
  */
 @SpringBootTest
@@ -76,7 +76,7 @@ class Week2ServiceTest {
 	@Autowired MemberService memberService;
 	@Autowired AddressService addressService;
 	@Autowired OrderFlowService orderFlowService;
-	@Autowired VendorOrderService vendorOrderService;
+	@Autowired ManagerOrderService managerOrderService;
 	@Autowired OrderRepository orderRepository;
 	@Autowired VoucherRepository voucherRepository;
 	@Autowired VoucherUsageRepository voucherUsageRepository;
@@ -86,8 +86,8 @@ class Week2ServiceTest {
 
 	private static final int USER1 = 6;
 	private static final int USER2 = 7;
-	private static final int VENDOR1 = 3;     // chủ chi nhánh 1
-	private static final int VENDOR2 = 4;     // chủ chi nhánh 2
+	private static final int MANAGER1 = 3;     // chủ chi nhánh 1
+	private static final int MANAGER2 = 4;     // chủ chi nhánh 2
 	private static final int DON_DA_GIAO = 1; // đơn mẫu của user1, chi nhánh 1, ĐÃ GIAO
 	private static final int DON_CHO = 2;     // đơn mẫu của user1, chi nhánh 2, CHỜ XÁC NHẬN, 1 ly món #5
 
@@ -234,7 +234,7 @@ class Week2ServiceTest {
 		return list.stream().filter(v -> v.code().equals(code)).findFirst();
 	}
 
-	private static VendorOrderRes tim(List<VendorOrderRes> col, int orderId) {
+	private static ManagerOrderRes tim(List<ManagerOrderRes> col, int orderId) {
 		return col.stream().filter(o -> o.id() == orderId).findFirst().orElse(null);
 	}
 
@@ -242,12 +242,12 @@ class Week2ServiceTest {
 		return list.stream().anyMatch(o -> o.id() == orderId);
 	}
 
-	private static boolean co(VendorHistoryRes h, int orderId) {
+	private static boolean co(ManagerHistoryRes h, int orderId) {
 		return h.orders().stream().anyMatch(o -> o.id() == orderId);
 	}
 
-	private static long dem(VendorHistoryRes h, String status) {
-		return h.tabs().stream().filter(t -> t.status().equals(status)).mapToLong(VendorTabRes::count).sum();
+	private static long dem(ManagerHistoryRes h, String status) {
+		return h.tabs().stream().filter(t -> t.status().equals(status)).mapToLong(ManagerTabRes::count).sum();
 	}
 
 	// =====================================================================
@@ -457,7 +457,7 @@ class Week2ServiceTest {
 		em.clear();
 		Order saved = orderRepository.findById(o.getId()).orElseThrow();
 		assertEquals("Toà B3, gọi trước khi tới", saved.getDeliveryNote(), "Ghi chú địa chỉ phải chép vào đơn");
-		assertEquals(1, notificationRepository.countByUserIdAndOrderId(VENDOR1, o.getId()),
+		assertEquals(1, notificationRepository.countByUserIdAndOrderId(MANAGER1, o.getId()),
 				"Chủ chi nhánh 1 phải có thông báo đơn mới");
 	}
 
@@ -685,7 +685,7 @@ class Week2ServiceTest {
 		BranchReq req = new BranchReq();
 		req.setName("UTETra Test Tọa Độ");
 		req.setAddress("abc");
-		req.setOwnerId(3);
+		req.setOwnerId(2); // manager3 chưa có chi nhánh -> lỗi chỉ do tọa độ
 		req.setLatitude(new BigDecimal("10.8"));
 		// thiếu longitude
 		assertThrows(BusinessException.class, () -> branchService.create(req));
@@ -693,10 +693,10 @@ class Week2ServiceTest {
 
 	@Test
 	void isOwner_chiDungChuChiNhanh() {
-		assertTrue(branchService.isOwner(1, "vendor1"), "vendor1 là chủ chi nhánh 1");
-		assertFalse(branchService.isOwner(1, "vendor2"), "vendor2 không phải chủ chi nhánh 1");
+		assertTrue(branchService.isOwner(1, "manager1"), "manager1 là chủ chi nhánh 1");
+		assertFalse(branchService.isOwner(1, "manager2"), "manager2 không phải chủ chi nhánh 1");
 		assertFalse(branchService.isOwner(1, "user1"), "khách thường không phải chủ");
-		assertFalse(branchService.isOwner(999, "vendor1"), "chi nhánh không tồn tại");
+		assertFalse(branchService.isOwner(999, "manager1"), "chi nhánh không tồn tại");
 	}
 
 	// =====================================================================
@@ -1037,45 +1037,45 @@ class Week2ServiceTest {
 	}
 
 	// =====================================================================
-	// 9. QUẦY ĐƠN HÀNG CỦA VENDOR + THÔNG BÁO (bước 7)
+	// 9. QUẦY ĐƠN HÀNG CỦA MANAGER + THÔNG BÁO (bước 7)
 	// =====================================================================
 
 	@Test
-	void vendor_chiThayChiNhanhCuaMinh() {
-		assertEquals(1, vendorOrderService.myBranches(VENDOR2).size());
-		assertEquals(2, vendorOrderService.resolveBranchId(VENDOR2, null), "Không chọn thì lấy chi nhánh đầu tiên");
-		assertThrows(ResourceNotFoundException.class, () -> vendorOrderService.resolveBranchId(VENDOR1, 2));
-		assertThrows(ResourceNotFoundException.class, () -> vendorOrderService.board(VENDOR1, 2));
-		assertThrows(BusinessException.class, () -> vendorOrderService.resolveBranchId(USER1, null),
+	void manager_chiThayChiNhanhCuaMinh() {
+		assertEquals(1, managerOrderService.myBranches(MANAGER2).size());
+		assertEquals(2, managerOrderService.resolveBranchId(MANAGER2, null), "Không chọn thì lấy chi nhánh đầu tiên");
+		assertThrows(ResourceNotFoundException.class, () -> managerOrderService.resolveBranchId(MANAGER1, 2));
+		assertThrows(ResourceNotFoundException.class, () -> managerOrderService.board(MANAGER1, 2));
+		assertThrows(BusinessException.class, () -> managerOrderService.resolveBranchId(USER1, null),
 				"Khách không sở hữu chi nhánh nào");
 	}
 
 	@Test
 	void bang_donMoiNamCotDonMoi_coNutXacNhan() {
-		VendorBoardRes b = vendorOrderService.board(VENDOR2, 2);
-		VendorOrderRes don = tim(b.newOrders(), DON_CHO);
+		ManagerBoardRes b = managerOrderService.board(MANAGER2, 2);
+		ManagerOrderRes don = tim(b.newOrders(), DON_CHO);
 		assertNotNull(don, "Đơn #2 PENDING phải ở cột Đơn mới");
 		assertTrue(don.actions().stream().anyMatch(a -> a.to().equals("CONFIRMED")));
 		assertTrue(don.canCancel());
 		assertFalse(don.items().isEmpty());
-		assertNull(tim(vendorOrderService.board(VENDOR1, 1).newOrders(), DON_CHO), "Chi nhánh 1 không thấy đơn chi nhánh 2");
+		assertNull(tim(managerOrderService.board(MANAGER1, 1).newOrders(), DON_CHO), "Chi nhánh 1 không thấy đơn chi nhánh 2");
 	}
 
 	@Test
-	void vendorKhac_khongDoiDuocDon() {
+	void managerKhac_khongDoiDuocDon() {
 		assertThrows(ResourceNotFoundException.class,
-				() -> vendorOrderService.changeStatus(VENDOR1, DON_CHO, OrderStatus.CONFIRMED, null));
+				() -> managerOrderService.changeStatus(MANAGER1, DON_CHO, OrderStatus.CONFIRMED, null));
 		assertEquals(OrderStatus.PENDING, trangThai(DON_CHO));
 	}
 
 	@Test
 	void xacNhan_luuThongBaoChoKhach_vaQuaCotDangPha() {
 		long truoc = notificationRepository.countByUserIdAndOrderId(USER1, DON_CHO);
-		vendorOrderService.changeStatus(VENDOR2, DON_CHO, OrderStatus.CONFIRMED, null);
+		managerOrderService.changeStatus(MANAGER2, DON_CHO, OrderStatus.CONFIRMED, null);
 
 		assertEquals(OrderStatus.CONFIRMED, trangThai(DON_CHO));
 		assertEquals(truoc + 1, notificationRepository.countByUserIdAndOrderId(USER1, DON_CHO), "Khách phải có thông báo");
-		VendorOrderRes don = tim(vendorOrderService.board(VENDOR2, 2).making(), DON_CHO);
+		ManagerOrderRes don = tim(managerOrderService.board(MANAGER2, 2).making(), DON_CHO);
 		assertNotNull(don, "Đã xác nhận phải sang cột Đang pha chế");
 		assertTrue(don.actions().isEmpty(), "Đơn giao tận nơi: chờ shipper, quán không có nút tiếp");
 		assertFalse(don.canCancel());
@@ -1083,45 +1083,45 @@ class Week2ServiceTest {
 
 	@Test
 	void donGiao_quanKhongTuLamBuocCuaShipper() {
-		vendorOrderService.changeStatus(VENDOR2, DON_CHO, OrderStatus.CONFIRMED, null);
+		managerOrderService.changeStatus(MANAGER2, DON_CHO, OrderStatus.CONFIRMED, null);
 		assertThrows(BusinessException.class,
-				() -> vendorOrderService.changeStatus(VENDOR2, DON_CHO, OrderStatus.PICKED_UP, null));
+				() -> managerOrderService.changeStatus(MANAGER2, DON_CHO, OrderStatus.PICKED_UP, null));
 		assertThrows(BusinessException.class,
-				() -> vendorOrderService.changeStatus(VENDOR2, DON_CHO, OrderStatus.DELIVERED, null));
+				() -> managerOrderService.changeStatus(MANAGER2, DON_CHO, OrderStatus.DELIVERED, null));
 		assertEquals(OrderStatus.CONFIRMED, trangThai(DON_CHO));
 	}
 
 	@Test
 	void denLay_datDon_quanCoThongBao_xacNhanRoiKhachNhan() {
 		int id = orderService.placeOrder(USER2, denLay()).getId();
-		assertEquals(1, notificationRepository.countByUserIdAndOrderId(VENDOR2, id), "Chủ chi nhánh phải có thông báo đơn mới");
+		assertEquals(1, notificationRepository.countByUserIdAndOrderId(MANAGER2, id), "Chủ chi nhánh phải có thông báo đơn mới");
 
-		vendorOrderService.changeStatus(VENDOR2, id, OrderStatus.CONFIRMED, null);
-		VendorOrderRes don = tim(vendorOrderService.board(VENDOR2, 2).making(), id);
+		managerOrderService.changeStatus(MANAGER2, id, OrderStatus.CONFIRMED, null);
+		ManagerOrderRes don = tim(managerOrderService.board(MANAGER2, 2).making(), id);
 		assertNotNull(don);
 		assertTrue(don.actions().stream().anyMatch(a -> a.to().equals("DELIVERED")), "Đến lấy: có nút Khách đã nhận món");
 
-		vendorOrderService.changeStatus(VENDOR2, id, OrderStatus.DELIVERED, null);
+		managerOrderService.changeStatus(MANAGER2, id, OrderStatus.DELIVERED, null);
 		assertEquals(OrderStatus.DELIVERED, trangThai(id));
-		assertNotNull(tim(vendorOrderService.board(VENDOR2, 2).recent(), id), "Xong rồi phải sang cột Gần đây");
+		assertNotNull(tim(managerOrderService.board(MANAGER2, 2).recent(), id), "Xong rồi phải sang cột Gần đây");
 	}
 
 	@Test
 	void quanHuy_batBuocLyDo_vaBaoKhach() {
 		assertThrows(BusinessException.class,
-				() -> vendorOrderService.changeStatus(VENDOR2, DON_CHO, OrderStatus.CANCELLED, "  "));
+				() -> managerOrderService.changeStatus(MANAGER2, DON_CHO, OrderStatus.CANCELLED, "  "));
 		long truoc = notificationRepository.countByUserIdAndOrderId(USER1, DON_CHO);
 
-		vendorOrderService.changeStatus(VENDOR2, DON_CHO, OrderStatus.CANCELLED, "Quán hết nguyên liệu / hết món");
+		managerOrderService.changeStatus(MANAGER2, DON_CHO, OrderStatus.CANCELLED, "Quán hết nguyên liệu / hết món");
 		assertEquals(OrderStatus.CANCELLED, trangThai(DON_CHO));
 		assertEquals(truoc + 1, notificationRepository.countByUserIdAndOrderId(USER1, DON_CHO));
 	}
 
 	@Test
 	void khachHuy_quanCoThongBao() {
-		long truoc = notificationRepository.countByUserIdAndOrderId(VENDOR2, DON_CHO);
+		long truoc = notificationRepository.countByUserIdAndOrderId(MANAGER2, DON_CHO);
 		orderFlowService.cancelByCustomer(USER1, DON_CHO, "Đặt nhầm, không còn nhu cầu");
-		assertEquals(truoc + 1, notificationRepository.countByUserIdAndOrderId(VENDOR2, DON_CHO), "Quán phải biết khách huỷ");
+		assertEquals(truoc + 1, notificationRepository.countByUserIdAndOrderId(MANAGER2, DON_CHO), "Quán phải biết khách huỷ");
 	}
 
 	@Test
@@ -1131,7 +1131,7 @@ class Week2ServiceTest {
 		int usedTruoc = v.getUsedCount();
 
 		int id = orderService.placeOrder(USER2, giaoTanNoi("UTETRA20")).getId(); // chi nhánh 2
-		vendorOrderService.changeStatus(VENDOR2, id, OrderStatus.CANCELLED, "Quán hết nguyên liệu / hết món");
+		managerOrderService.changeStatus(MANAGER2, id, OrderStatus.CANCELLED, "Quán hết nguyên liệu / hết món");
 		em.flush();
 		em.clear();
 		assertEquals(usedTruoc, voucherRepository.findById(voucherId).orElseThrow().getUsedCount(), "Quán huỷ cũng trả lượt");
@@ -1144,7 +1144,7 @@ class Week2ServiceTest {
 
 	@Test
 	void du7Tab_dungThuTuDe() {
-		VendorHistoryRes h = vendorOrderService.history(VENDOR2, null, null, 0);
+		ManagerHistoryRes h = managerOrderService.history(MANAGER2, null, null, 0);
 		assertEquals(7, h.tabs().size());
 		assertEquals("PENDING", h.tabs().get(0).status());
 		assertEquals("Đã lấy hàng", h.tabs().get(2).label());
@@ -1161,46 +1161,46 @@ class Week2ServiceTest {
 		em.flush();
 		em.clear();
 
-		assertTrue(co(vendorOrderService.history(VENDOR2, 2, OrderStatus.PICKED_UP, 0), DON_CHO));
-		assertFalse(co(vendorOrderService.history(VENDOR2, 2, OrderStatus.DELIVERING, 0), DON_CHO));
+		assertTrue(co(managerOrderService.history(MANAGER2, 2, OrderStatus.PICKED_UP, 0), DON_CHO));
+		assertFalse(co(managerOrderService.history(MANAGER2, 2, OrderStatus.DELIVERING, 0), DON_CHO));
 
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.DELIVERING, null);
 		em.flush();
 		em.clear();
-		VendorHistoryRes dangGiao = vendorOrderService.history(VENDOR2, 2, OrderStatus.DELIVERING, 0);
+		ManagerHistoryRes dangGiao = managerOrderService.history(MANAGER2, 2, OrderStatus.DELIVERING, 0);
 		assertTrue(co(dangGiao, DON_CHO));
 		assertEquals(0, dem(dangGiao, "PICKED_UP"));
 	}
 
 	@Test
 	void huy_nam_tabDaHuy() {
-		vendorOrderService.changeStatus(VENDOR2, DON_CHO, OrderStatus.CANCELLED, "Ngoài giờ phục vụ");
+		managerOrderService.changeStatus(MANAGER2, DON_CHO, OrderStatus.CANCELLED, "Ngoài giờ phục vụ");
 		em.flush();
 		em.clear();
-		assertTrue(co(vendorOrderService.history(VENDOR2, 2, OrderStatus.CANCELLED, 0), DON_CHO));
-		assertFalse(co(vendorOrderService.history(VENDOR2, 2, OrderStatus.PENDING, 0), DON_CHO));
+		assertTrue(co(managerOrderService.history(MANAGER2, 2, OrderStatus.CANCELLED, 0), DON_CHO));
+		assertFalse(co(managerOrderService.history(MANAGER2, 2, OrderStatus.PENDING, 0), DON_CHO));
 	}
 
 	@Test
 	void khongXemDuocChiNhanhVaDonNguoiKhac() {
-		assertThrows(ResourceNotFoundException.class, () -> vendorOrderService.history(VENDOR1, 2, null, 0));
-		assertThrows(ResourceNotFoundException.class, () -> vendorOrderService.orderDetail(VENDOR1, DON_CHO));
-		assertThrows(ResourceNotFoundException.class, () -> vendorOrderService.orderCard(VENDOR2, DON_DA_GIAO));
+		assertThrows(ResourceNotFoundException.class, () -> managerOrderService.history(MANAGER1, 2, null, 0));
+		assertThrows(ResourceNotFoundException.class, () -> managerOrderService.orderDetail(MANAGER1, DON_CHO));
+		assertThrows(ResourceNotFoundException.class, () -> managerOrderService.orderCard(MANAGER2, DON_DA_GIAO));
 	}
 
 	@Test
 	void chiTiet_vaNutXuLy() {
-		var d = vendorOrderService.orderDetail(VENDOR2, DON_CHO);
+		var d = managerOrderService.orderDetail(MANAGER2, DON_CHO);
 		assertEquals(DON_CHO, d.id());
-		var card = vendorOrderService.orderCard(VENDOR2, DON_CHO);
+		var card = managerOrderService.orderCard(MANAGER2, DON_CHO);
 		assertTrue(card.canCancel());
 		assertTrue(card.actions().stream().anyMatch(a -> a.to().equals("CONFIRMED")));
-		assertFalse(vendorOrderService.orderCard(VENDOR1, DON_DA_GIAO).canCancel(), "Đơn đã giao không huỷ được");
+		assertFalse(managerOrderService.orderCard(MANAGER1, DON_DA_GIAO).canCancel(), "Đơn đã giao không huỷ được");
 	}
 
 	@Test
 	void phanTrang_trangAmVeTrangDau() {
-		VendorHistoryRes h = vendorOrderService.history(VENDOR1, 1, OrderStatus.DELIVERED, -5);
+		ManagerHistoryRes h = managerOrderService.history(MANAGER1, 1, OrderStatus.DELIVERED, -5);
 		assertEquals(0, h.page());
 		assertTrue(co(h, DON_DA_GIAO));
 		assertTrue(h.totalPages() >= 1);

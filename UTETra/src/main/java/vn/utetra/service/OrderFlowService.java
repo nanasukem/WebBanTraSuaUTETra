@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * Vòng đời đơn hàng sau khi đặt:
  * - Khách: xem đơn theo 6 tab, xem chi tiết, huỷ đơn khi còn Chờ xác nhận.
- * - Đổi trạng thái (bước 7 Barista/Vendor và Shipper gọi lại hàm updateStatus).
+ * - Đổi trạng thái (bước 7 Barista/Manager và Shipper gọi lại hàm updateStatus).
  */
 public interface OrderFlowService {
 
@@ -24,7 +24,7 @@ public interface OrderFlowService {
 	/** Chi tiết 1 đơn của chính khách (đơn người khác -> ResourceNotFoundException) */
 	OrderDetailRes myOrder(Integer userId, Integer orderId);
 	
-	/** Chi tiết 1 đơn, KHÔNG kiểm tra người xem (nơi gọi tự kiểm tra quyền, vd Vendor chỉ xem đơn chi nhánh mình) */
+	/** Chi tiết 1 đơn, KHÔNG kiểm tra người xem (nơi gọi tự kiểm tra quyền, vd Manager chỉ xem đơn chi nhánh mình) */
 	OrderDetailRes orderDetail(Integer orderId);
 	
 	/** Khách huỷ đơn: chỉ khi PENDING, bắt buộc lý do, hoàn lượt voucher */

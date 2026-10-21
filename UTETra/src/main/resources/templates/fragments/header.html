@@ -30,35 +30,34 @@
 			</ul>
 
 			<!--
-				isBuyer = tài khoản được mua hàng (thấy Giỏ hàng + Đơn hàng).
-				Hiện tại: chỉ USER.
-				Muốn cho Vendor mua hàng (đề: "Vendor có các quyền của User") thì đổi điều kiện thành:
-				(session.user.role.name == 'USER' or session.user.role.name == 'VENDOR')
+				isBuyer = tài khoản được mua hàng (thấy Giỏ hàng + Đơn hàng): CHỈ USER.
+				Admin (toàn hệ thống), Manager (1 chi nhánh), Shipper là tài khoản công việc, không mua hàng.
 			-->
 			<div class="d-flex align-items-center gap-3"
 				th:with="roleName=${session.user != null and session.user.role != null ? session.user.role.name : ''},
-				         isBuyer=${roleName == 'USER'}">
+				         isBuyer=${roleName == 'USER'},
+				         isManager=${roleName == 'MANAGER'}">
 
-				<!-- Nút quản trị dành cho Admin/Manager -->
-				<a th:if="${roleName == 'ADMIN' or roleName == 'MANAGER'}"
+				<!-- Nút quản trị dành cho Admin (toàn hệ thống) -->
+				<a th:if="${roleName == 'ADMIN'}"
 					th:href="@{/admin/products}" class="btn btn-warning btn-sm fw-bold">
 					<i class="bi bi-speedometer2 me-1"></i> Quản trị Admin
 				</a>
 
-				<!-- Quầy đơn hàng dành cho Vendor -->
-				<a th:if="${roleName == 'VENDOR'}"
-					th:href="@{/vendor/orders}" class="btn btn-warning btn-sm fw-bold">
+				<!-- Quầy đơn hàng dành cho Manager (đơn khách đặt ở shop mình) -->
+				<a th:if="${isManager}"
+					th:href="@{/manager/orders}" class="btn btn-warning btn-sm fw-bold">
 					<i class="bi bi-bell me-1"></i> Quầy đơn hàng
 				</a>
 
-				<!-- Đơn hàng của tôi: chỉ người mua -->
+				<!-- Đơn hàng của tôi: chỉ khách hàng (USER) -->
 				<a th:if="${isBuyer}" th:href="@{/orders}"
 					class="btn btn-outline-light btn-sm fw-bold"
-					title="Đơn hàng của tôi"> <i class="bi bi-receipt me-1"></i>
+					title="Đơn hàng tôi đã đặt"> <i class="bi bi-receipt me-1"></i>
 					Đơn hàng
 				</a>
 
-				<!-- Giỏ hàng: chỉ người mua. Số ly do cart.js cập nhật vào #cart-count (lấy từ /api/cart) -->
+				<!-- Giỏ hàng: chỉ khách hàng (USER). Số ly do cart.js cập nhật vào #cart-count (lấy từ /api/cart) -->
 				<a th:if="${isBuyer}" th:href="@{/cart}"
 					class="btn btn-light btn-sm fw-bold position-relative"
 					title="Giỏ hàng"> <i class="bi bi-cart3 me-1"></i> Giỏ hàng <span
@@ -87,19 +86,31 @@
 								<i class="bi bi-person me-2"></i> Hồ sơ cá nhân
 						</a></li>
 
-						<!-- Chỉ người mua -->
-						<li th:if="${isBuyer}"><a class="dropdown-item" th:href="@{/orders}"> <i
-								class="bi bi-receipt me-2"></i> Đơn hàng của tôi
-						</a></li>
+						<!-- Phần mua hàng: chỉ khách hàng (USER) -->
+						<th:block th:if="${isBuyer}">
+							<li><a class="dropdown-item" th:href="@{/orders}"> <i
+									class="bi bi-receipt me-2"></i>
+									Đơn hàng của tôi
+							</a></li>
+							<li><a class="dropdown-item" th:href="@{/cart}"> <i
+									class="bi bi-cart3 me-2"></i> Giỏ hàng
+							</a></li>
+						</th:block>
 
-						<li th:if="${isBuyer}"><a class="dropdown-item" th:href="@{/cart}"> <i
-								class="bi bi-cart3 me-2"></i> Giỏ hàng
-						</a></li>
-
-						<!-- Vendor: lối tắt tới trang quản lý đơn -->
-						<li th:if="${roleName == 'VENDOR'}"><a class="dropdown-item" th:href="@{/vendor/orders/history}">
-								<i class="bi bi-receipt-cutoff me-2"></i> Đơn hàng của shop
-						</a></li>
+						<!-- Phần quản lý shop: chỉ Manager -->
+						<th:block th:if="${isManager}">
+							<li><hr class="dropdown-divider"></li>
+							<li><h6 class="dropdown-header">Chi nhánh của tôi</h6></li>
+							<li><a class="dropdown-item" th:href="@{/manager/orders}">
+									<i class="bi bi-bell me-2"></i> Quầy đơn hàng
+							</a></li>
+							<li><a class="dropdown-item" th:href="@{/manager/orders/history}">
+									<i class="bi bi-receipt-cutoff me-2"></i> Đơn hàng của chi nhánh
+							</a></li>
+							<li><a class="dropdown-item" th:href="@{/manager/menu}">
+									<i class="bi bi-toggles me-2"></i> Bật/tắt món của chi nhánh
+							</a></li>
+						</th:block>
 
 						<li><hr class="dropdown-divider"></li>
 
