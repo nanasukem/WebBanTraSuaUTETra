@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<!--
+	Thẻ 1 món (trang chủ, Thực đơn, trang danh mục) + khối "20 món nhất" có phân trang (trang chủ).
+	p    : ProductCardRes (id, name, categoryName, basePrice, imageCloudinaryId, description,
+	       soldCount, avgRating, reviewCount, favoriteCount)
+	mode : 'buy'   = USER, nút "+" mở modal chọn món
+	       'guest' = chưa đăng nhập, nút "+" dẫn tới trang đăng nhập
+	       'view'  = Manager / Admin, chỉ xem
+-->
+
+<div th:fragment="card(p, mode)" class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+
+	<!-- Ảnh -->
+	<div class="bg-light position-relative" style="height: 170px; overflow: hidden;">
+		<img th:if="${p.imageCloudinaryId != null and !#strings.isEmpty(p.imageCloudinaryId)}"
+			th:src="${p.imageCloudinaryId}" th:alt="${p.name}" class="w-100 h-100" style="object-fit: cover;"
+			loading="lazy">
+		<div th:unless="${p.imageCloudinaryId != null and !#strings.isEmpty(p.imageCloudinaryId)}"
+			class="w-100 h-100 d-flex justify-content-center align-items-center text-secondary">
+			<i class="bi bi-cup-hot" style="font-size: 3rem;"></i>
+		</div>
+		<span class="badge bg-dark bg-opacity-75 position-absolute bottom-0 start-0 m-2 fw-normal"
+			th:text="|Đã bán ${p.soldCount}|">Đã bán 0</span>
+	</div>
+
+	<!-- Nội dung -->
+	<div class="card-body d-flex flex-column p-3">
+		<div class="small text-muted mb-1" th:text="${p.categoryName}">Trà sữa</div>
+		<h3 class="h6 fw-bold mb-1" th:text="${p.name}">Tên món</h3>
+
+		<div class="small mb-2" th:if="${p.reviewCount > 0 or p.favoriteCount > 0}">
+			<span th:if="${p.reviewCount > 0}" class="me-2">
+				<i class="bi bi-star-fill text-warning"></i>
+				<strong th:text="${#numbers.formatDecimal(p.avgRating, 1, 1, 'POINT')}">4.8</strong>
+				<span class="text-muted" th:text="|(${p.reviewCount})|">(3)</span>
+			</span>
+			<span th:if="${p.favoriteCount > 0}">
+				<i class="bi bi-heart-fill text-danger"></i>
+				<span class="text-muted" th:text="${p.favoriteCount}">5</span>
+			</span>
+		</div>
+
+		<div class="mt-auto pt-1 d-flex justify-content-between align-items-center gap-2">
+			<span class="fw-bold text-success"
+				th:text="${#numbers.formatDecimal(p.basePrice, 0, 'POINT', 0, 'COMMA')} + ' đ'">35.000 đ</span>
+
+			<!-- USER: chọn size, đường, đá, topping -->
+			<button th:if="${mode == 'buy'}" type="button"
+				class="btn btn-success btn-sm rounded-circle d-inline-flex align-items-center justify-content-center js-open-product"
+				style="width: 36px; height: 36px; flex-shrink: 0;"
+				th:attr="data-id=${p.id}, data-name=${p.name}, data-price=${p.basePrice},
+				         data-image=${p.imageCloudinaryId}, data-description=${p.description}"
+				th:aria-label="'Chọn ' + ${p.name}">
+				<i class="bi bi-plus-lg"></i>
+			</button>
+
+			<!-- Chưa đăng nhập: phải đăng nhập mới đặt được -->
+			<a th:if="${mode == 'guest'}" th:href="@{/auth/login}"
+				class="btn btn-outline-success btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
+				style="width: 36px; height: 36px; flex-shrink: 0;" title="Đăng nhập để đặt món">
+				<i class="bi bi-plus-lg"></i>
+			</a>
+		</div>
+	</div>
+</div>
+
+
+<!--
+	Khối "20 món nhất" có PHÂN TRANG THẬT (trang chủ User): mỗi trang 8 món, bấm số trang thì
+	JS gọi /menu/highlight/{type}?page=n lấy đoạn HTML trang đó (hlBody) rồi thay vào khối.
+	pg: HighlightPageRes (type, items, page, totalPages, total, offset)
+-->
+<section th:fragment="hlAjax(blockId, type, icon, title, subtitle, pg, mode)" th:id="${blockId}"
+	class="hl-ajax bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" style="scroll-margin-top: 90px;"
+	th:attr="data-url=@{/menu/highlight/{t}(t=${type})}">
+
+	<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+		<div>
+			<h2 class="h5 fw-bold mb-0"><i th:class="${icon} + ' me-1'"></i> <span th:text="${title}">Bán chạy</span></h2>
+			<small class="text-muted" th:text="${subtitle}">20 món bán nhiều nhất</small>
+		</div>
+		<span class="badge rounded-pill text-bg-light border" th:text="|Top ${pg.total} món|">Top 20 món</span>
+	</div>
+
+	<div th:replace="~{fragments/product-card :: hlBody(pg=${pg}, mode=${mode})}"></div>
+</section>
+
+<!-- 1 trang trong khối (cũng là đoạn HTML mà /menu/highlight/{type} trả về). Biến: pg, mode -->
+<div th:fragment="hlBody" class="hl-body">
+
+	<div class="row g-3" th:unless="${#lists.isEmpty(pg.items)}">
+		<div class="col-6 col-md-4 col-lg-3" th:each="p, st : ${pg.items}">
+			<div class="position-relative h-100">
+				<span class="badge rounded-pill bg-success position-absolute top-0 start-0 m-2 shadow-sm"
+					style="z-index: 2;" th:text="'#' + ${pg.offset + st.count}">#1</span>
+				<div th:replace="~{fragments/product-card :: card(${p}, ${mode})}"></div>
+			</div>
+		</div>
+	</div>
+
+	<p class="text-muted mb-0" th:if="${#lists.isEmpty(pg.items)}">Chưa có món nào.</p>
+
+	<!-- Phân trang: ‹ 1 2 3 › -->
+	<div class="d-flex flex-wrap justify-content-center align-items-center gap-1 mt-3" th:if="${pg.totalPages > 1}">
+		<button type="button" class="btn btn-sm btn-outline-success hl-go" aria-label="Trang trước"
+			th:attr="data-page=${pg.page - 1}" th:disabled="${pg.page == 0}"><i class="bi bi-chevron-left"></i></button>
+		<button type="button" class="btn btn-sm hl-go" style="min-width: 34px;"
+			th:each="i : ${#numbers.sequence(0, pg.totalPages - 1)}"
+			th:classappend="${i == pg.page} ? 'btn-success' : 'btn-outline-success'"
+			th:attr="data-page=${i}" th:text="${i + 1}">1</button>
+		<button type="button" class="btn btn-sm btn-outline-success hl-go" aria-label="Trang sau"
+			th:attr="data-page=${pg.page + 1}" th:disabled="${pg.page >= pg.totalPages - 1}"><i class="bi bi-chevron-right"></i></button>
+		<small class="text-muted ms-2"
+			th:text="|Hạng ${pg.offset + 1}–${pg.offset + #lists.size(pg.items)} / ${pg.total}|">Hạng 1–8 / 20</small>
+	</div>
+</div>
+
+</html>
