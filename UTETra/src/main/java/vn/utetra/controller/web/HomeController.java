@@ -39,6 +39,7 @@ import vn.utetra.repository.ProductRepository;
 import vn.utetra.repository.UserRepository;
 import vn.utetra.service.OrderFlowService;
 import vn.utetra.service.ProductHighlightService;
+import vn.utetra.service.ViewedProductService;
 
 @Controller
 public class HomeController {
@@ -58,15 +59,17 @@ public class HomeController {
 	private final CategoryRepository categoryRepository;
 	private final ProductHighlightService productHighlightService;
 	private final OrderFlowService orderFlowService;
+	private final ViewedProductService viewedProductService;
 
 	public HomeController(UserRepository userRepository, ProductRepository productRepository,
 			CategoryRepository categoryRepository, ProductHighlightService productHighlightService,
-			OrderFlowService orderFlowService) {
+			OrderFlowService orderFlowService, ViewedProductService viewedProductService) {
 		this.userRepository = userRepository;
 		this.productRepository = productRepository;
 		this.categoryRepository = categoryRepository;
 		this.productHighlightService = productHighlightService;
 		this.orderFlowService = orderFlowService;
+		this.viewedProductService = viewedProductService;
 	}
 
 	/**
@@ -183,6 +186,8 @@ public class HomeController {
 				logger.error("Không đếm được đơn của user {}", user.getId(), e);
 				model.addAttribute("orderCounts", Map.of());
 			}
+			// Sản phẩm đã xem gần đây (8 món)
+			model.addAttribute("recentViewed", viewedProductService.recent(user.getId(), 8));
 		}
 
 		// Danh mục -> trang sản phẩm theo danh mục

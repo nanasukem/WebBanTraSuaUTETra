@@ -59,6 +59,16 @@
 							</div>
 
 							<div class="col-md-6">
+								<label for="branchId" class="form-label"> Áp dụng tại </label>
+								<select id="branchId" th:field="*{branchId}" class="form-select">
+									<option value="">Toàn chuỗi (mọi chi nhánh)</option>
+									<option th:each="b : ${branches}" th:value="${b.id}"
+										th:text="${b.name} + (${b.status != null and b.status.name() == 'SUSPENDED'} ? ' (tạm ngưng)' : '')">Chi nhánh</option>
+								</select>
+								<div class="form-text">Chọn 1 chi nhánh nếu là khuyến mãi riêng (khai trương, giờ vắng khách...).</div>
+							</div>
+
+							<div class="col-md-6">
 								<label for="applyTo" class="form-label"> Phạm vi giảm
 									giá <span class="text-danger">*</span>
 								</label> <select id="applyTo" th:field="*{applyTo}" class="form-select"
@@ -139,12 +149,8 @@
 
 							<div class="col-12">
 								<div class="alert alert-info mb-0">
-									<i class="bi bi-info-circle me-1"></i> Voucher tạo tại đây là
-									voucher toàn hệ thống. Các thiết lập giới hạn tài khoản, hạng
-									thành viên và phương thức thanh toán nâng cao hiện chưa có
-									trường tương ứng trong
-									<code>VoucherReq</code>
-									.
+									<i class="bi bi-info-circle me-1"></i> Chọn <b>Toàn chuỗi</b> để mọi chi nhánh dùng được, hoặc chọn 1 chi nhánh cho khuyến mãi riêng.
+									Quản lý chi nhánh chỉ xem được mã áp dụng tại chi nhánh mình, không tạo / sửa.
 								</div>
 							</div>
 

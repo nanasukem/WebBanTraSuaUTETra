@@ -12,8 +12,8 @@
 				class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
 				<div>
 					<h3 class="fw-bold mb-1">Quản lý voucher</h3>
-					<p class="text-muted mb-0">Quản lý mã giảm giá toàn hệ thống
-						UTETra</p>
+					<p class="text-muted mb-0">Mã giảm giá toàn chuỗi và mã riêng cho từng chi nhánh
+						(quản lý chi nhánh chỉ xem được, không tạo / sửa)</p>
 				</div>
 
 				<a th:href="@{/admin/vouchers/new}" class="btn btn-success"> <i
@@ -37,10 +37,19 @@
 				<div class="card-body">
 
 					<div class="row g-3 mb-3">
-						<div class="col-md-6">
+						<div class="col-md-4">
 							<label for="voucherSearch" class="form-label">Tìm voucher</label>
 							<input id="voucherSearch" type="search" class="form-control"
 								placeholder="Nhập mã hoặc tên voucher...">
+						</div>
+
+						<div class="col-md-3">
+							<label for="scopeFilter" class="form-label">Áp dụng tại</label>
+							<select id="scopeFilter" class="form-select">
+								<option value="">Tất cả</option>
+								<option value="chain">Toàn chuỗi</option>
+								<option th:each="b : ${branches}" th:value="${b.id}" th:text="${b.name}">Chi nhánh</option>
+							</select>
 						</div>
 
 						<div class="col-md-3">
@@ -55,7 +64,7 @@
 							</select>
 						</div>
 
-						<div class="col-md-3 d-flex align-items-end">
+						<div class="col-md-2 d-flex align-items-end">
 							<button type="button" id="resetFilter"
 								class="btn btn-outline-secondary w-100">
 								<i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại
@@ -70,7 +79,7 @@
 									<th>Mã voucher</th>
 									<th>Tên chương trình</th>
 									<th>Ưu đãi</th>
-									<th>Phạm vi</th>
+									<th>Áp dụng tại</th>
 									<th>Lượt sử dụng</th>
 									<th>Thời gian</th>
 									<th>Trạng thái</th>
@@ -85,7 +94,8 @@
                                 expired=${v.endDate.isBefore(now)},
                                 upcoming=${v.startDate.isAfter(now)},
                                 exhausted=${v.usedCount >= v.quantity},
-                                status=${!v.isActive ? 'inactive' : (expired ? 'expired' : (upcoming ? 'upcoming' : (exhausted ? 'exhausted' : 'active')))}">
+                                status=${!v.isActive ? 'inactive' : (expired ? 'expired' : (upcoming ? 'upcoming' : (exhausted ? 'exhausted' : 'active')))}"
+									th:attr="data-status=${status}, data-scope=${v.branch == null ? 'chain' : v.branch.id}">
 
 									<td><span class="badge text-bg-dark" th:text="${v.code}"></span>
 									</td>
@@ -112,8 +122,8 @@
 												th:text="${#numbers.formatDecimal(v.minOrderValue, 0, 'COMMA', 0, 'POINT')}"></span>đ
 										</div></td>
 
-									<td><span class="badge text-bg-primary">Toàn hệ
-											thống</span></td>
+									<td><span th:if="${v.branch == null}" class="badge text-bg-primary">Toàn chuỗi</span>
+										<span th:if="${v.branch != null}" class="badge text-bg-warning" th:text="${v.branch.name}">Chi nhánh</span></td>
 
 									<td><span th:text="${v.usedCount}"></span> / <span
 										th:text="${v.quantity}"></span>
@@ -172,7 +182,7 @@
 								<tr th:if="${#lists.isEmpty(vouchers)}">
 									<td colspan="8" class="text-center py-5 text-muted"><i
 										class="bi bi-ticket-perforated fs-1 d-block mb-2"></i> Chưa có
-										voucher toàn hệ thống.</td>
+										voucher nào.</td>
 								</tr>
 							</tbody>
 						</table>
@@ -195,6 +205,8 @@
 										.getElementById('voucherSearch');
 								const filter = document
 										.getElementById('statusFilter');
+								const scope = document
+										.getElementById('scopeFilter');
 								const reset = document
 										.getElementById('resetFilter');
 								const rows = Array
@@ -216,8 +228,10 @@
 														.includes(keyword);
 												const matchesStatus = !selectedStatus
 														|| row.dataset.status === selectedStatus;
+												const matchesScope = !scope.value
+														|| row.dataset.scope === scope.value;
 												const visible = matchesKeyword
-														&& matchesStatus;
+														&& matchesStatus && matchesScope;
 
 												row.classList.toggle('d-none',
 														!visible);
@@ -230,18 +244,14 @@
 													|| rows.length === 0);
 								}
 
-								rows
-										.forEach(function(row) {
-											row.dataset.status = row.dataset.voucherStatus
-													|| '';
-										});
-
 								search.addEventListener('input', applyFilters);
 								filter.addEventListener('change', applyFilters);
+								scope.addEventListener('change', applyFilters);
 
 								reset.addEventListener('click', function() {
 									search.value = '';
 									filter.value = '';
+									scope.value = '';
 									applyFilters();
 								});
 							});

@@ -49,9 +49,9 @@ public class SecurityConfiguration {
 								"/webjars/**", "/favicon.ico", "/error")
 						.permitAll()
 
-						// Thực đơn, trang sản phẩm theo danh mục, trang Chi nhánh: ai cũng xem được (không cần đăng nhập).
+						// Thực đơn, trang danh mục, chi tiết sản phẩm, trang Chi nhánh: ai cũng xem được (không cần đăng nhập).
 						// Mua hàng (giỏ, đặt hàng) vẫn chỉ USER - xem quy tắc bên dưới.
-						.requestMatchers("/menu", "/menu/**", "/category/**", "/branches").permitAll()
+						.requestMatchers("/menu", "/menu/**", "/category/**", "/branches", "/products/**").permitAll()
 
 						// Chức năng quản trị.
 						.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
@@ -59,9 +59,9 @@ public class SecurityConfiguration {
 						// Chức năng quản lý.
 						.requestMatchers("/manager/**", "/api/manager/**").hasRole("MANAGER")
 
-						// Giỏ hàng, thanh toán, đơn hàng và địa chỉ của USER.
+						// Giỏ hàng, thanh toán, đơn hàng, địa chỉ, trang cá nhân (profile, yêu thích, đã xem, đánh giá) của USER.
 						.requestMatchers("/cart/**", "/api/cart/**", "/checkout/**", "/api/checkout/**", "/orders/**",
-								"/api/addresses/**")
+								"/api/addresses/**", "/user/**", "/api/favorites/**")
 						.hasRole("USER")
 
 						// Chức năng giao hàng.

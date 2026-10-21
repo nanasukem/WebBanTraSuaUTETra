@@ -17,27 +17,20 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpSession;
-import jakarta.validation.Valid;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import vn.utetra.dto.request.VoucherReq;
+import vn.utetra.dto.response.ManagerVoucherRes;
 import vn.utetra.entity.Branch;
 import vn.utetra.entity.BranchProduct;
 import vn.utetra.entity.Order;
 import vn.utetra.entity.Product;
-import vn.utetra.entity.Voucher;
 import vn.utetra.entity.enums.BranchStatus;
-import vn.utetra.entity.enums.DiscountType;
 import vn.utetra.entity.enums.OrderStatus;
-import vn.utetra.entity.enums.PaymentMethod;
-import vn.utetra.entity.enums.VoucherApplyTo;
-import vn.utetra.exception.BusinessException;
 import vn.utetra.repository.BranchProductRepository;
 import vn.utetra.repository.BranchRepository;
 import vn.utetra.repository.OrderRepository;
@@ -58,7 +51,7 @@ import vn.utetra.service.VoucherService;
  * - /manager/dashboard                     : tổng quan chi nhánh của tôi
  * - /manager/branches/{id}                 : thông tin chi nhánh
  * - /manager/branches/{id}/products        : bật/tắt món tại chi nhánh
- * - /manager/branches/{id}/vouchers        : voucher riêng của chi nhánh
+ * - /manager/branches/{id}/vouchers        : khuyến mãi áp dụng tại chi nhánh (CHỈ XEM, Admin tạo)
  * - /manager/branches/{id}/reports         : doanh thu chi nhánh
  * - /manager/branches/{id}/customers       : (Chức năng mở rộng) khách hàng của chi nhánh, chỉ xem
  * - Đơn hàng: ManagerOrderController (/manager/orders, /manager/orders/history, /manager/orders/{id})
@@ -186,8 +179,9 @@ public class ManagerController {
 		model.addAttribute("todayRevenue", sumRevenue(orders, todayStart, tomorrowStart));
 		model.addAttribute("monthRevenue", sumRevenue(orders, monthStart, nextMonthStart));
 		model.addAttribute("unavailableProducts", branchProductRepository.findUnavailableProductIds(branch.getId()).size());
-		model.addAttribute("activeVouchers", voucherService.findByBranch(branch.getId()).stream()
-				.filter(v -> Boolean.TRUE.equals(v.getIsActive())).count());
+		// Khuyến mãi đang chạy tại chi nhánh (toàn chuỗi + riêng chi nhánh, do Admin tạo)
+		model.addAttribute("activeVouchers", voucherService.branchView(branch.getId()).stream()
+				.filter(v -> "RUNNING".equals(v.status())).count());
 
 		return "manager/dashboard";
 	}
@@ -352,244 +346,27 @@ public class ManagerController {
 	}
 
 	// =========================================================
-	// VOUCHER RIÊNG CỦA CHI NHÁNH
+	// KHUYẾN MÃI CỦA CHI NHÁNH - CHỈ XEM
+	// Chuỗi sở hữu mọi chi nhánh: voucher do Admin tạo (toàn chuỗi hoặc riêng 1 chi nhánh).
+	// Manager chỉ xem voucher áp dụng tại chi nhánh mình + số lượt khách đã dùng, tiền đã giảm.
 	// =========================================================
 	@GetMapping("/branches/{branchId}/vouchers")
-	public String branchVouchers(@PathVariable Integer branchId, Model model, Principal principal, HttpSession session, RedirectAttributes ra) {
+	public String branchVouchers(@PathVariable Integer branchId, Model model, Principal principal, HttpSession session,
+			RedirectAttributes ra) {
 
-		Optional<Branch> optionalBranch = Optional.ofNullable(ownBranch(branchId, principal, session));
-
-		if (optionalBranch.isEmpty()) {
+		Branch branch = ownBranch(branchId, principal, session);
+		if (branch == null) {
 			return denied(ra);
 		}
 
-		model.addAttribute("branch", optionalBranch.get());
-		model.addAttribute("vouchers", voucherService.findByBranch(branchId));
-
+		List<ManagerVoucherRes> vouchers = voucherService.branchView(branchId);
+		model.addAttribute("branch", branch);
+		model.addAttribute("vouchers", vouchers);
+		model.addAttribute("runningCount", vouchers.stream().filter(v -> "RUNNING".equals(v.status())).count());
+		model.addAttribute("usedTotal", vouchers.stream().mapToLong(ManagerVoucherRes::usedAtBranch).sum());
+		model.addAttribute("discountTotal", vouchers.stream().map(ManagerVoucherRes::discountAtBranch)
+				.reduce(BigDecimal.ZERO, BigDecimal::add));
 		return "manager/vouchers/index";
-	}
-
-	@GetMapping("/branches/{branchId}/vouchers/new")
-	public String createVoucherForm(@PathVariable Integer branchId, Model model, Principal principal, HttpSession session, RedirectAttributes ra) {
-
-		Optional<Branch> optionalBranch = Optional.ofNullable(ownBranch(branchId, principal, session));
-
-		if (optionalBranch.isEmpty()) {
-			return denied(ra);
-		}
-
-		VoucherReq req = new VoucherReq();
-		req.setBranchId(branchId);
-		req.setMinOrderValue(BigDecimal.ZERO);
-		req.setQuantity(100);
-
-		LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
-
-		req.setStartDate(now);
-		req.setEndDate(now.plusDays(7));
-
-		model.addAttribute("branch", optionalBranch.get());
-		model.addAttribute("voucherReq", req);
-		model.addAttribute("voucherId", null);
-
-		addVoucherFormOptions(model);
-
-		return "manager/vouchers/form";
-	}
-
-	@PostMapping("/branches/{branchId}/vouchers")
-	public String createVoucher(@PathVariable Integer branchId, @Valid @ModelAttribute("voucherReq") VoucherReq req,
-			BindingResult result, Model model, Principal principal, HttpSession session, RedirectAttributes ra) {
-
-		Optional<Branch> optionalBranch = Optional.ofNullable(ownBranch(branchId, principal, session));
-
-		if (optionalBranch.isEmpty()) {
-			return denied(ra);
-		}
-
-		if (result.hasErrors()) {
-			model.addAttribute("branch", optionalBranch.get());
-			model.addAttribute("voucherId", null);
-			addVoucherFormOptions(model);
-			return "manager/vouchers/form";
-		}
-
-		try {
-			// Luôn gán chi nhánh từ URL, không tin branchId gửi từ form.
-			req.setBranchId(branchId);
-
-			voucherService.create(req);
-
-			ra.addFlashAttribute("success", "Đã tạo voucher cho chi nhánh thành công.");
-
-			return "redirect:/manager/branches/" + branchId + "/vouchers";
-
-		} catch (BusinessException ex) {
-			model.addAttribute("branch", optionalBranch.get());
-			model.addAttribute("voucherId", null);
-			model.addAttribute("businessError", ex.getMessage());
-			addVoucherFormOptions(model);
-
-			return "manager/vouchers/form";
-		}
-	}
-
-	@GetMapping("/branches/{branchId}/vouchers/{voucherId}/edit")
-	public String editVoucherForm(@PathVariable Integer branchId, @PathVariable Integer voucherId, Model model,
-			Principal principal, HttpSession session, RedirectAttributes ra) {
-
-		Optional<Branch> optionalBranch = Optional.ofNullable(ownBranch(branchId, principal, session));
-
-		if (optionalBranch.isEmpty()) {
-			return denied(ra);
-		}
-
-		try {
-			Voucher voucher = voucherService.findById(voucherId);
-
-			if (!belongsToBranch(voucher, branchId)) {
-				ra.addFlashAttribute("error", "Voucher không thuộc chi nhánh này.");
-
-				return "redirect:/manager/branches/" + branchId + "/vouchers";
-			}
-
-			VoucherReq req = voucherService.toReq(voucher);
-			req.setBranchId(branchId);
-
-			model.addAttribute("branch", optionalBranch.get());
-			model.addAttribute("voucherReq", req);
-			model.addAttribute("voucherId", voucherId);
-
-			addVoucherFormOptions(model);
-
-			return "manager/vouchers/form";
-
-		} catch (BusinessException ex) {
-			ra.addFlashAttribute("error", ex.getMessage());
-
-			return "redirect:/manager/branches/" + branchId + "/vouchers";
-		}
-	}
-
-	@PostMapping("/branches/{branchId}/vouchers/{voucherId}")
-	public String updateVoucher(@PathVariable Integer branchId, @PathVariable Integer voucherId,
-			@Valid @ModelAttribute("voucherReq") VoucherReq req, BindingResult result, Model model,
-			Principal principal, HttpSession session, RedirectAttributes ra) {
-
-		Optional<Branch> optionalBranch = Optional.ofNullable(ownBranch(branchId, principal, session));
-
-		if (optionalBranch.isEmpty()) {
-			return denied(ra);
-		}
-
-		Voucher voucher;
-
-		try {
-			voucher = voucherService.findById(voucherId);
-		} catch (BusinessException ex) {
-			ra.addFlashAttribute("error", ex.getMessage());
-
-			return "redirect:/manager/branches/" + branchId + "/vouchers";
-		}
-
-		if (!belongsToBranch(voucher, branchId)) {
-			ra.addFlashAttribute("error", "Voucher không thuộc chi nhánh này.");
-
-			return "redirect:/manager/branches/" + branchId + "/vouchers";
-		}
-
-		if (result.hasErrors()) {
-			model.addAttribute("branch", optionalBranch.get());
-			model.addAttribute("voucherId", voucherId);
-			addVoucherFormOptions(model);
-
-			return "manager/vouchers/form";
-		}
-
-		try {
-			req.setBranchId(branchId);
-
-			voucherService.update(voucherId, req);
-
-			ra.addFlashAttribute("success", "Đã cập nhật voucher thành công.");
-
-			return "redirect:/manager/branches/" + branchId + "/vouchers";
-
-		} catch (BusinessException ex) {
-			model.addAttribute("branch", optionalBranch.get());
-			model.addAttribute("voucherId", voucherId);
-			model.addAttribute("businessError", ex.getMessage());
-			addVoucherFormOptions(model);
-
-			return "manager/vouchers/form";
-		}
-	}
-
-	@PostMapping("/branches/{branchId}/vouchers/{voucherId}/toggle")
-	public String toggleVoucher(@PathVariable Integer branchId, @PathVariable Integer voucherId,
-			Principal principal, HttpSession session, RedirectAttributes ra) {
-
-		if (ownBranch(branchId, principal, session) == null) {
-			return denied(ra);
-		}
-
-		try {
-			Voucher voucher = voucherService.findById(voucherId);
-
-			if (!belongsToBranch(voucher, branchId)) {
-				ra.addFlashAttribute("error", "Voucher không thuộc chi nhánh này.");
-
-				return "redirect:/manager/branches/" + branchId + "/vouchers";
-			}
-
-			voucherService.toggleActive(voucherId);
-
-			ra.addFlashAttribute("success", "Đã thay đổi trạng thái voucher.");
-
-		} catch (BusinessException ex) {
-			ra.addFlashAttribute("error", ex.getMessage());
-		}
-
-		return "redirect:/manager/branches/" + branchId + "/vouchers";
-	}
-
-	@PostMapping("/branches/{branchId}/vouchers/{voucherId}/delete")
-	public String deleteVoucher(@PathVariable Integer branchId, @PathVariable Integer voucherId,
-			Principal principal, HttpSession session, RedirectAttributes ra) {
-
-		if (ownBranch(branchId, principal, session) == null) {
-			return denied(ra);
-		}
-
-		try {
-			Voucher voucher = voucherService.findById(voucherId);
-
-			if (!belongsToBranch(voucher, branchId)) {
-				ra.addFlashAttribute("error", "Voucher không thuộc chi nhánh này.");
-
-				return "redirect:/manager/branches/" + branchId + "/vouchers";
-			}
-
-			voucherService.delete(voucherId);
-
-			ra.addFlashAttribute("success", "Đã xử lý xóa voucher. Voucher đã được sử dụng có thể chỉ được tắt.");
-
-		} catch (BusinessException ex) {
-			ra.addFlashAttribute("error", ex.getMessage());
-		}
-
-		return "redirect:/manager/branches/" + branchId + "/vouchers";
-	}
-
-	private boolean belongsToBranch(Voucher voucher, Integer branchId) {
-		return voucher != null && voucher.getBranch() != null && branchId != null
-				&& branchId.equals(voucher.getBranch().getId());
-	}
-
-	private void addVoucherFormOptions(Model model) {
-		model.addAttribute("discountTypes", DiscountType.values());
-		model.addAttribute("applyToOptions", VoucherApplyTo.values());
-		model.addAttribute("paymentMethods", PaymentMethod.values());
 	}
 
 	// =========================================================

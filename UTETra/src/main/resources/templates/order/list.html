@@ -74,6 +74,11 @@
 				<div class="d-flex justify-content-end gap-2 mt-3">
 					<a th:if="${o.canCancel}" class="btn btn-sm btn-outline-danger"
 						th:href="@{|/orders/${o.id}#huy-don|}">Huỷ đơn</a>
+					<a th:if="${o.status == 'DELIVERED'}" class="btn btn-sm btn-outline-warning"
+						th:href="@{|/orders/${o.id}#danh-gia|}"><i class="bi bi-star me-1"></i>Đánh giá</a>
+					<a th:if="${o.status == 'PENDING' or o.status == 'CONFIRMED' or o.status == 'PICKED_UP' or o.status == 'DELIVERING'}"
+						class="btn btn-sm btn-outline-success" th:href="@{/orders/{id}/tracking(id=${o.id})}">
+						<i class="bi bi-geo-alt me-1"></i>Theo dõi đơn</a>
 					<a class="btn btn-sm btn-success" th:href="@{/orders/{id}(id=${o.id})}">Xem chi tiết</a>
 				</div>
 			</div>

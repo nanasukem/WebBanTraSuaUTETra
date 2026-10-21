@@ -108,8 +108,15 @@
 								<li><a class="dropdown-item" th:href="@{/cart}">
 										<i class="bi bi-cart3 me-2"></i> Giỏ hàng
 								</a></li>
-								<!-- Hồ sơ cá nhân (/user/profile) và Yêu thích (/favorites): việc tuần 3 của A,
-								     làm xong trang thì thêm 2 mục đó vào đây -->
+								<li><a class="dropdown-item" th:href="@{/user/profile}">
+										<i class="bi bi-person me-2"></i> Hồ sơ cá nhân
+								</a></li>
+								<li><a class="dropdown-item" th:href="@{/user/favorites}">
+										<i class="bi bi-heart me-2"></i> Sản phẩm yêu thích
+								</a></li>
+								<li><a class="dropdown-item" th:href="@{/user/viewed}">
+										<i class="bi bi-clock-history me-2"></i> Sản phẩm đã xem
+								</a></li>
 							</th:block>
 
 							<!-- MANAGER -->
