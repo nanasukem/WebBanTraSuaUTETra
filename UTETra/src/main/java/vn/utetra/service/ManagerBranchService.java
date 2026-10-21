@@ -12,13 +12,13 @@ import vn.utetra.repository.ProductRepository;
 import java.util.List;
 
 @Service
-public class VendorBranchService {
+public class ManagerBranchService {
 
 	private final BranchProductRepository branchProductRepository;
 	private final BranchRepository branchRepository;
 	private final ProductRepository productRepository;
 
-	public VendorBranchService(BranchProductRepository branchProductRepository, BranchRepository branchRepository,
+	public ManagerBranchService(BranchProductRepository branchProductRepository, BranchRepository branchRepository,
 			ProductRepository productRepository) {
 		this.branchProductRepository = branchProductRepository;
 		this.branchRepository = branchRepository;

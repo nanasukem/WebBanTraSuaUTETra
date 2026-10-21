@@ -70,7 +70,7 @@ class Week1ServiceTest {
 		req.setName("UTETra Test JUnit");
 		req.setAddress("123 Đường Test");
 		req.setPhone("0912345678");
-		req.setOwnerId(3); // vendor1
+		req.setOwnerId(2); // manager3 - chưa quản lý chi nhánh nào
 		req.setCommissionRate(new BigDecimal("7.5"));
 		Branch b = branchService.create(req);
 		assertNotNull(b.getId());
@@ -78,16 +78,36 @@ class Week1ServiceTest {
 	}
 
 	@Test
+	void branch_managerDaCoChiNhanh_baoLoi() {
+		// Mỗi Manager chỉ quản lý 1 chi nhánh: manager1 (id 3) đang quản lý chi nhánh 1
+		BranchReq req = new BranchReq();
+		req.setName("UTETra Chi Nhánh Thứ Hai");
+		req.setAddress("abc");
+		req.setOwnerId(3);
+		BusinessException ex = assertThrows(BusinessException.class, () -> branchService.create(req));
+		assertTrue(ex.getMessage().contains("chỉ quản lý 1 chi nhánh"));
+
+		// Đổi người quản lý chi nhánh 2 sang manager1 cũng bị chặn
+		BranchReq sua = branchService.toReq(branchService.findById(2));
+		sua.setOwnerId(3);
+		assertThrows(BusinessException.class, () -> branchService.update(2, sua));
+
+		// Sửa chi nhánh 1 mà vẫn giữ manager1 thì vẫn được
+		BranchReq giuNguyen = branchService.toReq(branchService.findById(1));
+		assertEquals(3, branchService.update(1, giuNguyen).getOwner().getId());
+	}
+
+	@Test
 	void branch_trungTen_baoLoi() {
 		BranchReq req = new BranchReq();
 		req.setName("utetra quận 1"); // trùng, khác hoa thường
 		req.setAddress("abc");
-		req.setOwnerId(3);
+		req.setOwnerId(2);
 		assertThrows(BusinessException.class, () -> branchService.create(req));
 	}
 
 	@Test
-	void branch_chuShopKhongPhaiVendor_baoLoi() {
+	void branch_chuShopKhongPhaiManager_baoLoi() {
 		BranchReq req = new BranchReq();
 		req.setName("Shop của user thường");
 		req.setAddress("abc");
@@ -100,15 +120,16 @@ class Week1ServiceTest {
 		branchService.changeStatus(2, BranchStatus.SUSPENDED); // APPROVED -> SUSPENDED: được
 		assertEquals(BranchStatus.SUSPENDED, branchService.findById(2).getStatus());
 		branchService.changeStatus(2, BranchStatus.APPROVED); // mở lại: được
-		assertThrows(BusinessException.class, // APPROVED -> REJECTED: không được
-				() -> branchService.changeStatus(2, BranchStatus.REJECTED));
+		assertEquals(BranchStatus.APPROVED, branchService.findById(2).getStatus());
+		branchService.changeStatus(2, BranchStatus.APPROVED); // đang hoạt động bấm lại: không đổi, không lỗi
+		assertEquals("Tạm ngưng", BranchStatus.SUSPENDED.getLabel());
 	}
 
 	@Test
 	void branch_timKiem() {
 		assertEquals(1, branchService.search("quận 1", null).size());
 		assertEquals(2, branchService.search(null, BranchStatus.APPROVED).size());
-		assertEquals(0, branchService.search(null, BranchStatus.PENDING).size());
+		assertEquals(0, branchService.search(null, BranchStatus.SUSPENDED).size());
 	}
 
 	// ================= VOUCHER SERVICE =================
@@ -184,10 +205,11 @@ class Week1ServiceTest {
 	}
 
 	@Test
-	void branch_findVendors_chiLayVendor() {
-		List<Integer> ids = branchService.findVendors().stream().map(User::getId).toList();
-		assertTrue(ids.contains(3), "vendor1 (id 3) phải có trong danh sách");
-		assertFalse(ids.contains(6), "user1 (id 6) không phải vendor");
+	void branch_findManagers_chiLayManager() {
+		List<Integer> ids = branchService.findManagers().stream().map(User::getId).toList();
+		assertTrue(ids.contains(3), "manager1 (id 3) phải có trong danh sách");
+		assertTrue(ids.contains(2), "manager3 (id 2, chưa có chi nhánh) cũng là Manager");
+		assertFalse(ids.contains(6), "user1 (id 6) không phải manager");
 	}
 
 	// ================= BỔ SUNG: VOUCHER =================

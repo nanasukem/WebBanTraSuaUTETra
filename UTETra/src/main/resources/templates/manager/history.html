@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/user-layout :: main('Đơn hàng của shop - UTETra', ~{::#vendor-history})}">
+	th:replace="~{layout/user-layout :: main('Đơn hàng của shop - UTETra', ~{::#manager-history})}">
 
 <body>
-	<div id="vendor-history">
+	<div id="manager-history">
 		<style>
 .vh-tabs { gap: .35rem; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: .25rem; }
 .vh-tabs .nav-link { color: #495057; white-space: nowrap; border-radius: 999px; background: #fff; border: 1px solid #dee2e6; }
@@ -16,7 +16,7 @@
 			<h1 class="h4 fw-bold text-success mb-0 me-2">
 				<i class="bi bi-receipt-cutoff me-1"></i>Đơn hàng của shop
 			</h1>
-			<form th:if="${data != null and #lists.size(branches) > 1}" method="get" th:action="@{/vendor/orders/history}">
+			<form th:if="${data != null and #lists.size(branches) > 1}" method="get" th:action="@{/manager/orders/history}">
 				<input type="hidden" name="status" th:value="${data.status}">
 				<select name="branchId" class="form-select form-select-sm" onchange="this.form.submit()">
 					<option th:each="b : ${branches}" th:value="${b.id}" th:text="${b.name}"
@@ -24,7 +24,7 @@
 				</select>
 			</form>
 			<span th:if="${data != null and #lists.size(branches) == 1}" class="fw-semibold" th:text="${data.branchName}"></span>
-			<a th:if="${data != null}" th:href="@{/vendor/orders(branchId=${data.branchId})}"
+			<a th:if="${data != null}" th:href="@{/manager/orders(branchId=${data.branchId})}"
 				class="btn btn-sm btn-warning fw-bold ms-auto">
 				<i class="bi bi-bell me-1"></i> Về Quầy đơn hàng (nhận đơn trực tiếp)
 			</a>
@@ -38,7 +38,7 @@
 			<ul class="nav vh-tabs mb-3">
 				<li class="nav-item" th:each="t : ${data.tabs}">
 					<a class="nav-link" th:classappend="${t.status == data.status} ? 'active'"
-						th:href="@{/vendor/orders/history(branchId=${data.branchId}, status=${t.status})}">
+						th:href="@{/manager/orders/history(branchId=${data.branchId}, status=${t.status})}">
 						<span th:text="${t.label}">Tab</span>
 						<span th:if="${t.count > 0}" class="badge rounded-pill ms-1"
 							th:classappend="${t.status == data.status} ? 'text-bg-light' : 'text-bg-success'"
@@ -77,7 +77,7 @@
 						</div>
 						<div class="d-flex align-items-center gap-2">
 							<b class="text-danger" th:text="|${#numbers.formatInteger(o.totalAmount, 1, 'POINT')}đ|"></b>
-							<a class="btn btn-sm btn-success" th:href="@{/vendor/orders/{id}(id=${o.id})}">Chi tiết</a>
+							<a class="btn btn-sm btn-success" th:href="@{/manager/orders/{id}(id=${o.id})}">Chi tiết</a>
 						</div>
 					</div>
 				</div>
@@ -88,16 +88,16 @@
 				<ul class="pagination pagination-sm justify-content-center">
 					<li class="page-item" th:classappend="${data.page == 0} ? 'disabled'">
 						<a class="page-link"
-							th:href="@{/vendor/orders/history(branchId=${data.branchId}, status=${data.status}, page=${data.page - 1})}">‹</a>
+							th:href="@{/manager/orders/history(branchId=${data.branchId}, status=${data.status}, page=${data.page - 1})}">‹</a>
 					</li>
 					<li class="page-item" th:each="p : ${#numbers.sequence(0, data.totalPages - 1)}"
 						th:classappend="${p == data.page} ? 'active'">
 						<a class="page-link" th:text="${p + 1}"
-							th:href="@{/vendor/orders/history(branchId=${data.branchId}, status=${data.status}, page=${p})}"></a>
+							th:href="@{/manager/orders/history(branchId=${data.branchId}, status=${data.status}, page=${p})}"></a>
 					</li>
 					<li class="page-item" th:classappend="${data.page >= data.totalPages - 1} ? 'disabled'">
 						<a class="page-link"
-							th:href="@{/vendor/orders/history(branchId=${data.branchId}, status=${data.status}, page=${data.page + 1})}">›</a>
+							th:href="@{/manager/orders/history(branchId=${data.branchId}, status=${data.status}, page=${data.page + 1})}">›</a>
 					</li>
 				</ul>
 				<div class="text-center small text-muted" th:text="|Tổng ${data.totalElements} đơn|"></div>

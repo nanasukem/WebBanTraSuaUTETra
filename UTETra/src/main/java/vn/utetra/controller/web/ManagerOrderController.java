@@ -1,4 +1,4 @@
-package vn.utetra.controller;
+package vn.utetra.controller.web;
 
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
@@ -12,19 +12,19 @@ import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.service.CurrentUserService;
-import vn.utetra.service.VendorOrderService;
+import vn.utetra.service.ManagerOrderService;
 
 import java.security.Principal;
 import java.util.List;
 
 /**
- * Vendor quản lý đơn của shop (SecurityConfig: /vendor/** chỉ ROLE_VENDOR):
- * - /vendor/orders            : Quầy đơn hàng (realtime, chuông)
- * - /vendor/orders/history    : Đơn hàng của shop theo 7 trạng thái của đề
- * - /vendor/orders/{id}       : Chi tiết 1 đơn + nút đổi trạng thái
+ * Manager quản lý đơn của shop (SecurityConfig: /manager/** chỉ ROLE_MANAGER):
+ * - /manager/orders            : Quầy đơn hàng (realtime, chuông)
+ * - /manager/orders/history    : Đơn hàng của shop theo 7 trạng thái của đề
+ * - /manager/orders/{id}       : Chi tiết 1 đơn + nút đổi trạng thái
  */
 @Controller
-public class VendorOrderController {
+public class ManagerOrderController {
 
 	/** Lý do quán huỷ đơn */
 	private static final List<String> CANCEL_REASONS = List.of(
@@ -34,76 +34,76 @@ public class VendorOrderController {
 			"Không liên lạc được với khách");
 	private static final String OTHER = "OTHER";
 
-	private final VendorOrderService vendorOrderService;
+	private final ManagerOrderService managerOrderService;
 	private final CurrentUserService currentUserService;
 
-	public VendorOrderController(VendorOrderService vendorOrderService, CurrentUserService currentUserService) {
-		this.vendorOrderService = vendorOrderService;
+	public ManagerOrderController(ManagerOrderService managerOrderService, CurrentUserService currentUserService) {
+		this.managerOrderService = managerOrderService;
 		this.currentUserService = currentUserService;
 	}
 
 	/** Quầy đơn hàng */
-	@GetMapping("/vendor/orders")
+	@GetMapping("/manager/orders")
 	public String page(@RequestParam(required = false) Integer branchId, Principal principal, HttpSession session,
 			Model model) {
-		Integer vendorId = currentUserService.requireUserId(principal, session);
-		model.addAttribute("branches", vendorOrderService.myBranches(vendorId));
+		Integer managerId = currentUserService.requireUserId(principal, session);
+		model.addAttribute("branches", managerOrderService.myBranches(managerId));
 		model.addAttribute("cancelReasons", CANCEL_REASONS);
 		try {
-			model.addAttribute("branchId", vendorOrderService.resolveBranchId(vendorId, branchId));
+			model.addAttribute("branchId", managerOrderService.resolveBranchId(managerId, branchId));
 		} catch (BusinessException | ResourceNotFoundException e) {
 			model.addAttribute("branchId", null);
 			model.addAttribute("error", e.getMessage());
 		}
-		return "vendor/orders";
+		return "manager/orders";
 	}
 
 	/** Đơn hàng của shop theo 7 trạng thái */
-	@GetMapping("/vendor/orders/history")
+	@GetMapping("/manager/orders/history")
 	public String history(@RequestParam(required = false) Integer branchId,
 			@RequestParam(required = false) String status, @RequestParam(defaultValue = "0") int page,
 			Principal principal, HttpSession session, Model model) {
-		Integer vendorId = currentUserService.requireUserId(principal, session);
-		model.addAttribute("branches", vendorOrderService.myBranches(vendorId));
+		Integer managerId = currentUserService.requireUserId(principal, session);
+		model.addAttribute("branches", managerOrderService.myBranches(managerId));
 		try {
-			model.addAttribute("data", vendorOrderService.history(vendorId, branchId, parseStatus(status), page));
+			model.addAttribute("data", managerOrderService.history(managerId, branchId, parseStatus(status), page));
 		} catch (BusinessException | ResourceNotFoundException e) {
 			model.addAttribute("data", null);
 			model.addAttribute("error", e.getMessage());
 		}
-		return "vendor/history";
+		return "manager/history";
 	}
 
 	/** Chi tiết 1 đơn của shop */
-	@GetMapping("/vendor/orders/{id}")
+	@GetMapping("/manager/orders/{id}")
 	public String detail(@PathVariable Integer id, Principal principal, HttpSession session, Model model,
 			RedirectAttributes ra) {
-		Integer vendorId = currentUserService.requireUserId(principal, session);
+		Integer managerId = currentUserService.requireUserId(principal, session);
 		try {
-			model.addAttribute("order", vendorOrderService.orderDetail(vendorId, id));
-			model.addAttribute("card", vendorOrderService.orderCard(vendorId, id));
+			model.addAttribute("order", managerOrderService.orderDetail(managerId, id));
+			model.addAttribute("card", managerOrderService.orderCard(managerId, id));
 			model.addAttribute("cancelReasons", CANCEL_REASONS);
-			return "vendor/order-detail";
+			return "manager/order-detail";
 		} catch (ResourceNotFoundException e) {
 			ra.addFlashAttribute("error", e.getMessage());
-			return "redirect:/vendor/orders/history";
+			return "redirect:/manager/orders/history";
 		}
 	}
 
 	/** Đổi trạng thái từ trang chi tiết (form) */
-	@PostMapping("/vendor/orders/{id}/status")
+	@PostMapping("/manager/orders/{id}/status")
 	public String changeStatus(@PathVariable Integer id, @RequestParam String status,
 			@RequestParam(required = false) String reason, @RequestParam(required = false) String otherReason,
 			Principal principal, HttpSession session, RedirectAttributes ra) {
-		Integer vendorId = currentUserService.requireUserId(principal, session);
+		Integer managerId = currentUserService.requireUserId(principal, session);
 		String finalReason = OTHER.equals(reason) ? (otherReason == null ? null : otherReason.trim()) : reason;
 		try {
-			vendorOrderService.changeStatus(vendorId, id, parseStatus(status), finalReason);
+			managerOrderService.changeStatus(managerId, id, parseStatus(status), finalReason);
 			ra.addFlashAttribute("success", "Đã cập nhật đơn #" + id);
 		} catch (BusinessException | ResourceNotFoundException e) {
 			ra.addFlashAttribute("error", e.getMessage());
 		}
-		return "redirect:/vendor/orders/" + id;
+		return "redirect:/manager/orders/" + id;
 	}
 
 	/** "CONFIRMED" -> OrderStatus.CONFIRMED; sai hoặc trống -> null */

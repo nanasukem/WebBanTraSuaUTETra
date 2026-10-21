@@ -10,8 +10,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Bảng Branches = Shop / Chi nhánh. Vendor đăng ký -> PENDING -> Manager/Admin
- * duyệt -> APPROVED.
+ * Bảng Branches = Chi nhánh. Chuỗi tự mở: Admin mở chi nhánh và chỉ định 1 Manager
+ * quản lý. Trạng thái: APPROVED (đang hoạt động) <-> SUSPENDED (tạm ngưng).
  */
 @Entity
 @Table(name = "Branches")
@@ -26,7 +26,7 @@ public class Branch {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "owner_id", nullable = false)
-	private User owner; // Vendor sở hữu shop
+	private User owner; // Manager sở hữu shop
 
 	@Column(name = "name", nullable = false, length = 100)
 	private String name;
@@ -54,7 +54,7 @@ public class Branch {
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false, length = 20)
-	private BranchStatus status = BranchStatus.PENDING;
+	private BranchStatus status = BranchStatus.APPROVED;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;

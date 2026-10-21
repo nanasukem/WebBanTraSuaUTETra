@@ -56,11 +56,16 @@ public class SecurityConfiguration {
 						// WebSocket
 						.requestMatchers("/ws/**").permitAll()
 
-						// Admin và Manager
-						.requestMatchers("/admin/**", "/api/admin/**").hasAnyRole("ADMIN", "MANAGER")
+						// Admin: quản lý toàn hệ thống
+						.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
 
-						// Vendor
-						.requestMatchers("/vendor/**", "/api/vendor/**").hasRole("VENDOR")
+						// Mua hàng (giỏ hàng, sổ địa chỉ, đặt hàng, đơn của tôi): chỉ khách hàng USER.
+						// Manager/Admin/Shipper là tài khoản công việc, không mua hàng
+						.requestMatchers("/cart/**", "/api/cart/**", "/checkout/**", "/api/checkout/**",
+								"/orders/**", "/api/addresses/**").hasRole("USER")
+
+						// Manager
+						.requestMatchers("/manager/**", "/api/manager/**").hasRole("MANAGER")
 
 						// Shipper
 						.requestMatchers("/shipper/**", "/api/shipper/**").hasRole("SHIPPER")

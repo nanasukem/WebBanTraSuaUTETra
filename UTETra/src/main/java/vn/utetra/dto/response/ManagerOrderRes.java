@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /** 1 thẻ đơn trên màn hình Quầy đơn hàng của quán */
-public record VendorOrderRes(
+public record ManagerOrderRes(
 		Integer id,
 		String time,               // "14:05"
 		boolean pickup,

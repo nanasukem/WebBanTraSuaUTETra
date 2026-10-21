@@ -10,7 +10,7 @@ import vn.utetra.dto.request.CarrierReq;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.service.CarrierService;
 
-/** Quản lý nhà vận chuyển cho ADMIN / MANAGER */
+/** Quản lý nhà vận chuyển cho ADMIN */
 @Controller
 @RequestMapping("/admin/carriers")
 public class AdminCarrierController {

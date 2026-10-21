@@ -42,14 +42,14 @@ public class HomeController {
 
 					String roleName = user.getRole().getName().toUpperCase();
 
-					// ADMIN và MANAGER
-					if ("ADMIN".equals(roleName) || "MANAGER".equals(roleName)) {
+					// ADMIN: quản lý toàn hệ thống
+					if ("ADMIN".equals(roleName)) {
 						return "redirect:/admin/products";
 					}
 
-					// VENDOR
-					if ("VENDOR".equals(roleName)) {
-						return "redirect:/vendor/menu";
+					// MANAGER: quản lý chi nhánh của mình -> Quầy đơn hàng
+					if ("MANAGER".equals(roleName)) {
+						return "redirect:/manager/orders";
 					}
 				}
 			}

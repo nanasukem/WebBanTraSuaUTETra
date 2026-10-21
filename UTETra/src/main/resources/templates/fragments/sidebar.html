@@ -5,7 +5,7 @@
 	class="d-flex flex-column flex-shrink-0 p-3 bg-white border-end shadow-sm"
 	style="width: 250px; min-height: 88vh;">
 
-	<!-- KHU VỰC ADMIN / MANAGER -->
+	<!-- KHU VỰC ADMIN (toàn hệ thống) -->
 	<div class="mb-3 px-2">
 		<span class="fs-6 fw-bold text-uppercase text-muted"> Quản trị
 			Hệ thống </span>
@@ -27,17 +27,19 @@
 
 		<hr class="my-3">
 
-		<!-- KHU VỰC VENDOR CHI NHÁNH -->
+		<!-- KHU VỰC MANAGER CHI NHÁNH (chỉ tài khoản MANAGER thấy) -->
+		<th:block th:if="${session.user != null and session.user.role != null and session.user.role.name == 'MANAGER'}">
 		<div class="mb-2 px-2">
-			<span class="fs-6 fw-bold text-uppercase text-muted"> Cửa hàng
-				Vendor </span>
+			<span class="fs-6 fw-bold text-uppercase text-muted"> Chi nhánh
+				của tôi </span>
 		</div>
 
-		<li class="nav-item mb-1"><a th:href="@{/vendor/menu}"
-			th:classappend="${activePage == 'vendor-menu' ? ' active bg-success text-white' : ''}"
+		<li class="nav-item mb-1"><a th:href="@{/manager/menu}"
+			th:classappend="${activePage == 'manager-menu' ? ' active bg-success text-white' : ''}"
 			class="nav-link text-dark fw-semibold"> <i
 				class="bi bi-shop me-2 fs-5"></i> Trạng thái kho hàng
 		</a></li>
+		</th:block>
 
 	</ul>
 </div>

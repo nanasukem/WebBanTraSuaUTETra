@@ -5,47 +5,47 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import vn.utetra.dto.request.VendorStatusReq;
-import vn.utetra.dto.response.VendorBoardRes;
-import vn.utetra.dto.response.VendorBranchRes;
+import vn.utetra.dto.request.ManagerStatusReq;
+import vn.utetra.dto.response.ManagerBoardRes;
+import vn.utetra.dto.response.ManagerBranchRes;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.service.CurrentUserService;
-import vn.utetra.service.VendorOrderService;
+import vn.utetra.service.ManagerOrderService;
 
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
-/** API cho trang Quầy đơn hàng (SecurityConfig: /api/vendor/** chỉ ROLE_VENDOR) */
+/** API cho trang Quầy đơn hàng (SecurityConfig: /api/manager/** chỉ ROLE_MANAGER) */
 @RestController
-@RequestMapping("/api/vendor/orders")
-public class VendorOrderApiController {
+@RequestMapping("/api/manager/orders")
+public class ManagerOrderApiController {
 
-	private final VendorOrderService vendorOrderService;
+	private final ManagerOrderService managerOrderService;
 	private final CurrentUserService currentUserService;
 
-	public VendorOrderApiController(VendorOrderService vendorOrderService, CurrentUserService currentUserService) {
-		this.vendorOrderService = vendorOrderService;
+	public ManagerOrderApiController(ManagerOrderService managerOrderService, CurrentUserService currentUserService) {
+		this.managerOrderService = managerOrderService;
 		this.currentUserService = currentUserService;
 	}
 
 	@GetMapping("/branches")
-	public List<VendorBranchRes> branches(Principal principal, HttpSession session) {
-		return vendorOrderService.myBranches(currentUserService.requireUserId(principal, session));
+	public List<ManagerBranchRes> branches(Principal principal, HttpSession session) {
+		return managerOrderService.myBranches(currentUserService.requireUserId(principal, session));
 	}
 
 	@GetMapping
-	public VendorBoardRes board(@RequestParam(required = false) Integer branchId, Principal principal,
+	public ManagerBoardRes board(@RequestParam(required = false) Integer branchId, Principal principal,
 			HttpSession session) {
-		return vendorOrderService.board(currentUserService.requireUserId(principal, session), branchId);
+		return managerOrderService.board(currentUserService.requireUserId(principal, session), branchId);
 	}
 
 	@PostMapping("/{orderId}/status")
-	public Map<String, String> changeStatus(@PathVariable Integer orderId, @RequestBody VendorStatusReq req,
+	public Map<String, String> changeStatus(@PathVariable Integer orderId, @RequestBody ManagerStatusReq req,
 			Principal principal, HttpSession session) {
 		if (req == null || req.status() == null) throw new BusinessException("Thiếu trạng thái mới");
-		vendorOrderService.changeStatus(currentUserService.requireUserId(principal, session), orderId, req.status(),
+		managerOrderService.changeStatus(currentUserService.requireUserId(principal, session), orderId, req.status(),
 				req.reason());
 		return Map.of("message", "Đã cập nhật đơn #" + orderId);
 	}

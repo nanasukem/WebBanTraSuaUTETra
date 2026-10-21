@@ -11,7 +11,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-/** Quản lý chi nhánh cho ADMIN / MANAGER */
+/** Quản lý chi nhánh cho ADMIN */
 @Controller
 @RequestMapping("/admin/branches")
 public class AdminBranchController {
@@ -77,12 +77,12 @@ public class AdminBranchController {
 		return "redirect:/admin/branches";
 	}
 
-	// Duyệt / từ chối / tạm ngưng / mở lại
+	// Bật/tắt chi nhánh: tạm ngưng / mở lại
 	@PostMapping("/{id}/status")
 	public String changeStatus(@PathVariable Integer id, @RequestParam BranchStatus value, RedirectAttributes ra) {
 		try {
 			branchService.changeStatus(id, value);
-			ra.addFlashAttribute("success", "Đã chuyển trạng thái chi nhánh #" + id + " sang " + value);
+			ra.addFlashAttribute("success", "Đã chuyển chi nhánh #" + id + " sang " + value.getLabel());
 		} catch (BusinessException e) {
 			ra.addFlashAttribute("error", e.getMessage());
 		}
@@ -91,7 +91,7 @@ public class AdminBranchController {
 
 	private String formView(Model model, Integer id) {
 		model.addAttribute("branchId", id);
-		model.addAttribute("vendors", branchService.findVendors());
+		model.addAttribute("managers", branchService.findManagers());
 		return "admin/branches/form";
 	}
 }

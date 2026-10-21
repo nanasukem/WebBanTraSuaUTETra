@@ -6,7 +6,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.utetra.dto.response.NearbyBranchRes;
 import vn.utetra.service.BranchService;
-import vn.utetra.service.VendorBranchService;
+import vn.utetra.service.ManagerBranchService;
 
 import java.util.List;
 import java.util.Map;
@@ -16,11 +16,11 @@ import java.util.Map;
 public class BranchApiController {
 
 	private final BranchService branchService;
-	private final VendorBranchService vendorBranchService;
+	private final ManagerBranchService managerBranchService;
 
-	public BranchApiController(BranchService branchService, VendorBranchService vendorBranchService) {
+	public BranchApiController(BranchService branchService, ManagerBranchService managerBranchService) {
 		this.branchService = branchService;
-		this.vendorBranchService = vendorBranchService;
+		this.managerBranchService = managerBranchService;
 	}
 
 	/**
@@ -42,7 +42,7 @@ public class BranchApiController {
 
 	/**
 	 * POST /api/branches/{branchId}/toggle-product - bật/tắt món tại chi nhánh.
-	 * Chỉ CHỦ chi nhánh (Vendor) hoặc ADMIN được gọi.
+	 * Chỉ CHỦ chi nhánh (Manager) hoặc ADMIN được gọi.
 	 */
 	@PostMapping("/{branchId}/toggle-product")
 	public ResponseEntity<Map<String, Object>> toggleProduct(@PathVariable Integer branchId,
@@ -51,16 +51,16 @@ public class BranchApiController {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN)
 					.body(Map.of("message", "Bạn không có quyền quản lý món của chi nhánh này"));
 		}
-		boolean result = vendorBranchService.toggleProductAvailability(branchId, productId, isAvailable);
+		boolean result = managerBranchService.toggleProductAvailability(branchId, productId, isAvailable);
 		return ResponseEntity.ok(Map.of("branchId", branchId, "productId", productId, "isAvailable", result, "message",
 				result ? "Món ăn đã được bật bán" : "Món ăn đã chuyển sang tạm hết hàng"));
 	}
 
-	/** ADMIN: mọi chi nhánh. VENDOR: chỉ chi nhánh mình làm chủ. Còn lại: không */
+	/** ADMIN: mọi chi nhánh. MANAGER: chỉ chi nhánh mình làm chủ. Còn lại: không */
 	private boolean canManageBranch(Authentication auth, Integer branchId) {
 		if (auth == null || !auth.isAuthenticated()) return false;
 		if (hasRole(auth, "ROLE_ADMIN")) return true;
-		return hasRole(auth, "ROLE_VENDOR") && branchService.isOwner(branchId, auth.getName());
+		return hasRole(auth, "ROLE_MANAGER") && branchService.isOwner(branchId, auth.getName());
 	}
 
 	private boolean hasRole(Authentication auth, String role) {

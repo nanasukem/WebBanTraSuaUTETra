@@ -26,13 +26,13 @@ GO
    1. NGƯỜI DÙNG, PHÂN QUYỀN, XÁC THỰC
    ========================================================= */
 
--- Roles: ADMIN, MANAGER, VENDOR, SHIPPER, USER (Guest = chưa đăng nhập, không cần role)
+-- Roles: ADMIN (toàn hệ thống), MANAGER (quản lý 1 chi nhánh), SHIPPER, USER (Guest = chưa đăng nhập, không cần role)
 CREATE TABLE Roles (
     id      INT IDENTITY(1,1) PRIMARY KEY,
     name    VARCHAR(30) NOT NULL UNIQUE
 );
 
--- Nhà vận chuyển (Manager/Admin quản lý)
+-- Nhà vận chuyển (Admin quản lý)
 CREATE TABLE Carriers (
     id          INT IDENTITY(1,1) PRIMARY KEY,
     name        NVARCHAR(100) NOT NULL UNIQUE,
@@ -116,10 +116,10 @@ CREATE TABLE MemberTiers (
    Mỗi chi nhánh chỉ bật/tắt món còn bán (BranchProducts).
    ========================================================= */
 
--- Branches = chi nhánh (shop). Vendor đăng ký quản lý -> PENDING -> Manager/Admin duyệt
+-- Branches = chi nhánh (shop). Admin mở chi nhánh và chỉ định 1 Manager quản lý (chuỗi tự mở, Manager không tự đăng ký; mỗi Manager 1 chi nhánh)
 CREATE TABLE Branches (
     id                  INT IDENTITY(1,1) PRIMARY KEY,
-    owner_id            INT           NOT NULL,                -- Vendor sở hữu
+    owner_id            INT           NOT NULL,                -- Manager quản lý chi nhánh
     name                NVARCHAR(100) NOT NULL,
     address             NVARCHAR(255) NOT NULL,
     latitude            DECIMAL(9,6)  NULL CONSTRAINT CK_Branches_Lat CHECK (latitude  BETWEEN -90  AND 90),   -- vĩ độ
@@ -128,7 +128,7 @@ CREATE TABLE Branches (
     description         NVARCHAR(500) NULL,
     image_cloudinary_id VARCHAR(255)  NULL,
     commission_rate     DECIMAL(5,2)  NOT NULL DEFAULT 5.00 CHECK (commission_rate BETWEEN 0 AND 100), -- % chiết khấu app
-    status              VARCHAR(20)   NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED','SUSPENDED')),
+    status              VARCHAR(20)   NOT NULL DEFAULT 'APPROVED' CHECK (status IN ('APPROVED','SUSPENDED')), -- APPROVED = đang hoạt động, SUSPENDED = tạm ngưng (Admin bật/tắt)
     created_at          DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_Branches_Users FOREIGN KEY (owner_id) REFERENCES Users(id)
 );
@@ -153,7 +153,7 @@ CREATE TABLE Products (
     CONSTRAINT FK_Products_Categories FOREIGN KEY (category_id) REFERENCES Categories(id)
 );
 
--- Tình trạng món theo từng chi nhánh (Vendor bật/tắt món hết hàng).
+-- Tình trạng món theo từng chi nhánh (Manager bật/tắt món hết hàng).
 -- Không có dòng cho (chi nhánh, món) = món đang bán ở chi nhánh đó.
 CREATE TABLE BranchProducts (
     id            INT IDENTITY(1,1) PRIMARY KEY,
@@ -183,8 +183,8 @@ CREATE TABLE Toppings (
 
 /* =========================================================
    3. KHUYẾN MÃI
-   branch_id NULL  = khuyến mãi toàn chuỗi (Manager/Admin tạo)
-   branch_id có giá trị = khuyến mãi riêng của chi nhánh (Vendor tạo)
+   branch_id NULL  = khuyến mãi toàn chuỗi (Admin tạo)
+   branch_id có giá trị = khuyến mãi riêng của chi nhánh (Manager tạo)
    Giới hạn: quantity = tổng lượt toàn hệ thống, per_user_limit = lượt mỗi tài khoản
    ========================================================= */
 CREATE TABLE Vouchers (
@@ -427,19 +427,19 @@ GO
    DỮ LIỆU MẪU
    Mật khẩu của TẤT CẢ tài khoản mẫu: 123456 (đã mã hoá BCrypt)
    ========================================================= */
-INSERT INTO Roles (name) VALUES ('ADMIN'), ('MANAGER'), ('VENDOR'), ('SHIPPER'), ('USER');
--- 1 ADMIN, 2 MANAGER, 3 VENDOR, 4 SHIPPER, 5 USER
+INSERT INTO Roles (name) VALUES ('ADMIN'), ('MANAGER'), ('SHIPPER'), ('USER');
+-- 1 ADMIN, 2 MANAGER, 3 SHIPPER, 4 USER
 
 INSERT INTO Carriers (name, fee) VALUES (N'Giao Hàng Nhanh', 15000), (N'Giao Hàng Tiết Kiệm', 12000);
 
 INSERT INTO Users (username, password, full_name, email, phone, role_id, carrier_id, is_verified) VALUES
  ('admin',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Quản trị viên',      'admin@utetra.vn',    '0900000001', 1, NULL, 1),
- ('manager1', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Lê Văn Quản Lý',     'manager1@utetra.vn', '0900000002', 2, NULL, 1),
- ('vendor1',  '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Nguyễn Chủ Shop',    'vendor1@utetra.vn',  '0900000003', 3, NULL, 1),
- ('vendor2',  '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Trần Chủ Shop',      'vendor2@utetra.vn',  '0900000004', 3, NULL, 1),
- ('shipper1', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Nguyễn Văn Giao',    'shipper1@utetra.vn', '0900000005', 4, 1,    1),
- ('user1',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Trần Thị Khách',     'user1@gmail.com',    '0900000006', 5, NULL, 1),
- ('user2',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Phạm Văn Mua',       'user2@gmail.com',    '0900000007', 5, NULL, 1);
+ ('manager3', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Lê Văn Quản Lý',     'manager3@utetra.vn', '0900000002', 2, NULL, 1),  -- Manager chưa có chi nhánh
+ ('manager1', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Nguyễn Quản Lý',     'manager1@utetra.vn', '0900000003', 2, NULL, 1),  -- Manager chi nhánh 1
+ ('manager2', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Trần Quản Lý',       'manager2@utetra.vn', '0900000004', 2, NULL, 1),  -- Manager chi nhánh 2
+ ('shipper1', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Nguyễn Văn Giao',    'shipper1@utetra.vn', '0900000005', 3, 1,    1),
+ ('user1',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Trần Thị Khách',     'user1@gmail.com',    '0900000006', 4, NULL, 1),
+ ('user2',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Phạm Văn Mua',       'user2@gmail.com',    '0900000007', 4, NULL, 1);
 
 -- Địa chỉ kiểu mới (phường sau sáp nhập 01/07/2025) kèm tọa độ (gần đúng)
 --  KTX Khu B (P. Đông Hòa, Dĩ An cũ)  | 1 Võ Văn Ngân (P. Linh Chiểu cũ -> P. Thủ Đức) | 12 Nguyễn Huệ (P. Bến Nghé cũ -> P. Sài Gòn)

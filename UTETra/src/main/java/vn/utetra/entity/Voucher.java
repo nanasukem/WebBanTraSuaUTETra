@@ -13,8 +13,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Bảng Vouchers. branch = null -> khuyến mãi toàn chuỗi (Manager/Admin tạo);
- * branch có giá trị -> khuyến mãi riêng của chi nhánh (Vendor tạo).
+ * Bảng Vouchers. branch = null -> khuyến mãi toàn chuỗi (Admin tạo);
+ * branch có giá trị -> khuyến mãi riêng của chi nhánh (Manager tạo).
  * Giới hạn: quantity = tổng lượt toàn hệ thống, perUserLimit = lượt mỗi tài khoản.
  */
 @Entity

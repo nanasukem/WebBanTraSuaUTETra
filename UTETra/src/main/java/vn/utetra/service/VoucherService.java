@@ -9,10 +9,10 @@ import java.util.List;
 
 public interface VoucherService {
 
-	/** Voucher của app (Manager/Admin quản lý) */
+	/** Voucher của app (Admin quản lý) */
 	List<Voucher> findAppVouchers();
 
-	/** Voucher của 1 shop (Vendor quản lý) */
+	/** Voucher của 1 shop (Manager quản lý) */
 	List<Voucher> findByBranch(Integer branchId);
 
 	Voucher findById(Integer id);

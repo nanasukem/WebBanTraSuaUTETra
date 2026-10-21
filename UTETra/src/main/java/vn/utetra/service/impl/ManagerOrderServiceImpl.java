@@ -5,11 +5,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import vn.utetra.dto.response.OrderDetailRes;
-import vn.utetra.dto.response.VendorBoardRes;
-import vn.utetra.dto.response.VendorBranchRes;
-import vn.utetra.dto.response.VendorHistoryRes;
-import vn.utetra.dto.response.VendorOrderRes;
-import vn.utetra.dto.response.VendorTabRes;
+import vn.utetra.dto.response.ManagerBoardRes;
+import vn.utetra.dto.response.ManagerBranchRes;
+import vn.utetra.dto.response.ManagerHistoryRes;
+import vn.utetra.dto.response.ManagerOrderRes;
+import vn.utetra.dto.response.ManagerTabRes;
 import vn.utetra.entity.Branch;
 import vn.utetra.entity.Order;
 import vn.utetra.entity.OrderDetail;
@@ -20,7 +20,7 @@ import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.BranchRepository;
 import vn.utetra.repository.OrderRepository;
 import vn.utetra.service.OrderFlowService;
-import vn.utetra.service.VendorOrderService;
+import vn.utetra.service.ManagerOrderService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
-public class VendorOrderServiceImpl implements VendorOrderService {
+public class ManagerOrderServiceImpl implements ManagerOrderService {
 
 	private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
 	private static final DateTimeFormatter DAY_HOUR = DateTimeFormatter.ofPattern("HH:mm dd/MM");
@@ -60,7 +60,7 @@ public class VendorOrderServiceImpl implements VendorOrderService {
 	private final OrderRepository orderRepository;
 	private final OrderFlowService orderFlowService;
 
-	public VendorOrderServiceImpl(BranchRepository branchRepository, OrderRepository orderRepository,
+	public ManagerOrderServiceImpl(BranchRepository branchRepository, OrderRepository orderRepository,
 			OrderFlowService orderFlowService) {
 		this.branchRepository = branchRepository;
 		this.orderRepository = orderRepository;
@@ -68,14 +68,14 @@ public class VendorOrderServiceImpl implements VendorOrderService {
 	}
 
 	@Override
-	public List<VendorBranchRes> myBranches(Integer vendorId) {
-		return branchRepository.findByOwnerIdOrderByIdAsc(vendorId).stream()
-				.map(b -> new VendorBranchRes(b.getId(), b.getName(), b.getStatus().name())).toList();
+	public List<ManagerBranchRes> myBranches(Integer managerId) {
+		return branchRepository.findByOwnerIdOrderByIdAsc(managerId).stream()
+				.map(b -> new ManagerBranchRes(b.getId(), b.getName(), b.getStatus().name())).toList();
 	}
 
 	@Override
-	public Integer resolveBranchId(Integer vendorId, Integer branchId) {
-		List<Branch> mine = branchRepository.findByOwnerIdOrderByIdAsc(vendorId);
+	public Integer resolveBranchId(Integer managerId, Integer branchId) {
+		List<Branch> mine = branchRepository.findByOwnerIdOrderByIdAsc(managerId);
 		if (mine.isEmpty()) throw new BusinessException("Tài khoản của bạn chưa sở hữu chi nhánh nào");
 		if (branchId == null) return mine.get(0).getId();
 		return mine.stream().filter(b -> b.getId().equals(branchId)).findFirst().map(Branch::getId)
@@ -83,32 +83,32 @@ public class VendorOrderServiceImpl implements VendorOrderService {
 	}
 
 	@Override
-	public VendorBoardRes board(Integer vendorId, Integer branchId) {
-		Integer id = resolveBranchId(vendorId, branchId);
+	public ManagerBoardRes board(Integer managerId, Integer branchId) {
+		Integer id = resolveBranchId(managerId, branchId);
 		Branch branch = branchRepository.findById(id).orElseThrow();
 
 		// Đơn đang làm: cũ nhất lên đầu (đặt trước làm trước)
 		List<Order> active = orderRepository.findByBranchIdAndStatusInOrderByCreatedAtAsc(id, ACTIVE);
-		List<VendorOrderRes> newOrders = new ArrayList<>();
-		List<VendorOrderRes> making = new ArrayList<>();
-		List<VendorOrderRes> shipping = new ArrayList<>();
+		List<ManagerOrderRes> newOrders = new ArrayList<>();
+		List<ManagerOrderRes> making = new ArrayList<>();
+		List<ManagerOrderRes> shipping = new ArrayList<>();
 		for (Order o : active) {
-			VendorOrderRes card = toCard(o, HOUR);
+			ManagerOrderRes card = toCard(o, HOUR);
 			switch (o.getStatus()) {
 				case PENDING -> newOrders.add(card);
 				case CONFIRMED -> making.add(card);
 				default -> shipping.add(card);
 			}
 		}
-		List<VendorOrderRes> recent = orderRepository.findTop20ByBranchIdAndStatusInOrderByUpdatedAtDesc(id, FINISHED)
+		List<ManagerOrderRes> recent = orderRepository.findTop20ByBranchIdAndStatusInOrderByUpdatedAtDesc(id, FINISHED)
 				.stream().map(o -> toCard(o, DAY_HOUR)).toList();
-		return new VendorBoardRes(id, branch.getName(), newOrders, making, shipping, recent);
+		return new ManagerBoardRes(id, branch.getName(), newOrders, making, shipping, recent);
 	}
 
 	@Override
 	@Transactional
-	public void changeStatus(Integer vendorId, Integer orderId, OrderStatus to, String reason) {
-		Order o = findOwned(vendorId, orderId);
+	public void changeStatus(Integer managerId, Integer orderId, OrderStatus to, String reason) {
+		Order o = findOwned(managerId, orderId);
 
 		boolean pickup = o.getDeliveryType() == DeliveryType.PICKUP;
 		boolean shipperStep = to == OrderStatus.PICKED_UP || to == OrderStatus.DELIVERING
@@ -123,8 +123,8 @@ public class VendorOrderServiceImpl implements VendorOrderService {
 	// ================= ĐƠN HÀNG CỦA SHOP (7 TAB) =================
 
 	@Override
-	public VendorHistoryRes history(Integer vendorId, Integer branchId, OrderStatus status, int page) {
-		Integer id = resolveBranchId(vendorId, branchId);
+	public ManagerHistoryRes history(Integer managerId, Integer branchId, OrderStatus status, int page) {
+		Integer id = resolveBranchId(managerId, branchId);
 		Branch branch = branchRepository.findById(id).orElseThrow();
 		OrderStatus current = status == null ? OrderStatus.PENDING : status;
 
@@ -133,47 +133,47 @@ public class VendorOrderServiceImpl implements VendorOrderService {
 		for (Object[] row : orderRepository.countByStatusOfBranch(id)) {
 			counts.put((OrderStatus) row[0], ((Number) row[1]).longValue());
 		}
-		List<VendorTabRes> tabs = new ArrayList<>();
-		TAB_LABELS.forEach((s, label) -> tabs.add(new VendorTabRes(s.name(), label, counts.getOrDefault(s, 0L))));
+		List<ManagerTabRes> tabs = new ArrayList<>();
+		TAB_LABELS.forEach((s, label) -> tabs.add(new ManagerTabRes(s.name(), label, counts.getOrDefault(s, 0L))));
 
 		Page<Order> result = orderRepository.findPageByBranchIdAndStatusOrderByCreatedAtDesc(id, current,
 				PageRequest.of(Math.max(0, page), PAGE_SIZE));
-		List<VendorOrderRes> orders = result.getContent().stream().map(o -> toCard(o, DAY_HOUR)).toList();
+		List<ManagerOrderRes> orders = result.getContent().stream().map(o -> toCard(o, DAY_HOUR)).toList();
 
-		return new VendorHistoryRes(id, branch.getName(), current.name(), TAB_LABELS.get(current), tabs, orders,
+		return new ManagerHistoryRes(id, branch.getName(), current.name(), TAB_LABELS.get(current), tabs, orders,
 				result.getNumber(), result.getTotalPages(), result.getTotalElements());
 	}
 
 	@Override
-	public OrderDetailRes orderDetail(Integer vendorId, Integer orderId) {
-		findOwned(vendorId, orderId); // kiểm tra đơn thuộc chi nhánh của vendor
+	public OrderDetailRes orderDetail(Integer managerId, Integer orderId) {
+		findOwned(managerId, orderId); // kiểm tra đơn thuộc chi nhánh của manager
 		return orderFlowService.orderDetail(orderId);
 	}
 
 	@Override
-	public VendorOrderRes orderCard(Integer vendorId, Integer orderId) {
-		return toCard(findOwned(vendorId, orderId), DAY_HOUR);
+	public ManagerOrderRes orderCard(Integer managerId, Integer orderId) {
+		return toCard(findOwned(managerId, orderId), DAY_HOUR);
 	}
 
 	// ================= HÀM PHỤ =================
 
-	private Order findOwned(Integer vendorId, Integer orderId) {
+	private Order findOwned(Integer managerId, Integer orderId) {
 		return orderRepository.findById(orderId)
-				.filter(x -> x.getBranch().getOwner().getId().equals(vendorId))
+				.filter(x -> x.getBranch().getOwner().getId().equals(managerId))
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn #" + orderId + " ở chi nhánh của bạn"));
 	}
 
-	private VendorOrderRes toCard(Order o, DateTimeFormatter timeFormat) {
+	private ManagerOrderRes toCard(Order o, DateTimeFormatter timeFormat) {
 		boolean pickup = o.getDeliveryType() == DeliveryType.PICKUP;
 		List<String> items = o.getDetails().stream().map(this::itemLine).toList();
 		int qty = o.getDetails().stream().mapToInt(OrderDetail::getQuantity).sum();
 
-		List<VendorOrderRes.Action> actions = new ArrayList<>();
+		List<ManagerOrderRes.Action> actions = new ArrayList<>();
 		String hint = null;
 		if (o.getStatus() == OrderStatus.PENDING) {
-			actions.add(new VendorOrderRes.Action("CONFIRMED", "Xác nhận & pha chế", "btn-success"));
+			actions.add(new ManagerOrderRes.Action("CONFIRMED", "Xác nhận & pha chế", "btn-success"));
 		} else if (o.getStatus() == OrderStatus.CONFIRMED && pickup) {
-			actions.add(new VendorOrderRes.Action("DELIVERED", "Khách đã nhận món", "btn-primary"));
+			actions.add(new ManagerOrderRes.Action("DELIVERED", "Khách đã nhận món", "btn-primary"));
 			hint = "Pha xong thì gọi khách: " + o.getReceiverPhone();
 		} else if (o.getStatus() == OrderStatus.CONFIRMED) {
 			hint = "Pha xong, chờ shipper đến lấy hàng";
@@ -183,7 +183,7 @@ public class VendorOrderServiceImpl implements VendorOrderService {
 		LocalDateTime t = FINISHED.contains(o.getStatus()) && o.getUpdatedAt() != null ? o.getUpdatedAt() : o.getCreatedAt();
 		String time = t == null ? "" : t.format(timeFormat);
 
-		return new VendorOrderRes(o.getId(), time, pickup, o.getStatus().name(), OrderFlowServiceImpl.statusLabel(o.getStatus(), pickup),
+		return new ManagerOrderRes(o.getId(), time, pickup, o.getStatus().name(), OrderFlowServiceImpl.statusLabel(o.getStatus(), pickup),
 				OrderFlowServiceImpl.badgeClass(o.getStatus()), o.getReceiverName(), o.getReceiverPhone(),
 				o.getDeliveryAddress(), o.getDeliveryNote(), o.getNote(), items, qty, o.getTotalAmount(),
 				OrderFlowServiceImpl.paymentMethodLabel(o.getPaymentMethod()), hint, actions,

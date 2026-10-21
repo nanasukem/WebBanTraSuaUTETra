@@ -7,7 +7,7 @@ import vn.utetra.entity.enums.BranchStatus;
 
 import java.math.BigDecimal;
 
-/** Dữ liệu form Thêm/Sửa chi nhánh (Admin/Manager) */
+/** Dữ liệu form Thêm/Sửa chi nhánh (Admin) */
 @Data
 public class BranchReq {
 
@@ -35,7 +35,7 @@ public class BranchReq {
 	@Size(max = 500, message = "Mô tả tối đa 500 ký tự")
 	private String description;
 
-	@NotNull(message = "Vui lòng chọn chủ shop (Vendor)")
+	@NotNull(message = "Vui lòng chọn Manager quản lý chi nhánh")
 	private Integer ownerId;
 
 	@NotNull(message = "Vui lòng nhập % chiết khấu")
