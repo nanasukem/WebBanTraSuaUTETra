@@ -57,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * TEST TUẦN 2 (gộp): nhà vận chuyển, giỏ hàng, đặt hàng, hạng thành viên + giới hạn voucher,
  * đến lấy / chi nhánh gần nhất, Checkout (mã của bạn, sổ địa chỉ), đơn hàng của tôi, huỷ đơn,
- * luồng trạng thái, Quầy đơn hàng của Manager + thông báo, đơn hàng của shop theo 7 trạng thái.
+ * luồng trạng thái, Quầy đơn hàng của Manager + thông báo, đơn hàng của chi nhánh theo trạng thái.
  *
  * Mỗi test tự rollback, không làm bẩn DB. Chạy lại UTETra.sql trước khi chạy để dữ liệu mẫu đúng.
  *
@@ -65,7 +65,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * - user1 (id 6): giỏ 1 Bạc xỉu M = 34.000; địa chỉ #1 (mặc định, có ghi chú), #2; đơn #1 ĐÃ GIAO (FREESHIP10K), đơn #2 CHỜ XÁC NHẬN
  * - user2 (id 7): tài khoản mới; giỏ 2 Cà phê muối L + Kem cheese = 104.000; địa chỉ #3
  * - manager1 (id 3) chủ chi nhánh 1 Võ Văn Ngân; manager2 (id 4) chủ chi nhánh 2 Quận 1 (đang hết Matcha)
- * - Nhà vận chuyển: 1 = Giao Hàng Nhanh 15.000, 2 = Giao Hàng Tiết Kiệm 12.000
+ * - Đối tác giao hàng (phí theo khoảng cách, tự chọn rẻ nhất): 1 = Shipper UTETra 15.000 cho 5 km đầu + 5.000/km,
+ *   2 = Ahamove 18.000 + 3.000/km. Địa chỉ #1 -> chi nhánh 1: 3,7 km (15.000); #3 -> chi nhánh 2: 0 km (15.000);
+ *   #3 -> chi nhánh 1: 11,3 km (Ahamove 18.000 + 7 x 3.000 = 39.000). Mỗi đơn chỉ dùng 1 mã giảm giá.
  */
 @SpringBootTest
 @Transactional
@@ -106,6 +108,7 @@ class Week2ServiceTest {
 		CarrierReq r = new CarrierReq();
 		r.setName(name);
 		r.setFee(BigDecimal.valueOf(fee));
+		r.setPerKmFee(BigDecimal.valueOf(4000));
 		return r;
 	}
 
@@ -127,6 +130,8 @@ class Week2ServiceTest {
 	 */
 	@BeforeEach
 	void datLaiGioMau() {
+		// Giờ mở cửa mẫu 7:00 - 22:00: test chạy giờ nào cũng được -> cho chi nhánh mở cả ngày (tự rollback)
+		em.createNativeQuery("UPDATE Branches SET open_time = '00:00', close_time = '00:00'").executeUpdate();
 		cartService.clear(USER1);
 		cartService.addItem(USER1, cartReq(3, "M", 50, 70, 1));    // 1 Bạc xỉu M, 50% đường, 70% đá = 34.000
 		cartService.clear(USER2);
@@ -268,7 +273,7 @@ class Week2ServiceTest {
 
 	@Test
 	void carrier_trungTen_baoLoi() {
-		assertThrows(BusinessException.class, () -> carrierService.create(carrierReq("giao hàng nhanh", 20000)));
+		assertThrows(BusinessException.class, () -> carrierService.create(carrierReq("shipper utetra", 20000)));
 	}
 
 	@Test
@@ -290,7 +295,7 @@ class Week2ServiceTest {
 
 	@Test
 	void carrier_timKiem() {
-		assertEquals(1, carrierService.search("tiết kiệm").size()); // "Giao Hàng Tiết Kiệm" trong dữ liệu mẫu
+		assertEquals(1, carrierService.search("ahamove").size()); // "Giao Hàng Tiết Kiệm" trong dữ liệu mẫu
 		assertEquals(2, carrierService.search(null).size());
 	}
 
@@ -378,9 +383,9 @@ class Week2ServiceTest {
 	@Test
 	void order_datHangCOD_tinhTienVaLuuDung() {
 		cartService.addItem(USER1, cartReq(1, "L", 70, 50, 1, 1, 2)); // giỏ: 34.000 + 58.000 = 92.000
-		int freeshipTruoc = voucherRepository.findByCodeIgnoreCase("FREESHIP10K").orElseThrow().getUsedCount();
+		int maTruoc = voucherRepository.findByCodeIgnoreCase("UTETRA20").orElseThrow().getUsedCount();
 
-		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20", "FREESHIP10K"));
+		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20", null));
 		em.flush();
 		em.clear();
 		Order saved = orderRepository.findById(o.getId()).orElseThrow();
@@ -389,10 +394,11 @@ class Week2ServiceTest {
 		assertMoney(18400, saved.getProductDiscount());  // UTETRA20: 20% x 92.000
 		assertMoney(0, saved.getMemberDiscount());        // user1 hạng Thành viên (chi 153.000 < 300.000): không giảm
 		assertEquals("Thành viên", saved.getMemberTierName());
-		assertMoney(15000, saved.getShippingFee());       // Giao Hàng Nhanh
-		assertMoney(10000, saved.getShippingDiscount());  // FREESHIP10K
-		assertMoney(78600, saved.getTotalAmount());       // 92.000 - 18.400 + 15.000 - 10.000
-		assertMoney(3680, saved.getCommissionAmount());   // 5% x (92.000 - 18.400)
+		assertMoney(15000, saved.getShippingFee());       // 3,7 km: trong 5 km đầu, Shipper UTETra
+		assertEquals("Shipper UTETra", saved.getCarrier().getName());
+		assertMoney(0, saved.getShippingDiscount());
+		assertMoney(88600, saved.getTotalAmount());       // 92.000 - 18.400 + 15.000
+		assertMoney(73600, saved.getSalesAmount());       // doanh thu quán: không gồm phí ship
 		assertEquals(OrderStatus.PENDING, saved.getStatus());
 		assertEquals(PaymentMethod.COD, saved.getPaymentMethod());
 		assertEquals("Trần Thị Khách", saved.getReceiverName());
@@ -400,9 +406,88 @@ class Week2ServiceTest {
 		assertEquals(2, saved.getDetails().size());
 		assertEquals(2, saved.getDetails().stream().mapToInt(d -> d.getToppings().size()).sum());
 		assertTrue(cartService.getCart(USER1).items().isEmpty(), "Đặt xong phải xoá giỏ");
-		assertEquals(freeshipTruoc + 1,
-				voucherRepository.findByCodeIgnoreCase("FREESHIP10K").orElseThrow().getUsedCount(),
+		assertEquals(maTruoc + 1,
+				voucherRepository.findByCodeIgnoreCase("UTETRA20").orElseThrow().getUsedCount(),
 				"Đặt xong phải tăng lượt dùng voucher");
+	}
+
+	@Test
+	void gioMoCua_ngoaiGioKhongDatDuoc() {
+		// Đặt giờ mở cửa chi nhánh 1 là 1 tiếng sau -> 2 tiếng sau: lúc này đang đóng cửa
+		java.time.LocalTime now = java.time.LocalTime.now();
+		em.createNativeQuery("UPDATE Branches SET open_time = :o, close_time = :c WHERE id = 1")
+				.setParameter("o", now.plusHours(1).withSecond(0).withNano(0).toString())
+				.setParameter("c", now.plusHours(2).withSecond(0).withNano(0).toString()).executeUpdate();
+		em.clear();
+		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, null, null));
+		assertFalse(p.canOrder());
+		assertTrue(p.errors().stream().anyMatch(x -> x.contains("đã đóng cửa")), String.valueOf(p.errors()));
+		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null, null)));
+	}
+
+	@Test
+	void gioMoCua_tinhDungCaGioQuaDem() {
+		Branch b = new Branch();
+		b.setOpenTime(java.time.LocalTime.of(7, 0));
+		b.setCloseTime(java.time.LocalTime.of(22, 0));
+		assertTrue(b.isOpenAt(java.time.LocalTime.of(7, 0)));
+		assertTrue(b.isOpenAt(java.time.LocalTime.of(21, 59)));
+		assertFalse(b.isOpenAt(java.time.LocalTime.of(22, 0)));
+		assertFalse(b.isOpenAt(java.time.LocalTime.of(6, 30)));
+		assertEquals("7:00 - 22:00", b.getHoursLabel());
+		assertEquals("Đã đóng cửa · mở lại lúc 7:00", b.openStatusAt(java.time.LocalTime.of(23, 0)));
+		b.setOpenTime(java.time.LocalTime.of(18, 0)); // quán đêm 18:00 - 02:00
+		b.setCloseTime(java.time.LocalTime.of(2, 0));
+		assertTrue(b.isOpenAt(java.time.LocalTime.of(1, 0)));
+		assertFalse(b.isOpenAt(java.time.LocalTime.of(12, 0)));
+	}
+
+	@Test
+	void moiDonChiMotMaGiamGia() {
+		cartService.addItem(USER1, cartReq(1, "L", 70, 50, 1, 1, 2)); // 92.000
+		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "UTETRA20", "FREESHIP10K"));
+		assertFalse(p.canOrder());
+		assertNotNull(p.shippingVoucherError());
+		assertTrue(p.shippingVoucherError().contains("1 mã"));
+		BusinessException e = assertThrows(BusinessException.class,
+				() -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20", "FREESHIP10K")));
+		assertTrue(e.getMessage().contains("1 mã"));
+		// Chỉ mã freeship thì được
+		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null, "FREESHIP10K"));
+		assertMoney(10000, o.getShippingDiscount());
+		assertMoney(97000, o.getTotalAmount()); // 92.000 + 15.000 - 10.000
+	}
+
+	@Test
+	void phiGiao_theoKhoangCach_tuChonDoiTacReNhat() {
+		CheckoutPreviewRes gan = orderService.preview(USER2, checkoutReq(2, 3, 2, null, null)); // cùng chỗ chi nhánh 2
+		assertEquals(0, BigDecimal.ZERO.compareTo(gan.deliveryDistanceKm()));
+		assertEquals("Shipper UTETra", gan.carrierName());
+		assertMoney(15000, gan.shippingFee());
+
+		CheckoutPreviewRes xa = orderService.preview(USER2, checkoutReq(1, 3, 1, null, null)); // 11,3 km
+		assertEquals(0, new BigDecimal("11.3").compareTo(xa.deliveryDistanceKm()));
+		assertEquals("Ahamove", xa.carrierName(), "xa thì Ahamove rẻ hơn");
+		assertMoney(39000, xa.shippingFee()); // 18.000 + 7 km x 3.000
+	}
+
+	@Test
+	void phiGiao_quaXaHoacChuaGhimViTri_baoLoi() {
+		AddressReq vungTau = diaChi("1 Thuỳ Vân, Vũng Tàu", false);
+		vungTau.setLatitude(new BigDecimal("10.346000"));
+		vungTau.setLongitude(new BigDecimal("107.084000"));
+		AddressRes a = addressService.add(USER2, vungTau);
+		CheckoutPreviewRes p = orderService.preview(USER2, checkoutReq(2, a.id(), 1, null, null));
+		assertFalse(p.canOrder());
+		assertTrue(p.errors().stream().anyMatch(x -> x.contains("15 km")), String.valueOf(p.errors()));
+
+		AddressReq chuaGhim = diaChi("5 Lê Lợi, Quận 1", false);
+		chuaGhim.setLatitude(null);
+		chuaGhim.setLongitude(null);
+		AddressRes b = addressService.add(USER2, chuaGhim);
+		CheckoutPreviewRes q = orderService.preview(USER2, checkoutReq(2, b.id(), 1, null, null));
+		assertFalse(q.canOrder());
+		assertTrue(q.errors().stream().anyMatch(x -> x.contains("ghim vị trí")), String.valueOf(q.errors()));
 	}
 
 	@Test
@@ -432,8 +517,8 @@ class Week2ServiceTest {
 		assertNotNull(p.productVoucherError(), "Phải báo mã chưa đủ đơn tối thiểu");
 		assertFalse(p.canOrder());
 		assertMoney(34000, p.itemsTotal());
-		assertMoney(12000, p.shippingFee()); // Giao Hàng Tiết Kiệm
-		assertMoney(46000, p.totalAmount()); // 34.000 + 12.000, không giảm
+		assertMoney(15000, p.shippingFee()); // khách không chọn hãng: hệ thống tính theo khoảng cách
+		assertMoney(49000, p.totalAmount()); // 34.000 + 15.000, không giảm
 		assertEquals(soDonTruoc, orderRepository.count(), "Preview không được lưu đơn");
 	}
 
@@ -504,8 +589,7 @@ class Week2ServiceTest {
 		assertMoney(104000, saved.getItemsTotal());
 		assertMoney(5200, saved.getMemberDiscount());
 		assertEquals("Vàng", saved.getMemberTierName());
-		assertMoney(113800, saved.getTotalAmount());     // 104.000 - 5.200 + 15.000
-		assertMoney(4940, saved.getCommissionAmount());  // 5% x (104.000 - 5.200)
+		assertMoney(137800, saved.getTotalAmount());     // 104.000 - 5.200 + 39.000 (11,3 km, Ahamove)
 	}
 
 	@Test
@@ -514,12 +598,11 @@ class Week2ServiceTest {
 		Integer chaoId = chao.getId();
 		int luotTruoc = chao.getUsedCount();
 
-		Order o = orderService.placeOrder(USER2, checkoutReq(1, 3, 1, "CHAOBANMOI", "FREESHIPMOI"));
+		Order o = orderService.placeOrder(USER2, checkoutReq(1, 3, 1, "CHAOBANMOI", null));
 		assertMoney(25000, o.getProductDiscount());  // 30% x 104.000 = 31.200 -> trần 25.000
-		assertMoney(15000, o.getShippingDiscount()); // miễn ship 15.000
+		assertMoney(0, o.getShippingDiscount());
 		assertMoney(0, o.getMemberDiscount());       // hạng Thành viên: 0%
-		assertMoney(79000, o.getTotalAmount());      // 104.000 - 25.000 + 15.000 - 15.000
-		assertMoney(3950, o.getCommissionAmount());  // 5% x 79.000
+		assertMoney(118000, o.getTotalAmount());     // 104.000 - 25.000 + 39.000 ship
 
 		em.flush();
 		em.clear();
@@ -603,7 +686,6 @@ class Week2ServiceTest {
 		assertEquals("0900000007", saved.getReceiverPhone());
 		assertMoney(0, saved.getShippingFee());
 		assertMoney(104000, saved.getTotalAmount());     // chỉ tiền món
-		assertMoney(5200, saved.getCommissionAmount());  // 5% x 104.000
 	}
 
 	@Test
@@ -794,9 +876,9 @@ class Week2ServiceTest {
 		OrderSummaryRes s = orderService.getOrderSummary(USER2, o.getId());
 		assertEquals("UTETra Võ Văn Ngân", s.branchName());
 		assertEquals(DeliveryType.DELIVERY, s.deliveryType());
-		assertEquals("Giao Hàng Nhanh", s.carrierName());
+		assertEquals("Ahamove", s.carrierName()); // 11,3 km: Ahamove rẻ hơn
 		assertEquals(2, s.totalQty());
-		assertMoney(119000, s.totalAmount()); // 104.000 + 15.000 ship
+		assertMoney(143000, s.totalAmount()); // 104.000 + 39.000 ship
 
 		assertThrows(ResourceNotFoundException.class, () -> orderService.getOrderSummary(USER1, o.getId()));
 	}
@@ -884,7 +966,7 @@ class Week2ServiceTest {
 		assertTrue(co(orderFlowService.myOrders(USER1, OrderTab.DELIVERED), DON_DA_GIAO));
 
 		var counts = orderFlowService.myOrderCounts(USER1);
-		assertEquals(6, counts.size(), "Phải đủ 6 tab");
+		assertEquals(6, counts.size(), "Đủ 6 tab: Chờ xác nhận, Đang chuẩn bị, Đang giao, Đang giải quyết, Hoàn thành, Đã huỷ");
 		assertTrue(counts.get("PENDING") >= 1);
 		assertTrue(counts.get("DELIVERED") >= 1);
 	}
@@ -1057,7 +1139,7 @@ class Week2ServiceTest {
 		assertThrows(ResourceNotFoundException.class, () -> managerOrderService.resolveBranchId(MANAGER1, 2));
 		assertThrows(ResourceNotFoundException.class, () -> managerOrderService.board(MANAGER1, 2));
 		assertThrows(BusinessException.class, () -> managerOrderService.resolveBranchId(USER1, null),
-				"Khách không sở hữu chi nhánh nào");
+				"Khách không được giao quản lý chi nhánh nào");
 	}
 
 	@Test
@@ -1178,7 +1260,8 @@ class Week2ServiceTest {
 		assertEquals("Đã giao shipper / Đang giao", h.tabs().get(3).label());
 		assertEquals("Hoàn thành", h.tabs().get(4).label());
 		assertEquals("Đã huỷ", h.tabs().get(5).label());
-		assertEquals("Trả hàng - hoàn tiền", h.tabs().get(6).label());
+		assertEquals("ISSUE", h.tabs().get(6).status());
+		assertEquals("Khách báo vấn đề", h.tabs().get(6).label());
 		assertEquals("PENDING", h.status(), "Không chọn tab thì mở tab Đơn mới");
 		assertTrue(co(h, DON_CHO));
 		assertTrue(dem(h, "PENDING") >= 1);
@@ -1248,7 +1331,7 @@ class Week2ServiceTest {
 		assertEquals(1, c.orderCount(), "Chi nhánh 1 chỉ có đơn #1 của user1");
 		assertEquals(1, c.deliveredCount());
 		assertEquals(0, c.cancelledCount());
-		assertMoney(153000, c.totalSpent());
+		assertMoney(148000, c.totalSpent()); // tiền món 148.000, không tính 5.000 phí ship còn lại
 		assertEquals("Thành viên", c.tierName());
 		assertTrue(list.stream().noneMatch(x -> x.userId() == USER2), "user2 chưa đặt đơn ở chi nhánh 1");
 	}

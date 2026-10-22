@@ -228,7 +228,7 @@ public class VoucherServiceImpl implements VoucherService {
 		if (v.getUsedCount() >= v.getQuantity())
 			throw new BusinessException("Voucher đã hết lượt sử dụng");
 		if (v.getBranch() != null && !v.getBranch().getId().equals(branchId))
-			throw new BusinessException("Voucher không áp dụng cho shop này");
+			throw new BusinessException("Mã này không áp dụng cho chi nhánh này");
 		if (itemsTotal.compareTo(v.getMinOrderValue()) < 0)
 			throw new BusinessException(
 					"Đơn tối thiểu " + v.getMinOrderValue().toPlainString() + "đ mới dùng được voucher này");

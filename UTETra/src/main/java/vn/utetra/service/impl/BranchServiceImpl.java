@@ -22,7 +22,6 @@ import java.util.List;
 public class BranchServiceImpl implements BranchService {
 
 	private static final String MANAGER_ROLE = "MANAGER";
-	private static final BigDecimal DEFAULT_COMMISSION = new BigDecimal("5.00");
 	private static final double EARTH_RADIUS_KM = 6371.0;
 
 	private final BranchRepository branchRepository;
@@ -70,7 +69,7 @@ public class BranchServiceImpl implements BranchService {
 		branch.setLongitude(req.getLongitude());
 		branch.setPhone(req.getPhone());
 		branch.setDescription(req.getDescription());
-		branch.setCommissionRate(req.getCommissionRate() != null ? req.getCommissionRate() : DEFAULT_COMMISSION);
+		setHours(branch, req);
 		// luật 1: Admin mở chi nhánh thì hoạt động luôn (form có chọn trạng thái thì theo form)
 		branch.setStatus(req.getStatus() != null ? req.getStatus() : BranchStatus.APPROVED);
 
@@ -103,9 +102,7 @@ public class BranchServiceImpl implements BranchService {
 		branch.setLongitude(req.getLongitude());
 		branch.setPhone(req.getPhone());
 		branch.setDescription(req.getDescription());
-		if (req.getCommissionRate() != null) {
-			branch.setCommissionRate(req.getCommissionRate());
-		}
+		setHours(branch, req);
 		if (req.getStatus() != null && req.getStatus() != branch.getStatus()) {
 			checkTransition(branch.getStatus(), req.getStatus()); // luật 4 áp dụng cả khi sửa qua form
 			branch.setStatus(req.getStatus());
@@ -143,7 +140,8 @@ public class BranchServiceImpl implements BranchService {
 		req.setLongitude(branch.getLongitude());
 		req.setPhone(branch.getPhone());
 		req.setDescription(branch.getDescription());
-		req.setCommissionRate(branch.getCommissionRate());
+		req.setOpenTime(branch.getOpenTime());
+		req.setCloseTime(branch.getCloseTime());
 		req.setStatus(branch.getStatus());
 		req.setImageCloudinaryId(branch.getImageCloudinaryId());
 		return req;
@@ -154,13 +152,21 @@ public class BranchServiceImpl implements BranchService {
 		return userRepository.findByRole_Name(MANAGER_ROLE);
 	}
 
+	/** Giờ mở cửa: bỏ trống thì mặc định 7:00 - 22:00 */
+	private static void setHours(Branch branch, BranchReq req) {
+		branch.setOpenTime(req.getOpenTime() != null ? req.getOpenTime() : java.time.LocalTime.of(7, 0));
+		branch.setCloseTime(req.getCloseTime() != null ? req.getCloseTime() : java.time.LocalTime.of(22, 0));
+	}
+
 	// ================= GỢI Ý CHI NHÁNH GẦN NHẤT =================
 	@Override
 	public List<NearbyBranchRes> findNearby(Double lat, Double lng) {
 		boolean coViTri = lat != null && lng != null;
+		java.time.LocalTime now = java.time.LocalTime.now();
 		return findApproved().stream()
 				.map(b -> new NearbyBranchRes(b.getId(), b.getName(), b.getAddress(), b.getPhone(), b.getLatitude(),
-						b.getLongitude(), coViTri ? distanceKm(lat, lng, b.getLatitude(), b.getLongitude()) : null))
+						b.getLongitude(), coViTri ? distanceKm(lat, lng, b.getLatitude(), b.getLongitude()) : null,
+						b.isOpenAt(now), b.getHoursLabel(), b.openStatusAt(now)))
 				// gần -> xa; chi nhánh không tính được khoảng cách xếp cuối, theo tên
 				.sorted(Comparator.comparing(NearbyBranchRes::distanceKm, Comparator.nullsLast(Comparator.naturalOrder()))
 						.thenComparing(NearbyBranchRes::name))

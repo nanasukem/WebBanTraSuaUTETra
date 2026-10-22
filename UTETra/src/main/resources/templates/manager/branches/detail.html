@@ -68,6 +68,11 @@
 						</div>
 
 						<div class="col-sm-6">
+							<div class="info-label">Giờ mở cửa (Admin quy định)</div>
+							<div th:text="${branch.hoursLabel}">7:00 - 22:00</div>
+						</div>
+
+						<div class="col-sm-6">
 							<div class="info-label">Manager quản lý</div>
 							<div
 								th:text="${branch.owner != null ? branch.owner.username : 'Chưa có'}">-</div>
@@ -104,23 +109,8 @@
 			</div>
 		</div>
 
-		<!-- Chiết khấu (Admin quy định) và lối tắt -->
+		<!-- Lối tắt (thông tin, trạng thái chi nhánh chỉ Admin được thay đổi) -->
 		<div class="col-12 col-xl-5">
-
-			<div class="card border-0 shadow-sm rounded-4 mb-4">
-				<div class="card-header bg-white py-3">
-					<h5 class="fw-bold mb-0">
-						<i class="bi bi-percent me-2"></i>Tỷ lệ chiết khấu
-					</h5>
-				</div>
-
-				<div class="card-body">
-					<div class="display-5 fw-bold text-primary mb-2">
-						<span th:text="${branch.commissionRate}">5.00</span>%
-					</div>
-					<div class="form-text">Do Admin quy định. Thông tin, trạng thái và chiết khấu của chi nhánh chỉ Admin được thay đổi.</div>
-				</div>
-			</div>
 
 			<div class="card border-0 shadow-sm rounded-4">
 				<div class="card-header bg-white py-3">

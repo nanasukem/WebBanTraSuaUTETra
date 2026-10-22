@@ -30,12 +30,12 @@ public interface VoucherRepository extends JpaRepository<Voucher, Integer> {
 	@Query("SELECT v FROM Voucher v WHERE v.branch IS NULL OR v.branch.id = :branchId ORDER BY v.endDate DESC, v.id DESC")
 	List<Voucher> findApplicableToBranch(@Param("branchId") Integer branchId);
 
-	/** Voucher riêng của 1 shop (Manager) */
+	/** Voucher riêng của 1 chi nhánh */
 	List<Voucher> findByBranch_IdOrderByCreatedAtDesc(Integer branchId);
 
 	/**
-	 * Voucher khách chọn được khi đặt hàng ở shop branchId: voucher app + voucher
-	 * của shop đó
+	 * Voucher khách chọn được khi đặt hàng ở chi nhánh branchId: voucher toàn chuỗi + voucher
+	 * của chi nhánh đó
 	 */
 	@Query("""
 			SELECT v FROM Voucher v

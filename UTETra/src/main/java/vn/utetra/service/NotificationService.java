@@ -57,6 +57,8 @@ public class NotificationService {
 	public Notification create(User to, Order order, String type, String title, String content, String link,
 			String refKey) {
 		if (to == null) return null;
+		// Người nhận có thể là proxy đã tách khỏi phiên (sau các câu UPDATE clearAutomatically) -> đọc lại theo id
+		to = userRepository.findById(to.getId()).orElse(to);
 		if (refKey != null && notificationRepository.existsByUserIdAndRefKey(to.getId(), refKey)) return null;
 		Notification n = new Notification();
 		n.setUser(to);
@@ -86,7 +88,7 @@ public class NotificationService {
 	// ================= XEM / ĐÃ ĐỌC =================
 
 	public List<NotificationRes> latest(Integer userId) {
-		return notificationRepository.findTop20ByUserIdOrderByCreatedAtDesc(userId).stream().map(this::toRes).toList();
+		return notificationRepository.findTop20ByUserIdOrderByCreatedAtDescIdDesc(userId).stream().map(this::toRes).toList();
 	}
 
 	public long unreadCount(Integer userId) {

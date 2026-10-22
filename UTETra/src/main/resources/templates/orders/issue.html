@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Báo vấn đề với đơn - UTETra', ~{::#issue-content})}">
+
+<!--
+	BÁO VẤN ĐỀ VỚI ĐƠN /orders/{id}/issue - thay cho Trả hàng (đồ uống không trả lại được), giống app chuỗi thật:
+	- Chỉ trong 2 giờ sau khi nhận món, mỗi đơn báo 1 lần
+	- Chọn vấn đề, mô tả, chụp 1-3 ảnh; quán xem rồi hoàn tiền / làm lại món / phản hồi
+-->
+<body>
+	<div id="issue-content" style="max-width: 760px; margin: 0 auto">
+		<style>
+.is-card { border: 0; border-radius: 1rem; box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06); }
+.is-reason { border: 1px solid #dee2e6; border-radius: .75rem; padding: .65rem .85rem; cursor: pointer; display: flex; gap: .6rem; align-items: center; }
+.btn-check:checked + .is-reason { border-color: #198754; background: #f1faf4; }
+.is-preview img { width: 84px; height: 84px; object-fit: cover; border-radius: .5rem; }
+		</style>
+
+		<a th:href="@{/orders/{id}(id=${order.id})}" class="text-decoration-none text-success small">
+			<i class="bi bi-arrow-left"></i> Chi tiết đơn hàng</a>
+		<h1 class="h4 fw-bold text-success mt-2 mb-1">Báo vấn đề với đơn #<span th:text="${order.id}"></span></h1>
+		<p class="text-muted small mb-3">
+			<span th:text="${order.branchName}"></span> · nhận lúc <span th:text="${order.deliveredAt}"></span> ·
+			còn <b class="text-danger" id="is-count" th:attr="data-deadline=${order.issueDeadlineMillis}">--:--</b> để báo
+		</p>
+
+		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+		<form th:action="@{/orders/{id}/issue(id=${order.id})}" method="post" enctype="multipart/form-data">
+			<div class="card is-card mb-3">
+				<div class="card-body">
+					<div class="fw-bold mb-2">Bạn gặp vấn đề gì?</div>
+					<div class="d-grid gap-2">
+						<th:block th:each="r, s : ${reasons}">
+							<input type="radio" class="btn-check" name="reason" th:id="|r${s.index}|" th:value="${r.name()}" required>
+							<label class="is-reason" th:for="|r${s.index}|">
+								<i class="bi" th:classappend="${r.name() == 'WRONG_ITEM'} ? 'bi-arrow-left-right' : (${r.name() == 'MISSING_ITEM'} ? 'bi-dash-circle' : (${r.name() == 'SPILLED'} ? 'bi-droplet-half' : (${r.name() == 'QUALITY'} ? 'bi-emoji-frown' : 'bi-three-dots')))"></i>
+								<span th:text="${r.label}"></span>
+							</label>
+						</th:block>
+					</div>
+				</div>
+			</div>
+
+			<div class="card is-card mb-3">
+				<div class="card-body">
+					<div class="fw-bold mb-2">Món trong đơn</div>
+					<div class="small d-flex justify-content-between border-bottom py-1" th:each="it : ${order.items}">
+						<span><b th:text="|${it.quantity}×|"></b> <span th:text="${it.productName}"></span>
+							<span class="text-muted" th:text="|(${it.size}, ${it.sugarIce})|"></span></span>
+						<span class="text-nowrap" th:text="|${#numbers.formatInteger(it.subtotal, 1, 'POINT')}đ|"></span>
+					</div>
+					<label class="form-label fw-semibold mt-3" for="is-desc">Mô tả thêm</label>
+					<textarea class="form-control" id="is-desc" name="description" rows="3" maxlength="500"
+						placeholder="Ví dụ: giao Trà đào thay vì Trà vải, ly bị móp và đổ một nửa..."></textarea>
+				</div>
+			</div>
+
+			<div class="card is-card mb-3">
+				<div class="card-body">
+					<div class="fw-bold mb-1">Ảnh món nhận được <span class="text-danger">*</span></div>
+					<div class="small text-muted mb-2">Chụp 1-3 ảnh (tối đa 5MB/ảnh) để quán kiểm tra nhanh.</div>
+					<input type="file" class="form-control" name="images" id="is-images" accept="image/*" multiple required>
+					<div class="is-preview d-flex gap-2 mt-2 flex-wrap" id="is-preview"></div>
+				</div>
+			</div>
+
+			<div class="small text-muted mb-3"><i class="bi bi-info-circle me-1"></i>
+				Quán sẽ xem và phản hồi: hoàn tiền (một phần hoặc toàn bộ), làm lại món, hoặc giải thích nếu chưa đồng ý.
+				Đơn trả bằng VNPAY/MoMo được hoàn qua đúng ví / tài khoản đã trả.</div>
+			<button type="submit" class="btn btn-success w-100 py-2 fw-semibold">Gửi cho quán</button>
+		</form>
+
+		<script>
+			(function () {
+				const count = document.getElementById('is-count');
+				const dl = Number(count.dataset.deadline || 0);
+				const tick = () => {
+					const left = Math.max(0, dl - Date.now());
+					const h = Math.floor(left / 3600000), m = Math.floor(left % 3600000 / 60000), s = Math.floor(left % 60000 / 1000);
+					count.textContent = left > 0 ? (h > 0 ? h + ' giờ ' : '') + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') : 'hết hạn';
+				};
+				tick(); setInterval(tick, 1000);
+				const input = document.getElementById('is-images');
+				input.addEventListener('change', () => {
+					const box = document.getElementById('is-preview');
+					box.innerHTML = '';
+					const files = [...input.files];
+					if (files.length > 3) { alert('Tối đa 3 ảnh'); input.value = ''; return; }
+					files.forEach((f) => {
+						if (f.size > 5 * 1024 * 1024) { alert('Ảnh ' + f.name + ' quá 5MB'); input.value = ''; box.innerHTML = ''; return; }
+						const img = document.createElement('img');
+						img.src = URL.createObjectURL(f);
+						box.appendChild(img);
+					});
+				});
+			})();
+		</script>
+	</div>
+</body>
+</html>

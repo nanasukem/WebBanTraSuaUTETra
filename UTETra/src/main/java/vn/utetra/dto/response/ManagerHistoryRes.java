@@ -2,7 +2,7 @@ package vn.utetra.dto.response;
 
 import java.util.List;
 
-/** Trang "Đơn hàng của shop" theo 7 trạng thái của đề, có phân trang */
+/** Trang "Đơn hàng của chi nhánh" theo tab trạng thái, có phân trang */
 public record ManagerHistoryRes(
 		Integer branchId,
 		String branchName,

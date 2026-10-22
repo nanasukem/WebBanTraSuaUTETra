@@ -46,7 +46,7 @@ import vn.utetra.service.VoucherService;
  * Chuỗi tự mở chi nhánh: Admin mở chi nhánh và chỉ định 1 Manager quản lý.
  * Manager CHỈ quản lý chi nhánh của mình: mọi đường dẫn /manager/branches/{branchId}/...
  * đều kiểm tra branchId phải là chi nhánh của Manager đang đăng nhập.
- * Duyệt/tạm ngưng chi nhánh, đổi chiết khấu là việc của Admin (/admin/branches).
+ * Duyệt/tạm ngưng chi nhánh là việc của Admin (/admin/branches).
  *
  * - /manager/dashboard                     : tổng quan chi nhánh của tôi
  * - /manager/branches/{id}                 : thông tin chi nhánh
@@ -187,7 +187,7 @@ public class ManagerController {
 	}
 
 	// =========================================================
-	// THÔNG TIN CHI NHÁNH (chỉ xem; sửa thông tin/trạng thái/chiết khấu do Admin làm)
+	// THÔNG TIN CHI NHÁNH (chỉ xem; sửa thông tin/trạng thái do Admin làm)
 	// =========================================================
 
 	@GetMapping("/branches/{id}")
@@ -347,7 +347,7 @@ public class ManagerController {
 
 	// =========================================================
 	// KHUYẾN MÃI CỦA CHI NHÁNH - CHỈ XEM
-	// Chuỗi sở hữu mọi chi nhánh: voucher do Admin tạo (toàn chuỗi hoặc riêng 1 chi nhánh).
+	// Mọi chi nhánh thuộc chuỗi: voucher do Admin tạo (toàn chuỗi hoặc riêng 1 chi nhánh).
 	// Manager chỉ xem voucher áp dụng tại chi nhánh mình + số lượt khách đã dùng, tiền đã giảm.
 	// =========================================================
 	@GetMapping("/branches/{branchId}/vouchers")
@@ -416,17 +416,12 @@ public class ManagerController {
 				.filter(order -> order.getDeliveredAt().isBefore(rangeEnd))
 				.sorted(Comparator.comparing(Order::getDeliveredAt)).collect(Collectors.toList());
 
-		// 5. Tính doanh thu và hoa hồng trong kỳ
+		// 5. Tính doanh thu trong kỳ
 		BigDecimal selectedRevenue = BigDecimal.ZERO;
-		BigDecimal selectedCommission = BigDecimal.ZERO;
 
 		for (Order order : deliveredOrders) {
-			if (order.getTotalAmount() != null) {
-				selectedRevenue = selectedRevenue.add(order.getTotalAmount());
-			}
-
-			if (order.getCommissionAmount() != null) {
-				selectedCommission = selectedCommission.add(order.getCommissionAmount());
+			if (order.getSalesAmount() != null) {
+				selectedRevenue = selectedRevenue.add(order.getSalesAmount());
 			}
 		}
 
@@ -459,7 +454,7 @@ public class ManagerController {
 		for (Order order : deliveredOrders) {
 			LocalDate deliveredDate = order.getDeliveredAt().toLocalDate();
 
-			BigDecimal amount = order.getTotalAmount() == null ? BigDecimal.ZERO : order.getTotalAmount();
+			BigDecimal amount = order.getSalesAmount();
 
 			revenueByDay.merge(deliveredDate, amount, BigDecimal::add);
 		}
@@ -500,7 +495,8 @@ public class ManagerController {
 		model.addAttribute("monthRevenue", monthRevenue);
 
 		model.addAttribute("selectedRevenue", selectedRevenue);
-		model.addAttribute("selectedCommission", selectedCommission);
+		model.addAttribute("selectedAverage", deliveredOrders.isEmpty() ? BigDecimal.ZERO
+				: selectedRevenue.divide(BigDecimal.valueOf(deliveredOrders.size()), 0, java.math.RoundingMode.HALF_UP));
 
 		model.addAttribute("todayOrders", todayOrders);
 		model.addAttribute("monthOrders", monthOrders);
@@ -525,7 +521,7 @@ public class ManagerController {
 		return orders.stream().filter(order -> order.getStatus() == OrderStatus.DELIVERED)
 				.filter(order -> order.getDeliveredAt() != null)
 				.filter(order -> !order.getDeliveredAt().isBefore(start))
-				.filter(order -> order.getDeliveredAt().isBefore(end)).map(Order::getTotalAmount)
+				.filter(order -> order.getDeliveredAt().isBefore(end)).map(Order::getSalesAmount)
 				.filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
 	}
 

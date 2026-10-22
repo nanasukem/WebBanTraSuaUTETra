@@ -93,8 +93,6 @@ public class Order {
 	@Column(name = "total_amount", nullable = false, precision = 12, scale = 0)
 	private BigDecimal totalAmount = BigDecimal.ZERO;
 
-	@Column(name = "commission_amount", nullable = false, precision = 12, scale = 0)
-	private BigDecimal commissionAmount = BigDecimal.ZERO; // tiền app thu của chi nhánh
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false, length = 20)
@@ -125,8 +123,25 @@ public class Order {
 	@Column(name = "delivered_at")
 	private LocalDateTime deliveredAt;
 
+	/** Tiền quán đã hoàn cho khách sau khi giao (khách báo vấn đề với đơn) - trừ khỏi doanh thu */
+	@Column(name = "refund_amount", nullable = false, precision = 12, scale = 0)
+	private BigDecimal refundAmount = BigDecimal.ZERO;
+
 	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OrderDetail> details = new ArrayList<>();
+
+	/**
+	 * Doanh thu bán hàng của đơn = tiền món - mã giảm món - ưu đãi hạng - tiền đã hoàn (báo vấn đề).
+	 * KHÔNG gồm phí ship (phí ship trả cho đối tác giao hàng, không phải tiền quán bán được).
+	 * Dùng cho báo cáo doanh thu, chi tiêu của khách và xét hạng thành viên.
+	 */
+	public BigDecimal getSalesAmount() {
+		BigDecimal items = itemsTotal == null ? BigDecimal.ZERO : itemsTotal;
+		BigDecimal pd = productDiscount == null ? BigDecimal.ZERO : productDiscount;
+		BigDecimal md = memberDiscount == null ? BigDecimal.ZERO : memberDiscount;
+		BigDecimal rf = refundAmount == null ? BigDecimal.ZERO : refundAmount; // tiền đã hoàn khi khách báo vấn đề
+		return items.subtract(pd).subtract(md).subtract(rf).max(BigDecimal.ZERO);
+	}
 
 	/** Thêm 1 dòng chi tiết và gắn 2 chiều */
 	public void addDetail(OrderDetail detail) {

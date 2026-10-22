@@ -161,7 +161,7 @@ public class MomoService {
 	public RefundResult refund(Payment payment) {
 		String refundOrderId = payment.getRefundRef();
 		String requestId = UUID.randomUUID().toString();
-		String amount = String.valueOf(payment.getAmount().longValue());
+		String amount = String.valueOf(payment.refundValue().longValue()); // có thể hoàn 1 phần
 		String description = "Hoan tien don UTETra " + payment.getOrder().getId();
 		String transId = payment.getTransactionCode() == null ? "" : payment.getTransactionCode();
 		String raw = "accessKey=" + props.momoAccessKey() + "&amount=" + amount + "&description=" + description
@@ -172,7 +172,7 @@ public class MomoService {
 		body.put("partnerCode", props.momoPartnerCode());
 		body.put("orderId", refundOrderId);
 		body.put("requestId", requestId);
-		body.put("amount", payment.getAmount().longValue());
+		body.put("amount", payment.refundValue().longValue());
 		body.put("transId", parseLong(transId));
 		body.put("lang", "vi");
 		body.put("description", description);

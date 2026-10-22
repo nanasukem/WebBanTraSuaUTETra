@@ -68,6 +68,20 @@ public class RefundService {
 		paid.forEach(p -> requestRefund(p, reason));
 	}
 
+	/**
+	 * Hoàn 1 phần / toàn bộ đơn ĐÃ GIAO (khách báo vấn đề, quán đồng ý hoàn). Đơn trả trước: hoàn qua cổng.
+	 * Trả về false nếu đơn không trả online (COD: quán tự hoàn tiền mặt / chuyển khoản cho khách).
+	 */
+	@Transactional
+	public boolean refundDelivered(Order order, java.math.BigDecimal amount, String reason) {
+		List<Payment> paid = paymentRepository.findByOrderIdAndStatus(order.getId(), "SUCCESS");
+		if (paid.isEmpty()) return false;
+		Payment p = paid.get(0);
+		p.setRefundAmount(amount.min(p.getAmount()));
+		requestRefund(p, reason);
+		return true;
+	}
+
 	/** Đánh dấu 1 giao dịch cần hoàn, sau khi lưu xong thì gọi cổng (chạy nền) */
 	@Transactional
 	public void requestRefund(Payment p, String reason) {
@@ -126,7 +140,8 @@ public class RefundService {
 
 			boolean stillRefunding = paymentRepository.findByOrderIdAndStatus(o.getId(), "REFUND_PENDING").stream()
 					.anyMatch(x -> !x.getId().equals(p.getId()));
-			if (!stillRefunding && (o.getStatus() == OrderStatus.CANCELLED || o.getStatus() == OrderStatus.RETURNED)) {
+			boolean full = p.refundValue().compareTo(p.getAmount()) >= 0;
+			if (!stillRefunding && full) {
 				o.setPaymentStatus(PaymentStatus.REFUNDED);
 				orderRepository.save(o);
 			}
@@ -184,6 +199,6 @@ public class RefundService {
 	}
 
 	private static String money(Payment p) {
-		return String.format("%,d", p.getAmount().longValue()).replace(',', '.');
+		return String.format("%,d", p.refundValue().longValue()).replace(',', '.');
 	}
 }

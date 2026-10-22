@@ -38,7 +38,7 @@ public interface VoucherService {
 
 	VoucherReq toReq(Voucher v);
 
-	/** Danh sách voucher khách chọn được khi đặt hàng ở shop branchId */
+	/** Danh sách voucher khách chọn được khi đặt hàng ở chi nhánh branchId */
 	List<Voucher> findUsable(Integer branchId);
 
 	/**

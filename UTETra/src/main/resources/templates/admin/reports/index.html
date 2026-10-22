@@ -94,11 +94,11 @@
 				<div class="col-12 col-sm-6 col-xl-3">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
-							<div class="text-muted mb-2">Hoa hồng khoảng đã chọn</div>
+							<div class="text-muted mb-2">Trung bình mỗi đơn</div>
 							<h4 class="fw-bold text-warning"
-								th:text="${#numbers.formatDecimal(selectedCommission, 0, 'COMMA', 0, 'POINT') + ' đ'}">
+								th:text="${#numbers.formatDecimal(selectedAverage, 0, 'COMMA', 0, 'POINT') + ' đ'}">
 								0 đ</h4>
-							<small class="text-muted">Theo dữ liệu đơn hàng</small>
+							<small class="text-muted">Doanh thu khoảng đã chọn / số đơn</small>
 						</div>
 					</div>
 				</div>
@@ -140,7 +140,7 @@
 									<th>Chi nhánh</th>
 									<th class="text-end">Số đơn</th>
 									<th class="text-end">Doanh thu</th>
-									<th class="text-end pe-3">Hoa hồng</th>
+									<th class="text-end pe-3">TB / đơn</th>
 								</tr>
 							</thead>
 
@@ -162,7 +162,7 @@
 										0 đ</td>
 
 									<td class="text-end pe-3"
-										th:text="${#numbers.formatDecimal(branch.commission, 0, 'COMMA', 0, 'POINT') + ' đ'}">
+										th:text="${#numbers.formatDecimal(branch.average, 0, 'COMMA', 0, 'POINT') + ' đ'}">
 										0 đ</td>
 								</tr>
 

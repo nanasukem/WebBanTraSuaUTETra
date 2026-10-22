@@ -67,11 +67,17 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 	private final vn.utetra.repository.ReviewRepository reviewRepository;
 	private final RefundService refundService;
 	private final PaymentInfoBuilder paymentInfoBuilder;
+	private final vn.utetra.service.OrderIssueService orderIssueService;
+	private final vn.utetra.repository.OrderIssueRepository orderIssueRepository;
 
 	public OrderFlowServiceImpl(OrderRepository orderRepository, VoucherRepository voucherRepository,
 			VoucherUsageRepository voucherUsageRepository, ProductRepository productRepository,
 			OrderNotifier orderNotifier, vn.utetra.repository.ReviewRepository reviewRepository,
-			RefundService refundService, PaymentInfoBuilder paymentInfoBuilder) {
+			RefundService refundService, PaymentInfoBuilder paymentInfoBuilder,
+			vn.utetra.service.OrderIssueService orderIssueService,
+			vn.utetra.repository.OrderIssueRepository orderIssueRepository) {
+		this.orderIssueService = orderIssueService;
+		this.orderIssueRepository = orderIssueRepository;
 		this.refundService = refundService;
 		this.paymentInfoBuilder = paymentInfoBuilder;
 		this.reviewRepository = reviewRepository;
@@ -86,8 +92,14 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 
 	@Override
 	public List<OrderListRes> myOrders(Integer userId, OrderTab tab) {
+		Set<Integer> dangGiaiQuyet = new HashSet<>(
+				orderIssueRepository.findOrderIdsByUserAndStatus(userId, vn.utetra.entity.enums.IssueStatus.PENDING));
 		return orderRepository.findByUserIdAndStatusInOrderByCreatedAtDesc(userId, tab.getStatuses())
-				.stream().map(this::toListRes).toList();
+				.stream()
+				// Đang giải quyết: đơn khách báo vấn đề chờ quán xử lý; Hoàn thành: bỏ các đơn đó ra
+				.filter(o -> tab == OrderTab.ISSUE ? dangGiaiQuyet.contains(o.getId())
+						: tab != OrderTab.DELIVERED || !dangGiaiQuyet.contains(o.getId()))
+				.map(this::toListRes).toList();
 	}
 
 	@Override
@@ -96,9 +108,14 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		for (Object[] row : orderRepository.countByStatusOfUser(userId)) {
 			byStatus.put((OrderStatus) row[0], ((Number) row[1]).longValue());
 		}
+		long dangGiaiQuyet = orderIssueRepository
+				.findOrderIdsByUserAndStatus(userId, vn.utetra.entity.enums.IssueStatus.PENDING).size();
 		Map<String, Long> res = new LinkedHashMap<>();
 		for (OrderTab t : OrderTab.values()) {
-			res.put(t.name(), t.getStatuses().stream().mapToLong(s -> byStatus.getOrDefault(s, 0L)).sum());
+			long n = t.getStatuses().stream().mapToLong(s -> byStatus.getOrDefault(s, 0L)).sum();
+			if (t == OrderTab.ISSUE) n = dangGiaiQuyet;
+			if (t == OrderTab.DELIVERED) n -= dangGiaiQuyet;
+			res.put(t.name(), n);
 		}
 		return res;
 	}
@@ -295,7 +312,7 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				Math.max(0, details.size() - 1), money(o.getTotalAmount()), paymentMethodLabel(o.getPaymentMethod()),
 				time(o.getCreatedAt()), canCustomerCancel(o),
 				o.getCancelledBy() == null ? null : o.getCancelledBy().name(), toReviewCount(o),
-				paymentInfoBuilder.build(o));
+				paymentInfoBuilder.build(o), orderIssueService.forOrder(o.getId()));
 	}
 
 	/** Đơn đã giao còn trong hạn đánh giá (30 ngày): số ly chưa đánh giá. Khác -> 0 */
@@ -332,7 +349,11 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				money(o.getTotalAmount()), paymentMethodLabel(o.getPaymentMethod()),
 				paymentStatusLabel(o.getPaymentStatus()), o.getCancelReason(),
 				time(o.getCreatedAt()), time(o.getDeliveredAt()), canCustomerCancel(o),
-				o.getCancelledBy() == null ? null : o.getCancelledBy().name(), paymentInfoBuilder.build(o));
+				o.getCancelledBy() == null ? null : o.getCancelledBy().name(), paymentInfoBuilder.build(o),
+				orderIssueService.forOrder(o.getId()), orderIssueService.canReport(o),
+				vn.utetra.service.OrderIssueService.deadline(o) == null ? 0
+						: vn.utetra.service.OrderIssueService.deadline(o).atZone(java.time.ZoneId.systemDefault())
+								.toInstant().toEpochMilli());
 	}
 
 	/** Trạng thái được chuyển tiếp từ trạng thái hiện tại (theo kiểu đơn) */

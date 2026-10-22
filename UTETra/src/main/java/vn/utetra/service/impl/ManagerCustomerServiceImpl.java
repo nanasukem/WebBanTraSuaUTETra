@@ -106,7 +106,7 @@ public class ManagerCustomerServiceImpl implements ManagerCustomerService {
 		long delivered = orders.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED).count();
 		long cancelled = orders.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count();
 		BigDecimal spent = orders.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED)
-				.map(Order::getTotalAmount).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
+				.map(Order::getSalesAmount).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
 
 		MemberTier tier = memberService.getCurrentTier(u.getId());
 		String phone = u.getPhone() != null && !u.getPhone().isBlank() ? u.getPhone() : last.getReceiverPhone();

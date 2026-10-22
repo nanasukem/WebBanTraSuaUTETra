@@ -45,7 +45,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 	private static final int PAGE_SIZE = 10;
 
 	/**
-	 * Tab "Đơn hàng của shop" giống app quán thật: Đơn mới -> Đang chuẩn bị -> Pha xong / chờ lấy (khách đến lấy
+	 * Tab "Đơn hàng của chi nhánh" giống app quán thật: Đơn mới -> Đang chuẩn bị -> Pha xong / chờ lấy (khách đến lấy
 	 * hoặc chờ shipper) -> Đã giao shipper / Đang giao -> Hoàn thành -> Đã huỷ (+ Trả hàng khi có).
 	 * Đơn Chờ thanh toán (VNPAY/MoMo chưa trả xong) KHÔNG hiện cho quán.
 	 */
@@ -60,16 +60,20 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		TABS.put("SHIPPING", new Tab("Đã giao shipper / Đang giao", List.of(OrderStatus.PICKED_UP, OrderStatus.DELIVERING)));
 		TABS.put("DELIVERED", new Tab("Hoàn thành", List.of(OrderStatus.DELIVERED)));
 		TABS.put("CANCELLED", new Tab("Đã huỷ", List.of(OrderStatus.CANCELLED)));
-		TABS.put("RETURNED", new Tab("Trả hàng - hoàn tiền", List.of(OrderStatus.RETURNED)));
+		// Đồ uống không trả hàng: tab "Khách báo vấn đề" (đơn đã giao mà khách báo sai món, đổ vỡ...)
+		TABS.put("ISSUE", new Tab("Khách báo vấn đề", List.of()));
 	}
 
 	private final BranchRepository branchRepository;
 	private final OrderRepository orderRepository;
 	private final OrderFlowService orderFlowService;
 	private final vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder;
+	private final vn.utetra.repository.OrderIssueRepository orderIssueRepository;
 
 	public ManagerOrderServiceImpl(BranchRepository branchRepository, OrderRepository orderRepository,
-			OrderFlowService orderFlowService, vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder) {
+			OrderFlowService orderFlowService, vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder,
+			vn.utetra.repository.OrderIssueRepository orderIssueRepository) {
+		this.orderIssueRepository = orderIssueRepository;
 		this.paymentInfoBuilder = paymentInfoBuilder;
 		this.branchRepository = branchRepository;
 		this.orderRepository = orderRepository;
@@ -85,7 +89,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 	@Override
 	public Integer resolveBranchId(Integer managerId, Integer branchId) {
 		List<Branch> mine = branchRepository.findByOwnerIdOrderByIdAsc(managerId);
-		if (mine.isEmpty()) throw new BusinessException("Tài khoản của bạn chưa sở hữu chi nhánh nào");
+		if (mine.isEmpty()) throw new BusinessException("Tài khoản của bạn chưa được giao quản lý chi nhánh nào");
 		if (branchId == null) return mine.get(0).getId();
 		return mine.stream().filter(b -> b.getId().equals(branchId)).findFirst().map(Branch::getId)
 				.orElseThrow(() -> new ResourceNotFoundException("Bạn không quản lý chi nhánh #" + branchId));
@@ -129,15 +133,16 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		orderFlowService.updateStatus(orderId, to, reason);
 	}
 
-	// ================= ĐƠN HÀNG CỦA SHOP (7 TAB) =================
+	// ================= ĐƠN HÀNG CỦA CHI NHÁNH =================
 
 	@Override
 	public ManagerHistoryRes history(Integer managerId, Integer branchId, String tab, int page) {
 		Integer id = resolveBranchId(managerId, branchId);
 		Branch branch = branchRepository.findById(id).orElseThrow();
 		String current = tab == null ? "PENDING" : tab.trim().toUpperCase();
-		// Link cũ ?status=PICKED_UP / DELIVERING -> tab Đang giao
+		// Link cũ ?status=PICKED_UP / DELIVERING -> tab Đang giao; RETURNED (trả hàng cũ) -> Khách báo vấn đề
 		if (current.equals("PICKED_UP") || current.equals("DELIVERING")) current = "SHIPPING";
+		if (current.equals("RETURNED")) current = "ISSUE";
 		if (!TABS.containsKey(current)) current = "PENDING";
 
 		// Số đơn từng tab
@@ -146,11 +151,20 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 			counts.put((OrderStatus) row[0], ((Number) row[1]).longValue());
 		}
 		List<ManagerTabRes> tabs = new ArrayList<>();
-		TABS.forEach((key, t) -> tabs.add(new ManagerTabRes(key, t.label(),
-				t.statuses().stream().mapToLong(s -> counts.getOrDefault(s, 0L)).sum())));
+		long choXuLy = orderIssueRepository.countByOrderBranchIdAndStatus(id, vn.utetra.entity.enums.IssueStatus.PENDING);
+		TABS.forEach((key, t) -> {
+			long n = t.statuses().stream().mapToLong(s -> counts.getOrDefault(s, 0L)).sum();
+			if ("ISSUE".equals(key)) n = choXuLy;
+			if ("DELIVERED".equals(key)) n -= choXuLy; // đơn khách báo vấn đề chưa xử lý xong: chưa Hoàn thành
+			tabs.add(new ManagerTabRes(key, t.label(), n));
+		});
 
-		Page<Order> result = orderRepository.findPageByBranchIdAndStatusInOrderByCreatedAtDesc(id,
-				TABS.get(current).statuses(), PageRequest.of(Math.max(0, page), PAGE_SIZE));
+		PageRequest pr = PageRequest.of(Math.max(0, page), PAGE_SIZE);
+		Page<Order> result = "ISSUE".equals(current)
+				? orderIssueRepository.findByOrderBranchIdOrderByCreatedAtDesc(id, pr).map(vn.utetra.entity.OrderIssue::getOrder)
+				: "DELIVERED".equals(current)
+						? orderRepository.findPageWithoutPendingIssue(id, TABS.get(current).statuses(), pr)
+						: orderRepository.findPageByBranchIdAndStatusInOrderByCreatedAtDesc(id, TABS.get(current).statuses(), pr);
 		List<ManagerOrderRes> orders = result.getContent().stream().map(o -> toCard(o, DAY_HOUR)).toList();
 
 		return new ManagerHistoryRes(id, branch.getName(), current, TABS.get(current).label(), tabs, orders,
@@ -183,6 +197,8 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 
 		List<ManagerOrderRes.Action> actions = new ArrayList<>();
 		String hint = null;
+		vn.utetra.entity.OrderIssue issue = o.getStatus() == OrderStatus.DELIVERED
+				? orderIssueRepository.findByOrderId(o.getId()).orElse(null) : null;
 		switch (o.getStatus()) {
 			case PENDING -> actions.add(new ManagerOrderRes.Action("CONFIRMED", "Nhận đơn & pha chế", "btn-success"));
 			case CONFIRMED -> {
@@ -200,6 +216,8 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 			}
 			case CANCELLED -> hint = OrderFlowServiceImpl.cancelledByLabel(o.getCancelledBy(), false)
 					+ (o.getCancelReason() == null ? "" : ": " + o.getCancelReason());
+			case DELIVERED -> hint = issue == null ? null
+					: "Khách báo vấn đề: " + issue.getReason().getLabel() + " · " + issue.getStatus().getLabel();
 			default -> { }
 		}
 		// Quán huỷ được tới khi pha xong; đơn đến lấy: huỷ được cả khi khách không tới lấy
@@ -218,7 +236,9 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 				o.getDeliveryAddress(), o.getDeliveryNote(), o.getNote(), items, qty, o.getTotalAmount(),
 				paymentInfoBuilder.storeLabel(o), hint, actions, canCancel,
 				o.getPaymentStatus() == vn.utetra.entity.enums.PaymentStatus.PAID
-						&& o.getPaymentMethod() != vn.utetra.entity.enums.PaymentMethod.COD);
+						&& o.getPaymentMethod() != vn.utetra.entity.enums.PaymentMethod.COD,
+				issue == null ? null : "Có vấn đề · " + issue.getStatus().getLabel(),
+				issue != null && issue.getStatus() == vn.utetra.entity.enums.IssueStatus.PENDING);
 	}
 
 	/** "2× Cà phê muối · L · 70% đường · 50% đá + Kem cheese" */

@@ -10,7 +10,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 
-/** Quản lý nhà vận chuyển cho ADMIN */
+/** Quản lý đối tác giao hàng cho ADMIN */
 @Controller
 @RequestMapping("/admin/carriers")
 public class AdminCarrierController {
@@ -58,10 +58,11 @@ public class AdminCarrierController {
     public String createForm(Model model) {
         Carrier carrier = new Carrier();
         carrier.setFee(BigDecimal.ZERO);
+        carrier.setPerKmFee(BigDecimal.ZERO);
         carrier.setIsActive(true);
 
         model.addAttribute("carrier", carrier);
-        model.addAttribute("pageTitle", "Thêm nhà vận chuyển");
+        model.addAttribute("pageTitle", "Thêm đối tác giao hàng");
         model.addAttribute("isEdit", false);
 
         return "admin/carriers/form";
@@ -76,7 +77,7 @@ public class AdminCarrierController {
         String error = validateCarrier(carrier, null);
 
         if (error != null) {
-            model.addAttribute("pageTitle", "Thêm nhà vận chuyển");
+            model.addAttribute("pageTitle", "Thêm đối tác giao hàng");
             model.addAttribute("isEdit", false);
             model.addAttribute("errorMessage", error);
             return "admin/carriers/form";
@@ -89,7 +90,7 @@ public class AdminCarrierController {
         carrierRepository.save(carrier);
 
         redirectAttributes.addFlashAttribute(
-                "successMessage", "Thêm nhà vận chuyển thành công.");
+                "successMessage", "Thêm đối tác giao hàng thành công.");
 
         return "redirect:/admin/carriers";
     }
@@ -104,12 +105,12 @@ public class AdminCarrierController {
 
         if (carrier == null) {
             redirectAttributes.addFlashAttribute(
-                    "errorMessage", "Không tìm thấy nhà vận chuyển.");
+                    "errorMessage", "Không tìm thấy đối tác giao hàng.");
             return "redirect:/admin/carriers";
         }
 
         model.addAttribute("carrier", carrier);
-        model.addAttribute("pageTitle", "Chỉnh sửa nhà vận chuyển");
+        model.addAttribute("pageTitle", "Chỉnh sửa đối tác giao hàng");
         model.addAttribute("isEdit", true);
 
         return "admin/carriers/form";
@@ -126,7 +127,7 @@ public class AdminCarrierController {
 
         if (existing == null) {
             redirectAttributes.addFlashAttribute(
-                    "errorMessage", "Không tìm thấy nhà vận chuyển.");
+                    "errorMessage", "Không tìm thấy đối tác giao hàng.");
             return "redirect:/admin/carriers";
         }
 
@@ -135,7 +136,7 @@ public class AdminCarrierController {
         if (error != null) {
             formCarrier.setId(id);
             model.addAttribute("carrier", formCarrier);
-            model.addAttribute("pageTitle", "Chỉnh sửa nhà vận chuyển");
+            model.addAttribute("pageTitle", "Chỉnh sửa đối tác giao hàng");
             model.addAttribute("isEdit", true);
             model.addAttribute("errorMessage", error);
 
@@ -144,13 +145,14 @@ public class AdminCarrierController {
 
         existing.setName(formCarrier.getName().trim());
         existing.setFee(formCarrier.getFee());
+        existing.setPerKmFee(formCarrier.getPerKmFee());
 
         // Không nhận isActive từ form chỉnh sửa.
         // Trạng thái được quản lý riêng bằng chức năng bật/tắt.
         carrierRepository.save(existing);
 
         redirectAttributes.addFlashAttribute(
-                "successMessage", "Cập nhật nhà vận chuyển thành công.");
+                "successMessage", "Cập nhật đối tác giao hàng thành công.");
 
         return "redirect:/admin/carriers";
     }
@@ -164,7 +166,7 @@ public class AdminCarrierController {
 
         if (carrier == null) {
             redirectAttributes.addFlashAttribute(
-                    "errorMessage", "Không tìm thấy nhà vận chuyển.");
+                    "errorMessage", "Không tìm thấy đối tác giao hàng.");
             return "redirect:/admin/carriers";
         }
 
@@ -176,21 +178,21 @@ public class AdminCarrierController {
         redirectAttributes.addFlashAttribute(
                 "successMessage",
                 active
-                        ? "Đã tắt nhà vận chuyển."
-                        : "Đã bật nhà vận chuyển.");
+                        ? "Đã tắt đối tác giao hàng."
+                        : "Đã bật đối tác giao hàng.");
 
         return "redirect:/admin/carriers";
     }
 
     private String validateCarrier(Carrier carrier, Integer excludeId) {
         if (carrier.getName() == null || carrier.getName().isBlank()) {
-            return "Tên nhà vận chuyển không được để trống.";
+            return "Tên đối tác giao hàng không được để trống.";
         }
 
         String name = carrier.getName().trim();
 
         if (name.length() > 100) {
-            return "Tên nhà vận chuyển không được vượt quá 100 ký tự.";
+            return "Tên đối tác giao hàng không được vượt quá 100 ký tự.";
         }
 
         boolean duplicate = excludeId == null
@@ -199,12 +201,17 @@ public class AdminCarrierController {
                         name, excludeId);
 
         if (duplicate) {
-            return "Tên nhà vận chuyển đã tồn tại.";
+            return "Tên đối tác giao hàng đã tồn tại.";
         }
 
         if (carrier.getFee() == null
                 || carrier.getFee().compareTo(BigDecimal.ZERO) < 0) {
-            return "Phí vận chuyển phải lớn hơn hoặc bằng 0.";
+            return "Phí 5 km đầu phải lớn hơn hoặc bằng 0.";
+        }
+
+        if (carrier.getPerKmFee() == null
+                || carrier.getPerKmFee().compareTo(BigDecimal.ZERO) < 0) {
+            return "Phí mỗi km thêm phải lớn hơn hoặc bằng 0.";
         }
 
         return null;

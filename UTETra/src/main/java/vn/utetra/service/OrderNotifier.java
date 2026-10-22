@@ -17,7 +17,7 @@ import vn.utetra.service.impl.OrderFlowServiceImpl;
  * Báo tin về đơn hàng:
  * 1. Chuông thông báo (NotificationService): lưu bảng Notifications + đẩy /user/queue/notifications
  * 2. Trang đơn hàng đang mở tự cập nhật: đẩy OrderEventRes SAU KHI lưu đơn thành công (afterCommit)
- *    - Quán (chủ chi nhánh): /user/queue/manager-orders
+ *    - Quán (manager của chi nhánh): /user/queue/manager-orders
  *    - Khách:                /user/queue/orders
  *    Gửi theo tài khoản (convertAndSendToUser) nên người khác không nghe lén được.
  */
@@ -29,15 +29,23 @@ public class OrderNotifier {
 
 	private final NotificationService notificationService;
 	private final SimpMessagingTemplate messagingTemplate;
+	private final vn.utetra.repository.UserRepository userRepository;
 
-	public OrderNotifier(NotificationService notificationService, SimpMessagingTemplate messagingTemplate) {
+	public OrderNotifier(NotificationService notificationService, SimpMessagingTemplate messagingTemplate,
+			vn.utetra.repository.UserRepository userRepository) {
 		this.notificationService = notificationService;
 		this.messagingTemplate = messagingTemplate;
+		this.userRepository = userRepository;
 	}
 
-	/** Khách vừa đặt đơn -> báo chủ chi nhánh (chuông + popup ở Quầy đơn hàng) */
+	/** Đọc lại người dùng theo id: proxy của đơn có thể đã tách khỏi phiên sau các câu UPDATE (clearAutomatically) */
+	private User fresh(User u) {
+		return u == null ? null : userRepository.findById(u.getId()).orElse(u);
+	}
+
+	/** Khách vừa đặt đơn -> báo manager của chi nhánh (chuông + popup ở Quầy đơn hàng) */
 	public void onNewOrder(Order o) {
-		User owner = o.getBranch().getOwner();
+		User owner = fresh(o.getBranch().getOwner());
 		boolean pickup = o.getDeliveryType() == DeliveryType.PICKUP;
 		int qty = o.getDetails().stream().mapToInt(OrderDetail::getQuantity).sum();
 		String title = "Có đơn hàng mới #" + o.getId();
@@ -63,8 +71,8 @@ public class OrderNotifier {
 	 */
 	public void onStatusChanged(Order o, CancelledBy actor, boolean storeKnew) {
 		boolean byCustomer = actor == CancelledBy.CUSTOMER;
-		User customer = o.getUser();
-		User owner = o.getBranch().getOwner();
+		User customer = fresh(o.getUser());
+		User owner = fresh(o.getBranch().getOwner());
 		boolean pickup = o.getDeliveryType() == DeliveryType.PICKUP;
 		String label = OrderFlowServiceImpl.statusLabel(o.getStatus(), pickup);
 		String reason = o.getCancelReason() == null ? "" : "Lý do: " + o.getCancelReason();

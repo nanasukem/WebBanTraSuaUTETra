@@ -25,7 +25,7 @@ public class BranchApiController {
 
 	/**
 	 * GET /api/branches/approved - danh sách chi nhánh đang hoạt động.
-	 * Trả DTO (id, tên, địa chỉ, SĐT, tọa độ), KHÔNG trả entity Branch để không lộ thông tin chủ shop
+	 * Trả DTO (id, tên, địa chỉ, SĐT, tọa độ), KHÔNG trả entity Branch để không lộ thông tin người quản lý chi nhánh
 	 * và không bị lỗi JSON với owner LAZY.
 	 */
 	@GetMapping("/approved")
@@ -42,7 +42,7 @@ public class BranchApiController {
 
 	/**
 	 * POST /api/branches/{branchId}/toggle-product - bật/tắt món tại chi nhánh.
-	 * Chỉ CHỦ chi nhánh (Manager) hoặc ADMIN được gọi.
+	 * Chỉ Manager quản lý chi nhánh đó hoặc ADMIN được gọi.
 	 */
 	@PostMapping("/{branchId}/toggle-product")
 	public ResponseEntity<Map<String, Object>> toggleProduct(@PathVariable Integer branchId,

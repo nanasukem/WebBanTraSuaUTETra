@@ -61,14 +61,13 @@
 							<th>Tên chi nhánh</th>
 							<th class="d-none d-md-table-cell">Địa chỉ</th>
 							<th class="d-none d-lg-table-cell">Quản lý chi nhánh</th>
-							<th class="text-end">Chiết khấu</th>
 							<th>Trạng thái</th>
 							<th class="text-end">Thao tác</th>
 						</tr>
 					</thead>
 					<tbody>
 						<tr th:if="${#lists.isEmpty(branches)}">
-							<td colspan="7" class="text-center text-muted py-4">Không có
+							<td colspan="6" class="text-center text-muted py-4">Không có
 								chi nhánh nào</td>
 						</tr>
 						<tr th:each="b : ${branches}">
@@ -76,10 +75,10 @@
 							<td>
 								<div class="fw-semibold" th:text="${b.name}"></div> <small
 								class="text-muted" th:text="${b.phone}"></small>
+								<div class="small text-muted"><i class="bi bi-clock me-1"></i><span th:text="${b.hoursLabel}">7:00 - 22:00</span></div>
 							</td>
 							<td class="d-none d-md-table-cell" th:text="${b.address}"></td>
 							<td class="d-none d-lg-table-cell" th:text="${b.owner.fullName}"></td>
-							<td class="text-end" th:text="${b.commissionRate} + '%'"></td>
 							<td><span class="badge"
 								th:classappend="${b.status.name() == 'APPROVED'} ? 'text-bg-success' : 'text-bg-secondary'"
 								th:text="${b.status.label}"></span></td>

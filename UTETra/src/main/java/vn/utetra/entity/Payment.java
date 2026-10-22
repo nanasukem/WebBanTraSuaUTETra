@@ -67,6 +67,10 @@ public class Payment {
 
 	// ===== Hoàn tiền =====
 
+	/** Số tiền cần hoàn (null = hoàn toàn bộ amount; nhỏ hơn = hoàn một phần khi khách báo vấn đề) */
+	@Column(name = "refund_amount", precision = 12, scale = 0)
+	private BigDecimal refundAmount;
+
 	@Column(name = "refund_ref", length = 50)
 	private String refundRef;
 
@@ -84,6 +88,11 @@ public class Payment {
 
 	@Column(name = "refund_message", length = 255)
 	private String refundMessage;
+
+	/** Số tiền thực sự hoàn: refundAmount nếu có, không thì toàn bộ */
+	public BigDecimal refundValue() {
+		return refundAmount != null ? refundAmount : amount;
+	}
 
 	public boolean isOnline() {
 		return "VNPAY".equals(method) || "MOMO".equals(method);

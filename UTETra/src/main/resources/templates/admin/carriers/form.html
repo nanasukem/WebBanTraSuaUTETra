@@ -1,14 +1,14 @@
 
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/admin-layout :: main('Thông tin nhà vận chuyển', 'carriers', ~{::#admin-content})}">
+	th:replace="~{layout/admin-layout :: main('Thông tin đối tác giao hàng', 'carriers', ~{::#admin-content})}">
 
 <section id="admin-content">
 	<div class="container-fluid py-3">
 
 		<div class="mb-4">
-			<h2 class="fw-bold mb-1" th:text="${pageTitle}">Nhà vận chuyển</h2>
-			<p class="text-muted mb-0">Nhập thông tin nhà vận chuyển bên
+			<h2 class="fw-bold mb-1" th:text="${pageTitle}">Đối tác giao hàng</h2>
+			<p class="text-muted mb-0">Nhập thông tin đối tác giao hàng bên
 				dưới.</p>
 		</div>
 
@@ -22,20 +22,27 @@
 					method="post">
 
 					<div class="mb-3">
-						<label for="name" class="form-label"> Tên nhà vận chuyển <span
+						<label for="name" class="form-label"> Tên đối tác giao hàng <span
 							class="text-danger">*</span>
 						</label> <input id="name" type="text" th:field="*{name}"
 							class="form-control" maxlength="100" required
-							placeholder="Ví dụ: Giao hàng nội bộ">
+							placeholder="Ví dụ: Shipper UTETra, Ahamove">
 					</div>
 
 					<div class="mb-3">
-						<label for="fee" class="form-label"> Phí vận chuyển (VNĐ)
+						<label for="fee" class="form-label"> Phí 5 km đầu (VNĐ)
 							<span class="text-danger">*</span>
 						</label> <input id="fee" type="number" th:field="*{fee}"
 							class="form-control" min="0" step="1" required>
-						<div class="form-text">Đây là mức phí mặc định của nhà vận
-							chuyển.</div>
+					</div>
+
+					<div class="mb-3">
+						<label for="perKmFee" class="form-label"> Phí mỗi km thêm (VNĐ)
+							<span class="text-danger">*</span>
+						</label> <input id="perKmFee" type="number" th:field="*{perKmFee}"
+							class="form-control" min="0" step="1" required>
+						<div class="form-text">Phí giao = phí 5 km đầu + phí mỗi km thêm (làm tròn lên), giao tối đa 15 km.
+							Khách không chọn đối tác: hệ thống tự chọn đối tác đang hoạt động rẻ nhất cho quãng đường đó.</div>
 					</div>
 
 					<div class="d-flex justify-content-end gap-2 mt-4">

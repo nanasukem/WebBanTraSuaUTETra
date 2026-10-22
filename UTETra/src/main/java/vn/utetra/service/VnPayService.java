@@ -191,6 +191,8 @@ public class VnPayService {
 		JsonNode res = post(body);
 		if (res == null) return "Không kết nối được VNPAY";
 		String code = text(res, "vnp_ResponseCode");
+		if ("94".equals(code)) return "VNPAY chặn tra cứu liên tục cùng 1 giao dịch (mã 94), vui lòng thử lại sau vài phút";
+		if ("91".equals(code)) return "VNPAY không tìm thấy giao dịch này (mã 91)";
 		if (!"00".equals(code)) return "VNPAY trả lời mã " + code + ": " + text(res, "vnp_Message");
 		String ts = text(res, "vnp_TransactionStatus");
 		String type = text(res, "vnp_TransactionType");
@@ -217,10 +219,12 @@ public class VnPayService {
 		String requestId = requestId();
 		String createDate = LocalDateTime.now(VN).format(VNP_TIME);
 		String ip = "127.0.0.1";
-		String amount = String.valueOf(payment.getAmount().longValue() * 100);
+		String amount = String.valueOf(payment.refundValue().longValue() * 100);
+		// 02 = hoàn toàn phần, 03 = hoàn một phần (khách báo vấn đề, quán hoàn 1 phần)
+		String type = payment.refundValue().compareTo(payment.getAmount()) < 0 ? "03" : "02";
 		String transNo = payment.getTransactionCode() == null ? "" : payment.getTransactionCode();
 		String orderInfo = "Hoan tien don UTETra " + payment.getOrder().getId();
-		String data = String.join("|", requestId, VERSION, "refund", props.vnpTmnCode(), "02", payment.getTxnRef(),
+		String data = String.join("|", requestId, VERSION, "refund", props.vnpTmnCode(), type, payment.getTxnRef(),
 				amount, transNo, payment.getGatewayDate(), createdBy, createDate, ip, orderInfo);
 
 		Map<String, String> body = new LinkedHashMap<>();
@@ -228,7 +232,7 @@ public class VnPayService {
 		body.put("vnp_Version", VERSION);
 		body.put("vnp_Command", "refund");
 		body.put("vnp_TmnCode", props.vnpTmnCode());
-		body.put("vnp_TransactionType", "02"); // hoàn toàn phần
+		body.put("vnp_TransactionType", type);
 		body.put("vnp_TxnRef", payment.getTxnRef());
 		body.put("vnp_Amount", amount);
 		body.put("vnp_OrderInfo", orderInfo);

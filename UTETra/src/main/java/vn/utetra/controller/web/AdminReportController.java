@@ -89,10 +89,6 @@ public class AdminReportController {
                 orderRepository.sumRevenueByStatusAndDeliveredAt(
                         delivered, rangeStart, rangeEnd);
 
-        BigDecimal selectedCommission =
-                orderRepository.sumCommissionByStatusAndDeliveredAt(
-                        delivered, rangeStart, rangeEnd);
-
         long todayOrders =
                 orderRepository
                         .countByStatusAndDeliveredAtGreaterThanEqualAndDeliveredAtLessThan(
@@ -128,8 +124,8 @@ public class AdminReportController {
             }
 
             LocalDate date = order.getDeliveredAt().toLocalDate();
-            BigDecimal amount = order.getTotalAmount() != null
-                    ? order.getTotalAmount()
+            BigDecimal amount = order.getSalesAmount() != null
+                    ? order.getSalesAmount()
                     : BigDecimal.ZERO;
 
             revenueByDay.merge(date, amount, BigDecimal::add);
@@ -145,7 +141,7 @@ public class AdminReportController {
         List<BigDecimal> chartValues =
                 new ArrayList<>(revenueByDay.values());
 
-        // Gom doanh thu, số đơn và hoa hồng theo chi nhánh.
+        // Gom doanh thu, số đơn theo chi nhánh.
         Map<Integer, Map<String, Object>> branchMap =
                 new LinkedHashMap<>();
 
@@ -167,28 +163,24 @@ public class AdminReportController {
                                         : "Chi nhánh #" + id);
                         item.put("orderCount", 0L);
                         item.put("revenue", BigDecimal.ZERO);
-                        item.put("commission", BigDecimal.ZERO);
                         return item;
                     });
 
             report.put("orderCount",
                     (Long) report.get("orderCount") + 1L);
 
-            BigDecimal amount = order.getTotalAmount() != null
-                    ? order.getTotalAmount()
-                    : BigDecimal.ZERO;
-
-            BigDecimal commission = order.getCommissionAmount() != null
-                    ? order.getCommissionAmount()
+            BigDecimal amount = order.getSalesAmount() != null
+                    ? order.getSalesAmount()
                     : BigDecimal.ZERO;
 
             report.put("revenue",
                     ((BigDecimal) report.get("revenue")).add(amount));
 
-            report.put("commission",
-                    ((BigDecimal) report.get("commission"))
-                            .add(commission));
         }
+
+        // Trung bình mỗi đơn của từng chi nhánh
+        branchMap.values().forEach(item -> item.put("average",
+                average((BigDecimal) item.get("revenue"), (Long) item.get("orderCount"))));
 
         List<Map<String, Object>> branchReports =
                 branchMap.values().stream()
@@ -200,7 +192,7 @@ public class AdminReportController {
         model.addAttribute("todayRevenue", todayRevenue);
         model.addAttribute("monthRevenue", monthRevenue);
         model.addAttribute("selectedRevenue", selectedRevenue);
-        model.addAttribute("selectedCommission", selectedCommission);
+        model.addAttribute("selectedAverage", average(selectedRevenue, selectedOrders));
 
         model.addAttribute("todayOrders", todayOrders);
         model.addAttribute("monthOrders", monthOrders);
@@ -214,5 +206,11 @@ public class AdminReportController {
         model.addAttribute("branchReports", branchReports);
 
         return "admin/reports/index";
+    }
+
+    /** Giá trị trung bình 1 đơn = doanh thu / số đơn */
+    private static BigDecimal average(BigDecimal revenue, long orders) {
+        return orders <= 0 || revenue == null ? BigDecimal.ZERO
+                : revenue.divide(BigDecimal.valueOf(orders), 0, java.math.RoundingMode.HALF_UP);
     }
 }

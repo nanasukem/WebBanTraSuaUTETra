@@ -38,7 +38,7 @@ public class CarrierServiceImpl implements CarrierService {
 	@Override
 	public Carrier findById(Integer id) {
 		return carrierRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhà vận chuyển #" + id));
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đối tác giao hàng #" + id));
 	}
 
 	@Override
@@ -46,11 +46,12 @@ public class CarrierServiceImpl implements CarrierService {
 	public Carrier create(CarrierReq req) {
 		String name = req.getName().trim();
 		if (carrierRepository.existsByNameIgnoreCase(name)) {
-			throw new BusinessException("Nhà vận chuyển " + name + " đã tồn tại");
+			throw new BusinessException("Đối tác giao hàng " + name + " đã tồn tại");
 		}
 		Carrier c = new Carrier();
 		c.setName(name);
 		c.setFee(req.getFee());
+		c.setPerKmFee(req.getPerKmFee() == null ? java.math.BigDecimal.ZERO : req.getPerKmFee());
 		c.setIsActive(true);
 		return carrierRepository.save(c);
 	}
@@ -61,10 +62,11 @@ public class CarrierServiceImpl implements CarrierService {
 		Carrier c = findById(id);
 		String name = req.getName().trim();
 		if (carrierRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
-			throw new BusinessException("Nhà vận chuyển " + name + " đã tồn tại");
+			throw new BusinessException("Đối tác giao hàng " + name + " đã tồn tại");
 		}
 		c.setName(name);
 		c.setFee(req.getFee()); // đơn cũ đã lưu shipping_fee riêng nên đổi phí không ảnh hưởng đơn cũ
+		c.setPerKmFee(req.getPerKmFee() == null ? java.math.BigDecimal.ZERO : req.getPerKmFee());
 		return carrierRepository.save(c);
 	}
 
@@ -80,6 +82,7 @@ public class CarrierServiceImpl implements CarrierService {
 		CarrierReq req = new CarrierReq();
 		req.setName(c.getName());
 		req.setFee(c.getFee());
+		req.setPerKmFee(c.getPerKmFee());
 		return req;
 	}
 }

@@ -15,5 +15,7 @@ public record CheckoutPreviewRes(List<CartItemRes> items, int totalQty, BigDecim
 		String productVoucherError, // lỗi mã giảm món (null = không lỗi)
 		String shippingVoucherError, // lỗi mã giảm ship
 		List<String> errors, // lỗi khác: chưa chọn chi nhánh, địa chỉ...
-		boolean canOrder) { // true = bấm "Đặt hàng" được
+		boolean canOrder, // true = bấm "Đặt hàng" được
+		BigDecimal deliveryDistanceKm, // khoảng cách chi nhánh -> địa chỉ giao (null = đến lấy / chưa tính được)
+		String carrierName) { // đối tác giao hàng hệ thống chọn (rẻ nhất cho quãng đường)
 }

@@ -140,14 +140,13 @@
 				<div class="card report-card h-100">
 					<div class="card-body">
 
-						<div class="text-muted">Hoa hồng kỳ đã chọn</div>
+						<div class="text-muted">Trung bình mỗi đơn</div>
 
 						<h4 class="stat-value text-warning mt-2"
-							th:text="${#numbers.formatDecimal(selectedCommission, 0, 'COMMA', 0, 'POINT') + ' đ'}">
+							th:text="${#numbers.formatDecimal(selectedAverage, 0, 'COMMA', 0, 'POINT') + ' đ'}">
 							0 đ</h4>
 
-						<small class="text-muted"> Tổng hoa hồng của các đơn đã
-							giao </small>
+						<small class="text-muted"> Doanh thu kỳ đã chọn / số đơn đã giao </small>
 
 					</div>
 				</div>
