@@ -101,9 +101,17 @@
 							<span class="fw-bold">Khách trả</span>
 							<span class="fs-5 fw-bold text-danger"
 								th:text="|${#numbers.formatInteger(order.totalAmount, 1, 'POINT')}đ|"></span></div>
-						<div class="small text-muted mt-1">
-							<span th:text="${order.paymentMethodLabel}"></span> · <span th:text="${order.paymentStatusLabel}"></span>
+						<div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+							<span class="small" th:text="${order.payment.methodLabel}"></span>
+							<span class="badge rounded-pill" th:classappend="${order.payment.badgeClass}">
+								<i class="bi me-1" th:classappend="${order.payment.icon}"></i><span th:text="${order.payment.badge}"></span></span>
 						</div>
+						<div class="small fw-semibold mt-1"
+							th:classappend="${order.payment.status == 'PAID'} ? 'text-success' : 'text-danger'"
+							th:text="${card.paymentLabel}"></div>
+						<div class="small text-muted mt-1" th:if="${order.payment.refund}">
+							<i class="bi bi-arrow-counterclockwise me-1"></i><span th:text="${order.payment.refund.statusLabel}"></span>
+							cho khách qua <span th:text="${order.payment.methodLabel}"></span></div>
 					</div>
 				</div>
 

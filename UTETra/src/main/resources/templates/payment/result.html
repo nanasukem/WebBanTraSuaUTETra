@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('Kết quả thanh toán - UTETra', ~{::#pay-result})}">
+
+<body>
+	<div id="pay-result" class="py-3" style="max-width: 920px; margin: 0 auto">
+		<style>
+.pr-card { border: 0; border-radius: 1rem; box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06); }
+.pr-icon { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto; font-size: 2.4rem; }
+.pr-row { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0; border-bottom: 1px dashed #e9ecef; font-size: .925rem; }
+.pr-row:last-child { border-bottom: 0; }
+.pr-row span:first-child { color: #6c757d; }
+.pr-count { font-variant-numeric: tabular-nums; }
+.pr-method { border: 1px solid #dee2e6; border-radius: .75rem; padding: .6rem .8rem; display: flex; align-items: center;
+	gap: .6rem; text-decoration: none; color: inherit; background: #fff; width: 100%; text-align: left; }
+.pr-method:hover { border-color: #198754; background: #f6fbf8; }
+.pr-logo { width: 38px; height: 38px; border-radius: .5rem; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: .7rem; flex-shrink: 0; }
+		</style>
+
+		<!-- Kết quả không hợp lệ (sai chữ ký / không tìm thấy giao dịch) -->
+		<div th:if="${invalidMessage}" class="card pr-card text-center p-4">
+			<div class="pr-icon bg-danger-subtle text-danger"><i class="bi bi-shield-exclamation"></i></div>
+			<h1 class="h5 fw-bold mt-3">Không xác minh được kết quả thanh toán</h1>
+			<p class="text-muted mb-3" th:text="${invalidMessage}"></p>
+			<p class="small text-muted">Nếu tài khoản của bạn đã bị trừ tiền, đơn sẽ được cập nhật tự động sau ít phút
+				(UTETra hỏi lại cổng thanh toán). Bạn có thể xem lại trong Đơn hàng của tôi.</p>
+			<div><a th:href="@{/orders}" class="btn btn-success">Đơn hàng của tôi</a></div>
+		</div>
+
+		<th:block th:unless="${invalidMessage}">
+			<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+			<div class="row g-3">
+				<div class="col-lg-7">
+					<div class="card pr-card p-4 text-center" id="pr-main" th:attr="data-order-id=${order.id},data-state=${state},data-deadline=${order.payment.payDeadlineMillis}">
+
+						<!-- ===== THÀNH CÔNG ===== -->
+						<th:block th:if="${state == 'SUCCESS'}">
+							<div class="pr-icon bg-success-subtle text-success"><i class="bi bi-check-lg"></i></div>
+							<h1 class="h4 fw-bold text-success mt-3 mb-1">Thanh toán thành công</h1>
+							<div class="display-6 fw-bold my-2" th:text="|${#numbers.formatInteger(order.totalAmount, 1, 'POINT')}đ|"></div>
+							<p class="text-muted">Đơn #<span th:text="${order.id}"></span> đã được gửi tới
+								<b th:text="${order.branchName}"></b>. Quán sẽ xác nhận và bắt đầu pha chế trong ít phút.</p>
+							<div class="text-start mx-auto" style="max-width: 420px">
+								<div class="pr-row"><span>Phương thức</span><b th:text="${order.payment.methodLabel}"></b></div>
+								<div class="pr-row" th:if="${order.payment.transactionCode}"><span>Mã giao dịch</span><code th:text="${order.payment.transactionCode}"></code></div>
+								<div class="pr-row" th:if="${order.payment.bankCode}"><span>Ngân hàng / hình thức</span><span th:text="${order.payment.bankCode}"></span></div>
+								<div class="pr-row" th:if="${order.payment.paidAt}"><span>Thời gian</span><span th:text="${order.payment.paidAt}"></span></div>
+								<div class="pr-row"><span>Nhận món</span><span th:text="${order.pickup} ? 'Đến lấy tại quán' : 'Giao tận nơi'"></span></div>
+							</div>
+							<div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+								<a th:href="@{/orders/{id}/tracking(id=${order.id})}" class="btn btn-success"><i class="bi bi-geo-alt me-1"></i>Theo dõi đơn</a>
+								<a th:href="@{/orders/{id}(id=${order.id})}" class="btn btn-outline-success">Xem chi tiết đơn</a>
+								<a th:href="@{/menu}" class="btn btn-light">Tiếp tục mua</a>
+							</div>
+						</th:block>
+
+						<!-- ===== ĐANG CHỜ CỔNG XÁC NHẬN ===== -->
+						<th:block th:if="${state == 'PROCESSING'}">
+							<div class="pr-icon bg-warning-subtle text-warning"><div class="spinner-border" role="status"></div></div>
+							<h1 class="h5 fw-bold mt-3 mb-1">Đang chờ xác nhận thanh toán</h1>
+							<p class="text-muted mb-2">UTETra đang hỏi <b th:text="${order.payment.methodLabel}"></b> kết quả giao dịch.
+								Nếu bạn đã trả tiền, trang sẽ tự chuyển sau vài giây.</p>
+							<p class="small mb-3">Đơn được giữ thêm <b class="pr-count text-danger" data-countdown>--:--</b>
+								(đến <span th:text="${order.payment.payDeadline}"></span>)</p>
+							<div class="d-flex justify-content-center gap-2 flex-wrap">
+								<a th:href="@{/payment/{id}/pay(id=${order.id})}" class="btn btn-success">Mở lại trang thanh toán</a>
+								<a th:href="@{/orders/{id}(id=${order.id})}" class="btn btn-outline-secondary">Xem đơn</a>
+							</div>
+						</th:block>
+
+						<!-- ===== THẤT BẠI / CHƯA TRẢ (đơn vẫn chờ thanh toán) ===== -->
+						<th:block th:if="${state == 'FAILED'}">
+							<div class="pr-icon bg-danger-subtle text-danger"><i class="bi bi-x-lg"></i></div>
+							<h1 class="h5 fw-bold mt-3 mb-1">Thanh toán chưa thành công</h1>
+							<p class="text-muted mb-1" th:text="${lastMessage != null ? lastMessage : 'Bạn chưa hoàn tất thanh toán.'}"></p>
+							<p class="small mb-3">Đơn #<span th:text="${order.id}"></span> được giữ thêm
+								<b class="pr-count text-danger" data-countdown>--:--</b>, quá hạn đơn sẽ tự huỷ.</p>
+
+							<div class="text-start mx-auto" style="max-width: 420px">
+								<div class="small fw-semibold mb-2">Chọn cách thanh toán khác hoặc thử lại</div>
+								<a class="pr-method mb-2" th:href="@{/payment/{id}/pay(id=${order.id},method='VNPAY')}">
+									<span class="pr-logo" style="background:#005baa">VNPAY</span>
+									<span><b>VNPAY</b><br><small class="text-muted">Thẻ ATM / Internet Banking, Visa, QR ngân hàng</small></span>
+									<i class="bi bi-chevron-right ms-auto"></i></a>
+								<a class="pr-method mb-2" th:href="@{/payment/{id}/pay(id=${order.id},method='MOMO')}">
+									<span class="pr-logo" style="background:#a50064">MoMo</span>
+									<span><b>Ví MoMo</b><br><small class="text-muted">Quét mã QR bằng ứng dụng MoMo hoặc thẻ ATM</small></span>
+									<i class="bi bi-chevron-right ms-auto"></i></a>
+								<form th:action="@{/payment/{id}/cod(id=${order.id})}" method="post" class="mb-2">
+									<button type="submit" class="pr-method"
+										onclick="return confirm('Chuyển đơn sang trả tiền mặt khi nhận hàng?')">
+										<span class="pr-logo" style="background:#198754"><i class="bi bi-cash-coin fs-5"></i></span>
+										<span><b>Trả tiền mặt khi nhận hàng</b><br><small class="text-muted">Đơn gửi tới quán ngay</small></span>
+										<i class="bi bi-chevron-right ms-auto"></i></button>
+								</form>
+							</div>
+							<div class="d-flex justify-content-center gap-3 mt-3 small">
+								<a href="#" class="text-decoration-none" id="pr-back-edit"><i class="bi bi-pencil me-1"></i>Quay lại sửa đơn</a>
+								<a th:href="@{|/orders/${order.id}#huy-don|}" class="text-danger text-decoration-none"><i class="bi bi-x-circle me-1"></i>Huỷ đơn</a>
+							</div>
+						</th:block>
+
+						<!-- ===== ĐƠN ĐÃ HUỶ ===== -->
+						<th:block th:if="${state == 'CANCELLED'}">
+							<div class="pr-icon bg-secondary-subtle text-secondary"><i class="bi bi-slash-circle"></i></div>
+							<h1 class="h5 fw-bold mt-3 mb-1">Đơn #<span th:text="${order.id}"></span> đã huỷ</h1>
+							<p class="text-muted" th:if="${order.cancelReason}" th:text="${order.cancelReason}"></p>
+							<div th:if="${order.payment.refund}" class="alert alert-info text-start small">
+								<div class="fw-semibold"><i class="bi bi-arrow-counterclockwise me-1"></i><span th:text="${order.payment.refund.statusLabel}"></span>
+									<span th:text="|${#numbers.formatInteger(order.payment.refund.amount, 1, 'POINT')}đ|"></span></div>
+								<div>Về <span th:text="${order.payment.refund.destination}"></span>.</div>
+								<div class="text-muted" th:text="${order.payment.refund.arrival}"></div>
+							</div>
+							<div class="d-flex justify-content-center gap-2 flex-wrap">
+								<form th:action="@{/orders/{id}/reorder(id=${order.id})}" method="post">
+									<button class="btn btn-success"><i class="bi bi-arrow-repeat me-1"></i>Mua lại</button>
+								</form>
+								<a th:href="@{/orders/{id}(id=${order.id})}" class="btn btn-outline-secondary">Xem chi tiết</a>
+							</div>
+						</th:block>
+
+						<!-- ===== THANH TOÁN KHI NHẬN HÀNG ===== -->
+						<th:block th:if="${state == 'COD'}">
+							<div class="pr-icon bg-success-subtle text-success"><i class="bi bi-cash-coin"></i></div>
+							<h1 class="h5 fw-bold mt-3 mb-1">Đơn thanh toán khi nhận hàng</h1>
+							<p class="text-muted" th:text="${order.payment.line}"></p>
+							<a th:href="@{/orders/{id}(id=${order.id})}" class="btn btn-success">Xem đơn hàng</a>
+						</th:block>
+					</div>
+
+					<p class="small text-muted text-center mt-2" th:if="${vnpayDemo and order.payment.method == 'VNPAY'}">
+						<i class="bi bi-info-circle me-1"></i>VNPAY đang chạy chế độ demo (chưa điền VNPAY_TMN_CODE / VNPAY_HASH_SECRET).
+					</p>
+				</div>
+
+				<!-- Tóm tắt đơn -->
+				<div class="col-lg-5">
+					<div class="card pr-card">
+						<div class="card-body">
+							<div class="fw-bold text-success mb-2">Đơn #<span th:text="${order.id}"></span> · <span th:text="${order.branchName}"></span></div>
+							<div class="d-flex justify-content-between small py-1" th:each="it : ${order.items}">
+								<span><b th:text="|${it.quantity}×|"></b> <span th:text="${it.productName}"></span>
+									<span class="text-muted" th:text="|(${it.size})|"></span></span>
+								<span class="text-nowrap" th:text="|${#numbers.formatInteger(it.subtotal, 1, 'POINT')}đ|"></span>
+							</div>
+							<div class="d-flex justify-content-between border-top pt-2 mt-2">
+								<span class="fw-semibold">Tổng thanh toán</span>
+								<span class="fw-bold text-danger" th:text="|${#numbers.formatInteger(order.totalAmount, 1, 'POINT')}đ|"></span>
+							</div>
+							<div class="mt-2">
+								<span class="badge" th:classappend="${order.payment.badgeClass}"><i class="bi me-1" th:classappend="${order.payment.icon}"></i><span th:text="${order.payment.badge}"></span></span>
+								<span class="small text-muted ms-1" th:text="${order.payment.methodLabel}"></span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</th:block>
+
+		<script th:src="@{/js/payment-result.js}"></script>
+	</div>
+</body>
+</html>

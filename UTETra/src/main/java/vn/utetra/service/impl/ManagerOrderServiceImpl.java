@@ -44,25 +44,33 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 
 	private static final int PAGE_SIZE = 10;
 
-	/** 8 tab: mới, đang pha chế, pha xong (chờ lấy / chờ shipper), đã lấy hàng, đang giao, đã giao, huỷ, trả hàng - hoàn tiền */
-	private static final Map<OrderStatus, String> TAB_LABELS = new LinkedHashMap<>();
+	/**
+	 * Tab "Đơn hàng của shop" giống app quán thật: Đơn mới -> Đang chuẩn bị -> Pha xong / chờ lấy (khách đến lấy
+	 * hoặc chờ shipper) -> Đã giao shipper / Đang giao -> Hoàn thành -> Đã huỷ (+ Trả hàng khi có).
+	 * Đơn Chờ thanh toán (VNPAY/MoMo chưa trả xong) KHÔNG hiện cho quán.
+	 */
+	private record Tab(String label, List<OrderStatus> statuses) {
+	}
+
+	private static final Map<String, Tab> TABS = new LinkedHashMap<>();
 	static {
-		TAB_LABELS.put(OrderStatus.PENDING, "Đơn mới");
-		TAB_LABELS.put(OrderStatus.CONFIRMED, "Đang pha chế");
-		TAB_LABELS.put(OrderStatus.READY, "Pha xong / chờ lấy");
-		TAB_LABELS.put(OrderStatus.PICKED_UP, "Đã lấy hàng");
-		TAB_LABELS.put(OrderStatus.DELIVERING, "Đang giao");
-		TAB_LABELS.put(OrderStatus.DELIVERED, "Đã giao");
-		TAB_LABELS.put(OrderStatus.CANCELLED, "Đã huỷ");
-		TAB_LABELS.put(OrderStatus.RETURNED, "Trả hàng - hoàn tiền");
+		TABS.put("PENDING", new Tab("Đơn mới", List.of(OrderStatus.PENDING)));
+		TABS.put("CONFIRMED", new Tab("Đang chuẩn bị", List.of(OrderStatus.CONFIRMED)));
+		TABS.put("READY", new Tab("Pha xong / chờ lấy", List.of(OrderStatus.READY)));
+		TABS.put("SHIPPING", new Tab("Đã giao shipper / Đang giao", List.of(OrderStatus.PICKED_UP, OrderStatus.DELIVERING)));
+		TABS.put("DELIVERED", new Tab("Hoàn thành", List.of(OrderStatus.DELIVERED)));
+		TABS.put("CANCELLED", new Tab("Đã huỷ", List.of(OrderStatus.CANCELLED)));
+		TABS.put("RETURNED", new Tab("Trả hàng - hoàn tiền", List.of(OrderStatus.RETURNED)));
 	}
 
 	private final BranchRepository branchRepository;
 	private final OrderRepository orderRepository;
 	private final OrderFlowService orderFlowService;
+	private final vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder;
 
 	public ManagerOrderServiceImpl(BranchRepository branchRepository, OrderRepository orderRepository,
-			OrderFlowService orderFlowService) {
+			OrderFlowService orderFlowService, vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder) {
+		this.paymentInfoBuilder = paymentInfoBuilder;
 		this.branchRepository = branchRepository;
 		this.orderRepository = orderRepository;
 		this.orderFlowService = orderFlowService;
@@ -124,10 +132,13 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 	// ================= ĐƠN HÀNG CỦA SHOP (7 TAB) =================
 
 	@Override
-	public ManagerHistoryRes history(Integer managerId, Integer branchId, OrderStatus status, int page) {
+	public ManagerHistoryRes history(Integer managerId, Integer branchId, String tab, int page) {
 		Integer id = resolveBranchId(managerId, branchId);
 		Branch branch = branchRepository.findById(id).orElseThrow();
-		OrderStatus current = status == null ? OrderStatus.PENDING : status;
+		String current = tab == null ? "PENDING" : tab.trim().toUpperCase();
+		// Link cũ ?status=PICKED_UP / DELIVERING -> tab Đang giao
+		if (current.equals("PICKED_UP") || current.equals("DELIVERING")) current = "SHIPPING";
+		if (!TABS.containsKey(current)) current = "PENDING";
 
 		// Số đơn từng tab
 		Map<OrderStatus, Long> counts = new EnumMap<>(OrderStatus.class);
@@ -135,13 +146,14 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 			counts.put((OrderStatus) row[0], ((Number) row[1]).longValue());
 		}
 		List<ManagerTabRes> tabs = new ArrayList<>();
-		TAB_LABELS.forEach((s, label) -> tabs.add(new ManagerTabRes(s.name(), label, counts.getOrDefault(s, 0L))));
+		TABS.forEach((key, t) -> tabs.add(new ManagerTabRes(key, t.label(),
+				t.statuses().stream().mapToLong(s -> counts.getOrDefault(s, 0L)).sum())));
 
-		Page<Order> result = orderRepository.findPageByBranchIdAndStatusOrderByCreatedAtDesc(id, current,
-				PageRequest.of(Math.max(0, page), PAGE_SIZE));
+		Page<Order> result = orderRepository.findPageByBranchIdAndStatusInOrderByCreatedAtDesc(id,
+				TABS.get(current).statuses(), PageRequest.of(Math.max(0, page), PAGE_SIZE));
 		List<ManagerOrderRes> orders = result.getContent().stream().map(o -> toCard(o, DAY_HOUR)).toList();
 
-		return new ManagerHistoryRes(id, branch.getName(), current.name(), TAB_LABELS.get(current), tabs, orders,
+		return new ManagerHistoryRes(id, branch.getName(), current, TABS.get(current).label(), tabs, orders,
 				result.getNumber(), result.getTotalPages(), result.getTotalElements());
 	}
 
@@ -204,7 +216,9 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		return new ManagerOrderRes(o.getId(), time, pickup, o.getStatus().name(), label,
 				OrderFlowServiceImpl.badgeClass(o.getStatus()), o.getReceiverName(), o.getReceiverPhone(),
 				o.getDeliveryAddress(), o.getDeliveryNote(), o.getNote(), items, qty, o.getTotalAmount(),
-				OrderFlowServiceImpl.paymentMethodLabel(o.getPaymentMethod()), hint, actions, canCancel);
+				paymentInfoBuilder.storeLabel(o), hint, actions, canCancel,
+				o.getPaymentStatus() == vn.utetra.entity.enums.PaymentStatus.PAID
+						&& o.getPaymentMethod() != vn.utetra.entity.enums.PaymentMethod.COD);
 	}
 
 	/** "2× Cà phê muối · L · 70% đường · 50% đá + Kem cheese" */

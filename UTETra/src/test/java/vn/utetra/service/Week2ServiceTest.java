@@ -640,14 +640,14 @@ class Week2ServiceTest {
 		assertMoney(92000, momo.totalAmount()); // 92.000 - 15.000 + 15.000 ship
 	}
 
-	/** Tuần 3 tích hợp MoMo thì sửa test này thành đặt được */
+	/** Tuần 3: đặt bằng MoMo được, đơn nằm ở Chờ thanh toán (trả xong quán mới thấy) */
 	@Test
-	void thanhToanMomo_tamThoiChuaDatDuoc() {
+	void thanhToanMomo_datDuoc_choThanhToan() {
 		CheckoutPreviewRes p = orderService.preview(USER1, giaoTanNoi(1, 1, 1, null, PaymentMethod.MOMO));
-		assertFalse(p.canOrder());
-		assertFalse(p.errors().isEmpty());
-		assertThrows(BusinessException.class,
-				() -> orderService.placeOrder(USER1, giaoTanNoi(1, 1, 1, null, PaymentMethod.MOMO)));
+		assertTrue(p.canOrder(), String.valueOf(p.errors()));
+		Order o = orderService.placeOrder(USER1, giaoTanNoi(1, 1, 1, null, PaymentMethod.MOMO));
+		assertEquals(OrderStatus.AWAITING_PAYMENT, o.getStatus());
+		assertEquals(vn.utetra.entity.enums.PaymentStatus.UNPAID, o.getPaymentStatus());
 	}
 
 	// =====================================================================
@@ -1166,36 +1166,43 @@ class Week2ServiceTest {
 	// =====================================================================
 
 	@Test
-	void du8Tab_dungThuTu() {
+	void tabDonCuaShop_dungThuTu() {
 		ManagerHistoryRes h = managerOrderService.history(MANAGER2, null, null, 0);
-		assertEquals(8, h.tabs().size());
+		assertEquals(7, h.tabs().size());
 		assertEquals("PENDING", h.tabs().get(0).status());
-		assertEquals("Đang pha chế", h.tabs().get(1).label());
+		assertEquals("Đơn mới", h.tabs().get(0).label());
+		assertEquals("Đang chuẩn bị", h.tabs().get(1).label());
 		assertEquals("READY", h.tabs().get(2).status());
-		assertEquals("Đã lấy hàng", h.tabs().get(3).label());
-		assertEquals("Trả hàng - hoàn tiền", h.tabs().get(7).label());
+		assertEquals("Pha xong / chờ lấy", h.tabs().get(2).label());
+		assertEquals("SHIPPING", h.tabs().get(3).status());
+		assertEquals("Đã giao shipper / Đang giao", h.tabs().get(3).label());
+		assertEquals("Hoàn thành", h.tabs().get(4).label());
+		assertEquals("Đã huỷ", h.tabs().get(5).label());
+		assertEquals("Trả hàng - hoàn tiền", h.tabs().get(6).label());
 		assertEquals("PENDING", h.status(), "Không chọn tab thì mở tab Đơn mới");
 		assertTrue(co(h, DON_CHO));
 		assertTrue(dem(h, "PENDING") >= 1);
 	}
 
 	@Test
-	void daLayHangVaDangGiao_tachRieng2Tab() {
+	void daLayHangVaDangGiao_chungTabDangGiao() {
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.CONFIRMED, null);
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.READY, null);
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.PICKED_UP, null); // giả lập shipper lấy hàng
 		em.flush();
 		em.clear();
 
-		assertTrue(co(managerOrderService.history(MANAGER2, 2, OrderStatus.PICKED_UP, 0), DON_CHO));
-		assertFalse(co(managerOrderService.history(MANAGER2, 2, OrderStatus.DELIVERING, 0), DON_CHO));
+		assertTrue(co(managerOrderService.history(MANAGER2, 2, "SHIPPING", 0), DON_CHO), "Shipper đã lấy -> tab Đang giao");
+		assertTrue(co(managerOrderService.history(MANAGER2, 2, "PICKED_UP", 0), DON_CHO), "link cũ vẫn mở đúng tab");
+		assertFalse(co(managerOrderService.history(MANAGER2, 2, "READY", 0), DON_CHO));
 
 		orderFlowService.updateStatus(DON_CHO, OrderStatus.DELIVERING, null);
 		em.flush();
 		em.clear();
-		ManagerHistoryRes dangGiao = managerOrderService.history(MANAGER2, 2, OrderStatus.DELIVERING, 0);
+		ManagerHistoryRes dangGiao = managerOrderService.history(MANAGER2, 2, "SHIPPING", 0);
 		assertTrue(co(dangGiao, DON_CHO));
-		assertEquals(0, dem(dangGiao, "PICKED_UP"));
+		assertEquals("SHIPPING", dangGiao.status());
+		assertTrue(dem(dangGiao, "SHIPPING") >= 1);
 	}
 
 	@Test
@@ -1203,8 +1210,8 @@ class Week2ServiceTest {
 		managerOrderService.changeStatus(MANAGER2, DON_CHO, OrderStatus.CANCELLED, "Ngoài giờ phục vụ");
 		em.flush();
 		em.clear();
-		assertTrue(co(managerOrderService.history(MANAGER2, 2, OrderStatus.CANCELLED, 0), DON_CHO));
-		assertFalse(co(managerOrderService.history(MANAGER2, 2, OrderStatus.PENDING, 0), DON_CHO));
+		assertTrue(co(managerOrderService.history(MANAGER2, 2, "CANCELLED", 0), DON_CHO));
+		assertFalse(co(managerOrderService.history(MANAGER2, 2, "PENDING", 0), DON_CHO));
 	}
 
 	@Test
@@ -1226,7 +1233,7 @@ class Week2ServiceTest {
 
 	@Test
 	void phanTrang_trangAmVeTrangDau() {
-		ManagerHistoryRes h = managerOrderService.history(MANAGER1, 1, OrderStatus.DELIVERED, -5);
+		ManagerHistoryRes h = managerOrderService.history(MANAGER1, 1, "DELIVERED", -5);
 		assertEquals(0, h.page());
 		assertTrue(co(h, DON_DA_GIAO));
 		assertTrue(h.totalPages() >= 1);

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/user-layout :: main('VNPAY (demo) - UTETra', ~{::#pay-demo})}">
+
+<body>
+	<div id="pay-demo" class="py-4" style="max-width: 520px; margin: 0 auto">
+		<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+			<div class="p-3 text-white d-flex align-items-center gap-2" style="background:#005baa">
+				<b class="fs-5">VNPAY</b><span class="badge text-bg-warning ms-auto">Chế độ demo</span>
+			</div>
+			<div class="card-body p-4">
+				<div class="alert alert-warning small">
+					Chưa cấu hình VNPAY sandbox nên đây là trang <b>giả lập</b>. Đăng ký tài khoản test miễn phí tại
+					<b>sandbox.vnpayment.vn/devreg</b> rồi điền <code>VNPAY_TMN_CODE</code>, <code>VNPAY_HASH_SECRET</code>
+					vào file <code>.env</code> để thanh toán qua trang VNPAY thật.
+				</div>
+				<div class="d-flex justify-content-between"><span class="text-muted">Đơn hàng</span><b>#<span th:text="${order.id}"></span></b></div>
+				<div class="d-flex justify-content-between"><span class="text-muted">Nhà cung cấp</span><b>UTETra</b></div>
+				<div class="d-flex justify-content-between align-items-center mt-2">
+					<span class="text-muted">Số tiền</span>
+					<span class="fs-3 fw-bold" style="color:#005baa" th:text="|${#numbers.formatInteger(order.totalAmount, 1, 'POINT')}đ|"></span>
+				</div>
+				<form th:action="@{/payment/{id}/demo(id=${order.id})}" method="post" class="d-grid gap-2 mt-4">
+					<button name="result" value="success" class="btn btn-primary">Thanh toán thành công</button>
+					<button name="result" value="fail" class="btn btn-outline-secondary">Huỷ giao dịch</button>
+				</form>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

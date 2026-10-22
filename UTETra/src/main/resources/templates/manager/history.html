@@ -33,9 +33,9 @@
 		<div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
 
 		<th:block th:if="${data != null}">
-			<!-- 7 tab theo đề -->
+			<!-- Đơn mới, Đang chuẩn bị, Pha xong / chờ lấy, Đã giao shipper / Đang giao, Hoàn thành, Đã huỷ (Trả hàng khi có) -->
 			<ul class="nav vh-tabs mb-3">
-				<li class="nav-item" th:each="t : ${data.tabs}">
+				<li class="nav-item" th:each="t : ${data.tabs}" th:if="${t.status != 'RETURNED' or t.count > 0 or t.status == data.status}">
 					<a class="nav-link" th:classappend="${t.status == data.status} ? 'active'"
 						th:href="@{/manager/orders/history(branchId=${data.branchId}, status=${t.status})}">
 						<span th:text="${t.label}">Tab</span>
@@ -72,7 +72,8 @@
 						<div class="small text-muted">
 							<i class="bi bi-person"></i> <span th:text="${o.receiverName}"></span> ·
 							<span th:text="${o.receiverPhone}"></span> · <span th:text="${o.totalQty}"></span> ly ·
-							<span th:text="${o.paymentLabel}"></span>
+							<span class="badge rounded-pill" th:classappend="${o.prepaid} ? 'text-bg-success' : 'text-bg-light border text-dark'"
+								th:text="${o.paymentLabel}"></span>
 						</div>
 						<div class="d-flex align-items-center gap-2">
 							<b class="text-danger" th:text="|${#numbers.formatInteger(o.totalAmount, 1, 'POINT')}đ|"></b>

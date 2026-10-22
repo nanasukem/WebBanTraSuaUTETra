@@ -84,6 +84,9 @@
 		if (!ev.status || ev.status === box.dataset.status) return;
 		paint(ev.status);
 		badge.className = 'badge ' + (BADGE[ev.status] || 'text-bg-secondary');
+		// Quán đã nhận đơn -> không huỷ được nữa
+		const cancelBtn = document.getElementById('trkCancel');
+		if (cancelBtn && ev.status !== 'PENDING') cancelBtn.remove();
 		badge.textContent = ev.statusLabel;
 		addLog(ev.statusLabel, ev.message);
 

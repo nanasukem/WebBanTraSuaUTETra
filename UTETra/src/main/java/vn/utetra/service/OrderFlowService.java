@@ -27,7 +27,7 @@ public interface OrderFlowService {
 	/** Chi tiết 1 đơn, KHÔNG kiểm tra người xem (nơi gọi tự kiểm tra quyền, vd Manager chỉ xem đơn chi nhánh mình) */
 	OrderDetailRes orderDetail(Integer orderId);
 	
-	/** Khách huỷ đơn: chỉ khi PENDING, bắt buộc lý do, hoàn lượt voucher */
+	/** Khách huỷ đơn: khi Chờ thanh toán / Chờ xác nhận, bắt buộc lý do, hoàn lượt voucher, đơn đã trả thì hoàn tiền */
 	void cancelByCustomer(Integer userId, Integer orderId, String reason);
 
 	/**
@@ -37,4 +37,7 @@ public interface OrderFlowService {
 	 * PENDING -> CANCELLED (cancelReason bắt buộc)
 	 */
 	void updateStatus(Integer orderId, OrderStatus to, String cancelReason);
+
+	/** Hệ thống tự huỷ (vd quá hạn thanh toán VNPAY/MoMo): cancelledBy = SYSTEM, trả lượt mã giảm giá */
+	void cancelBySystem(Integer orderId, String reason);
 }

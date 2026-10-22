@@ -13,6 +13,7 @@
 	const ICON = {
 		ORDER: 'bi-receipt text-success', REVIEW: 'bi-star-fill text-warning',
 		VOUCHER: 'bi-ticket-perforated text-danger', USER: 'bi-person-plus text-primary',
+		PAYMENT: 'bi-credit-card-2-front text-primary', REFUND: 'bi-arrow-counterclockwise text-info',
 	};
 	const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
 		(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

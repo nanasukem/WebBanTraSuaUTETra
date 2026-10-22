@@ -18,9 +18,9 @@
 		<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
 		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-		<!-- 6 tab theo đề -->
+		<!-- Tab: Chờ xác nhận, Đang chuẩn bị, Đang giao, Hoàn thành, Đã huỷ (Trả hàng chỉ hiện khi có đơn) -->
 		<ul class="nav od-tabs mb-3">
-			<li class="nav-item" th:each="t : ${tabs}">
+			<li class="nav-item" th:each="t : ${tabs}" th:if="${t.name() != 'RETURNED' or counts[t.name()] > 0 or t == tab}">
 				<a class="nav-link" th:classappend="${t == tab} ? 'active'"
 					th:href="@{/orders(tab=${t.name()})}">
 					<span th:text="${t.label}">Tab</span>
@@ -62,8 +62,10 @@
 				</div>
 
 				<div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
-					<div class="small text-muted">
-						<span th:text="${o.totalQty}"></span> ly · <span th:text="${o.paymentMethodLabel}"></span>
+					<div class="small text-muted d-flex align-items-center gap-1 flex-wrap">
+						<span th:text="${o.totalQty}"></span> ly · <span th:text="${o.payment.methodLabel}"></span>
+						<span class="badge rounded-pill" th:unless="${o.payment.awaiting}" th:classappend="${o.payment.badgeClass}">
+							<i class="bi me-1" th:classappend="${o.payment.icon}"></i><span th:text="${o.payment.badge}"></span></span>
 					</div>
 					<div>
 						Tổng: <span class="fw-bold text-danger"
@@ -74,6 +76,10 @@
 				<div class="d-flex justify-content-end gap-2 mt-3">
 					<a th:if="${o.canCancel}" class="btn btn-sm btn-outline-danger"
 						th:href="@{|/orders/${o.id}#huy-don|}">Huỷ đơn</a>
+					<!-- Chờ thanh toán: trả tiếp trước khi hết hạn giữ đơn -->
+					<a th:if="${o.status == 'AWAITING_PAYMENT'}" class="btn btn-sm btn-warning fw-semibold"
+						th:href="@{/payment/{id}/result(id=${o.id})}"><i class="bi bi-credit-card me-1"></i>Thanh toán ngay
+						<span class="od-count" th:attr="data-deadline=${o.payment.payDeadlineMillis}"></span></a>
 					<!-- Đã giao: Mua lại / Đánh giá / Xem chi tiết; Đã huỷ: Mua lại / Xem chi tiết; Trả hàng: Xem chi tiết -->
 					<form th:if="${o.status == 'DELIVERED' or o.status == 'CANCELLED'}" method="post"
 						th:action="@{/orders/{id}/reorder(id=${o.id})}" class="d-inline">
@@ -96,6 +102,20 @@
 		<div data-live-orders data-order-id="0"></div>
 		<script th:src="@{/js/live-socket.js}"></script>
 		<script th:src="@{/js/order-live.js}"></script>
+		<script>
+			// Đếm ngược hạn thanh toán trên nút "Thanh toán ngay"
+			(function () {
+				const els = document.querySelectorAll('.od-count[data-deadline]');
+				if (!els.length) return;
+				const tick = () => els.forEach((el) => {
+					const left = Math.max(0, Number(el.dataset.deadline) - Date.now());
+					el.textContent = left > 0 ? '(' + String(Math.floor(left / 60000)).padStart(2, '0') + ':'
+						+ String(Math.floor(left % 60000 / 1000)).padStart(2, '0') + ')' : '(hết hạn)';
+				});
+				tick();
+				setInterval(tick, 1000);
+			})();
+		</script>
 	</div>
 </body>
 </html>

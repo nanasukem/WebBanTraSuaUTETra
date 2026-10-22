@@ -39,6 +39,9 @@
 			<h1 class="h4 fw-bold text-success mb-0">Theo dõi đơn #<span th:text="${order.id}">1</span></h1>
 			<span id="trkBadge" class="badge" th:classappend="${order.badgeClass}" th:text="${order.status == 'CANCELLED'} ? (${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ' : 'Đã huỷ')) : ${order.statusLabel}">Chờ xác nhận</span>
 			<span class="small text-muted ms-auto"><span id="trkLive" class="trk-live me-1"></span><span id="trkLiveText">Đang kết nối...</span></span>
+			<!-- Quán chưa nhận đơn thì khách còn huỷ được (đơn đã trả trước sẽ tự hoàn tiền) -->
+			<a id="trkCancel" th:if="${order.canCancel}" th:href="@{|/orders/${order.id}#huy-don|}"
+				class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Huỷ đơn</a>
 		</div>
 
 		<!-- THANH TIẾN TRÌNH -->
@@ -103,7 +106,12 @@
 						<b>Tổng thanh toán</b>
 						<b class="text-danger" th:text="|${#numbers.formatInteger(order.totalAmount, 1, 'POINT')}đ|"></b>
 					</div>
-					<div class="small text-muted" th:text="${order.paymentMethodLabel} + ' · ' + ${order.paymentStatusLabel}"></div>
+					<div class="small mt-1 d-flex align-items-center gap-2 flex-wrap">
+						<span class="text-muted" th:text="${order.payment.methodLabel}"></span>
+						<span class="badge rounded-pill" th:classappend="${order.payment.badgeClass}">
+							<i class="bi me-1" th:classappend="${order.payment.icon}"></i><span th:text="${order.payment.badge}"></span></span>
+					</div>
+					<div class="small text-muted mt-1" th:text="${order.payment.line}"></div>
 				</section>
 			</div>
 		</div>

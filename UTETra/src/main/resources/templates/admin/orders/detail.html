@@ -258,14 +258,53 @@
 
 						<hr>
 
-						<div class="mb-2">
-							<span class="text-muted">Phương thức thanh toán:</span> <strong
-								th:text="${order.paymentMethod != null ? order.paymentMethod : '—'}"></strong>
+						<div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+							<span class="text-muted">Thanh toán:</span>
+							<strong th:text="${pay.methodLabel}">VNPAY</strong>
+							<span class="badge" th:classappend="${pay.badgeClass}"><i class="bi me-1" th:classappend="${pay.icon}"></i><span th:text="${pay.badge}"></span></span>
+						</div>
+						<div class="small text-muted" th:text="${pay.line}"></div>
+						<div class="small mt-1" th:if="${pay.transactionCode}">Mã giao dịch: <code th:text="${pay.transactionCode}"></code>
+							<span th:if="${pay.bankCode}"> · <span th:text="${pay.bankCode}"></span></span></div>
+
+						<!-- Hoàn tiền -->
+						<div th:if="${pay.refund}" class="alert alert-info small mt-3 mb-0">
+							<div class="fw-semibold"><i class="bi bi-arrow-counterclockwise me-1"></i><span th:text="${pay.refund.statusLabel}"></span>
+								<span th:text="|${#numbers.formatInteger(pay.refund.amount, 1, 'POINT')}đ|"></span></div>
+							<div th:if="${pay.refund.refundedAt}">Hoàn lúc <span th:text="${pay.refund.refundedAt}"></span>
+								<span th:if="${pay.refund.transactionCode}"> · Mã hoàn: <code th:text="${pay.refund.transactionCode}"></code></span></div>
+							<div th:if="${pay.refund.note}" class="text-muted" th:text="${pay.refund.note}"></div>
+							<form th:if="${pay.refund.status == 'REFUND_PENDING'}" th:action="@{/admin/orders/{id}/refund(id=${order.id})}"
+								method="post" class="mt-2">
+								<button class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-repeat me-1"></i>Hoàn tiền lại</button>
+							</form>
 						</div>
 
-						<div>
-							<span class="text-muted">Trạng thái thanh toán:</span> <strong
-								th:text="${order.paymentStatus != null ? order.paymentStatus : '—'}"></strong>
+						<!-- Các lần thanh toán online -->
+						<div th:unless="${#lists.isEmpty(payments)}" class="mt-3">
+							<div class="d-flex justify-content-between align-items-center mb-1">
+								<div class="small fw-semibold">Giao dịch thanh toán</div>
+								<form th:action="@{/admin/orders/{id}/gateway-check(id=${order.id})}" method="post">
+									<button class="btn btn-sm btn-outline-secondary"><i class="bi bi-search me-1"></i>Tra cứu tại cổng thanh toán</button>
+								</form>
+							</div>
+							<div th:if="${gatewayCheck}" class="alert alert-light border small py-2">
+								<div th:each="l : ${gatewayCheck}" class="mb-1" th:text="${l}"></div>
+							</div>
+							<div class="table-responsive">
+								<table class="table table-sm small mb-0">
+									<thead><tr><th>Mã gửi cổng</th><th>Cổng</th><th>Trạng thái</th><th>Mã GD</th><th>Ghi chú</th></tr></thead>
+									<tbody>
+										<tr th:each="p : ${payments}">
+											<td><code th:text="${p.txnRef}"></code></td>
+											<td th:text="${p.method}"></td>
+											<td th:text="${p.status}"></td>
+											<td th:text="${p.transactionCode}"></td>
+											<td class="text-muted" th:text="${p.refundMessage != null ? p.refundMessage : p.message}"></td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
 						</div>
 
 						<div class="mt-3" th:if="${order.commissionAmount != null}">

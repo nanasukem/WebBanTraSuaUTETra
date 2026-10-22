@@ -37,7 +37,8 @@ public record OrderDetailRes(
 		String createdAt,
 		String deliveredAt,
 		boolean canCancel,
-		String cancelledBy) {      // CUSTOMER / STORE / SYSTEM (null = chưa huỷ)
+		String cancelledBy,        // CUSTOMER / STORE / SYSTEM (null = chưa huỷ)
+		PaymentInfoRes payment) {  // đã thanh toán / chưa (COD) / chờ thanh toán / hoàn tiền
 
 	/** 1 dòng món: "2× Cà phê muối · Size L · 70% đường · 50% đá + Kem cheese" */
 	public record Item(

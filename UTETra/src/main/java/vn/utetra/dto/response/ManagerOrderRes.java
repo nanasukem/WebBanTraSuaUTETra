@@ -22,7 +22,8 @@ public record ManagerOrderRes(
 		String paymentLabel,
 		String hint,               // gợi ý việc cần làm tiếp
 		List<Action> actions,      // nút đổi trạng thái 1 click
-		boolean canCancel) {
+		boolean canCancel,
+		boolean prepaid) {         // đã trả trước online -> quán không thu tiền
 
 	/** 1 nút: chuyển sang trạng thái "to" */
 	public record Action(String to, String label, String style) {

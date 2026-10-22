@@ -67,7 +67,7 @@ public class ManagerOrderController {
 		Integer managerId = currentUserService.requireUserId(principal, session);
 		model.addAttribute("branches", managerOrderService.myBranches(managerId));
 		try {
-			model.addAttribute("data", managerOrderService.history(managerId, branchId, parseStatus(status), page));
+			model.addAttribute("data", managerOrderService.history(managerId, branchId, status, page));
 		} catch (BusinessException | ResourceNotFoundException e) {
 			model.addAttribute("data", null);
 			model.addAttribute("error", e.getMessage());

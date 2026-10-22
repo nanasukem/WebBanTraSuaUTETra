@@ -33,9 +33,21 @@ public class AdminOrderController {
 	private final OrderRepository orderRepository;
 	private final BranchRepository branchRepository;
 	private final OrderFlowService orderFlowService;
+	private final vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder;
+	private final vn.utetra.repository.PaymentRepository paymentRepository;
+	private final vn.utetra.service.RefundService refundService;
+	private final vn.utetra.service.VnPayService vnPayService;
+	private final vn.utetra.service.MomoService momoService;
 
 	public AdminOrderController(OrderRepository orderRepository, BranchRepository branchRepository,
-			OrderFlowService orderFlowService) {
+			OrderFlowService orderFlowService, vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder,
+			vn.utetra.repository.PaymentRepository paymentRepository, vn.utetra.service.RefundService refundService,
+			vn.utetra.service.VnPayService vnPayService, vn.utetra.service.MomoService momoService) {
+		this.vnPayService = vnPayService;
+		this.momoService = momoService;
+		this.paymentInfoBuilder = paymentInfoBuilder;
+		this.paymentRepository = paymentRepository;
+		this.refundService = refundService;
 		this.orderRepository = orderRepository;
 		this.branchRepository = branchRepository;
 		this.orderFlowService = orderFlowService;
@@ -129,13 +141,43 @@ public class AdminOrderController {
 
 		model.addAttribute("order", order);
 		model.addAttribute("nextStatuses", getNextStatuses(order));
+		model.addAttribute("pay", paymentInfoBuilder.build(order));
+		model.addAttribute("payments", paymentRepository.findByOrderIdOrderByCreatedAtDesc(id));
 
 		return "admin/orders/detail";
+	}
+
+	/** Tra cứu tại cổng: hỏi thẳng VNPAY / MoMo trạng thái các giao dịch của đơn (bằng chứng đã trả / đã hoàn) */
+	@PostMapping("/{id}/gateway-check")
+	public String gatewayCheck(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
+		List<String> lines = new java.util.ArrayList<>();
+		for (vn.utetra.entity.Payment p : paymentRepository.findByOrderIdOrderByCreatedAtDesc(id)) {
+			if (p.getTxnRef() == null) continue;
+			String r = "VNPAY".equals(p.getMethod()) ? vnPayService.lookup(p) : momoService.lookup(p);
+			lines.add(p.getTxnRef() + " → " + r);
+		}
+		if (lines.isEmpty()) lines.add("Đơn không có giao dịch online để tra cứu");
+		redirectAttributes.addFlashAttribute("gatewayCheck", lines);
+		return "redirect:/admin/orders/" + id;
+	}
+
+	/** Hoàn tiền lại (lần trước cổng báo lỗi / mất mạng) */
+	@PostMapping("/{id}/refund")
+	@Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+	public String retryRefund(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
+		if (refundService.retry(id)) {
+			redirectAttributes.addFlashAttribute("successMessage", "Cổng thanh toán đã nhận lệnh hoàn tiền đơn #" + id + ".");
+		} else {
+			redirectAttributes.addFlashAttribute("errorMessage",
+					"Chưa hoàn tiền được đơn #" + id + ". Xem lỗi ở mục Giao dịch thanh toán.");
+		}
+		return "redirect:/admin/orders/" + id;
 	}
 
 	// Cập nhật trạng thái đơn hàng: đi qua luồng chung (OrderFlowService) để đúng thứ tự trạng thái,
 	// huỷ bắt buộc lý do, hoàn mã giảm giá + xu, tăng "đã bán" khi giao xong và báo cho khách / quán
 	@PostMapping("/{id}/status")
+	@Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
 	public String updateStatus(@PathVariable Integer id, @RequestParam OrderStatus status,
 			@RequestParam(required = false) String reason, RedirectAttributes redirectAttributes) {
 		try {
