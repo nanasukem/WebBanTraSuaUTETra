@@ -4,112 +4,235 @@
 
 <section id="admin-content">
 
-
-	<main class="container-fluid py-4 px-3 px-lg-4">
-		<div
-			class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-			<h1 class="h4 mb-0">
-				<i class="bi bi-shop me-2"></i>Quản lý chi nhánh
-			</h1>
-			<a th:href="@{/admin/branches/create}" class="btn btn-primary"> <i
-				class="bi bi-plus-lg"></i> Thêm chi nhánh
-			</a>
+	<!-- Tiêu đề -->
+	<div
+		class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+		<div>
+			<h2 class="fw-bold mb-1">Quản lý chi nhánh</h2>
+			<p class="text-muted mb-0">Quản lý thông tin và trạng thái hoạt
+				động của các chi nhánh.</p>
 		</div>
 
-		<!-- Thông báo -->
-		<div th:if="${success}"
-			class="alert alert-success alert-dismissible fade show" role="alert">
-			<span th:text="${success}"></span>
-			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-		</div>
-		<div th:if="${error}"
-			class="alert alert-danger alert-dismissible fade show" role="alert">
-			<span th:text="${error}"></span>
-			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-		</div>
+		<a th:href="@{/admin/branches/create}" class="btn btn-primary"> <i
+			class="bi bi-plus-circle me-1"></i> Thêm chi nhánh
+		</a>
+	</div>
 
-		<!-- Tìm kiếm + lọc -->
-		<form th:action="@{/admin/branches}" method="get"
-			class="card card-body mb-3">
-			<div class="row g-2">
+	<!-- Thông báo -->
+	<div th:if="${success != null}"
+		class="alert alert-success alert-dismissible fade show" role="alert">
+		<i class="bi bi-check-circle me-2"></i> <span th:text="${success}">Thao
+			tác thành công.</span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"
+			aria-label="Đóng"></button>
+	</div>
+
+	<div th:if="${error != null}"
+		class="alert alert-danger alert-dismissible fade show" role="alert">
+		<i class="bi bi-exclamation-triangle me-2"></i> <span
+			th:text="${error}">Đã xảy ra lỗi.</span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"
+			aria-label="Đóng"></button>
+	</div>
+
+	<!-- Tìm kiếm và lọc -->
+	<div class="card border-0 shadow-sm mb-4">
+		<div class="card-body">
+			<form th:action="@{/admin/branches}" method="get"
+				class="row g-3 align-items-end">
+
 				<div class="col-12 col-md-6">
-					<input type="text" name="keyword" th:value="${keyword}"
-						class="form-control" placeholder="Tìm theo tên hoặc địa chỉ...">
+					<label for="keyword" class="form-label fw-semibold"> Tìm
+						kiếm chi nhánh </label> <input type="text" id="keyword" name="keyword"
+						class="form-control"
+						placeholder="Nhập tên, địa chỉ hoặc số điện thoại..."
+						th:value="${keyword}">
 				</div>
-				<div class="col-8 col-md-4">
-					<select name="status" class="form-select">
-						<option value="">-- Tất cả trạng thái --</option>
-						<option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"
-							th:selected="${s == status}"></option>
+
+				<div class="col-12 col-md-3">
+					<label for="status" class="form-label fw-semibold"> Trạng
+						thái </label> <select id="status" name="status" class="form-select">
+						<option value="">Tất cả trạng thái</option>
+						<option value="ACTIVE"
+							th:selected="${status != null and status.toString() == 'ACTIVE'}">
+							Đang hoạt động</option>
+						<option value="INACTIVE"
+							th:selected="${status != null and status.toString() == 'INACTIVE'}">
+							Ngừng hoạt động</option>
 					</select>
 				</div>
-				<div class="col-4 col-md-2 d-grid">
-					<button class="btn btn-outline-secondary">
-						<i class="bi bi-search"></i> Lọc
-					</button>
-				</div>
-			</div>
-		</form>
 
-		<!-- Bảng -->
-		<div class="card">
+				<div class="col-12 col-md-3 d-flex gap-2">
+					<button type="submit" class="btn btn-primary flex-fill">
+						<i class="bi bi-search me-1"></i> Tìm kiếm
+					</button>
+
+					<a th:href="@{/admin/branches}" class="btn btn-outline-secondary"
+						title="Xóa bộ lọc"> <i class="bi bi-arrow-counterclockwise"></i>
+					</a>
+				</div>
+
+			</form>
+		</div>
+	</div>
+
+	<!-- Bảng danh sách -->
+	<div class="card border-0 shadow-sm">
+		<div class="card-header bg-white py-3">
+			<div class="d-flex justify-content-between align-items-center">
+				<h5 class="mb-0 fw-bold">
+					<i class="bi bi-shop me-2"></i> Danh sách chi nhánh
+				</h5>
+
+				<span class="badge bg-primary"
+					th:text="${branches != null ? branches.size() + ' chi nhánh' : '0 chi nhánh'}">
+					0 chi nhánh </span>
+			</div>
+		</div>
+
+		<div class="card-body p-0">
 			<div class="table-responsive">
+
 				<table class="table table-hover align-middle mb-0">
 					<thead class="table-light">
 						<tr>
-							<th>#</th>
-							<th>Tên chi nhánh</th>
-							<th class="d-none d-md-table-cell">Địa chỉ</th>
-							<th class="d-none d-lg-table-cell">Quản lý chi nhánh</th>
-							<th>Trạng thái</th>
-							<th class="text-end">Thao tác</th>
+							<th class="ps-3" style="width: 80px;">Mã</th>
+							<th>Chi nhánh</th>
+							<th>Địa chỉ</th>
+							<th>Điện thoại</th>
+							<th>Quản lý</th>
+							<th class="text-center">Trạng thái</th>
+							<th class="text-end pe-3" style="min-width: 190px;">Thao tác
+							</th>
 						</tr>
 					</thead>
+
 					<tbody>
-						<tr th:if="${#lists.isEmpty(branches)}">
-							<td colspan="6" class="text-center text-muted py-4">Không có
-								chi nhánh nào</td>
-						</tr>
-						<tr th:each="b : ${branches}">
-							<td th:text="${b.id}"></td>
+
+						<!-- Có dữ liệu -->
+						<tr th:each="branch : ${branches}">
+
+							<td class="ps-3"><span class="fw-semibold"
+								th:text="${branch.id}"> 1 </span></td>
+
 							<td>
-								<div class="fw-semibold" th:text="${b.name}"></div> <small
-								class="text-muted" th:text="${b.phone}"></small>
-								<div class="small text-muted"><i class="bi bi-clock me-1"></i><span th:text="${b.hoursLabel}">7:00 - 22:00</span></div>
+								<div class="fw-semibold" th:text="${branch.name}">Tên chi
+									nhánh</div> <small class="text-muted"
+								th:if="${branch.openTime != null and branch.closeTime != null}"
+								th:text="${branch.openTime + ' - ' + branch.closeTime}">
+									08:00 - 22:00 </small>
 							</td>
-							<td class="d-none d-md-table-cell" th:text="${b.address}"></td>
-							<td class="d-none d-lg-table-cell" th:text="${b.owner.fullName}"></td>
-							<td><span class="badge"
-								th:classappend="${b.status.name() == 'APPROVED'} ? 'text-bg-success' : 'text-bg-secondary'"
-								th:text="${b.status.label}"></span></td>
-							<td class="text-end text-nowrap"><a
-								th:href="@{/admin/branches/{id}/edit(id=${b.id})}"
-								class="btn btn-sm btn-outline-primary" title="Sửa"><i
-									class="bi bi-pencil"></i></a> <!-- Mở lại: khi đang Tạm ngưng -->
-								<form th:if="${b.status.name() == 'SUSPENDED'}" class="d-inline"
-									method="post"
-									th:action="@{/admin/branches/{id}/status(id=${b.id}, value='APPROVED')}">
-									<button class="btn btn-sm btn-outline-success"
-										title="Mở lại chi nhánh">
-										<i class="bi bi-play-fill"></i>
+
+							<td><span
+								th:text="${branch.address != null and !branch.address.isBlank() ? branch.address : 'Chưa cập nhật'}">
+									Địa chỉ chi nhánh </span></td>
+
+							<td><span
+								th:text="${branch.phone != null and !branch.phone.isBlank() ? branch.phone : 'Chưa cập nhật'}">
+									0123456789 </span></td>
+
+							<td><span th:if="${branch.owner != null}"
+								th:text="${branch.owner.fullName}"> Tên quản lý </span> <span
+								th:unless="${branch.owner != null}" class="text-muted">
+									Chưa phân công </span></td>
+
+							<td class="text-center"><span
+								th:if="${branch.status != null and branch.status.toString() == 'ACTIVE'}"
+								class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-3 py-2">
+									<i class="bi bi-check-circle me-1"></i> Đang hoạt động
+							</span> <span
+								th:unless="${branch.status != null and branch.status.toString() == 'ACTIVE'}"
+								class="badge rounded-pill bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2">
+									<i class="bi bi-pause-circle me-1"></i> Ngừng hoạt động
+							</span></td>
+
+							<!-- Các thao tác -->
+							<td class="text-end pe-3 text-nowrap">
+								<!-- Xem ảnh bìa và mô tả do Manager cập nhật --> <a
+								th:href="@{/admin/branches/{id}(id=${branch.id})}"
+								class="btn btn-sm btn-outline-info"
+								title="Xem chi tiết chi nhánh" aria-label="Xem chi tiết"> <i
+									class="bi bi-eye"></i>
+							</a> <!-- Sửa thông tin quản lý chi nhánh --> <a
+								th:href="@{/admin/branches/{id}/edit(id=${branch.id})}"
+								class="btn btn-sm btn-outline-primary"
+								title="Sửa thông tin chi nhánh" aria-label="Sửa chi nhánh">
+									<i class="bi bi-pencil-square"></i>
+							</a> <!-- Khóa hoặc mở khóa -->
+								<form
+									th:action="@{/admin/branches/{id}/status(id=${branch.id})}"
+									method="post" class="d-inline">
+
+									<!-- Giữ CSRF nếu Spring Security bật -->
+									<input type="hidden" th:if="${_csrf != null}"
+										th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+									<input type="hidden" name="status"
+										th:value="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}">
+
+									<button type="submit" class="btn btn-sm"
+										th:classappend="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'btn-outline-danger' : 'btn-outline-success'}"
+										th:title="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'Ngừng hoạt động' : 'Kích hoạt chi nhánh'}"
+										th:aria-label="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'Ngừng hoạt động' : 'Kích hoạt chi nhánh'}"
+										th:attr="data-branch-name=${branch.name},data-current-status=${branch.status}">
+										<i
+											th:class="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'bi bi-lock' : 'bi bi-unlock'}"></i>
 									</button>
-								</form> <!-- Tạm ngưng: khi Đang hoạt động -->
-								<form th:if="${b.status.name() == 'APPROVED'}" class="d-inline"
-									method="post"
-									th:action="@{/admin/branches/{id}/status(id=${b.id}, value='SUSPENDED')}">
-									<button class="btn btn-sm btn-outline-secondary"
-										title="Tạm ngưng"
-										onclick="return confirm('Tạm ngưng chi nhánh này?')">
-										<i class="bi bi-pause-fill"></i>
-									</button>
-								</form></td>
+								</form>
+
+							</td>
 						</tr>
+
+						<!-- Không có dữ liệu -->
+						<tr th:if="${branches == null or branches.isEmpty()}">
+							<td colspan="7" class="text-center py-5">
+								<div class="mb-3">
+									<i class="bi bi-shop-window text-muted"
+										style="font-size: 3rem;"></i>
+								</div>
+
+								<h6 class="fw-bold">Không tìm thấy chi nhánh</h6>
+
+								<p class="text-muted mb-3">Hãy thử thay đổi từ khóa tìm kiếm
+									hoặc bộ lọc.</p> <a th:href="@{/admin/branches/create}"
+								class="btn btn-primary btn-sm"> <i
+									class="bi bi-plus-circle me-1"></i> Thêm chi nhánh mới
+							</a>
+							</td>
+						</tr>
+
 					</tbody>
 				</table>
+
 			</div>
 		</div>
-	</main>
+	</div>
+
+	<!-- Xác nhận thao tác trạng thái -->
+	<script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const statusForms = document.querySelectorAll(
+                'form[action*="/status"]'
+            );
+
+            statusForms.forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    const button = form.querySelector('button[type="submit"]');
+                    const branchName = button?.dataset.branchName || 'chi nhánh';
+                    const currentStatus = button?.dataset.currentStatus || '';
+                    const willDeactivate = currentStatus === 'ACTIVE';
+
+                    const message = willDeactivate
+                        ? 'Bạn có chắc muốn ngừng hoạt động chi nhánh "' + branchName + '" không?'
+                        : 'Bạn có chắc muốn kích hoạt chi nhánh "' + branchName + '" không?';
+
+                    if (!window.confirm(message)) {
+                        event.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
 
 </section>
-
 </html>
