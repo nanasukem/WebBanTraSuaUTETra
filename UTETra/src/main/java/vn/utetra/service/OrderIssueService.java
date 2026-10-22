@@ -38,6 +38,7 @@ public class OrderIssueService {
 
 	public static final int WINDOW_HOURS = 2;
 	public static final int MAX_IMAGES = 3;
+	public static final String ADMIN_HOTLINE = "1900 1234";
 	private static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 
@@ -169,6 +170,7 @@ public class OrderIssueService {
 			}
 			default -> throw new BusinessException("Cách xử lý không hợp lệ");
 		}
+		message += " (Đã được giải quyết. Khiếu nại gọi Hotline Admin: " + ADMIN_HOTLINE + ")";
 		i.setStoreNote(cleanNote);
 		i.setResolvedAt(LocalDateTime.now());
 		issueRepository.save(i);
@@ -190,8 +192,22 @@ public class OrderIssueService {
 			case REJECTED -> "text-bg-secondary";
 		};
 		List<String> imgs = i.getImages() == null || i.getImages().isBlank() ? List.of() : List.of(i.getImages().split("\\|"));
+
+		boolean resolved = i.getStatus() != IssueStatus.PENDING;
+		String statusLabel = resolved
+				? i.getStatus().getLabel() + " · Đã được giải quyết, khiếu nại gọi Hotline Admin: " + ADMIN_HOTLINE
+				: i.getStatus().getLabel();
+
+		String storeNote = i.getStoreNote();
+		if (resolved) {
+			String hotlineText = "Đã được giải quyết. Khiếu nại gọi Hotline Admin: " + ADMIN_HOTLINE;
+			storeNote = (storeNote == null || storeNote.isBlank())
+					? hotlineText
+					: storeNote + " — " + hotlineText;
+		}
+
 		return new OrderIssueRes(i.getId(), i.getReason().name(), i.getReason().getLabel(), i.getDescription(), imgs,
-				i.getStatus().name(), i.getStatus().getLabel(), badge, i.getRefundAmount(), i.getStoreNote(),
+				i.getStatus().name(), statusLabel, badge, i.getRefundAmount(), storeNote,
 				i.getCreatedAt() == null ? null : i.getCreatedAt().format(TIME),
 				i.getResolvedAt() == null ? null : i.getResolvedAt().format(TIME));
 	}

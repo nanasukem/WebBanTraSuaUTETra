@@ -72,16 +72,19 @@ public class ReviewService {
 	private final OrderRepository orderRepository;
 	private final OrderReviewRepository orderReviewRepository;
 	private final CloudinaryService cloudinaryService;
+	private final OrderIssueService orderIssueService;
 
 	public ReviewService(ReviewRepository reviewRepository, ReviewMediaRepository reviewMediaRepository,
 			OrderDetailRepository orderDetailRepository, OrderRepository orderRepository,
-			OrderReviewRepository orderReviewRepository, CloudinaryService cloudinaryService) {
+			OrderReviewRepository orderReviewRepository, CloudinaryService cloudinaryService,
+			OrderIssueService orderIssueService) {
 		this.reviewRepository = reviewRepository;
 		this.reviewMediaRepository = reviewMediaRepository;
 		this.orderDetailRepository = orderDetailRepository;
 		this.orderRepository = orderRepository;
 		this.orderReviewRepository = orderReviewRepository;
 		this.cloudinaryService = cloudinaryService;
+		this.orderIssueService = orderIssueService;
 	}
 
 	// ================= XEM ĐÁNH GIÁ CỦA MÓN =================
@@ -121,7 +124,8 @@ public class ReviewService {
 		if (userId == null) return List.of();
 		List<OrderDetail> details = orderDetailRepository.findPurchased(userId, productId, OrderStatus.DELIVERED);
 		Set<Integer> reviewed = reviewedIds(details.stream().map(OrderDetail::getId).toList());
-		return details.stream().filter(d -> !reviewed.contains(d.getId()) && inWindow(d.getOrder()))
+		return details.stream().filter(d -> !reviewed.contains(d.getId()) && inWindow(d.getOrder())
+				&& orderIssueService.forOrder(d.getOrder().getId()) == null)
 				.map(d -> new ReviewableItemRes(d.getId(), d.getOrder().getId(), d.getProduct().getId(),
 						d.getProduct().getName(), d.getProduct().getImageCloudinaryId(), info(d),
 						time(d.getOrder().getDeliveredAt()), false))
@@ -154,7 +158,8 @@ public class ReviewService {
 
 		int pending = (int) items.stream().filter(i -> !i.reviewed()).count();
 		OrderReview or = orderReviewRepository.findByOrderId(orderId).orElse(null);
-		boolean can = o.getStatus() == OrderStatus.DELIVERED && inWindow(o);
+		boolean can = o.getStatus() == OrderStatus.DELIVERED && inWindow(o)
+				&& orderIssueService.forOrder(orderId) == null;
 		return new OrderReviewPageRes(o.getId(), isPickup(o), o.getBranch().getName(), time(o.getDeliveredAt()),
 				o.getDeliveredAt() == null ? null : o.getDeliveredAt().plusDays(REVIEW_DAYS).format(DAY), can, items,
 				pending, or != null, or == null ? null : or.getStoreRating(),
@@ -172,6 +177,9 @@ public class ReviewService {
 		Order o = ownOrder(userId, orderId);
 		if (o.getStatus() != OrderStatus.DELIVERED) {
 			throw new BusinessException("Chỉ đánh giá được đơn đã giao");
+		}
+		if (orderIssueService.forOrder(orderId) != null) {
+			throw new BusinessException("Đơn hàng đã được giải quyết khiếu nại nên không đánh giá món");
 		}
 		if (!inWindow(o)) {
 			throw new BusinessException("Đơn #" + orderId + " đã quá hạn đánh giá (" + REVIEW_DAYS + " ngày sau khi nhận)");
