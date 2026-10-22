@@ -315,10 +315,11 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				paymentInfoBuilder.build(o), orderIssueService.forOrder(o.getId()));
 	}
 
-	/** Đơn đã giao còn trong hạn đánh giá (30 ngày): số ly chưa đánh giá. Khác -> 0 */
+	/** Đơn đã giao còn trong hạn đánh giá (30 ngày) và không có báo vấn đề: số ly chưa đánh giá. Khác -> 0 */
 	private int toReviewCount(Order o) {
 		if (o.getStatus() != OrderStatus.DELIVERED || o.getDeliveredAt() == null
-				|| o.getDeliveredAt().plusDays(REVIEW_DAYS).isBefore(LocalDateTime.now())) return 0;
+				|| o.getDeliveredAt().plusDays(REVIEW_DAYS).isBefore(LocalDateTime.now())
+				|| orderIssueService.forOrder(o.getId()) != null) return 0;
 		List<Integer> ids = o.getDetails().stream().map(OrderDetail::getId).toList();
 		return ids.isEmpty() ? 0 : (int) (ids.size() - reviewRepository.countByOrderDetailIdIn(ids));
 	}

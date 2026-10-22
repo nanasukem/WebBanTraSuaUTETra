@@ -90,7 +90,7 @@
 					<a th:if="${o.status == 'DELIVERED' and o.toReview > 0}" class="btn btn-sm btn-warning fw-semibold"
 						th:href="@{/orders/{id}/review(id=${o.id})}"><i class="bi bi-star me-1"></i>
 						<span th:text="|Đánh giá (${o.toReview} món)|">Đánh giá</span></a>
-					<a th:if="${o.status == 'DELIVERED' and o.toReview == 0}" class="btn btn-sm btn-outline-secondary"
+					<a th:if="${o.status == 'DELIVERED' and o.toReview == 0 and o.issue == null}" class="btn btn-sm btn-outline-secondary"
 						th:href="@{/orders/{id}/review(id=${o.id})}"><i class="bi bi-star me-1"></i>Xem đánh giá</a>
 					<a th:if="${o.status == 'PENDING' or o.status == 'CONFIRMED' or o.status == 'READY' or o.status == 'PICKED_UP' or o.status == 'DELIVERING'}"
 						class="btn btn-sm btn-outline-success" th:href="@{/orders/{id}/tracking(id=${o.id})}">
