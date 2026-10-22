@@ -333,7 +333,10 @@ public class OrderServiceImpl implements OrderService {
         o.setTotalAmount(c.totalAmount);
         o.setCommissionAmount(commission(c));
 
-        o.setStatus(OrderStatus.PENDING);
+        // COD: vào quán ngay (Chờ xác nhận). VNPAY/MoMo: Chờ thanh toán, trả xong quán mới thấy đơn
+        boolean online = req.getPaymentMethod() == PaymentMethod.VNPAY
+                || req.getPaymentMethod() == PaymentMethod.MOMO;
+        o.setStatus(online ? OrderStatus.AWAITING_PAYMENT : OrderStatus.PENDING);
         o.setPaymentMethod(req.getPaymentMethod());
         o.setPaymentStatus(PaymentStatus.UNPAID);
 
@@ -374,61 +377,23 @@ public class OrderServiceImpl implements OrderService {
         Order saved = orderRepository.save(o);
 
         /*
-         * 4. Xử lý theo phương thức thanh toán.
-         *
-         * COD:
-         * - Xóa giỏ hàng sau khi tạo đơn.
-         * - Thông báo cửa hàng.
-         *
-         * VNPAY/MOMO:
-         * - Đơn vẫn UNPAID.
-         * - Giữ nguyên giỏ hàng.
-         * - Chưa thông báo cửa hàng.
-         * - Chờ controller xác nhận thanh toán thành công.
+         * 4. Giống app thật (Shopee, GrabFood...):
+         * - Giữ chỗ mã giảm giá ngay khi đặt (đơn huỷ / quá hạn thanh toán thì trả lại lượt).
+         * - Xoá giỏ: món đã nằm trong đơn. Thanh toán lỗi khách bấm "Thanh toán lại" hoặc "Quay lại sửa đơn".
+         * - COD: báo quán có đơn mới ngay.
+         * - VNPAY/MoMo: CHƯA báo quán. PaymentService báo khi cổng xác nhận đã trả (kiểm chữ ký + số tiền),
+         *   quá hạn chưa trả thì hệ thống tự huỷ đơn.
          */
-        PaymentMethod method = saved.getPaymentMethod();
-
-        if (method == PaymentMethod.COD) {
-
-            // Ghi nhận voucher cho đơn COD.
-            markVouchersUsed(c, userId, saved.getId());
-
-            // Xóa giỏ hàng và thông báo cửa hàng.
-            cartService.clear(userId);
+        markVouchersUsed(c, userId, saved.getId());
+        cartService.clear(userId);
+        if (!online) {
             orderNotifier.onNewOrder(saved);
-
-        } else if (method == PaymentMethod.VNPAY
-                || method == PaymentMethod.MOMO) {
-
-            /*
-             * Không xóa giỏ hàng ở đây.
-             * Không gọi orderNotifier ở đây.
-             * Không đánh dấu voucher đã sử dụng ở đây.
-             *
-             * Khi thanh toán thành công, controller phải:
-             * 1. Xác minh kết quả thanh toán.
-             * 2. Cập nhật PaymentStatus thành PAID.
-             * 3. Ghi nhận voucher đã sử dụng.
-             * 4. Xóa giỏ hàng của đúng user sở hữu đơn.
-             * 5. Thông báo cửa hàng.
-             *
-             * Không được thực hiện các bước trên chỉ dựa vào
-             * một tham số success do trình duyệt gửi lên.
-             */
-
-        } else {
-            throw new BusinessException("Phương thức thanh toán không hợp lệ");
         }
 
         return saved;
     }
 
-    /**
-     * Ghi nhận voucher đã sử dụng.
-     *
-     * Phương thức này được gọi ngay cho COD.
-     * Với VNPAY/MOMO, chỉ gọi sau khi xác nhận thanh toán thành công.
-     */
+    /** Ghi nhận voucher đã dùng (giữ chỗ ngay khi đặt; huỷ đơn thì OrderFlowService trả lại lượt) */
     private void markVouchersUsed(Calc c, Integer userId, Integer orderId) {
 
         if (c.productVoucher != null) {

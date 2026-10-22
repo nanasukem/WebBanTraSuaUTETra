@@ -5,6 +5,9 @@
           + v3: giao tận nơi / đến lấy, voucher theo phương thức thanh toán, tọa độ chi nhánh & địa chỉ
           + v4: địa chỉ kiểu Shopee (Tỉnh/Thành, Phường/Xã sau sáp nhập 2025, Tên đường, Loại địa chỉ)
           + v5: ghi chú địa chỉ (Addresses.note, Orders.delivery_note)
+          + v8: thanh toán VNPAY / MoMo sandbox thật: đơn Chờ thanh toán (Orders.status AWAITING_PAYMENT),
+                hoàn tiền (Orders.payment_status REFUND_PENDING), Payments thêm txn_ref, bank_code, gateway_date,
+                response_code, message, refund_* (mỗi lần thanh toán / hoàn tiền 1 dòng)
           + v7: ghi chú từng món (CartItems.note, OrderDetails.note), gợi ý đánh giá (Reviews.tags, OrderReviews.tags)
           + v6: luồng đơn có READY (pha xong: chờ khách lấy / chờ shipper), ai huỷ đơn (Orders.cancelled_by),
                 đánh giá như app Katinat / Highlands (chấm sao từng món, chữ/ảnh/video tuỳ ý + đánh giá quán: OrderReviews),
@@ -304,9 +307,9 @@ CREATE TABLE Orders (
     total_amount         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
     commission_amount    DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (commission_amount >= 0), -- tiền app thu của shop
     status               VARCHAR(20)   NOT NULL DEFAULT 'PENDING'
-        CHECK (status IN ('PENDING','CONFIRMED','READY','PICKED_UP','DELIVERING','DELIVERED','CANCELLED','RETURNED')),
+        CHECK (status IN ('AWAITING_PAYMENT','PENDING','CONFIRMED','READY','PICKED_UP','DELIVERING','DELIVERED','CANCELLED','RETURNED')),
     payment_method       VARCHAR(20)   NOT NULL CHECK (payment_method IN ('COD','VNPAY','MOMO')),
-    payment_status       VARCHAR(20)   NOT NULL DEFAULT 'UNPAID' CHECK (payment_status IN ('UNPAID','PAID','REFUNDED')),
+    payment_status       VARCHAR(20)   NOT NULL DEFAULT 'UNPAID' CHECK (payment_status IN ('UNPAID','PAID','REFUND_PENDING','REFUNDED')),
     cancel_reason        NVARCHAR(255) NULL,
     cancelled_by         VARCHAR(10)   NULL CHECK (cancelled_by IN ('CUSTOMER','STORE','SYSTEM')), -- ai huỷ đơn
     created_at           DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
@@ -358,17 +361,33 @@ CREATE TABLE VoucherUsages (
 );
 
 -- Kết quả thanh toán VNPAY / MOMO (COD cũng ghi 1 dòng khi giao xong)
+/* Mỗi lần khách bấm Thanh toán / Thanh toán lại (VNPAY, MoMo) = 1 dòng, có mã riêng gửi sang cổng (txn_ref).
+   status: PENDING (chờ khách trả) -> SUCCESS / FAILED / CANCELLED (khách huỷ, tạo giao dịch mới) / EXPIRED (quá hạn)
+           SUCCESS -> REFUND_PENDING (đơn huỷ, đang hoàn) -> REFUNDED (cổng đã nhận lệnh hoàn) */
 CREATE TABLE Payments (
-    id                INT IDENTITY(1,1) PRIMARY KEY,
-    order_id          INT           NOT NULL,
-    method            VARCHAR(20)   NOT NULL CHECK (method IN ('COD','VNPAY','MOMO')),
-    transaction_code  VARCHAR(100)  NULL,
-    amount            DECIMAL(12,0) NOT NULL CHECK (amount >= 0),
-    status            VARCHAR(20)   NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','SUCCESS','FAILED','REFUNDED')),
-    paid_at           DATETIME2     NULL,
-    created_at        DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
+    id                       INT IDENTITY(1,1) PRIMARY KEY,
+    order_id                 INT           NOT NULL,
+    method                   VARCHAR(20)   NOT NULL CHECK (method IN ('COD','VNPAY','MOMO')),
+    txn_ref                  VARCHAR(50)   NULL,          -- vnp_TxnRef / orderId gửi MoMo
+    transaction_code         VARCHAR(100)  NULL,          -- vnp_TransactionNo / transId MoMo trả về
+    amount                   DECIMAL(12,0) NOT NULL CHECK (amount >= 0),
+    status                   VARCHAR(20)   NOT NULL DEFAULT 'PENDING'
+        CHECK (status IN ('PENDING','SUCCESS','FAILED','CANCELLED','EXPIRED','REFUND_PENDING','REFUNDED')),
+    bank_code                VARCHAR(30)   NULL,          -- NCB, VNPAYQR, qr, napas...
+    gateway_date             VARCHAR(14)   NULL,          -- vnp_CreateDate (yyyyMMddHHmmss) - cần khi truy vấn / hoàn tiền
+    response_code            VARCHAR(10)   NULL,
+    message                  NVARCHAR(255) NULL,
+    paid_at                  DATETIME2     NULL,
+    created_at               DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
+    refund_ref               VARCHAR(50)   NULL,
+    refund_transaction_code  VARCHAR(100)  NULL,
+    refund_requested_at      DATETIME2     NULL,
+    refunded_at              DATETIME2     NULL,
+    refund_attempts          INT           NOT NULL DEFAULT 0,
+    refund_message           NVARCHAR(255) NULL,
     CONSTRAINT FK_Payments_Orders FOREIGN KEY (order_id) REFERENCES Orders(id) ON DELETE CASCADE
 );
+CREATE UNIQUE INDEX UX_Payments_TxnRef ON Payments(txn_ref) WHERE txn_ref IS NOT NULL;
 
 /* =========================================================
    6. ĐÁNH GIÁ & BÌNH LUẬN - như app Katinat / Highlands
@@ -420,7 +439,7 @@ CREATE TABLE Notifications (
     order_id    INT           NULL,
     title       NVARCHAR(150) NOT NULL,
     content     NVARCHAR(500) NULL,
-    type        VARCHAR(20)   NOT NULL DEFAULT 'ORDER',   -- ORDER, REVIEW, COIN, VOUCHER, USER (chọn biểu tượng)
+    type        VARCHAR(20)   NOT NULL DEFAULT 'ORDER',   -- ORDER, REVIEW, VOUCHER, USER, PAYMENT, REFUND (chọn biểu tượng)
     link        VARCHAR(255)  NULL,                       -- bấm vào thông báo thì mở trang này
     ref_key     VARCHAR(100)  NULL,                       -- chống báo trùng (vd VOUCHER_LOW:5)
     is_read     BIT           NOT NULL DEFAULT 0,

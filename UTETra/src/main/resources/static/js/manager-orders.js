@@ -167,7 +167,9 @@
 					<span class="badge ${o.badgeClass}">${esc(o.statusLabel)}</span>
 					<b class="text-danger">${fmt(o.totalAmount)}</b>
 				</div>
-				<div class="small text-muted">${o.totalQty} ly · ${esc(o.paymentLabel)}</div>
+				<div class="small text-muted">${o.totalQty} ly ·
+					<span class="badge rounded-pill ${o.prepaid ? 'text-bg-success' : 'text-bg-light border text-dark'}">
+					<i class="bi ${o.prepaid ? 'bi-check-circle-fill' : 'bi-cash-coin'} me-1"></i>${esc(o.paymentLabel)}</span></div>
 				${o.hint ? `<div class="small text-primary mt-1"><i class="bi bi-info-circle"></i> ${esc(o.hint)}</div>` : ''}
 				${buttons || cancel ? `<div class="d-flex gap-1 mt-2">${buttons}${cancel}</div>` : ''}
 			</div>

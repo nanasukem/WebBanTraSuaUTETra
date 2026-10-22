@@ -40,10 +40,13 @@ public class CheckoutApiController {
 	private final VoucherRepository voucherRepository;
 	private final OrderRepository orderRepository;
 	private final CartService cartService;
+	private final OrderFlowService orderFlowService;
 
 	public CheckoutApiController(OrderService orderService, AddressService addressService,
 			CarrierService carrierService, MemberService memberService, CurrentUserService currentUserService,
-			VoucherRepository voucherRepository, OrderRepository orderRepository, CartService cartService) {
+			VoucherRepository voucherRepository, OrderRepository orderRepository, CartService cartService,
+			OrderFlowService orderFlowService) {
+		this.orderFlowService = orderFlowService;
 
 		this.orderService = orderService;
 		this.addressService = addressService;
@@ -101,18 +104,14 @@ public class CheckoutApiController {
 		result.put("message", "Đặt hàng thành công");
 		result.put("paymentMethod", method != null ? method.name() : "COD");
 
-		if (method == PaymentMethod.VNPAY) {
-			result.put("paymentUrl", "/payment/vnpay/" + order.getId());
-		} else if (method == PaymentMethod.MOMO) {
-			result.put("paymentUrl", "/payment/momo/" + order.getId());
-		} else {
-			result.put("paymentUrl", "/checkout/success/" + order.getId());
-		}
+		// VNPAY / MoMo: /payment/{id}/pay tạo giao dịch rồi chuyển sang cổng; COD: trang đặt hàng thành công
+		boolean online = method == PaymentMethod.VNPAY || method == PaymentMethod.MOMO;
+		result.put("paymentUrl", online ? "/payment/" + order.getId() + "/pay" : "/checkout/success/" + order.getId());
 
 		return result;
 	}
 
-	// Khôi phục giỏ hàng sau khi thanh toán lỗi
+	// "Quay lại sửa đơn" khi chưa thanh toán: huỷ đơn chờ thanh toán (trả lượt mã giảm giá) và cho món lại vào giỏ
 	@PostMapping("/{orderId}/return-to-checkout")
 	@Transactional
 	public ResponseEntity<Map<String, Object>> returnToCheckout(@PathVariable Integer orderId, Principal principal,
@@ -124,27 +123,17 @@ public class CheckoutApiController {
 				.filter(o -> o.getUser() != null && o.getUser().getId().equals(userId))
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + orderId));
 
-		PaymentMethod method = order.getPaymentMethod();
-
-		if (method != PaymentMethod.VNPAY && method != PaymentMethod.MOMO) {
-			throw new BusinessException("Đơn hàng không sử dụng VNPAY hoặc MoMo");
+		if (order.getStatus() != OrderStatus.AWAITING_PAYMENT || order.getPaymentStatus() != PaymentStatus.UNPAID) {
+			throw new BusinessException(order.getPaymentStatus() == PaymentStatus.PAID
+					? "Đơn hàng đã thanh toán thành công, không thể quay lại chỉnh sửa"
+					: "Đơn hàng không còn chờ thanh toán");
 		}
 
-		if (order.getPaymentStatus() == PaymentStatus.PAID) {
-			throw new BusinessException("Đơn hàng đã thanh toán thành công, không thể quay lại chỉnh sửa");
-		}
-
-		if (order.getStatus() == OrderStatus.CANCELLED) {
-			throw new BusinessException("Đơn hàng này đã bị hủy. Vui lòng đặt đơn hàng mới");
-		}
-
+		orderFlowService.cancelByCustomer(userId, orderId, "Quay lại sửa đơn trước khi thanh toán");
 		cartService.reorder(userId, orderId);
 
-		order.setStatus(OrderStatus.CANCELLED);
-		orderRepository.save(order);
-
 		return ResponseEntity
-				.ok(Map.of("redirectUrl", "/checkout", "message", "Đã khôi phục giỏ hàng và hủy đơn chưa thanh toán"));
+				.ok(Map.of("redirectUrl", "/checkout", "message", "Đã cho món lại vào giỏ, bạn có thể sửa đơn"));
 	}
 
 	// Xử lý lỗi nghiệp vụ

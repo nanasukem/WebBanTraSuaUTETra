@@ -53,6 +53,15 @@ public class SecurityConfiguration {
 						// Mua hàng (giỏ, đặt hàng) vẫn chỉ USER - xem quy tắc bên dưới.
 						.requestMatchers("/menu", "/menu/**", "/category/**", "/branches", "/products/**").permitAll()
 
+						// Cổng thanh toán gọi về: VNPAY / MoMo đưa khách quay lại (returnUrl) và máy chủ cổng báo kết quả (IPN).
+						// Không cần đăng nhập vì dữ liệu được kiểm bằng chữ ký HMAC của cổng.
+						.requestMatchers("/payment/vnpay/return", "/payment/vnpay/ipn", "/payment/momo/return",
+								"/payment/momo/ipn")
+						.permitAll()
+
+						// Thanh toán đơn (tạo giao dịch, trang kết quả): khách hàng.
+						.requestMatchers("/payment/**").hasRole("USER")
+
 						// Chức năng quản trị.
 						.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
 

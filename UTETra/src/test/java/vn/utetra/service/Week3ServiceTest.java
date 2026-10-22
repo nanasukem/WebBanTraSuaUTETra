@@ -557,9 +557,14 @@ class Week3ServiceTest {
 	// ======================= NHÃN TRẠNG THÁI THEO ĐỀ =======================
 
 	@Test
-	void tabDonHang_dungChuCuaDe() {
-		assertEquals("Đơn hàng mới", OrderTab.PENDING.getLabel());
+	void tabDonHang_giongAppThat() {
+		assertEquals("Chờ xác nhận", OrderTab.PENDING.getLabel());
+		assertEquals("Đang chuẩn bị", OrderTab.CONFIRMED.getLabel());
+		assertEquals("Đang giao", OrderTab.SHIPPING.getLabel());
+		assertEquals("Hoàn thành", OrderTab.DELIVERED.getLabel());
+		assertEquals("Đã huỷ", OrderTab.CANCELLED.getLabel());
 		assertEquals("Trả hàng - hoàn tiền", OrderTab.RETURNED.getLabel());
+		assertTrue(OrderTab.PENDING.getStatuses().contains(OrderStatus.AWAITING_PAYMENT), "đơn chờ thanh toán ở tab Chờ xác nhận");
 		assertEquals(6, OrderTab.values().length);
 	}
 }

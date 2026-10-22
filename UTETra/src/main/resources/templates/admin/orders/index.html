@@ -96,7 +96,7 @@
 								name="status" class="form-select">
 								<option value="">Tất cả trạng thái</option>
 								<option th:each="s : ${orderStatuses}" th:value="${s.name()}"
-									th:text="${s.name()}"
+									th:text="${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(s, false)}"
 									th:selected="${selectedStatus == s.name()}"></option>
 							</select>
 						</div>
@@ -106,7 +106,7 @@
 								name="paymentStatus" class="form-select">
 								<option value="">Tất cả</option>
 								<option th:each="p : ${paymentStatuses}" th:value="${p.name()}"
-									th:text="${p.name()}"
+									th:text="${T(vn.utetra.service.impl.OrderFlowServiceImpl).paymentStatusLabel(p)}"
 									th:selected="${selectedPaymentStatus == p.name()}"></option>
 							</select>
 						</div>
@@ -183,7 +183,7 @@
 
 							<td>
 								<div th:text="${o.paymentMethod}">COD</div> <small
-								class="text-muted" th:text="${o.paymentStatus}">UNPAID</small>
+								class="text-muted" th:text="${T(vn.utetra.service.impl.OrderFlowServiceImpl).paymentStatusLabel(o.paymentStatus)}">UNPAID</small>
 							</td>
 
 							<td class="text-center"><a

@@ -28,6 +28,9 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
 	List<Order> findByShipperIdAndStatusOrderByCreatedAtDesc(Integer shipperId, OrderStatus status);
 
+	/** Đơn chờ thanh toán đặt trước mốc thời gian (để huỷ đơn quá hạn thanh toán) */
+	List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime before);
+
 	// ==========================
 	// THANH TOÁN VNPAY / MOMO
 	// ==========================
@@ -85,6 +88,9 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	List<Order> findTop20ByBranchIdAndStatusInOrderByUpdatedAtDesc(Integer branchId, Collection<OrderStatus> statuses);
 
 	Page<Order> findPageByBranchIdAndStatusOrderByCreatedAtDesc(Integer branchId, OrderStatus status,
+			Pageable pageable);
+
+	Page<Order> findPageByBranchIdAndStatusInOrderByCreatedAtDesc(Integer branchId, Collection<OrderStatus> statuses,
 			Pageable pageable);
 
 	@Query("select o.status, count(o) from Order o " + "where o.branch.id = :branchId group by o.status")

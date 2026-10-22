@@ -30,7 +30,8 @@ public interface ManagerOrderService {
 	void changeStatus(Integer managerId, Integer orderId, OrderStatus to, String reason);
 
 	/** Trang "Đơn hàng của shop": đơn theo 1 trong 7 trạng thái của đề, mới nhất lên đầu, 10 đơn / trang */
-	ManagerHistoryRes history(Integer managerId, Integer branchId, OrderStatus status, int page);
+	/** tab: PENDING, CONFIRMED, READY, SHIPPING, DELIVERED, CANCELLED, RETURNED (sai / trống -> PENDING) */
+	ManagerHistoryRes history(Integer managerId, Integer branchId, String tab, int page);
 
 	/** Chi tiết 1 đơn của chi nhánh mình (đơn chi nhánh khác -> ResourceNotFoundException) */
 	OrderDetailRes orderDetail(Integer managerId, Integer orderId);

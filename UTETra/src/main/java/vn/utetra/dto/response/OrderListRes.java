@@ -18,5 +18,6 @@ public record OrderListRes(
 		String createdAt,          // "14:05 20/10/2026"
 		boolean canCancel,
 		String cancelledBy,        // CUSTOMER / STORE / SYSTEM (null = chưa huỷ)
-		int toReview) {            // đơn đã giao: số ly còn chờ đánh giá (0 = đã đánh giá hết / quá hạn)
+		int toReview,              // đơn đã giao: số ly còn chờ đánh giá (0 = đã đánh giá hết / quá hạn)
+		PaymentInfoRes payment) {  // nhãn Đã thanh toán / Chưa thanh toán / Chờ thanh toán / Hoàn tiền
 }

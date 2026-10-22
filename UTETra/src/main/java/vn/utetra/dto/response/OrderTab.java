@@ -5,13 +5,15 @@ import vn.utetra.entity.enums.OrderStatus;
 import java.util.List;
 
 /**
- * 6 tab "Đơn hàng của tôi" theo đề. Tab "Đang giao" gồm cả PICKED_UP (shipper
- * đã lấy hàng) và DELIVERING.
+ * Tab "Đơn hàng của tôi" giống app thật: Chờ xác nhận (gồm cả đơn Chờ thanh toán VNPAY/MoMo) -> Đang chuẩn bị
+ * (quán đang pha + pha xong chờ lấy / chờ shipper) -> Đang giao (shipper đã lấy + đang giao) -> Hoàn thành -> Đã huỷ.
+ * Tab "Trả hàng - hoàn tiền" chỉ hiện khi có đơn.
  */
 public enum OrderTab {
-	PENDING("Đơn hàng mới", List.of(OrderStatus.PENDING)), CONFIRMED("Đã xác nhận", List.of(OrderStatus.CONFIRMED, OrderStatus.READY)),
+	PENDING("Chờ xác nhận", List.of(OrderStatus.AWAITING_PAYMENT, OrderStatus.PENDING)),
+	CONFIRMED("Đang chuẩn bị", List.of(OrderStatus.CONFIRMED, OrderStatus.READY)),
 	SHIPPING("Đang giao", List.of(OrderStatus.PICKED_UP, OrderStatus.DELIVERING)),
-	DELIVERED("Đã giao", List.of(OrderStatus.DELIVERED)), CANCELLED("Đã huỷ", List.of(OrderStatus.CANCELLED)),
+	DELIVERED("Hoàn thành", List.of(OrderStatus.DELIVERED)), CANCELLED("Đã huỷ", List.of(OrderStatus.CANCELLED)),
 	RETURNED("Trả hàng - hoàn tiền", List.of(OrderStatus.RETURNED));
 
 	private final String label;

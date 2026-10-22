@@ -8,6 +8,7 @@ import vn.utetra.dto.response.OrderEventRes;
 import vn.utetra.entity.Order;
 import vn.utetra.entity.OrderDetail;
 import vn.utetra.entity.User;
+import vn.utetra.entity.enums.CancelledBy;
 import vn.utetra.entity.enums.DeliveryType;
 import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.service.impl.OrderFlowServiceImpl;
@@ -53,6 +54,15 @@ public class OrderNotifier {
 	 * Trang đơn hàng của cả hai bên đang mở đều tự cập nhật.
 	 */
 	public void onStatusChanged(Order o, boolean byCustomer) {
+		onStatusChanged(o, byCustomer ? CancelledBy.CUSTOMER : CancelledBy.STORE, true);
+	}
+
+	/**
+	 * actor: CUSTOMER (khách huỷ) / STORE (quán, shipper, Admin) / SYSTEM (hệ thống tự huỷ: quá hạn thanh toán).
+	 * storeKnew = false: đơn huỷ khi còn Chờ thanh toán -> quán chưa từng thấy đơn, không báo quán.
+	 */
+	public void onStatusChanged(Order o, CancelledBy actor, boolean storeKnew) {
+		boolean byCustomer = actor == CancelledBy.CUSTOMER;
 		User customer = o.getUser();
 		User owner = o.getBranch().getOwner();
 		boolean pickup = o.getDeliveryType() == DeliveryType.PICKUP;
@@ -68,7 +78,12 @@ public class OrderNotifier {
 		if (byCustomer) {
 			title = "Khách đã huỷ đơn #" + id;
 			message = reason;
-			notificationService.create(owner, o, type, title, message, "/manager/orders/" + id);
+			if (storeKnew) notificationService.create(owner, o, type, title, message, "/manager/orders/" + id);
+		} else if (actor == CancelledBy.SYSTEM) {
+			title = "Đơn #" + id + " đã tự huỷ";
+			message = (o.getCancelReason() == null ? "Đơn quá hạn thanh toán" : o.getCancelReason())
+					+ ". Mã giảm giá (nếu có) đã được hoàn lại";
+			notificationService.create(customer, o, type, title, message, link);
 		} else {
 			switch (o.getStatus()) {
 				case CONFIRMED -> { title = "Quán đã nhận đơn #" + id; message = "Đang pha chế tại " + branch; }
@@ -104,7 +119,7 @@ public class OrderNotifier {
 						: label,
 				title, message);
 		push(customer.getUsername(), CUSTOMER_QUEUE, event);
-		push(owner.getUsername(), MANAGER_QUEUE, event);
+		if (storeKnew) push(owner.getUsername(), MANAGER_QUEUE, event);
 	}
 
 	private static String money(Order o) {
