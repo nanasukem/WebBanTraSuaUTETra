@@ -8,7 +8,7 @@ import java.util.List;
 public interface NotificationRepository extends JpaRepository<Notification, Integer> {
 
 	/** 20 thông báo mới nhất của 1 người */
-	List<Notification> findTop20ByUserIdOrderByCreatedAtDesc(Integer userId);
+	List<Notification> findTop20ByUserIdOrderByCreatedAtDescIdDesc(Integer userId); // cùng thời điểm: cái tạo sau lên trước
 
 	/** Số thông báo chưa đọc */
 	long countByUserIdAndIsReadFalse(Integer userId);

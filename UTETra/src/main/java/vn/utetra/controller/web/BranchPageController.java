@@ -29,6 +29,7 @@ public class BranchPageController {
 		List<Branch> branches = branchRepository.findByStatus(BranchStatus.APPROVED).stream()
 				.sorted(Comparator.comparing(Branch::getId)).toList();
 		model.addAttribute("branches", branches);
+		model.addAttribute("now", java.time.LocalTime.now()); // để hiện Đang mở cửa / Đã đóng cửa
 		return "branches";
 	}
 }

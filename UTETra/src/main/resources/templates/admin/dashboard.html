@@ -180,7 +180,7 @@
 			<div class="col-12 col-sm-6 col-xl-3">
 				<div class="dashboard-card stat-card">
 					<div class="d-flex justify-content-between align-items-center">
-						<span class="stat-label">Shop đã duyệt</span>
+						<span class="stat-label">Chi nhánh đang hoạt động</span>
 						<div class="stat-icon">
 							<i class="bi bi-shop"></i>
 						</div>
@@ -189,7 +189,7 @@
 					<div class="stat-value" th:text="${approvedBranches}">0</div>
 
 					<small class="text-muted"> Tổng cộng <span
-						th:text="${branchCount}">0</span> shop/chi nhánh
+						th:text="${branchCount}">0</span> chi nhánh
 					</small>
 				</div>
 			</div>
@@ -245,7 +245,7 @@
 								<tr>
 									<th>Mã đơn</th>
 									<th>Khách hàng</th>
-									<th>Shop/chi nhánh</th>
+									<th>Chi nhánh</th>
 									<th>Ngày tạo</th>
 									<th class="text-end">Tổng tiền</th>
 									<th>Trạng thái</th>
@@ -274,7 +274,7 @@
 									<td
 										th:text="${o.branch != null
                                     ? o.branch.name : '—'}">
-										Shop</td>
+										Chi nhánh</td>
 
 									<td
 										th:text="${o.createdAt != null
@@ -291,8 +291,9 @@
                                         : '0 ₫'}">
 										0 ₫</td>
 
-									<td><span class="badge text-bg-light border"
-										th:text="${o.status}"> PENDING </span></td>
+									<td><span class="badge"
+										th:classappend="${T(vn.utetra.service.impl.OrderFlowServiceImpl).badgeClass(o.status)}"
+										th:text="${o.status.name() == 'CANCELLED'} ? ${T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(o.cancelledBy, false)} : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, o.deliveryType != null and o.deliveryType.name() == 'PICKUP')}"> PENDING </span></td>
 								</tr>
 							</tbody>
 						</table>
@@ -313,7 +314,7 @@
 							class="bi bi-people"></i> <span>Quản lý người dùng</span> <i
 							class="bi bi-chevron-right arrow"></i>
 						</a> <a th:href="@{/admin/branches}" class="quick-link"> <i
-							class="bi bi-shop"></i> <span>Quản lý shop/chi nhánh</span> <i
+							class="bi bi-shop"></i> <span>Quản lý chi nhánh</span> <i
 							class="bi bi-chevron-right arrow"></i>
 						</a> <a th:href="@{/admin/products}" class="quick-link"> <i
 							class="bi bi-box-seam"></i> <span>Quản lý sản phẩm</span> <i
@@ -328,7 +329,7 @@
 							class="bi bi-ticket-perforated"></i> <span>Quản lý khuyến
 								mãi</span> <i class="bi bi-chevron-right arrow"></i>
 						</a> <a th:href="@{/admin/carriers}" class="quick-link">
-							<i class="bi bi-truck"></i> <span>Nhà vận chuyển</span> <i
+							<i class="bi bi-truck"></i> <span>Đối tác giao hàng</span> <i
 							class="bi bi-chevron-right arrow"></i>
 						</a> <a th:href="@{/admin/reports}" class="quick-link"> <i
 							class="bi bi-graph-up-arrow"></i> <span>Doanh thu và báo

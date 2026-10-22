@@ -90,7 +90,7 @@ public class PaymentInfoBuilder {
 		PaymentInfoRes.Refund refund = paid
 				.filter(p -> "REFUND_PENDING".equals(p.getStatus()) || "REFUNDED".equals(p.getStatus()))
 				.map(p -> new PaymentInfoRes.Refund(p.getStatus(),
-						"REFUNDED".equals(p.getStatus()) ? "Đã hoàn tiền" : "Đang xử lý hoàn tiền", p.getAmount(),
+						"REFUNDED".equals(p.getStatus()) ? "Đã hoàn tiền" : "Đang xử lý hoàn tiền", p.refundValue(),
 						destination(m), time(p.getRefundRequestedAt()), time(p.getRefundedAt()),
 						p.getRefundTransactionCode(), p.getRefundMessage(), RefundService.arrivalNote(p.getMethod()),
 						arrived(p), arrivalLabel(p)))

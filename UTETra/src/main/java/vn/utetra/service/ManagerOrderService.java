@@ -9,10 +9,10 @@ import vn.utetra.entity.enums.OrderStatus;
 
 import java.util.List;
 
-/** Quầy đơn hàng của Manager/Barista: chỉ thấy và đổi được đơn của chi nhánh mình sở hữu */
+/** Quầy đơn hàng của Manager/Barista: chỉ thấy và đổi được đơn của chi nhánh mình quản lý */
 public interface ManagerOrderService {
 
-	/** Các chi nhánh manager sở hữu */
+	/** Các chi nhánh manager được giao quản lý */
 	List<ManagerBranchRes> myBranches(Integer managerId);
 
 	/** branchId null -> chi nhánh đầu tiên của manager; không phải của manager -> ResourceNotFoundException */
@@ -29,7 +29,7 @@ public interface ManagerOrderService {
 	 */
 	void changeStatus(Integer managerId, Integer orderId, OrderStatus to, String reason);
 
-	/** Trang "Đơn hàng của shop": đơn theo 1 trong 7 trạng thái của đề, mới nhất lên đầu, 10 đơn / trang */
+	/** Trang "Đơn hàng của chi nhánh": đơn theo 1 trong 7 trạng thái của đề, mới nhất lên đầu, 10 đơn / trang */
 	/** tab: PENDING, CONFIRMED, READY, SHIPPING, DELIVERED, CANCELLED, RETURNED (sai / trống -> PENDING) */
 	ManagerHistoryRes history(Integer managerId, Integer branchId, String tab, int page);
 

@@ -65,9 +65,9 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	// ==========================
 
 	/**
-	 * Tổng tiền đơn của khách, dùng cho xét hạng.
+	 * Chi tiêu của khách để xét hạng: tiền món sau giảm giá (không tính phí ship).
 	 */
-	@Query("SELECT SUM(o.totalAmount) FROM Order o " + "WHERE o.user.id = :userId " + "AND o.status = :status "
+	@Query("SELECT SUM(o.itemsTotal - o.productDiscount - o.memberDiscount - o.refundAmount) FROM Order o " + "WHERE o.user.id = :userId " + "AND o.status = :status "
 			+ "AND o.deliveredAt >= :since")
 	BigDecimal sumTotalByUserAndStatusSince(@Param("userId") Integer userId, @Param("status") OrderStatus status,
 			@Param("since") LocalDateTime since);
@@ -93,6 +93,13 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	Page<Order> findPageByBranchIdAndStatusInOrderByCreatedAtDesc(Integer branchId, Collection<OrderStatus> statuses,
 			Pageable pageable);
 
+	/** Đơn của chi nhánh theo trạng thái, BỎ các đơn khách báo vấn đề mà quán chưa xử lý (chưa tính Hoàn thành) */
+	@Query("select o from Order o where o.branch.id = :branchId and o.status in :statuses and not exists "
+			+ "(select i.id from OrderIssue i where i.order = o and i.status = vn.utetra.entity.enums.IssueStatus.PENDING) "
+			+ "order by o.createdAt desc")
+	Page<Order> findPageWithoutPendingIssue(@Param("branchId") Integer branchId,
+			@Param("statuses") Collection<OrderStatus> statuses, Pageable pageable);
+
 	@Query("select o.status, count(o) from Order o " + "where o.branch.id = :branchId group by o.status")
 	List<Object[]> countByStatusOfBranch(@Param("branchId") Integer branchId);
 
@@ -107,20 +114,14 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			OrderStatus status, LocalDateTime start, LocalDateTime end);
 
 	/**
-	 * Tổng doanh thu của các đơn đã giao trong khoảng thời gian.
+	 * Doanh thu bán hàng của các đơn đã giao trong khoảng thời gian
+	 * = tiền món - mã giảm món - ưu đãi hạng (không gồm phí ship).
 	 */
-	@Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o " + "WHERE o.status = :status "
+	@Query("SELECT COALESCE(SUM(o.itemsTotal - o.productDiscount - o.memberDiscount - o.refundAmount), 0) FROM Order o " + "WHERE o.status = :status "
 			+ "AND o.deliveredAt >= :start " + "AND o.deliveredAt < :end")
 	BigDecimal sumRevenueByStatusAndDeliveredAt(@Param("status") OrderStatus status,
 			@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
-	/**
-	 * Tổng hoa hồng của các đơn đã giao trong khoảng thời gian.
-	 */
-	@Query("SELECT COALESCE(SUM(o.commissionAmount), 0) FROM Order o " + "WHERE o.status = :status "
-			+ "AND o.deliveredAt >= :start " + "AND o.deliveredAt < :end")
-	BigDecimal sumCommissionByStatusAndDeliveredAt(@Param("status") OrderStatus status,
-			@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
 	/**
 	 * Đếm số đơn đã giao thành công trong khoảng thời gian.

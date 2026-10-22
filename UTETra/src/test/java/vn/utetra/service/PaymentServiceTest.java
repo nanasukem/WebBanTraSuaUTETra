@@ -60,6 +60,12 @@ class PaymentServiceTest {
 	@Autowired VoucherRepository voucherRepository;
 	@Autowired EntityManager em;
 
+	/** Giờ mở cửa mẫu 7:00 - 22:00: test chạy giờ nào cũng được -> cho chi nhánh mở cả ngày (rollback sau mỗi test) */
+	@org.junit.jupiter.api.BeforeEach
+	void moCuaCaNgay() {
+		em.createNativeQuery("UPDATE Branches SET open_time = '00:00', close_time = '00:00'").executeUpdate();
+	}
+
 	// ======================= ĐẶT ĐƠN TRẢ TRƯỚC =======================
 
 	@Test
@@ -221,6 +227,139 @@ class PaymentServiceTest {
 		assertEquals("Chưa thanh toán", orderFlowService.myOrder(USER1, o.getId()).payment().badge());
 		assertTrue(managerOrderService.orderCard(MANAGER1, o.getId()).paymentLabel().contains("thu"),
 				"quán thấy phải thu tiền mặt");
+	}
+
+	// ======================= BÁO VẤN ĐỀ VỚI ĐƠN (thay Trả hàng) =======================
+
+	@Autowired OrderIssueService orderIssueService;
+	@Autowired vn.utetra.repository.OrderIssueRepository orderIssueRepository;
+
+	@Test
+	void baoVanDe_phaiCoAnh_vaChiTrong2Gio() {
+		Order o = daNhan(PaymentMethod.COD);
+		OrderDetailRes d = orderFlowService.myOrder(USER1, o.getId());
+		assertTrue(d.canReportIssue(), "vừa nhận món thì báo được");
+
+		BusinessException e = assertThrows(BusinessException.class, () -> orderIssueService.submit(USER1, o.getId(),
+				vn.utetra.entity.enums.IssueReason.SPILLED, "Ly bị đổ", List.of()));
+		assertTrue(e.getMessage().contains("ảnh"));
+
+		em.createNativeQuery("UPDATE Orders SET delivered_at = DATEADD(HOUR, -3, SYSDATETIME()) WHERE id = :id")
+				.setParameter("id", o.getId()).executeUpdate();
+		em.clear();
+		BusinessException het = assertThrows(BusinessException.class, () -> orderIssueService.submit(USER1, o.getId(),
+				vn.utetra.entity.enums.IssueReason.SPILLED, "Ly bị đổ", List.of()));
+		assertTrue(het.getMessage().contains("2 giờ"));
+		assertFalse(orderFlowService.myOrder(USER1, o.getId()).canReportIssue());
+	}
+
+	@Test
+	void baoVanDe_donCOD_quanHoanTien_truDoanhThu() {
+		Order o = daNhan(PaymentMethod.COD);
+		taoBaoCao(o);
+		BigDecimal truoc = orderRepository.findById(o.getId()).orElseThrow().getSalesAmount();
+
+		orderIssueService.resolve(o.getId(), "REFUND", new BigDecimal("20000"), "Quán chuyển khoản lại cho bạn");
+		em.flush();
+		em.clear();
+
+		Order sau = orderRepository.findById(o.getId()).orElseThrow();
+		assertEquals(0, new BigDecimal("20000").compareTo(sau.getRefundAmount()));
+		assertEquals(0, truoc.subtract(new BigDecimal("20000")).compareTo(sau.getSalesAmount()), "doanh thu trừ tiền hoàn");
+		OrderDetailRes d = orderFlowService.myOrder(USER1, o.getId());
+		assertEquals("REFUNDED", d.issue().status());
+		assertFalse(d.canReportIssue(), "đã báo thì không báo lại");
+		assertThrows(BusinessException.class, () -> orderIssueService.resolve(o.getId(), "REJECT", null, "x"),
+				"đã xử lý thì không xử lý lại");
+	}
+
+	@Test
+	void baoVanDe_donTraTruoc_hoanMotPhanQuaCong() {
+		Order o = daNhan(PaymentMethod.MOMO);
+		taoBaoCao(o);
+		orderIssueService.resolve(o.getId(), "REFUND", new BigDecimal("10000"), null);
+		em.flush();
+		em.clear();
+		Payment p = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(o.getId());
+		assertEquals("REFUND_PENDING", p.getStatus(), "gọi MoMo hoàn sau khi lưu xong");
+		assertEquals(0, new BigDecimal("10000").compareTo(p.refundValue()), "hoàn 1 phần");
+		assertEquals(PaymentStatus.PAID, orderRepository.findById(o.getId()).orElseThrow().getPaymentStatus(),
+				"hoàn 1 phần thì đơn vẫn là đã thanh toán");
+	}
+
+	@Test
+	void baoVanDe_tuChoiPhaiGhiLyDo_lamLaiMon_vaTabCuaQuan() {
+		Order o = daNhan(PaymentMethod.COD);
+		taoBaoCao(o);
+		assertThrows(BusinessException.class, () -> orderIssueService.resolve(o.getId(), "REJECT", null, " "));
+		assertThrows(BusinessException.class,
+				() -> orderIssueService.resolve(o.getId(), "REFUND", new BigDecimal("999999999"), null), "quá số tiền khách trả");
+		assertTrue(managerOrderService.history(MANAGER1, 1, "ISSUE", 0).orders().stream()
+				.anyMatch(x -> x.id().equals(o.getId())), "tab Khách báo vấn đề của quán");
+		orderIssueService.resolve(o.getId(), "REMAKE", null, null);
+		em.flush();
+		em.clear();
+		assertEquals("REMADE", orderFlowService.myOrder(USER1, o.getId()).issue().status());
+	}
+
+	@Test
+	void baoVanDe_dangGiaiQuyet_xuLyXongMoiVeHoanThanh() {
+		Order o = daNhan(PaymentMethod.COD);
+		taoBaoCao(o);
+		assertTrue(coDon(OrderTab.ISSUE, o), "chờ quán xử lý -> tab Đang giải quyết");
+		assertFalse(coDon(OrderTab.DELIVERED, o), "chưa tính Hoàn thành");
+		assertFalse(managerOrderService.history(MANAGER1, 1, "DELIVERED", 0).orders().stream()
+				.anyMatch(x -> x.id().equals(o.getId())), "quán: chưa vào tab Hoàn thành");
+		assertTrue(managerOrderService.orderCard(MANAGER1, o.getId()).issuePending());
+
+		orderIssueService.resolve(o.getId(), "REJECT", null, "Ảnh không thấy dị vật");
+		em.flush();
+		em.clear();
+		assertFalse(coDon(OrderTab.ISSUE, o));
+		assertTrue(coDon(OrderTab.DELIVERED, o), "xử lý xong mới về Hoàn thành");
+		assertEquals("Quán từ chối hoàn tiền", orderFlowService.myOrder(USER1, o.getId()).issue().statusLabel());
+		assertEquals(0, orderRepository.findById(o.getId()).orElseThrow().getRefundAmount().signum(), "từ chối thì không hoàn");
+	}
+
+	private boolean coDon(OrderTab tab, Order o) {
+		return orderFlowService.myOrders(USER1, tab).stream().anyMatch(x -> x.id().equals(o.getId()));
+	}
+
+	/** Đơn đến lấy đã nhận món; MoMo thì giả lập đã trả qua MoMo (có giao dịch thành công) */
+	private Order daNhan(PaymentMethod pm) {
+		Order o = datDon(pm == PaymentMethod.COD ? PaymentMethod.COD : PaymentMethod.MOMO, null);
+		if (pm != PaymentMethod.COD) {
+			Payment p = new Payment();
+			p.setOrder(o);
+			p.setMethod("MOMO");
+			p.setTxnRef("UTE" + o.getId() + "TEST");
+			p.setTransactionCode("4088878653");
+			p.setAmount(o.getTotalAmount());
+			p.setStatus("SUCCESS");
+			paymentRepository.save(p);
+			o.setPaymentStatus(PaymentStatus.PAID);
+			o.setStatus(OrderStatus.PENDING);
+			orderRepository.save(o);
+		}
+		orderFlowService.updateStatus(o.getId(), OrderStatus.CONFIRMED, null);
+		orderFlowService.updateStatus(o.getId(), OrderStatus.READY, null);
+		orderFlowService.updateStatus(o.getId(), OrderStatus.DELIVERED, null);
+		em.flush();
+		em.clear();
+		return orderRepository.findById(o.getId()).orElseThrow();
+	}
+
+	/** Tạo sẵn báo cáo (bỏ qua bước tải ảnh lên Cloudinary) */
+	private void taoBaoCao(Order o) {
+		vn.utetra.entity.OrderIssue i = new vn.utetra.entity.OrderIssue();
+		i.setOrder(orderRepository.getReferenceById(o.getId()));
+		i.setUser(o.getUser());
+		i.setReason(vn.utetra.entity.enums.IssueReason.WRONG_ITEM);
+		i.setDescription("Giao sai món");
+		i.setImages("https://res.cloudinary.com/demo/image/upload/sample.jpg");
+		orderIssueRepository.save(i);
+		em.flush();
+		em.clear();
 	}
 
 	// ======================= CHỮ KÝ CỔNG THANH TOÁN =======================

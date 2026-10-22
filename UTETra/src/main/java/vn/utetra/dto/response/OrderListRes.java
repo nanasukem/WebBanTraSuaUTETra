@@ -19,5 +19,6 @@ public record OrderListRes(
 		boolean canCancel,
 		String cancelledBy,        // CUSTOMER / STORE / SYSTEM (null = chưa huỷ)
 		int toReview,              // đơn đã giao: số ly còn chờ đánh giá (0 = đã đánh giá hết / quá hạn)
-		PaymentInfoRes payment) {  // nhãn Đã thanh toán / Chưa thanh toán / Chờ thanh toán / Hoàn tiền
+		PaymentInfoRes payment,    // nhãn Đã thanh toán / Chưa thanh toán / Chờ thanh toán / Hoàn tiền
+		OrderIssueRes issue) {     // báo vấn đề với đơn (null = không có)
 }

@@ -27,7 +27,7 @@ public interface BranchService {
 
 	BranchReq toReq(Branch branch);
 
-	/** Danh sách tài khoản Manager (chọn chủ shop) */
+	/** Danh sách tài khoản Manager (chọn người quản lý chi nhánh) */
 	List<User> findManagers();
 
 	/**

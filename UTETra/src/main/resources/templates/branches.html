@@ -45,6 +45,12 @@
 					<div class="card-body d-flex flex-column">
 						<h2 class="h5 fw-bold mb-2" th:text="${b.name}">UTETra Võ Văn Ngân</h2>
 						<p class="mb-2"><i class="bi bi-geo-alt text-danger me-1"></i><span th:text="${b.address}">Địa chỉ</span></p>
+						<p class="mb-2" th:with="mo=${b.isOpenAt(now)}">
+							<i class="bi bi-clock me-1" th:classappend="${mo} ? 'text-success' : 'text-secondary'"></i>
+							<span th:text="${b.hoursLabel}">7:00 - 22:00</span> ·
+							<span class="fw-semibold" th:classappend="${mo} ? 'text-success' : 'text-danger'"
+								th:text="${b.openStatusAt(now)}">Đang mở cửa</span>
+						</p>
 						<p class="mb-2" th:if="${b.phone != null and !#strings.isEmpty(b.phone)}">
 							<i class="bi bi-telephone text-success me-1"></i>
 							<a th:href="'tel:' + ${b.phone}" class="link-success" th:text="${b.phone}">028</a>

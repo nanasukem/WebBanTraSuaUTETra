@@ -5,6 +5,12 @@
           + v3: giao tận nơi / đến lấy, voucher theo phương thức thanh toán, tọa độ chi nhánh & địa chỉ
           + v4: địa chỉ kiểu Shopee (Tỉnh/Thành, Phường/Xã sau sáp nhập 2025, Tên đường, Loại địa chỉ)
           + v5: ghi chú địa chỉ (Addresses.note, Orders.delivery_note)
+          + v10: giờ mở cửa chi nhánh (Branches.open_time / close_time, mặc định 7:00 - 22:00);
+                 "Báo vấn đề với đơn" thay cho Trả hàng (bảng OrderIssues, Orders.refund_amount, Payments.refund_amount)
+          + v9: phí giao theo khoảng cách (Carriers = đối tác giao hàng, thêm per_km_fee), mỗi đơn 1 mã giảm giá,
+                doanh thu / chi tiêu / xét hạng KHÔNG tính phí ship
+          + v9: bỏ hoa hồng / chiết khấu app (Branches.commission_rate, Orders.commission_amount) - chuỗi tự vận hành,
+                chi nhánh là của công ty nên không thu % của chi nhánh
           + v8: thanh toán VNPAY / MoMo sandbox thật: đơn Chờ thanh toán (Orders.status AWAITING_PAYMENT),
                 hoàn tiền (Orders.payment_status REFUND_PENDING), Payments thêm txn_ref, bank_code, gateway_date,
                 response_code, message, refund_* (mỗi lần thanh toán / hoàn tiền 1 dòng)
@@ -40,10 +46,14 @@ CREATE TABLE Roles (
 );
 
 -- Nhà vận chuyển (Admin quản lý)
+/* Đối tác giao hàng của chuỗi. Phí giao theo khoảng cách chi nhánh -> khách:
+   fee (5 km đầu) + per_km_fee x số km thêm (làm tròn lên), tối đa 15 km.
+   Khách không chọn: hệ thống tự chọn đối tác đang hoạt động rẻ nhất cho quãng đường đó. */
 CREATE TABLE Carriers (
     id          INT IDENTITY(1,1) PRIMARY KEY,
     name        NVARCHAR(100) NOT NULL UNIQUE,
-    fee         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (fee >= 0),
+    fee         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (fee >= 0),         -- phí 5 km đầu
+    per_km_fee  DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (per_km_fee >= 0),  -- mỗi km thêm
     is_active   BIT           NOT NULL DEFAULT 1
 );
 
@@ -134,7 +144,8 @@ CREATE TABLE Branches (
     phone               VARCHAR(15)   NULL,
     description         NVARCHAR(500) NULL,
     image_cloudinary_id VARCHAR(255)  NULL,
-    commission_rate     DECIMAL(5,2)  NOT NULL DEFAULT 5.00 CHECK (commission_rate BETWEEN 0 AND 100), -- % chiết khấu app
+    open_time           TIME(0)       NOT NULL DEFAULT '07:00',   -- giờ mở cửa: ngoài giờ không nhận đơn
+    close_time          TIME(0)       NOT NULL DEFAULT '22:00',   -- mở = đóng (00:00 - 00:00) nghĩa là mở cả ngày
     status              VARCHAR(20)   NOT NULL DEFAULT 'APPROVED' CHECK (status IN ('APPROVED','SUSPENDED')), -- APPROVED = đang hoạt động, SUSPENDED = tạm ngưng (Admin bật/tắt)
     created_at          DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_Branches_Users FOREIGN KEY (owner_id) REFERENCES Users(id)
@@ -305,12 +316,12 @@ CREATE TABLE Orders (
     shipping_fee         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
     shipping_discount    DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (shipping_discount >= 0),
     total_amount         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
-    commission_amount    DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (commission_amount >= 0), -- tiền app thu của shop
     status               VARCHAR(20)   NOT NULL DEFAULT 'PENDING'
         CHECK (status IN ('AWAITING_PAYMENT','PENDING','CONFIRMED','READY','PICKED_UP','DELIVERING','DELIVERED','CANCELLED','RETURNED')),
     payment_method       VARCHAR(20)   NOT NULL CHECK (payment_method IN ('COD','VNPAY','MOMO')),
     payment_status       VARCHAR(20)   NOT NULL DEFAULT 'UNPAID' CHECK (payment_status IN ('UNPAID','PAID','REFUND_PENDING','REFUNDED')),
     cancel_reason        NVARCHAR(255) NULL,
+    refund_amount        DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (refund_amount >= 0), -- tiền đã hoàn khi khách báo vấn đề (trừ doanh thu)
     cancelled_by         VARCHAR(10)   NULL CHECK (cancelled_by IN ('CUSTOMER','STORE','SYSTEM')), -- ai huỷ đơn
     created_at           DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     updated_at           DATETIME2     NULL,
@@ -379,6 +390,7 @@ CREATE TABLE Payments (
     message                  NVARCHAR(255) NULL,
     paid_at                  DATETIME2     NULL,
     created_at               DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
+    refund_amount            DECIMAL(12,0) NULL,          -- số tiền hoàn (NULL = hoàn toàn bộ; nhỏ hơn = hoàn 1 phần)
     refund_ref               VARCHAR(50)   NULL,
     refund_transaction_code  VARCHAR(100)  NULL,
     refund_requested_at      DATETIME2     NULL,
@@ -415,6 +427,24 @@ CREATE TABLE ReviewMedia (
     cloudinary_id  VARCHAR(255) NOT NULL,
     media_type     VARCHAR(10)  NOT NULL CHECK (media_type IN ('IMAGE','VIDEO')),
     CONSTRAINT FK_ReviewMedia_Reviews FOREIGN KEY (review_id) REFERENCES Reviews(id) ON DELETE CASCADE
+);
+
+/* Báo vấn đề với đơn (thay cho Trả hàng - đồ uống không trả lại được):
+   khách báo trong 2 giờ sau khi nhận, kèm ảnh; Manager hoàn tiền (1 phần / toàn bộ), làm lại món hoặc từ chối */
+CREATE TABLE OrderIssues (
+    id             INT IDENTITY(1,1) PRIMARY KEY,
+    order_id       INT            NOT NULL UNIQUE,
+    user_id        INT            NOT NULL,
+    reason         VARCHAR(20)    NOT NULL CHECK (reason IN ('WRONG_ITEM','MISSING_ITEM','SPILLED','QUALITY','OTHER')),
+    description    NVARCHAR(500)  NULL,
+    images         NVARCHAR(1000) NULL,                      -- link ảnh Cloudinary, cách nhau bởi |
+    status         VARCHAR(20)    NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','REFUNDED','REMADE','REJECTED')),
+    refund_amount  DECIMAL(12,0)  NOT NULL DEFAULT 0 CHECK (refund_amount >= 0),
+    store_note     NVARCHAR(255)  NULL,
+    created_at     DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
+    resolved_at    DATETIME2      NULL,
+    CONSTRAINT FK_OrderIssues_Orders FOREIGN KEY (order_id) REFERENCES Orders(id) ON DELETE CASCADE,
+    CONSTRAINT FK_OrderIssues_Users  FOREIGN KEY (user_id)  REFERENCES Users(id)
 );
 
 -- Đánh giá quán của cả đơn (phục vụ, đóng gói, tốc độ): 1 đơn 1 lần
@@ -475,7 +505,8 @@ GO
 INSERT INTO Roles (name) VALUES ('ADMIN'), ('MANAGER'), ('SHIPPER'), ('USER');
 -- 1 ADMIN, 2 MANAGER, 3 SHIPPER, 4 USER
 
-INSERT INTO Carriers (name, fee) VALUES (N'Giao Hàng Nhanh', 15000), (N'Giao Hàng Tiết Kiệm', 12000);
+-- Trong 6 km Shipper UTETra rẻ hơn; xa hơn thì Ahamove rẻ hơn
+INSERT INTO Carriers (name, fee, per_km_fee) VALUES (N'Shipper UTETra', 15000, 5000), (N'Ahamove', 18000, 3000);
 
 INSERT INTO Users (username, password, full_name, email, phone, role_id, carrier_id, is_verified) VALUES
  ('admin',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Quản trị viên',      'admin@utetra.vn',    '0900000001', 1, NULL, 1),
@@ -504,9 +535,9 @@ INSERT INTO MemberTiers (name, min_spent, discount_percent, max_discount, sort_o
  (N'Kim cương',  3000000, 8, 30000, 4);
 
 -- Chi nhánh kèm tọa độ (gần đúng)
-INSERT INTO Branches (owner_id, name, address, latitude, longitude, phone, description, commission_rate, status) VALUES
- (3, N'UTETra Võ Văn Ngân', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM', 10.850700, 106.771900, '0281234567', N'Chi nhánh gần ĐH Sư phạm Kỹ thuật', 5.00, 'APPROVED'),
- (4, N'UTETra Quận 1',      N'12 Nguyễn Huệ, Quận 1, TP.HCM',       10.774600, 106.703900, '0287654321', N'Chi nhánh trung tâm',              5.00, 'APPROVED');
+INSERT INTO Branches (owner_id, name, address, latitude, longitude, phone, description, status) VALUES
+ (3, N'UTETra Võ Văn Ngân', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM', 10.850700, 106.771900, '0281234567', N'Chi nhánh gần ĐH Sư phạm Kỹ thuật', 'APPROVED'),
+ (4, N'UTETra Quận 1',      N'12 Nguyễn Huệ, Quận 1, TP.HCM',       10.774600, 106.703900, '0287654321', N'Chi nhánh trung tâm', 'APPROVED');
 
 INSERT INTO Categories (name) VALUES (N'Trà sữa'), (N'Trà trái cây'), (N'Cà phê'), (N'Đá xay');
 
@@ -594,18 +625,18 @@ INSERT INTO Favorites (user_id, product_id) VALUES (6, 1), (6, 7), (7, 1);
 INSERT INTO ViewedProducts (user_id, product_id) VALUES (6, 1), (6, 2), (6, 5), (7, 7);
 
 -- Đơn 1 (đã giao, giao tận nơi): (35000+10000+5000+8000)*1 + (40000+5000)*2 = 148000
---                  + ship 15000 - FREESHIP10K 10000 = 153000; chiết khấu 5% * 148000 = 7400
+--                  + ship 15000 - FREESHIP10K 10000 = 153000
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, shipping_voucher_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, product_discount, member_discount, member_tier_name, shipping_fee, shipping_discount, total_amount, commission_amount,
+                    items_total, product_discount, member_discount, member_tier_name, shipping_fee, shipping_discount, total_amount,
                     status, payment_method, payment_status, delivered_at)
 VALUES (6, 1, 'DELIVERY', 1, 5, 1, N'Trần Thị Khách', '0900000006', N'KTX Khu B, Dĩ An, Bình Dương',
-        148000, 0, 0, N'Thành viên', 15000, 10000, 153000, 7400, 'DELIVERED', 'VNPAY', 'PAID', SYSDATETIME());
+        148000, 0, 0, N'Thành viên', 15000, 10000, 153000, 'DELIVERED', 'VNPAY', 'PAID', SYSDATETIME());
 
--- Đơn 2 (mới đặt, giao tận nơi): (30000+5000)*1 + ship 15000 = 50000; chiết khấu 5% * 35000 = 1750
+-- Đơn 2 (mới đặt, giao tận nơi): (30000+5000)*1 + ship 15000 = 50000
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount, status, payment_method)
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, status, payment_method)
 VALUES (6, 2, 'DELIVERY', 1, N'Trần Thị Khách', '0900000006', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM',
-        35000, 0, N'Thành viên', 15000, 50000, 1750, 'PENDING', 'COD');
+        35000, 0, N'Thành viên', 15000, 50000, 'PENDING', 'COD');
 
 INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, quantity, unit_price, subtotal) VALUES
  (1, 1, 'L', 70, 50,  1, 58000, 58000),
@@ -632,55 +663,55 @@ INSERT INTO Users (username, password, full_name, email, phone, role_id, carrier
  ('user6', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Đặng Quốc Huy', 'user6@gmail.com', '0900000011', 4, NULL, 1);
 -- 10 đơn ĐÃ GIAO (id 3-12), đặt trong tháng 9-10/2026 (cũ hơn đơn #1, #2)
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (8, 1, 'DELIVERY', 1, 5, N'Lê Minh Anh', '0900000008', N'12 Đặng Văn Bi, Phường Thủ Đức, Thành phố Hồ Chí Minh',
-        122000, 0, N'Thành viên', 15000, 137000, 6100, 'DELIVERED', 'COD', 'PAID', '2026-09-05 09:15', DATEADD(MINUTE, 45, '2026-09-05 09:15'), DATEADD(MINUTE, 45, '2026-09-05 09:15'));
+        122000, 0, N'Thành viên', 15000, 137000, 'DELIVERED', 'COD', 'PAID', '2026-09-05 09:15', DATEADD(MINUTE, 45, '2026-09-05 09:15'), DATEADD(MINUTE, 45, '2026-09-05 09:15'));
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (9, 1, 'PICKUP', NULL, NULL, N'Ngô Gia Bảo', '0900000009', NULL,
-        72000, 0, N'Thành viên', 0, 72000, 3600, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-08 14:30', DATEADD(MINUTE, 45, '2026-09-08 14:30'), DATEADD(MINUTE, 45, '2026-09-08 14:30'));
+        72000, 0, N'Thành viên', 0, 72000, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-08 14:30', DATEADD(MINUTE, 45, '2026-09-08 14:30'), DATEADD(MINUTE, 45, '2026-09-08 14:30'));
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (10, 2, 'DELIVERY', 1, 5, N'Võ Thanh Hà', '0900000010', N'45 Lê Lợi, Phường Sài Gòn, Thành phố Hồ Chí Minh',
-        94000, 0, N'Thành viên', 15000, 109000, 4700, 'DELIVERED', 'MOMO', 'PAID', '2026-09-12 19:05', DATEADD(MINUTE, 45, '2026-09-12 19:05'), DATEADD(MINUTE, 45, '2026-09-12 19:05'));
+        94000, 0, N'Thành viên', 15000, 109000, 'DELIVERED', 'MOMO', 'PAID', '2026-09-12 19:05', DATEADD(MINUTE, 45, '2026-09-12 19:05'), DATEADD(MINUTE, 45, '2026-09-12 19:05'));
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (11, 2, 'DELIVERY', 1, 5, N'Đặng Quốc Huy', '0900000011', N'45 Lê Lợi, Phường Sài Gòn, Thành phố Hồ Chí Minh',
-        135000, 0, N'Thành viên', 15000, 150000, 6750, 'DELIVERED', 'COD', 'PAID', '2026-09-15 10:40', DATEADD(MINUTE, 45, '2026-09-15 10:40'), DATEADD(MINUTE, 45, '2026-09-15 10:40'));
+        135000, 0, N'Thành viên', 15000, 150000, 'DELIVERED', 'COD', 'PAID', '2026-09-15 10:40', DATEADD(MINUTE, 45, '2026-09-15 10:40'), DATEADD(MINUTE, 45, '2026-09-15 10:40'));
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (8, 2, 'PICKUP', NULL, NULL, N'Lê Minh Anh', '0900000008', NULL,
-        76000, 0, N'Thành viên', 0, 76000, 3800, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-20 16:20', DATEADD(MINUTE, 45, '2026-09-20 16:20'), DATEADD(MINUTE, 45, '2026-09-20 16:20'));
+        76000, 0, N'Thành viên', 0, 76000, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-20 16:20', DATEADD(MINUTE, 45, '2026-09-20 16:20'), DATEADD(MINUTE, 45, '2026-09-20 16:20'));
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (9, 1, 'DELIVERY', 1, 5, N'Ngô Gia Bảo', '0900000009', N'12 Đặng Văn Bi, Phường Thủ Đức, Thành phố Hồ Chí Minh',
-        86000, 0, N'Thành viên', 15000, 101000, 4300, 'DELIVERED', 'COD', 'PAID', '2026-09-24 08:50', DATEADD(MINUTE, 45, '2026-09-24 08:50'), DATEADD(MINUTE, 45, '2026-09-24 08:50'));
+        86000, 0, N'Thành viên', 15000, 101000, 'DELIVERED', 'COD', 'PAID', '2026-09-24 08:50', DATEADD(MINUTE, 45, '2026-09-24 08:50'), DATEADD(MINUTE, 45, '2026-09-24 08:50'));
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (10, 1, 'DELIVERY', 1, 5, N'Võ Thanh Hà', '0900000010', N'12 Đặng Văn Bi, Phường Thủ Đức, Thành phố Hồ Chí Minh',
-        92000, 0, N'Thành viên', 15000, 107000, 4600, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-29 20:10', DATEADD(MINUTE, 45, '2026-09-29 20:10'), DATEADD(MINUTE, 45, '2026-09-29 20:10'));
+        92000, 0, N'Thành viên', 15000, 107000, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-29 20:10', DATEADD(MINUTE, 45, '2026-09-29 20:10'), DATEADD(MINUTE, 45, '2026-09-29 20:10'));
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (11, 1, 'PICKUP', NULL, NULL, N'Đặng Quốc Huy', '0900000011', NULL,
-        71000, 0, N'Thành viên', 0, 71000, 3550, 'DELIVERED', 'COD', 'PAID', '2026-10-03 07:45', DATEADD(MINUTE, 45, '2026-10-03 07:45'), DATEADD(MINUTE, 45, '2026-10-03 07:45'));
+        71000, 0, N'Thành viên', 0, 71000, 'DELIVERED', 'COD', 'PAID', '2026-10-03 07:45', DATEADD(MINUTE, 45, '2026-10-03 07:45'), DATEADD(MINUTE, 45, '2026-10-03 07:45'));
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (8, 1, 'DELIVERY', 1, 5, N'Lê Minh Anh', '0900000008', N'12 Đặng Văn Bi, Phường Thủ Đức, Thành phố Hồ Chí Minh',
-        132000, 0, N'Thành viên', 15000, 147000, 6600, 'DELIVERED', 'MOMO', 'PAID', '2026-10-08 18:30', DATEADD(MINUTE, 45, '2026-10-08 18:30'), DATEADD(MINUTE, 45, '2026-10-08 18:30'));
+        132000, 0, N'Thành viên', 15000, 147000, 'DELIVERED', 'MOMO', 'PAID', '2026-10-08 18:30', DATEADD(MINUTE, 45, '2026-10-08 18:30'), DATEADD(MINUTE, 45, '2026-10-08 18:30'));
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, commission_amount,
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (10, 2, 'DELIVERY', 1, 5, N'Võ Thanh Hà', '0900000010', N'45 Lê Lợi, Phường Sài Gòn, Thành phố Hồ Chí Minh',
-        94000, 0, N'Thành viên', 15000, 109000, 4700, 'DELIVERED', 'COD', 'PAID', '2026-10-14 12:00', DATEADD(MINUTE, 45, '2026-10-14 12:00'), DATEADD(MINUTE, 45, '2026-10-14 12:00'));
+        94000, 0, N'Thành viên', 15000, 109000, 'DELIVERED', 'COD', 'PAID', '2026-10-14 12:00', DATEADD(MINUTE, 45, '2026-10-14 12:00'), DATEADD(MINUTE, 45, '2026-10-14 12:00'));
 INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, quantity, unit_price, subtotal) VALUES
  (3, 1, 'M', 70, 70, 2, 40000, 80000),
  (3, 17, 'L', 70, 70, 1, 42000, 42000),

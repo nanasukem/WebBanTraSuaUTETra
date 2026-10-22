@@ -116,6 +116,43 @@
 			</div>
 		</div>
 
+		<!-- Khách đã báo vấn đề với đơn -->
+		<div th:if="${order.issue}" class="card od-card mb-3 border border-warning-subtle">
+			<div class="card-body">
+				<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+					<div class="fw-bold"><i class="bi bi-exclamation-triangle me-1 text-warning"></i>Báo vấn đề với đơn</div>
+					<span class="badge" th:classappend="${order.issue.badgeClass}" th:text="${order.issue.statusLabel}"></span>
+					<span class="small text-muted ms-auto" th:text="${order.issue.createdAt}"></span>
+				</div>
+				<div class="small"><b th:text="${order.issue.reasonLabel}"></b>
+					<span th:if="${order.issue.description}" th:text="| - ${order.issue.description}|"></span></div>
+				<div class="d-flex gap-2 mt-2 flex-wrap">
+					<a th:each="img : ${order.issue.images}" th:href="${img}" target="_blank" rel="noopener">
+						<img th:src="${img}" alt="Ảnh" style="width:72px;height:72px;object-fit:cover;border-radius:.5rem"></a>
+				</div>
+				<div th:if="${order.issue.status != 'PENDING'}" class="small mt-2 p-2 rounded" style="background:#f8f9fa">
+					<b>Quán phản hồi:</b>
+					<span th:if="${order.issue.status == 'REFUNDED'}" th:text="|Hoàn ${#numbers.formatInteger(order.issue.refundAmount, 1, 'POINT')}đ.|"></span>
+					<span th:if="${order.issue.status == 'REMADE'}">Quán sẽ làm lại món cho bạn.</span>
+					<span th:if="${order.issue.status == 'REJECTED'}">Quán từ chối hoàn tiền. Lý do:</span>
+					<span th:text="${order.issue.storeNote}"></span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Món có vấn đề? (trong 2 giờ sau khi nhận) -->
+		<div th:if="${order.canReportIssue}" class="card od-card mb-3">
+			<div class="card-body d-flex align-items-center gap-3 flex-wrap">
+				<i class="bi bi-chat-square-dots fs-3 text-success"></i>
+				<div class="flex-grow-1 small">
+					<div class="fw-semibold">Món có vấn đề? (giao sai, thiếu, đổ vỡ...)</div>
+					<div class="text-muted">Báo cho quán trong 2 giờ sau khi nhận
+						<span class="od-issue-count text-danger fw-semibold" th:attr="data-deadline=${order.issueDeadlineMillis}"></span></div>
+				</div>
+				<a th:href="@{/orders/{id}/issue(id=${order.id})}" class="btn btn-outline-success btn-sm">Báo vấn đề</a>
+			</div>
+		</div>
+
 		<div class="row g-3">
 			<!-- ===== CỘT TRÁI: MÓN ===== -->
 			<div class="col-lg-7">
@@ -276,6 +313,14 @@
 		<script th:src="@{/js/order-live.js}"></script>
 		<script>
 			(function () {
+				const ic = document.querySelector('.od-issue-count[data-deadline]');
+				if (ic) {
+					const t2 = () => {
+						const left = Math.max(0, Number(ic.dataset.deadline) - Date.now());
+						ic.textContent = left > 0 ? '(còn ' + Math.floor(left / 3600000) + ' giờ ' + String(Math.floor(left % 3600000 / 60000)).padStart(2, '0') + ' phút)' : '(đã hết hạn)';
+					};
+					t2(); setInterval(t2, 30000);
+				}
 				const el = document.querySelector('.od-count[data-deadline]');
 				if (!el) return;
 				const tick = () => {

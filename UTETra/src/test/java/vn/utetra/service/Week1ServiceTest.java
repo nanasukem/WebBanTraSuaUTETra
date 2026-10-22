@@ -71,7 +71,6 @@ class Week1ServiceTest {
 		req.setAddress("123 Đường Test");
 		req.setPhone("0912345678");
 		req.setOwnerId(2); // manager3 - chưa quản lý chi nhánh nào
-		req.setCommissionRate(new BigDecimal("7.5"));
 		Branch b = branchService.create(req);
 		assertNotNull(b.getId());
 		assertEquals(BranchStatus.APPROVED, b.getStatus());
@@ -175,7 +174,7 @@ class Week1ServiceTest {
 		List<String> shop1 = voucherService.findUsable(1).stream().map(Voucher::getCode).toList();
 		List<String> shop2 = voucherService.findUsable(2).stream().map(Voucher::getCode).toList();
 		assertTrue(shop1.containsAll(List.of("FREESHIP10K", "UTETRA20", "VVN15")));
-		assertFalse(shop2.contains("VVN15"), "Shop 2 không được thấy voucher của shop 1");
+		assertFalse(shop2.contains("VVN15"), "Chi nhánh 2 không được thấy voucher riêng của chi nhánh 1");
 	}
 
 	@Test

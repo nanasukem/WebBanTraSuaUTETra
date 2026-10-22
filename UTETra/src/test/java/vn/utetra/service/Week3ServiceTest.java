@@ -76,6 +76,13 @@ class Week3ServiceTest {
 	@Autowired NotificationService notificationService;
 	@Autowired MemberService memberService;
 	@Autowired vn.utetra.repository.MemberTierRepository memberTierRepository;
+	@Autowired jakarta.persistence.EntityManager em;
+
+	/** Giờ mở cửa mẫu 7:00 - 22:00: test chạy giờ nào cũng được -> cho chi nhánh mở cả ngày (rollback sau mỗi test) */
+	@org.junit.jupiter.api.BeforeEach
+	void moCuaCaNgay() {
+		em.createNativeQuery("UPDATE Branches SET open_time = '00:00', close_time = '00:00'").executeUpdate();
+	}
 
 	// ======================= 20 SẢN PHẨM NHẤT (PHÂN TRANG) =======================
 
@@ -563,8 +570,8 @@ class Week3ServiceTest {
 		assertEquals("Đang giao", OrderTab.SHIPPING.getLabel());
 		assertEquals("Hoàn thành", OrderTab.DELIVERED.getLabel());
 		assertEquals("Đã huỷ", OrderTab.CANCELLED.getLabel());
-		assertEquals("Trả hàng - hoàn tiền", OrderTab.RETURNED.getLabel());
 		assertTrue(OrderTab.PENDING.getStatuses().contains(OrderStatus.AWAITING_PAYMENT), "đơn chờ thanh toán ở tab Chờ xác nhận");
-		assertEquals(6, OrderTab.values().length);
+		assertEquals("Đang giải quyết", OrderTab.ISSUE.getLabel());
+		assertEquals(6, OrderTab.values().length, "không còn tab Trả hàng: đồ uống thì khách Báo vấn đề với đơn");
 	}
 }

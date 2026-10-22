@@ -23,7 +23,9 @@ public record ManagerOrderRes(
 		String hint,               // gợi ý việc cần làm tiếp
 		List<Action> actions,      // nút đổi trạng thái 1 click
 		boolean canCancel,
-		boolean prepaid) {         // đã trả trước online -> quán không thu tiền
+		boolean prepaid,           // đã trả trước online -> quán không thu tiền
+		String issueLabel,         // "Có vấn đề · Đang chờ quán xử lý" (null = khách không báo)
+		boolean issuePending) {    // còn chờ quán xử lý
 
 	/** 1 nút: chuyển sang trạng thái "to" */
 	public record Action(String to, String label, String style) {

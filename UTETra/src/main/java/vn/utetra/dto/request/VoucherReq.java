@@ -21,7 +21,7 @@ public class VoucherReq {
 	@Size(max = 150, message = "Tên tối đa 150 ký tự")
 	private String name;
 
-	/** null = voucher của app; có giá trị = voucher của shop */
+	/** null = voucher toàn chuỗi; có giá trị = voucher riêng 1 chi nhánh */
 	private Integer branchId;
 
 	@NotNull(message = "Chọn loại áp dụng")

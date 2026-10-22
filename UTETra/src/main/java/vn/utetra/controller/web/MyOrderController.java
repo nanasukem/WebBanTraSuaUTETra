@@ -38,9 +38,12 @@ public class MyOrderController {
 	private final CurrentUserService currentUserService;
 	private final ReviewService reviewService;
 	private final CartService cartService;
+	private final vn.utetra.service.OrderIssueService orderIssueService;
 
 	public MyOrderController(OrderFlowService orderFlowService, CurrentUserService currentUserService,
-			ReviewService reviewService, CartService cartService) {
+			ReviewService reviewService, CartService cartService,
+			vn.utetra.service.OrderIssueService orderIssueService) {
+		this.orderIssueService = orderIssueService;
 		this.cartService = cartService;
 		this.orderFlowService = orderFlowService;
 		this.currentUserService = currentUserService;
@@ -206,5 +209,47 @@ public class MyOrderController {
 			ra.addFlashAttribute("error", e.getMessage());
 		}
 		return "redirect:/orders/" + id;
+	}
+
+	// ================= BÁO VẤN ĐỀ VỚI ĐƠN (thay cho Trả hàng) =================
+
+	/** Form báo vấn đề: chỉ đơn đã nhận trong 2 giờ, chưa báo */
+	@GetMapping("/{id}/issue")
+	public String issueForm(@PathVariable Integer id, Principal principal, HttpSession session, Model model,
+			RedirectAttributes ra) {
+		Integer userId = currentUserService.requireUserId(principal, session);
+		try {
+			var order = orderFlowService.myOrder(userId, id);
+			if (!order.canReportIssue()) {
+				ra.addFlashAttribute("error", order.issue() != null ? "Bạn đã báo vấn đề cho đơn này rồi"
+						: "Chỉ báo vấn đề được trong " + vn.utetra.service.OrderIssueService.WINDOW_HOURS
+								+ " giờ sau khi nhận món");
+				return "redirect:/orders/" + id;
+			}
+			model.addAttribute("order", order);
+			model.addAttribute("reasons", vn.utetra.entity.enums.IssueReason.values());
+			return "orders/issue";
+		} catch (ResourceNotFoundException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+			return "redirect:/orders";
+		}
+	}
+
+	@PostMapping("/{id}/issue")
+	public String issueSubmit(@PathVariable Integer id, @RequestParam(required = false) String reason,
+			@RequestParam(required = false) String description,
+			@RequestParam(value = "images", required = false) List<org.springframework.web.multipart.MultipartFile> images,
+			Principal principal, HttpSession session, RedirectAttributes ra) {
+		Integer userId = currentUserService.requireUserId(principal, session);
+		try {
+			vn.utetra.entity.enums.IssueReason r = reason == null || reason.isBlank() ? null
+					: vn.utetra.entity.enums.IssueReason.valueOf(reason);
+			orderIssueService.submit(userId, id, r, description, images);
+			ra.addFlashAttribute("success", "Đã gửi báo cáo cho quán. Quán sẽ phản hồi sớm, bạn theo dõi ở chuông thông báo nhé.");
+			return "redirect:/orders/" + id;
+		} catch (BusinessException | ResourceNotFoundException | IllegalArgumentException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+			return "redirect:/orders/" + id + "/issue";
+		}
 	}
 }

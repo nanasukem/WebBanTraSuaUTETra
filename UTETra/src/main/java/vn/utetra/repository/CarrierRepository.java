@@ -14,6 +14,6 @@ public interface CarrierRepository extends JpaRepository<Carrier, Integer> {
 	/** Tìm theo tên (trang admin) */
 	List<Carrier> findByNameContainingIgnoreCaseOrderByIdAsc(String keyword);
 
-	/** Nhà vận chuyển đang hoạt động, rẻ nhất lên đầu (trang checkout) */
+	/** Đối tác giao hàng đang hoạt động, rẻ nhất lên đầu (trang checkout) */
 	List<Carrier> findByIsActiveTrueOrderByFeeAsc();
 }

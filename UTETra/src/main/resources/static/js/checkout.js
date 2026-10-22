@@ -170,8 +170,10 @@
 		refresh();
 	}
 
+	// Khách không chọn hãng: phí giao server tính theo khoảng cách (hiện ở renderDelivery)
 	function renderCarriers() {
 		const box = $('carrier-list');
+		if (!box) return;
 		if (!state.carriers.length) {
 			box.innerHTML = '<div class="small text-muted">Hiện chưa có nhà vận chuyển nào hoạt động</div>';
 			return;
@@ -237,6 +239,7 @@
 					<div class="fw-semibold">${esc(b.name)}
 						${i === 0 && b.distanceKm != null ? '<span class="badge bg-success-subtle text-success border border-success-subtle ms-1">Gần bạn nhất</span>' : ''}</div>
 					<div class="small text-muted">${esc(b.address)}</div>
+					${b.openStatus ? `<div class="small ${b.open ? 'text-success' : 'text-danger fw-semibold'}"><i class="bi bi-clock me-1"></i>${esc(b.openStatus)}</div>` : ''}
 				</div>
 				${b.distanceKm != null ? `<span class="small fw-semibold text-nowrap">${Number(b.distanceKm).toLocaleString('vi-VN')} km</span>` : ''}
 			</label>`).join('');
@@ -316,9 +319,14 @@
 			btn.addEventListener('click', () => toggleVoucher(btn.dataset.code, btn.dataset.apply)));
 	}
 
+	// Mỗi đơn chỉ 1 mã: chọn mã này thì bỏ mã kia
 	function toggleVoucher(code, applyTo) {
-		if (applyTo === 'PRODUCT') state.productCode = state.productCode === code ? null : code;
-		else state.shippingCode = state.shippingCode === code ? null : code;
+		const current = applyTo === 'PRODUCT' ? state.productCode : state.shippingCode;
+		state.productCode = null;
+		state.shippingCode = null;
+		if (current !== code) {
+			if (applyTo === 'PRODUCT') state.productCode = code; else state.shippingCode = code;
+		}
 		refresh();
 	}
 
@@ -353,6 +361,8 @@
 		if (!code) return;
 		try {
 			const v = await api('/api/checkout/voucher-type?code=' + encodeURIComponent(code));
+			state.productCode = null; // mỗi đơn chỉ 1 mã
+			state.shippingCode = null;
 			if (v.applyTo === 'SHIPPING') state.shippingCode = v.code; else state.productCode = v.code;
 			$('voucher-input').value = '';
 			refresh();
@@ -382,7 +392,24 @@
 		}
 	}
 
+	function renderDelivery(p) {
+		const box = $('delivery-info');
+		if (!box) return;
+		if (p.deliveryDistanceKm == null || !p.carrierName) {
+			box.innerHTML = '<span class="text-muted">Chọn địa chỉ và chi nhánh để tính phí giao</span>';
+			return;
+		}
+		box.innerHTML = `
+			<div class="d-flex justify-content-between align-items-center gap-2">
+				<div><i class="bi bi-truck me-1 text-success"></i>Giao bởi <b>${esc(p.carrierName)}</b>
+					<span class="text-muted">· cách chi nhánh ${String(p.deliveryDistanceKm).replace('.', ',')} km</span></div>
+				<b class="text-nowrap">${fmt(p.shippingFee)}</b>
+			</div>
+			<div class="text-muted mt-1">Phí giao tính theo khoảng cách từ chi nhánh tới bạn (5 km đầu + mỗi km thêm), giao tối đa 15 km.</div>`;
+	}
+
 	function renderPreview(p) {
+		renderDelivery(p);
 		if (!p.items.length) {
 			$('co-page').classList.add('d-none');
 			$('co-empty').classList.remove('d-none');

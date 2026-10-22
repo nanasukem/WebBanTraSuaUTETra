@@ -159,7 +159,7 @@
 					</div>
 				</div>
 
-				<!-- 2a. Giao tận nơi: địa chỉ + nhà vận chuyển -->
+				<!-- 2a. Giao tận nơi: địa chỉ + phí giao theo khoảng cách -->
 				<div id="sec-delivery" class="card co-card mb-3">
 					<div class="card-body">
 						<div class="d-flex justify-content-between align-items-center">
@@ -171,8 +171,8 @@
 						</div>
 						<div id="address-list"></div>
 
-						<div class="co-title mt-3 mb-2">Nhà vận chuyển</div>
-						<div id="carrier-list"></div>
+						<div class="co-title mt-3 mb-2">Phí giao hàng</div>
+						<div id="delivery-info" class="small"></div>
 					</div>
 				</div>
 
@@ -214,7 +214,8 @@
 				<!-- 4. Mã giảm giá -->
 				<div class="card co-card mb-3">
 					<div class="card-body">
-						<div class="co-title">Mã giảm giá</div>
+						<div class="co-title mb-1">Mã giảm giá</div>
+						<div class="small text-muted mb-2">Mỗi đơn dùng được 1 mã (giảm tiền món hoặc giảm phí ship)</div>
 						<div id="selected-vouchers"></div>
 						<div class="input-group mb-1">
 							<input type="text" class="form-control text-uppercase"

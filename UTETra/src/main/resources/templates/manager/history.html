@@ -62,6 +62,8 @@
 							<span class="small" th:text="${o.pickup} ? 'Đến lấy tại cửa hàng' : 'Giao tận nơi'"></span>
 						</div>
 						<span class="badge" th:classappend="${o.badgeClass}" th:text="${o.statusLabel}"></span>
+						<span th:if="${o.issueLabel}" class="badge" th:classappend="${o.issuePending} ? 'text-bg-danger' : 'text-bg-light border text-dark'">
+							<i class="bi bi-exclamation-triangle me-1"></i><span th:text="${o.issueLabel}"></span></span>
 					</div>
 					<div class="small mt-1">
 						<span th:text="${o.items[0]}"></span>

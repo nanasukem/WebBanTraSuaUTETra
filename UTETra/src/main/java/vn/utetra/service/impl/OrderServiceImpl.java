@@ -89,6 +89,7 @@ public class OrderServiceImpl implements OrderService {
         DeliveryType deliveryType;
         Address address;
         Carrier carrier;
+        BigDecimal distanceKm; // khoảng cách chi nhánh -> địa chỉ giao
 
         String receiverName;
         String receiverPhone;
@@ -138,7 +139,9 @@ public class OrderServiceImpl implements OrderService {
                 c.productVoucherError,
                 c.shippingVoucherError,
                 c.errors,
-                canOrder
+                canOrder,
+                c.distanceKm,
+                c.carrier == null ? null : c.carrier.getName()
         );
     }
 
@@ -331,7 +334,6 @@ public class OrderServiceImpl implements OrderService {
         o.setShippingFee(c.shippingFee);
         o.setShippingDiscount(c.shippingDiscount);
         o.setTotalAmount(c.totalAmount);
-        o.setCommissionAmount(commission(c));
 
         // COD: vào quán ngay (Chờ xác nhận). VNPAY/MoMo: Chờ thanh toán, trả xong quán mới thấy đơn
         boolean online = req.getPaymentMethod() == PaymentMethod.VNPAY
@@ -454,6 +456,19 @@ public class OrderServiceImpl implements OrderService {
                         "Chi nhánh " + c.branch.getName()
                                 + " hiện không nhận đơn"
                 );
+
+            } else if (!c.branch.isOpenAt(java.time.LocalTime.now())) {
+
+                // Giờ mở cửa: ngoài giờ thì không nhận đơn (giống app thật)
+                fail(
+                        c,
+                        strict,
+                        "Chi nhánh " + c.branch.getName() + " đã đóng cửa (giờ mở cửa "
+                                + c.branch.getHoursLabel() + "), mở lại lúc "
+                                + c.branch.getOpenTime().getHour() + ":"
+                                + String.format("%02d", c.branch.getOpenTime().getMinute())
+                                + ". Bạn vui lòng quay lại sau"
+                );
             }
         }
 
@@ -533,25 +548,9 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
 
-            // 3b. Nhà vận chuyển
-            if (req.getCarrierId() == null) {
-
-                fail(c, strict, "Vui lòng chọn nhà vận chuyển");
-
-            } else {
-
-                c.carrier = carrierRepository.findById(req.getCarrierId())
-                        .filter(cr -> Boolean.TRUE.equals(cr.getIsActive()))
-                        .orElse(null);
-
-                if (c.carrier == null) {
-
-                    fail(c, strict, "Nhà vận chuyển không khả dụng");
-
-                } else {
-
-                    c.shippingFee = c.carrier.getFee();
-                }
+            // 3b. Phí giao theo khoảng cách (giống app chuỗi thật: khách không chọn hãng vận chuyển)
+            if (c.address != null && c.branch != null) {
+                deliveryFee(c, strict);
             }
 
         } else {
@@ -592,7 +591,16 @@ public class OrderServiceImpl implements OrderService {
             fail(c, strict, "Phương thức thanh toán không hợp lệ");
         }
 
-        // 5. Voucher giảm tiền món
+        // 5. Mỗi đơn chỉ áp 1 mã giảm giá (giảm tiền món HOẶC giảm phí ship) như app chuỗi thật
+        if (notBlank(req.getProductVoucherCode()) && notBlank(req.getShippingVoucherCode())) {
+            if (strict) {
+                throw new BusinessException("Mỗi đơn chỉ dùng được 1 mã giảm giá");
+            }
+            c.shippingVoucherError = "Mỗi đơn chỉ dùng được 1 mã giảm giá, vui lòng bỏ bớt 1 mã";
+            req.setShippingVoucherCode(null);
+        }
+
+        // 5a. Voucher giảm tiền món
         Integer branchId = c.branch == null
                 ? null
                 : c.branch.getId();
@@ -687,26 +695,61 @@ public class OrderServiceImpl implements OrderService {
         return c;
     }
 
+
+    /** Phí cho {@value #BASE_KM} km đầu, mỗi km thêm tính theo đối tác; giao tối đa {@value #MAX_KM} km */
+    public static final int BASE_KM = 5;
+    public static final int MAX_KM = 15;
+
     /**
-     * Hoa hồng app =
-     * (tiền món - giảm mã món - giảm hạng thành viên)
-     * x tỷ lệ chiết khấu của chi nhánh.
+     * Phí giao = phí {@value #BASE_KM} km đầu + mỗi km thêm (làm tròn lên) x phí/km của đối tác.
+     * Khoảng cách: đường chim bay từ chi nhánh tới vị trí đã ghim của địa chỉ.
+     * Hệ thống tự chọn đối tác đang hoạt động có phí rẻ nhất (khách không phải chọn hãng).
      */
-    private BigDecimal commission(Calc c) {
+    private void deliveryFee(Calc c, boolean strict) {
+        Address a = c.address;
+        Branch b = c.branch;
+        if (a.getLatitude() == null || a.getLongitude() == null) {
+            fail(c, strict, "Địa chỉ nhận hàng chưa ghim vị trí trên bản đồ, vui lòng sửa địa chỉ để tính phí giao");
+            return;
+        }
+        if (b.getLatitude() == null || b.getLongitude() == null) {
+            fail(c, strict, "Chi nhánh " + b.getName() + " chưa có vị trí, vui lòng chọn chi nhánh khác");
+            return;
+        }
+        double km = distanceKm(b.getLatitude().doubleValue(), b.getLongitude().doubleValue(),
+                a.getLatitude().doubleValue(), a.getLongitude().doubleValue());
+        c.distanceKm = BigDecimal.valueOf(km).setScale(1, RoundingMode.HALF_UP);
+        if (km > MAX_KM) {
+            fail(c, strict, "Địa chỉ cách " + b.getName() + " " + c.distanceKm + " km, quán chỉ giao trong "
+                    + MAX_KM + " km. Vui lòng chọn chi nhánh gần hơn hoặc đến lấy tại quán");
+            return;
+        }
+        int extraKm = (int) Math.max(0, Math.ceil(km - BASE_KM));
+        Carrier best = null;
+        BigDecimal bestFee = null;
+        for (Carrier cr : carrierRepository.findByIsActiveTrueOrderByFeeAsc()) {
+            BigDecimal perKm = cr.getPerKmFee() == null ? BigDecimal.ZERO : cr.getPerKmFee();
+            BigDecimal fee = cr.getFee().add(perKm.multiply(BigDecimal.valueOf(extraKm)));
+            if (bestFee == null || fee.compareTo(bestFee) < 0) {
+                best = cr;
+                bestFee = fee;
+            }
+        }
+        if (best == null) {
+            fail(c, strict, "Hiện chưa có đối tác giao hàng nào hoạt động, vui lòng chọn Đến lấy tại quán");
+            return;
+        }
+        c.carrier = best;
+        c.shippingFee = bestFee;
+    }
 
-        BigDecimal rate = c.branch.getCommissionRate() == null
-                ? BigDecimal.ZERO
-                : c.branch.getCommissionRate();
-
-        return c.itemsTotal
-                .subtract(c.productDiscount)
-                .subtract(c.memberDiscount)
-                .multiply(rate)
-                .divide(
-                        BigDecimal.valueOf(100),
-                        0,
-                        RoundingMode.HALF_UP
-                );
+    /** Khoảng cách 2 toạ độ (km), công thức Haversine */
+    static double distanceKm(double lat1, double lng1, double lat2, double lng2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1))
+                * Math.cos(Math.toRadians(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return 2 * 6371 * Math.asin(Math.sqrt(h));
     }
 
     private Voucher findVoucher(

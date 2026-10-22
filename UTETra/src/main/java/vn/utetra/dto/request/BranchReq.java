@@ -35,13 +35,16 @@ public class BranchReq {
 	@Size(max = 500, message = "Mô tả tối đa 500 ký tự")
 	private String description;
 
+	/** Giờ mở cửa (mặc định 7:00 - 22:00) */
+	@org.springframework.format.annotation.DateTimeFormat(pattern = "HH:mm")
+	private java.time.LocalTime openTime = java.time.LocalTime.of(7, 0);
+
+	@org.springframework.format.annotation.DateTimeFormat(pattern = "HH:mm")
+	private java.time.LocalTime closeTime = java.time.LocalTime.of(22, 0);
+
 	@NotNull(message = "Vui lòng chọn Manager quản lý chi nhánh")
 	private Integer ownerId;
 
-	@NotNull(message = "Vui lòng nhập % chiết khấu")
-	@DecimalMin(value = "0", message = "Chiết khấu không được âm")
-	@DecimalMax(value = "100", message = "Chiết khấu tối đa 100%")
-	private BigDecimal commissionRate = new BigDecimal("5.00");
 
 	private BranchStatus status;
 

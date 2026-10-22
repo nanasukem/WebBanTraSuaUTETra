@@ -18,9 +18,9 @@ import java.security.Principal;
 import java.util.List;
 
 /**
- * Manager quản lý đơn của shop (SecurityConfig: /manager/** chỉ ROLE_MANAGER):
+ * Manager quản lý đơn của chi nhánh (SecurityConfig: /manager/** chỉ ROLE_MANAGER):
  * - /manager/orders            : Quầy đơn hàng (realtime, chuông)
- * - /manager/orders/history    : Đơn hàng của shop theo 7 trạng thái của đề
+ * - /manager/orders/history    : Đơn hàng của chi nhánh theo tab trạng thái
  * - /manager/orders/{id}       : Chi tiết 1 đơn + nút đổi trạng thái
  */
 @Controller
@@ -38,9 +38,13 @@ public class ManagerOrderController {
 	private final ManagerOrderService managerOrderService;
 	private final CurrentUserService currentUserService;
 
-	public ManagerOrderController(ManagerOrderService managerOrderService, CurrentUserService currentUserService) {
+	private final vn.utetra.service.OrderIssueService orderIssueService;
+
+	public ManagerOrderController(ManagerOrderService managerOrderService, CurrentUserService currentUserService,
+			vn.utetra.service.OrderIssueService orderIssueService) {
 		this.managerOrderService = managerOrderService;
 		this.currentUserService = currentUserService;
+		this.orderIssueService = orderIssueService;
 	}
 
 	/** Quầy đơn hàng */
@@ -59,7 +63,7 @@ public class ManagerOrderController {
 		return "manager/orders";
 	}
 
-	/** Đơn hàng của shop theo 7 trạng thái */
+	/** Đơn hàng của chi nhánh theo tab trạng thái */
 	@GetMapping("/manager/orders/history")
 	public String history(@RequestParam(required = false) Integer branchId,
 			@RequestParam(required = false) String status, @RequestParam(defaultValue = "0") int page,
@@ -75,7 +79,7 @@ public class ManagerOrderController {
 		return "manager/history";
 	}
 
-	/** Chi tiết 1 đơn của shop */
+	/** Chi tiết 1 đơn của chi nhánh */
 	@GetMapping("/manager/orders/{id}")
 	public String detail(@PathVariable Integer id, Principal principal, HttpSession session, Model model,
 			RedirectAttributes ra) {
@@ -101,6 +105,22 @@ public class ManagerOrderController {
 		try {
 			managerOrderService.changeStatus(managerId, id, parseStatus(status), finalReason);
 			ra.addFlashAttribute("success", "Đã cập nhật đơn #" + id);
+		} catch (BusinessException | ResourceNotFoundException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+		}
+		return "redirect:/manager/orders/" + id;
+	}
+
+	/** Xử lý khách báo vấn đề với đơn: hoàn tiền (một phần / toàn bộ), làm lại món, từ chối */
+	@PostMapping("/manager/orders/{id}/issue")
+	public String resolveIssue(@PathVariable Integer id, @RequestParam String action,
+			@RequestParam(required = false) java.math.BigDecimal amount, @RequestParam(required = false) String note,
+			Principal principal, HttpSession session, RedirectAttributes ra) {
+		Integer managerId = currentUserService.requireUserId(principal, session);
+		try {
+			managerOrderService.orderCard(managerId, id); // kiểm tra đơn thuộc chi nhánh của mình
+			orderIssueService.resolve(id, action, amount, note);
+			ra.addFlashAttribute("success", "Đã xử lý báo cáo của khách cho đơn #" + id);
 		} catch (BusinessException | ResourceNotFoundException e) {
 			ra.addFlashAttribute("error", e.getMessage());
 		}

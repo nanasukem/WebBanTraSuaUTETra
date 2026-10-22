@@ -64,6 +64,8 @@
 				<div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
 					<div class="small text-muted d-flex align-items-center gap-1 flex-wrap">
 						<span th:text="${o.totalQty}"></span> ly · <span th:text="${o.payment.methodLabel}"></span>
+						<span th:if="${o.issue}" class="badge rounded-pill" th:classappend="${o.issue.badgeClass}"
+							th:text="|Báo vấn đề · ${o.issue.statusLabel}|"></span>
 						<span class="badge rounded-pill" th:unless="${o.payment.awaiting}" th:classappend="${o.payment.badgeClass}">
 							<i class="bi me-1" th:classappend="${o.payment.icon}"></i><span th:text="${o.payment.badge}"></span></span>
 					</div>
