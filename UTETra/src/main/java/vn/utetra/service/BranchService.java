@@ -8,6 +8,8 @@ import vn.utetra.entity.enums.BranchStatus;
 
 import java.util.List;
 
+import org.springframework.web.multipart.MultipartFile;
+
 public interface BranchService {
 
 	/** Tìm theo tên/địa chỉ + lọc trạng thái (trang Admin) */
@@ -35,8 +37,12 @@ public interface BranchService {
 	 * lat/lng = null -> vẫn trả đủ danh sách, không có khoảng cách.
 	 */
 	List<NearbyBranchRes> findNearby(Double lat, Double lng);
-	
 
-	/** username có phải chủ (Manager) của chi nhánh branchId không. Chi nhánh không tồn tại -> false */
+	/**
+	 * username có phải chủ (Manager) của chi nhánh branchId không. Chi nhánh không
+	 * tồn tại -> false
+	 */
 	boolean isOwner(Integer branchId, String username);
+
+	Branch updateManagerHomepage(Integer branchId, String username, String description, MultipartFile imageFile);
 }

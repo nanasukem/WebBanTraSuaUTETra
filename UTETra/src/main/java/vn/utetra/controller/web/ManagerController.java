@@ -22,6 +22,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import vn.utetra.dto.response.ManagerVoucherRes;
@@ -31,36 +32,22 @@ import vn.utetra.entity.Order;
 import vn.utetra.entity.Product;
 import vn.utetra.entity.enums.BranchStatus;
 import vn.utetra.entity.enums.OrderStatus;
+import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.BranchProductRepository;
 import vn.utetra.repository.BranchRepository;
 import vn.utetra.repository.OrderRepository;
 import vn.utetra.repository.ProductRepository;
-import vn.utetra.exception.ResourceNotFoundException;
+import vn.utetra.service.BranchService;
 import vn.utetra.service.CurrentUserService;
 import vn.utetra.service.ManagerCustomerService;
 import vn.utetra.service.VoucherService;
 
-/**
- * Khu vực MANAGER (SecurityConfiguration: /manager/** chỉ ROLE_MANAGER).
- *
- * Chuỗi tự mở chi nhánh: Admin mở chi nhánh và chỉ định 1 Manager quản lý.
- * Manager CHỈ quản lý chi nhánh của mình: mọi đường dẫn /manager/branches/{branchId}/...
- * đều kiểm tra branchId phải là chi nhánh của Manager đang đăng nhập.
- * Duyệt/tạm ngưng chi nhánh là việc của Admin (/admin/branches).
- *
- * - /manager/dashboard                     : tổng quan chi nhánh của tôi
- * - /manager/branches/{id}                 : thông tin chi nhánh
- * - /manager/branches/{id}/products        : bật/tắt món tại chi nhánh
- * - /manager/branches/{id}/vouchers        : khuyến mãi áp dụng tại chi nhánh (CHỈ XEM, Admin tạo)
- * - /manager/branches/{id}/reports         : doanh thu chi nhánh
- * - /manager/branches/{id}/customers       : (Chức năng mở rộng) khách hàng của chi nhánh, chỉ xem
- * - Đơn hàng: ManagerOrderController (/manager/orders, /manager/orders/history, /manager/orders/{id})
- */
 @Controller
 @RequestMapping("/manager")
 public class ManagerController {
 
 	private static final String NOT_YOUR_BRANCH = "Bạn chỉ được quản lý chi nhánh của mình.";
+
 	private static final String NO_BRANCH = "Tài khoản của bạn chưa được Admin giao chi nhánh nào.";
 
 	private final BranchRepository branchRepository;
@@ -70,10 +57,13 @@ public class ManagerController {
 	private final VoucherService voucherService;
 	private final CurrentUserService currentUserService;
 	private final ManagerCustomerService managerCustomerService;
+	private final BranchService branchService;
 
 	public ManagerController(BranchRepository branchRepository, BranchProductRepository branchProductRepository,
 			ProductRepository productRepository, OrderRepository orderRepository, VoucherService voucherService,
-			CurrentUserService currentUserService, ManagerCustomerService managerCustomerService) {
+			CurrentUserService currentUserService, ManagerCustomerService managerCustomerService,
+			BranchService branchService) {
+
 		this.branchRepository = branchRepository;
 		this.branchProductRepository = branchProductRepository;
 		this.productRepository = productRepository;
@@ -81,73 +71,82 @@ public class ManagerController {
 		this.voucherService = voucherService;
 		this.currentUserService = currentUserService;
 		this.managerCustomerService = managerCustomerService;
+		this.branchService = branchService;
 	}
 
 	// =========================================================
 	// CHI NHÁNH CỦA MANAGER ĐANG ĐĂNG NHẬP
 	// =========================================================
 
-	/** Chi nhánh Admin giao cho Manager đang đăng nhập (null nếu chưa được giao) */
 	private Branch myBranch(Principal principal, HttpSession session) {
 		Integer managerId = currentUserService.requireUserId(principal, session);
+
 		List<Branch> branches = branchRepository.findByOwnerIdOrderByIdAsc(managerId);
+
 		return branches.isEmpty() ? null : branches.get(0);
 	}
 
-	/** Chỉ trả về chi nhánh khi branchId đúng là chi nhánh của mình, ngược lại null */
 	private Branch ownBranch(Integer branchId, Principal principal, HttpSession session) {
+
 		Branch branch = myBranch(principal, session);
-		return branch != null && branch.getId().equals(branchId) ? branch : null;
+
+		return branch != null && Objects.equals(branch.getId(), branchId) ? branch : null;
 	}
 
-	/** Không phải chi nhánh của mình -> về Tổng quan kèm thông báo */
 	private String denied(RedirectAttributes ra) {
 		ra.addFlashAttribute("error", NOT_YOUR_BRANCH);
 		return "redirect:/manager/dashboard";
 	}
 
-	/** Tất cả đơn của 1 chi nhánh */
 	private List<Order> ordersOf(Integer branchId) {
 		return orderRepository.findByBranchIdAndStatusInOrderByCreatedAtAsc(branchId, EnumSet.allOf(OrderStatus.class));
 	}
 
-	/** Đường dẫn ngắn (menu, header): tự chuyển sang chi nhánh của mình */
 	private String toMyBranch(String suffix, Principal principal, HttpSession session, RedirectAttributes ra) {
+
 		Branch branch = myBranch(principal, session);
+
 		if (branch == null) {
 			ra.addFlashAttribute("error", NO_BRANCH);
 			return "redirect:/manager/dashboard";
 		}
+
 		return "redirect:/manager/branches/" + branch.getId() + suffix;
 	}
 
 	@GetMapping({ "/branch", "/branches" })
 	public String myBranchPage(Principal principal, HttpSession session, RedirectAttributes ra) {
+
 		return toMyBranch("", principal, session, ra);
 	}
 
 	@GetMapping({ "/products", "/menu" })
 	public String myProducts(Principal principal, HttpSession session, RedirectAttributes ra) {
+
 		return toMyBranch("/products", principal, session, ra);
 	}
 
 	@GetMapping("/vouchers")
 	public String myVouchers(Principal principal, HttpSession session, RedirectAttributes ra) {
+
 		return toMyBranch("/vouchers", principal, session, ra);
 	}
 
 	@GetMapping("/reports")
 	public String myReports(Principal principal, HttpSession session, RedirectAttributes ra) {
+
 		return toMyBranch("/reports", principal, session, ra);
 	}
 
 	@GetMapping("/customers")
 	public String myCustomers(Principal principal, HttpSession session, RedirectAttributes ra) {
+
 		return toMyBranch("/customers", principal, session, ra);
 	}
 
 	// =========================================================
-	// DASHBOARD: TỔNG QUAN CHI NHÁNH CỦA TÔI
+	// DASHBOARD
+	// Template: templates/manager/dashboard.html
 	// =========================================================
 
 	@GetMapping({ "", "/", "/dashboard" })
@@ -162,32 +161,49 @@ public class ManagerController {
 		}
 
 		List<Order> orders = ordersOf(branch.getId());
+
 		LocalDate today = LocalDate.now();
+
 		LocalDateTime todayStart = today.atStartOfDay();
 		LocalDateTime tomorrowStart = today.plusDays(1).atStartOfDay();
+
 		LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+
 		LocalDateTime nextMonthStart = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
 
 		model.addAttribute("totalOrders", orders.size());
+
 		model.addAttribute("pendingOrders", countOrdersByStatus(orders, OrderStatus.PENDING));
-		model.addAttribute("processingOrders", orders.stream()
-				.filter(o -> o.getStatus() == OrderStatus.CONFIRMED || o.getStatus() == OrderStatus.PICKED_UP
-						|| o.getStatus() == OrderStatus.DELIVERING)
-				.count());
+
+		model.addAttribute(
+				"processingOrders", orders
+						.stream().filter(o -> o.getStatus() == OrderStatus.CONFIRMED
+								|| o.getStatus() == OrderStatus.PICKED_UP || o.getStatus() == OrderStatus.DELIVERING)
+						.count());
+
 		model.addAttribute("deliveredOrders", countOrdersByStatus(orders, OrderStatus.DELIVERED));
+
 		model.addAttribute("cancelledOrders", countOrdersByStatus(orders, OrderStatus.CANCELLED));
+
 		model.addAttribute("todayRevenue", sumRevenue(orders, todayStart, tomorrowStart));
+
 		model.addAttribute("monthRevenue", sumRevenue(orders, monthStart, nextMonthStart));
-		model.addAttribute("unavailableProducts", branchProductRepository.findUnavailableProductIds(branch.getId()).size());
-		// Khuyến mãi đang chạy tại chi nhánh (toàn chuỗi + riêng chi nhánh, do Admin tạo)
-		model.addAttribute("activeVouchers", voucherService.branchView(branch.getId()).stream()
-				.filter(v -> "RUNNING".equals(v.status())).count());
+
+		model.addAttribute("unavailableProducts",
+				branchProductRepository.findUnavailableProductIds(branch.getId()).size());
+
+		model.addAttribute("activeVouchers",
+				voucherService.branchView(branch.getId()).stream().filter(v -> "RUNNING".equals(v.status())).count());
 
 		return "manager/dashboard";
 	}
 
 	// =========================================================
-	// THÔNG TIN CHI NHÁNH (chỉ xem; sửa thông tin/trạng thái do Admin làm)
+	// CHI TIẾT CHI NHÁNH
+	// Template: templates/manager/branches/detail.html
+	//
+	// Manager chỉ sửa mô tả và ảnh bìa.
+	// Tên, địa chỉ, giờ hoạt động và trạng thái do Admin quản lý.
 	// =========================================================
 
 	@GetMapping("/branches/{id}")
@@ -195,6 +211,7 @@ public class ManagerController {
 			RedirectAttributes ra) {
 
 		Branch branch = ownBranch(id, principal, session);
+
 		if (branch == null) {
 			return denied(ra);
 		}
@@ -206,14 +223,61 @@ public class ManagerController {
 	}
 
 	// =========================================================
-	// QUẢN LÝ SẢN PHẨM THEO CHI NHÁNH
+	// CẬP NHẬT MÔ TẢ VÀ ẢNH BÌA CHI NHÁNH
+	// POST /manager/branches/{id}/homepage
+	// Không cần tạo homepage.html riêng.
+	// =========================================================
+
+	@PostMapping(value = "/branches/{id}/homepage", consumes = "multipart/form-data")
+	public String updateBranchHomepage(@PathVariable Integer id,
+			@RequestParam(name = "description", required = false) String description,
+			@RequestParam(name = "imageFile", required = false) MultipartFile imageFile, Principal principal,
+			HttpSession session, RedirectAttributes ra) {
+
+		// Kiểm tra chi nhánh thuộc Manager đang đăng nhập.
+		Branch branch = ownBranch(id, principal, session);
+
+		if (branch == null) {
+			return denied(ra);
+		}
+
+		try {
+			String username = principal != null ? principal.getName() : null;
+
+			/*
+			 * BranchService phải có phương thức:
+			 *
+			 * updateManagerHomepage( Integer id, String username, String description,
+			 * MultipartFile imageFile )
+			 *
+			 * Service cần kiểm tra quyền sở hữu lần nữa, xử lý upload Cloudinary và lưu
+			 * Branch.
+			 */
+			branchService.updateManagerHomepage(id, username, description, imageFile);
+
+			ra.addFlashAttribute("success", "Đã cập nhật mô tả và ảnh bìa chi nhánh thành công.");
+
+		} catch (ResourceNotFoundException ex) {
+			ra.addFlashAttribute("error", ex.getMessage());
+
+		} catch (RuntimeException ex) {
+			ra.addFlashAttribute("error", "Không thể cập nhật chi nhánh. " + "Vui lòng kiểm tra dữ liệu và thử lại.");
+		}
+
+		return "redirect:/manager/branches/" + id;
+	}
+
+	// =========================================================
+	// QUẢN LÝ SẢN PHẨM
+	// Template: templates/manager/branches/products.html
 	// =========================================================
 
 	@GetMapping("/branches/{branchId}/products")
-	public String branchProducts(@PathVariable Integer branchId, Principal principal, HttpSession session,
-			Model model, RedirectAttributes ra) {
+	public String branchProducts(@PathVariable Integer branchId, Principal principal, HttpSession session, Model model,
+			RedirectAttributes ra) {
 
 		Branch branch = ownBranch(branchId, principal, session);
+
 		if (branch == null) {
 			return denied(ra);
 		}
@@ -235,6 +299,7 @@ public class ManagerController {
 			Principal principal, HttpSession session, RedirectAttributes ra) {
 
 		Branch branch = ownBranch(branchId, principal, session);
+
 		if (branch == null) {
 			return denied(ra);
 		}
@@ -250,13 +315,13 @@ public class ManagerController {
 		Product product = optionalProduct.get();
 
 		if (branch.getStatus() != BranchStatus.APPROVED) {
-			ra.addFlashAttribute("error", "Chi nhánh đang tạm ngưng, không thể điều chỉnh sản phẩm.");
+			ra.addFlashAttribute("error", "Chi nhánh đang tạm ngưng, " + "không thể điều chỉnh sản phẩm.");
 
 			return "redirect:/manager/branches/" + branchId + "/products";
 		}
 
 		if (!Boolean.TRUE.equals(product.getIsAvailable())) {
-			ra.addFlashAttribute("error", "Sản phẩm đang bị khóa toàn hệ thống, không thể mở bán tại chi nhánh.");
+			ra.addFlashAttribute("error", "Sản phẩm đang bị khóa toàn hệ thống, " + "không thể mở bán tại chi nhánh.");
 
 			return "redirect:/manager/branches/" + branchId + "/products";
 		}
@@ -274,6 +339,8 @@ public class ManagerController {
 			branchProduct = new BranchProduct();
 			branchProduct.setBranch(branch);
 			branchProduct.setProduct(product);
+
+			// Lần đầu tạo liên kết: mặc định chưa mở bán.
 			branchProduct.setIsAvailable(false);
 		}
 
@@ -285,7 +352,7 @@ public class ManagerController {
 	}
 
 	// =========================================================
-	// (CHỨC NĂNG MỞ RỘNG) KHÁCH HÀNG CỦA CHI NHÁNH: chỉ xem, không sửa / khoá tài khoản khách
+	// KHÁCH HÀNG CỦA CHI NHÁNH
 	// =========================================================
 
 	@GetMapping("/branches/{branchId}/customers")
@@ -293,11 +360,13 @@ public class ManagerController {
 			Principal principal, HttpSession session, Model model, RedirectAttributes ra) {
 
 		Branch branch = ownBranch(branchId, principal, session);
+
 		if (branch == null) {
 			return denied(ra);
 		}
 
 		Integer managerId = currentUserService.requireUserId(principal, session);
+
 		model.addAttribute("branch", branch);
 		model.addAttribute("keyword", keyword);
 		model.addAttribute("customers", managerCustomerService.customers(managerId, branchId, keyword));
@@ -310,35 +379,45 @@ public class ManagerController {
 			Principal principal, HttpSession session, Model model, RedirectAttributes ra) {
 
 		Branch branch = ownBranch(branchId, principal, session);
+
 		if (branch == null) {
 			return denied(ra);
 		}
 
 		try {
 			Integer managerId = currentUserService.requireUserId(principal, session);
+
 			model.addAttribute("branch", branch);
 			model.addAttribute("data", managerCustomerService.customer(managerId, branchId, userId));
+
 			return "manager/customers/detail";
+
 		} catch (ResourceNotFoundException ex) {
 			ra.addFlashAttribute("error", ex.getMessage());
+
 			return "redirect:/manager/branches/" + branchId + "/customers";
 		}
 	}
 
 	// =========================================================
-	// ĐƠN HÀNG: dùng chung màn hình của ManagerOrderController
-	// (đổi trạng thái qua OrderFlowService: hoàn voucher, thông báo realtime, cộng lượt bán...)
+	// ĐƠN HÀNG - SỬ DỤNG ManagerOrderController
 	// =========================================================
 
 	@GetMapping("/branches/{branchId}/orders")
 	public String branchOrders(@PathVariable Integer branchId) {
+
 		return "redirect:/manager/orders/history";
 	}
 
 	@GetMapping("/branches/{branchId}/orders/{orderId}")
 	public String branchOrderDetail(@PathVariable Integer branchId, @PathVariable Integer orderId) {
+
 		return "redirect:/manager/orders/" + orderId;
 	}
+
+	// =========================================================
+	// ĐẾM ĐƠN THEO TRẠNG THÁI
+	// =========================================================
 
 	private long countOrdersByStatus(List<Order> orders, OrderStatus status) {
 
@@ -346,48 +425,54 @@ public class ManagerController {
 	}
 
 	// =========================================================
-	// KHUYẾN MÃI CỦA CHI NHÁNH - CHỈ XEM
-	// Mọi chi nhánh thuộc chuỗi: voucher do Admin tạo (toàn chuỗi hoặc riêng 1 chi nhánh).
-	// Manager chỉ xem voucher áp dụng tại chi nhánh mình + số lượt khách đã dùng, tiền đã giảm.
+	// VOUCHER CỦA CHI NHÁNH
+	// Template: templates/manager/vouchers/index.html
 	// =========================================================
+
 	@GetMapping("/branches/{branchId}/vouchers")
 	public String branchVouchers(@PathVariable Integer branchId, Model model, Principal principal, HttpSession session,
 			RedirectAttributes ra) {
 
 		Branch branch = ownBranch(branchId, principal, session);
+
 		if (branch == null) {
 			return denied(ra);
 		}
 
 		List<ManagerVoucherRes> vouchers = voucherService.branchView(branchId);
+
 		model.addAttribute("branch", branch);
 		model.addAttribute("vouchers", vouchers);
+
 		model.addAttribute("runningCount", vouchers.stream().filter(v -> "RUNNING".equals(v.status())).count());
+
 		model.addAttribute("usedTotal", vouchers.stream().mapToLong(ManagerVoucherRes::usedAtBranch).sum());
-		model.addAttribute("discountTotal", vouchers.stream().map(ManagerVoucherRes::discountAtBranch)
-				.reduce(BigDecimal.ZERO, BigDecimal::add));
+
+		model.addAttribute("discountTotal",
+				vouchers.stream().map(ManagerVoucherRes::discountAtBranch).reduce(BigDecimal.ZERO, BigDecimal::add));
+
 		return "manager/vouchers/index";
 	}
 
 	// =========================================================
-	// THỐNG KÊ, BÁO CÁO THEO CHI NHÁNH
+	// BÁO CÁO DOANH THU
+	// Template: templates/manager/reports/index.html
 	// =========================================================
+
 	@GetMapping("/branches/{branchId}/reports")
 	public String branchReports(@PathVariable Integer branchId,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
 			Model model, Principal principal, HttpSession session, RedirectAttributes ra) {
 
-		// 1. Kiểm tra chi nhánh
-		Optional<Branch> optionalBranch = Optional.ofNullable(ownBranch(branchId, principal, session));
+		Branch branch = ownBranch(branchId, principal, session);
 
-		if (optionalBranch.isEmpty()) {
+		if (branch == null) {
 			return denied(ra);
 		}
 
 		LocalDate today = LocalDate.now();
 
-		// 2. Thiết lập khoảng ngày mặc định
 		if (startDate == null) {
 			startDate = today.withDayOfMonth(1);
 		}
@@ -396,7 +481,6 @@ public class ManagerController {
 			endDate = today;
 		}
 
-		// Nếu ngày bắt đầu lớn hơn ngày kết thúc thì đổi lại
 		if (startDate.isAfter(endDate)) {
 			LocalDate temp = startDate;
 			startDate = endDate;
@@ -406,17 +490,14 @@ public class ManagerController {
 		LocalDateTime rangeStart = startDate.atStartOfDay();
 		LocalDateTime rangeEnd = endDate.plusDays(1).atStartOfDay();
 
-		// 3. Lấy đơn hàng thuộc chi nhánh
 		List<Order> branchOrders = ordersOf(branchId);
 
-		// 4. Lọc đơn đã giao trong khoảng thời gian được chọn
 		List<Order> deliveredOrders = branchOrders.stream().filter(order -> order.getStatus() == OrderStatus.DELIVERED)
 				.filter(order -> order.getDeliveredAt() != null)
 				.filter(order -> !order.getDeliveredAt().isBefore(rangeStart))
 				.filter(order -> order.getDeliveredAt().isBefore(rangeEnd))
 				.sorted(Comparator.comparing(Order::getDeliveredAt)).collect(Collectors.toList());
 
-		// 5. Tính doanh thu trong kỳ
 		BigDecimal selectedRevenue = BigDecimal.ZERO;
 
 		for (Order order : deliveredOrders) {
@@ -425,11 +506,9 @@ public class ManagerController {
 			}
 		}
 
-		// 6. Tính doanh thu và số đơn hôm nay
 		LocalDateTime todayStart = today.atStartOfDay();
 		LocalDateTime tomorrowStart = today.plusDays(1).atStartOfDay();
 
-		// 7. Tính doanh thu và số đơn trong tháng hiện tại
 		LocalDate monthStartDate = today.withDayOfMonth(1);
 
 		LocalDateTime monthStart = monthStartDate.atStartOfDay();
@@ -443,7 +522,6 @@ public class ManagerController {
 
 		long monthOrders = countDeliveredOrders(branchOrders, monthStart, nextMonthStart);
 
-		// 8. Tạo dữ liệu doanh thu theo từng ngày
 		Map<LocalDate, BigDecimal> revenueByDay = new LinkedHashMap<>();
 
 		for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
@@ -456,10 +534,11 @@ public class ManagerController {
 
 			BigDecimal amount = order.getSalesAmount();
 
-			revenueByDay.merge(deliveredDate, amount, BigDecimal::add);
+			if (amount != null) {
+				revenueByDay.merge(deliveredDate, amount, BigDecimal::add);
+			}
 		}
 
-		// 9. Chuyển ngày thành nhãn hiển thị
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM");
 
 		List<String> chartLabels = revenueByDay.keySet().stream().map(date -> date.format(formatter))
@@ -467,8 +546,6 @@ public class ManagerController {
 
 		List<BigDecimal> chartValues = new ArrayList<>(revenueByDay.values());
 
-		// 10. Tính phần trăm cho biểu đồ
-		// Ngày có doanh thu cao nhất tương ứng 100%
 		BigDecimal maxRevenue = chartValues.stream().filter(Objects::nonNull).max(BigDecimal::compareTo)
 				.orElse(BigDecimal.ZERO);
 
@@ -478,6 +555,7 @@ public class ManagerController {
 			int percentage = 0;
 
 			if (revenue != null && maxRevenue.compareTo(BigDecimal.ZERO) > 0) {
+
 				percentage = revenue.multiply(BigDecimal.valueOf(100)).divide(maxRevenue, 0, RoundingMode.HALF_UP)
 						.intValue();
 			}
@@ -485,18 +563,16 @@ public class ManagerController {
 			chartPercentages.add(percentage);
 		}
 
-		// 11. Truyền dữ liệu sang Thymeleaf
-		model.addAttribute("branch", optionalBranch.get());
-
+		model.addAttribute("branch", branch);
 		model.addAttribute("startDate", startDate);
 		model.addAttribute("endDate", endDate);
 
 		model.addAttribute("todayRevenue", todayRevenue);
 		model.addAttribute("monthRevenue", monthRevenue);
-
 		model.addAttribute("selectedRevenue", selectedRevenue);
+
 		model.addAttribute("selectedAverage", deliveredOrders.isEmpty() ? BigDecimal.ZERO
-				: selectedRevenue.divide(BigDecimal.valueOf(deliveredOrders.size()), 0, java.math.RoundingMode.HALF_UP));
+				: selectedRevenue.divide(BigDecimal.valueOf(deliveredOrders.size()), 0, RoundingMode.HALF_UP));
 
 		model.addAttribute("todayOrders", todayOrders);
 		model.addAttribute("monthOrders", monthOrders);
@@ -515,7 +591,10 @@ public class ManagerController {
 		return "manager/reports/index";
 	}
 
-	// Tính doanh thu các đơn đã giao trong khoảng thời gian
+	// =========================================================
+	// TÍNH DOANH THU ĐƠN ĐÃ GIAO TRONG KHOẢNG THỜI GIAN
+	// =========================================================
+
 	private BigDecimal sumRevenue(List<Order> orders, LocalDateTime start, LocalDateTime end) {
 
 		return orders.stream().filter(order -> order.getStatus() == OrderStatus.DELIVERED)
@@ -525,7 +604,10 @@ public class ManagerController {
 				.filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
 	}
 
-	// Đếm đơn đã giao trong khoảng thời gian
+	// =========================================================
+	// ĐẾM ĐƠN ĐÃ GIAO TRONG KHOẢNG THỜI GIAN
+	// =========================================================
+
 	private long countDeliveredOrders(List<Order> orders, LocalDateTime start, LocalDateTime end) {
 
 		return orders.stream().filter(order -> order.getStatus() == OrderStatus.DELIVERED)

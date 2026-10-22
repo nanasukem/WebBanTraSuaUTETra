@@ -1,107 +1,597 @@
-
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/manager-layout :: main('Chi nhánh của tôi', 'branches', ~{::#admin-content})}">
 
 <section id="admin-content">
 
-	<div
-		class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-		<div>
-			<h2 class="fw-bold mb-1">
-				<i class="bi bi-shop me-2"></i>Chi nhánh của tôi
-			</h2>
-			<p class="text-secondary mb-0">Thông tin và trạng thái hoạt động</p>
+	<style>
+#admin-content {
+	--branch-primary: #ea580c;
+	--branch-primary-dark: #c2410c;
+	--branch-bg: #fffaf6;
+	--branch-text: #1e293b;
+	--branch-muted: #64748b;
+	color: var(--branch-text);
+}
+
+#admin-content .page-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-bottom: 24px;
+}
+
+#admin-content .page-icon {
+	width: 48px;
+	height: 48px;
+	border-radius: 16px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--branch-primary);
+	background: #ffedd5;
+	font-size: 1.4rem;
+	flex-shrink: 0;
+}
+
+#admin-content .section-card {
+	border: 1px solid #edf0f4;
+	border-radius: 20px;
+	background: #fff;
+	box-shadow: 0 5px 24px rgba(15, 23, 42, .045);
+	overflow: hidden;
+}
+
+#admin-content .section-header {
+	padding: 20px 24px;
+	border-bottom: 1px solid #f1f5f9;
+	background: #fff;
+}
+
+#admin-content .section-body {
+	padding: 24px;
+}
+
+#admin-content .section-title {
+	font-weight: 750;
+	font-size: 1.05rem;
+	margin-bottom: 5px;
+}
+
+#admin-content .section-subtitle {
+	color: var(--branch-muted);
+	font-size: .875rem;
+	margin: 0;
+	line-height: 1.65;
+}
+
+#admin-content .info-item {
+	height: 100%;
+	padding: 15px 16px;
+	border: 1px solid #edf0f4;
+	border-radius: 14px;
+	background: #fff;
+	overflow-wrap: anywhere;
+}
+
+#admin-content .info-label {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	margin-bottom: 8px;
+	color: var(--branch-muted);
+	font-size: .82rem;
+}
+
+#admin-content .info-label i {
+	color: var(--branch-primary);
+	font-size: 1rem;
+}
+
+#admin-content .info-value {
+	font-weight: 650;
+	line-height: 1.6;
+	white-space: pre-line;
+}
+
+#admin-content .branch-status {
+	border-radius: 999px;
+	padding: 7px 12px;
+	font-size: .8rem;
+	font-weight: 650;
+}
+
+#admin-content .shortcut-link {
+	display: flex;
+	align-items: center;
+	gap: 13px;
+	padding: 13px 14px;
+	border: 1px solid #edf0f4;
+	border-radius: 14px;
+	color: var(--branch-text);
+	background: #fff;
+	text-decoration: none;
+	transition: .2s ease;
+}
+
+#admin-content .shortcut-link:hover {
+	border-color: #fdba74;
+	background: #fffaf6;
+	transform: translateY(-2px);
+}
+
+#admin-content .shortcut-icon {
+	width: 42px;
+	height: 42px;
+	flex: 0 0 42px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 13px;
+	background: #fff1e6;
+	color: var(--branch-primary);
+	font-size: 1.15rem;
+}
+
+#admin-content .shortcut-description {
+	color: var(--branch-muted);
+	font-size: .8rem;
+	margin-top: 3px;
+}
+
+#admin-content .shortcut-arrow {
+	margin-left: auto;
+	color: #94a3b8;
+}
+
+/* Khu vực ảnh bìa */
+#admin-content .cover-editor {
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+	width: 100%;
+	aspect-ratio: 16/9;
+	min-height: 220px;
+	max-height: 480px;
+	border-radius: 18px;
+	background: #fff0e3;
+	border: 1px solid #fed7aa;
+}
+
+#admin-content .cover-editor::after {
+	content: "";
+	position: absolute;
+	inset: 35% 0 0;
+	z-index: 1;
+	pointer-events: none;
+	background: linear-gradient(to bottom, transparent, rgba(15, 23, 42, .68));
+}
+
+#admin-content .cover-image {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+	transition: transform .4s ease;
+}
+
+#admin-content .cover-editor:hover .cover-image {
+	transform: scale(1.025);
+}
+
+#admin-content .cover-placeholder {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 12px;
+	padding: 24px;
+	text-align: center;
+	color: #9a3412;
+	background: radial-gradient(ellipse at 15% 20%, #fff7ed 0, transparent 42%),
+		radial-gradient(ellipse at 90% 80%, #fed7aa 0, transparent 45%),
+		linear-gradient(135deg, #ffedd5, #fff7ed 50%, #fdba74);
+}
+
+#admin-content .cover-placeholder-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 68px;
+	height: 68px;
+	border-radius: 22px;
+	background: rgba(255, 255, 255, .8);
+	box-shadow: 0 8px 25px rgba(154, 52, 18, .1);
+	font-size: 2rem;
+}
+
+#admin-content .cover-placeholder-title {
+	font-size: 1.1rem;
+	font-weight: 750;
+}
+
+#admin-content .cover-placeholder-text {
+	font-size: .85rem;
+	max-width: 300px;
+	color: #9a3412;
+}
+
+#admin-content .cover-overlay {
+	position: absolute;
+	z-index: 2;
+	left: 24px;
+	right: 24px;
+	bottom: 22px;
+	color: #fff;
+	pointer-events: none;
+}
+
+#admin-content .cover-overlay .cover-eyebrow {
+	font-size: .75rem;
+	text-transform: uppercase;
+	letter-spacing: .12em;
+	opacity: .9;
+	margin-bottom: 5px;
+}
+
+#admin-content .cover-overlay .cover-branch-name {
+	font-size: clamp(1.15rem, 2.5vw, 1.8rem);
+	font-weight: 800;
+	line-height: 1.3;
+	overflow-wrap: anywhere;
+}
+
+#admin-content .cover-overlay .cover-branch-address {
+	margin-top: 5px;
+	font-size: .85rem;
+	opacity: .95;
+}
+
+#admin-content .cover-upload {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-top: 16px;
+	padding: 16px;
+	border: 1px dashed #fdba74;
+	border-radius: 15px;
+	background: #fffaf6;
+}
+
+#admin-content .cover-upload-label {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 0;
+}
+
+#admin-content .cover-upload-label i {
+	color: var(--branch-primary);
+	font-size: 1.4rem;
+}
+
+#admin-content .cover-upload .form-text {
+	margin-top: 4px;
+}
+
+#admin-content .form-control, #admin-content .form-select {
+	border-radius: 11px;
+	border-color: #dbe2ea;
+	padding: 11px 13px;
+}
+
+#admin-content .form-control:focus, #admin-content .form-select:focus {
+	border-color: #fb923c;
+	box-shadow: 0 0 0 .2rem rgba(234, 88, 12, .12);
+}
+
+#admin-content .description-area {
+	min-height: 150px;
+	resize: vertical;
+	line-height: 1.75;
+}
+
+#admin-content .btn-save {
+	border: none;
+	border-radius: 11px;
+	background: var(--branch-primary);
+	color: #fff;
+	padding: 11px 20px;
+	font-weight: 700;
+}
+
+#admin-content .btn-save:hover {
+	color: #fff;
+	background: var(--branch-primary-dark);
+}
+
+#admin-content .table thead th {
+	padding: 15px 18px;
+	color: #64748b;
+	font-size: .8rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	white-space: nowrap;
+	border-bottom: 1px solid #edf0f4;
+}
+
+#admin-content .table tbody td {
+	padding: 15px 18px;
+}
+
+#admin-content .product-name {
+	font-weight: 650;
+}
+
+#admin-content .product-id {
+	color: #94a3b8;
+	font-size: .8rem;
+}
+
+#admin-content .product-status {
+	display: inline-block;
+	padding: 6px 10px;
+	border-radius: 999px;
+	font-size: .78rem;
+	font-weight: 650;
+}
+
+#admin-content .status-on {
+	color: #166534;
+	background: #dcfce7;
+}
+
+#admin-content .status-off {
+	color: #475569;
+	background: #f1f5f9;
+}
+
+#admin-content .text-orange {
+	color: var(--branch-primary);
+}
+
+@media ( max-width : 576px) {
+	#admin-content .section-header, #admin-content .section-body {
+		padding: 17px;
+	}
+	#admin-content .cover-editor {
+		min-height: 210px;
+		aspect-ratio: 4/3;
+	}
+	#admin-content .cover-overlay {
+		left: 16px;
+		right: 16px;
+		bottom: 15px;
+	}
+	#admin-content .cover-upload {
+		align-items: stretch;
+	}
+	#admin-content .cover-upload .btn {
+		width: 100%;
+	}
+}
+</style>
+
+	<!-- TIÊU ĐỀ -->
+	<div class="page-heading">
+		<div class="d-flex align-items-center gap-3">
+			<div class="page-icon">
+				<i class="bi bi-shop"></i>
+			</div>
+			<div>
+				<h2 class="fw-bold mb-1">Chi nhánh của tôi</h2>
+				<p class="text-secondary mb-0">Quản lý thông tin và hình ảnh
+					giới thiệu chi nhánh</p>
+			</div>
 		</div>
-		<a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary">
-			<i class="bi bi-arrow-left me-1"></i>Quay lại
+
+		<a th:href="@{/manager/dashboard}"
+			class="btn btn-outline-secondary rounded-3 px-3"> <i
+			class="bi bi-arrow-left me-1"></i> Quay lại dashboard
 		</a>
 	</div>
 
+	<!-- THÔNG BÁO -->
 	<div th:if="${success != null}"
-		class="alert alert-success alert-dismissible fade show">
-		<span th:text="${success}"></span>
-		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		class="alert alert-success alert-dismissible fade show rounded-3"
+		role="alert">
+		<i class="bi bi-check-circle-fill me-2"></i> <span
+			th:text="${success}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"
+			aria-label="Đóng"></button>
 	</div>
 
 	<div th:if="${error != null}"
-		class="alert alert-danger alert-dismissible fade show">
-		<span th:text="${error}"></span>
-		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		class="alert alert-danger alert-dismissible fade show rounded-3"
+		role="alert">
+		<i class="bi bi-exclamation-circle-fill me-2"></i> <span
+			th:text="${error}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"
+			aria-label="Đóng"></button>
 	</div>
 
-	<div class="row g-4">
+	<!-- ẢNH BÌA NỔI BẬT -->
+	<div class="section-card mb-4">
+		<div class="cover-editor">
+			<img id="coverPreview" class="cover-image"
+				th:src="${branch.imageCloudinaryId}"
+				th:classappend="${branch.imageCloudinaryId == null or #strings.isEmpty(branch.imageCloudinaryId)} ? ' d-none' : ''"
+				th:attr="data-original-src=${branch.imageCloudinaryId}"
+				alt="Ảnh bìa chi nhánh">
 
-		<!-- Thông tin cửa hàng -->
+			<div id="coverPlaceholder" class="cover-placeholder"
+				th:classappend="${branch.imageCloudinaryId != null and !#strings.isEmpty(branch.imageCloudinaryId)} ? ' d-none' : ''">
+				<div class="cover-placeholder-icon">
+					<i class="bi bi-image"></i>
+				</div>
+				<div class="cover-placeholder-title">Chưa có ảnh bìa</div>
+				<div class="cover-placeholder-text">Hãy thêm ảnh đẹp để giới
+					thiệu không gian và món ăn của chi nhánh.</div>
+			</div>
+
+			<div class="cover-overlay">
+				<div class="cover-eyebrow">
+					<i class="bi bi-geo-alt me-1"></i> Chi nhánh của bạn
+				</div>
+				<div class="cover-branch-name" th:text="${branch.name}">Tên
+					chi nhánh</div>
+				<div class="cover-branch-address"
+					th:if="${branch.address != null and !#strings.isEmpty(branch.address)}">
+					<i class="bi bi-pin-map me-1"></i> <span
+						th:text="${branch.address}">Địa chỉ chi nhánh</span>
+				</div>
+			</div>
+		</div>
+
+		<div class="section-body">
+			<div class="d-flex align-items-start gap-3">
+				<i class="bi bi-stars text-orange fs-4"></i>
+				<div>
+					<h5 class="fw-bold mb-1">Ảnh bìa cửa hàng</h5>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- THÔNG TIN VÀ LỐI TẮT -->
+	<div class="row g-4 mb-4">
+
+		<!-- THÔNG TIN CHI NHÁNH -->
 		<div class="col-12 col-xl-7">
-			<div class="card border-0 shadow-sm rounded-4 h-100">
-				<div class="card-header bg-white py-3">
-					<h5 class="fw-bold mb-0">
-						<i class="bi bi-info-circle me-2"></i> <span
-							th:text="${branch.name}">Tên cửa hàng</span>
-					</h5>
+			<div class="section-card h-100">
+				<div class="section-header">
+					<div class="d-flex align-items-center gap-3">
+						<div class="page-icon">
+							<i class="bi bi-info-circle"></i>
+						</div>
+						<div>
+							<h5 class="section-title mb-1" th:text="${branch.name}">
+								Thông tin chi nhánh</h5>
+							<p class="section-subtitle">Thông tin cơ bản do Admin quản lý
+							</p>
+						</div>
+					</div>
 				</div>
 
-				<div class="card-body">
-					<div class="row g-4">
+				<div class="section-body">
+					<div class="row g-3">
 
 						<div class="col-sm-6">
-							<div class="info-label">Mã cửa hàng</div>
-							<div class="fw-semibold" th:text="${branch.id}">1</div>
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-hash"></i> Mã chi nhánh
+								</div>
+								<div class="info-value" th:text="${branch.id}">1</div>
+							</div>
 						</div>
 
 						<div class="col-sm-6">
-							<div class="info-label">Trạng thái</div>
-							<span class="badge"
-								th:classappend="${branch.status.name() == 'APPROVED'} ? 'bg-success' : 'bg-secondary'"
-								th:text="${branch.status.label}">Đang hoạt động</span>
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-activity"></i> Trạng thái
+								</div>
+								<span class="badge branch-status"
+									th:classappend="${branch.status != null and branch.status.name() == 'APPROVED'} ? ' bg-success' : ' bg-secondary'"
+									th:text="${branch.status != null ? branch.status.label : 'Chưa xác định'}">
+									Đang hoạt động </span>
+							</div>
 						</div>
 
 						<div class="col-12">
-							<div class="info-label">Địa chỉ</div>
-							<div th:text="${branch.address ?: 'Chưa cập nhật'}">Địa chỉ</div>
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-geo-alt"></i> Địa chỉ
+								</div>
+								<div class="info-value"
+									th:text="${branch.address != null and !#strings.isEmpty(branch.address) ? branch.address : 'Chưa cập nhật'}">
+									Địa chỉ chi nhánh</div>
+							</div>
 						</div>
 
 						<div class="col-sm-6">
-							<div class="info-label">Số điện thoại</div>
-							<div th:text="${branch.phone ?: 'Chưa cập nhật'}">-</div>
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-telephone"></i> Số điện thoại
+								</div>
+								<div class="info-value"
+									th:text="${branch.phone != null and !#strings.isEmpty(branch.phone) ? branch.phone : 'Chưa cập nhật'}">
+									Chưa cập nhật</div>
+							</div>
 						</div>
 
 						<div class="col-sm-6">
-							<div class="info-label">Giờ mở cửa (Admin quy định)</div>
-							<div th:text="${branch.hoursLabel}">7:00 - 22:00</div>
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-clock"></i> Giờ hoạt động
+								</div>
+								<div class="info-value"
+									th:text="${branch.hoursLabel != null and !#strings.isEmpty(branch.hoursLabel) ? branch.hoursLabel : 'Chưa cập nhật'}">
+									Chưa cập nhật</div>
+								<small class="text-secondary">Admin quản lý</small>
+							</div>
 						</div>
 
 						<div class="col-sm-6">
-							<div class="info-label">Manager quản lý</div>
-							<div
-								th:text="${branch.owner != null ? branch.owner.username : 'Chưa có'}">-</div>
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-person-badge"></i> Manager
+								</div>
+								<div class="info-value"
+									th:text="${branch.owner != null ? branch.owner.username : 'Chưa có'}">
+									Manager</div>
+							</div>
+						</div>
+
+						<div class="col-sm-6">
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-calendar3"></i> Ngày tạo
+								</div>
+								<div class="info-value"
+									th:text="${branch.createdAt != null ? #temporals.format(branch.createdAt, 'dd/MM/yyyy HH:mm') : '—'}">
+									—</div>
+							</div>
 						</div>
 
 						<div class="col-12">
-							<div class="info-label">Mô tả</div>
-							<p class="mb-0"
-								th:text="${branch.description ?: 'Chưa có mô tả'}">-</p>
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-card-text"></i> Mô tả hiện tại
+								</div>
+								<div class="info-value"
+									th:text="${branch.description != null and !#strings.isEmpty(branch.description) ? branch.description : 'Chưa có mô tả'}">
+									Mô tả chi nhánh</div>
+							</div>
 						</div>
 
 						<div class="col-sm-6">
-							<div class="info-label">Vĩ độ</div>
-							<div
-								th:text="${branch.latitude != null ? branch.latitude : 'Chưa cập nhật'}">-</div>
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-globe"></i> Vĩ độ
+								</div>
+								<div class="info-value"
+									th:text="${branch.latitude != null ? branch.latitude : 'Chưa cập nhật'}">
+									—</div>
+							</div>
 						</div>
 
 						<div class="col-sm-6">
-							<div class="info-label">Kinh độ</div>
-							<div
-								th:text="${branch.longitude != null ? branch.longitude : 'Chưa cập nhật'}">-</div>
-						</div>
-
-						<div class="col-12">
-							<div class="info-label">Ngày tạo</div>
-							<div
-								th:text="${branch.createdAt != null
-                                ? #temporals.format(branch.createdAt, 'dd/MM/yyyy HH:mm')
-                                : '—'}">-</div>
+							<div class="info-item">
+								<div class="info-label">
+									<i class="bi bi-globe2"></i> Kinh độ
+								</div>
+								<div class="info-value"
+									th:text="${branch.longitude != null ? branch.longitude : 'Chưa cập nhật'}">
+									—</div>
+							</div>
 						</div>
 
 					</div>
@@ -109,93 +599,339 @@
 			</div>
 		</div>
 
-		<!-- Lối tắt (thông tin, trạng thái chi nhánh chỉ Admin được thay đổi) -->
+		<!-- LỐI TẮT QUẢN LÝ -->
 		<div class="col-12 col-xl-5">
-
-			<div class="card border-0 shadow-sm rounded-4">
-				<div class="card-header bg-white py-3">
-					<h5 class="fw-bold mb-0">Quản lý chi nhánh</h5>
+			<div class="section-card h-100">
+				<div class="section-header">
+					<h5 class="section-title">
+						<i class="bi bi-grid me-2 text-orange"></i> Quản lý chi nhánh
+					</h5>
 				</div>
 
-				<div class="card-body d-grid gap-2">
-					<a th:href="@{/manager/orders}" class="btn btn-warning"> <i
-						class="bi bi-bell me-1"></i>Quầy đơn hàng
-					</a> <a th:href="@{/manager/orders/history}"
-						class="btn btn-outline-info"> <i class="bi bi-receipt me-1"></i>Đơn
-						hàng của chi nhánh
+				<div class="section-body d-grid gap-3">
+
+					<a th:href="@{/manager/orders}" class="shortcut-link">
+						<div class="shortcut-icon">
+							<i class="bi bi-bell"></i>
+						</div>
+						<div>
+							<div class="fw-bold">Quầy đơn hàng</div>
+						</div> <i class="bi bi-chevron-right shortcut-arrow"></i>
+					</a> <a th:href="@{/manager/orders/history}" class="shortcut-link">
+						<div class="shortcut-icon">
+							<i class="bi bi-receipt"></i>
+						</div>
+						<div>
+							<div class="fw-bold">Quản lý đơn hàng</div>
+						</div> <i class="bi bi-chevron-right shortcut-arrow"></i>
 					</a> <a th:href="@{/manager/branches/{id}/products(id=${branch.id})}"
-						class="btn btn-outline-primary"> <i
-						class="bi bi-box-seam me-1"></i>Bật/tắt món
+						class="shortcut-link">
+						<div class="shortcut-icon">
+							<i class="bi bi-basket2"></i>
+						</div>
+						<div>
+							<div class="fw-bold">Quản lý sản phẩm</div>
+						</div> <i class="bi bi-chevron-right shortcut-arrow"></i>
 					</a> <a th:href="@{/manager/branches/{id}/vouchers(id=${branch.id})}"
-						class="btn btn-outline-success"> <i
-						class="bi bi-ticket-perforated me-1"></i>Khuyến mãi của chi nhánh
+						class="shortcut-link">
+						<div class="shortcut-icon">
+							<i class="bi bi-ticket-perforated"></i>
+						</div>
+						<div>
+							<div class="fw-bold">Chương trình khuyến mãi</div>
+						</div> <i class="bi bi-chevron-right shortcut-arrow"></i>
 					</a> <a th:href="@{/manager/branches/{id}/reports(id=${branch.id})}"
-						class="btn btn-outline-dark"> <i
-						class="bi bi-bar-chart-line me-1"></i>Báo cáo doanh thu
+						class="shortcut-link">
+						<div class="shortcut-icon">
+							<i class="bi bi-graph-up-arrow"></i>
+						</div>
+						<div>
+							<div class="fw-bold">Báo cáo doanh thu</div>
+						</div> <i class="bi bi-chevron-right shortcut-arrow"></i>
 					</a>
+
 				</div>
 			</div>
 		</div>
 	</div>
 
-	<!-- Sản phẩm của cửa hàng -->
-	<div class="card border-0 shadow-sm rounded-4 mt-4">
-		<div
-			class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-			<h5 class="fw-bold mb-0">Sản phẩm thuộc cửa hàng</h5>
-			<a th:href="@{/manager/branches/{id}/products(id=${branch.id})}"
-				class="btn btn-sm btn-primary"> <i class="bi bi-box-seam me-1"></i>Quản
-				lý sản phẩm
-			</a>
+	<!-- CHỈNH SỬA TRANG CHỦ -->
+	<div class="section-card mb-4" id="edit-homepage">
+
+		<div class="section-header">
+			<div class="d-flex align-items-center gap-3">
+				<div class="page-icon">
+					<i class="bi bi-palette2"></i>
+				</div>
+				<div>
+					<h5 class="section-title">Chỉnh sửa trang chủ chi nhánh</h5>
+				</div>
+			</div>
 		</div>
 
-		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0">
-				<thead class="table-light">
-					<tr>
-						<th>ID</th>
-						<th>Tên sản phẩm</th>
-						<th>Danh mục</th>
-						<th>Giá</th>
-						<th>Trạng thái tại cửa hàng</th>
-					</tr>
-				</thead>
+		<div class="section-body">
+			<form th:action="@{/manager/branches/{id}/homepage(id=${branch.id})}"
+				method="post" enctype="multipart/form-data" id="homepageForm">
 
-				<tbody>
-					<tr th:each="bp : ${branchProducts}">
-						<td th:text="${bp.product.id}">1</td>
-						<td th:text="${bp.product.name}">Tên sản phẩm</td>
-						<td
-							th:text="${bp.product.category != null
-                        ? bp.product.category.name : '—'}">Danh
-							mục</td>
-						<td class="text-nowrap"><span
-							th:text="${bp.product.basePrice != null
-                            ? #numbers.formatDecimal(bp.product.basePrice, 0, 'COMMA', 0, 'POINT')
-                            : '0'}">0</span>
-							đ</td>
-						<td><span class="badge bg-success" th:if="${bp.isAvailable}">Đang
-								bán</span> <span class="badge bg-secondary"
-							th:unless="${bp.isAvailable}">Ngừng bán</span></td>
-					</tr>
+				<!-- Ảnh xem trước cũng là ảnh sẽ gửi lên khi lưu -->
+				<div class="mb-4">
+					<label class="form-label fw-bold"> <i
+						class="bi bi-image text-orange me-1"></i> Xem trước ảnh bìa
+					</label>
 
-					<tr
-						th:if="${branchProducts == null or #lists.isEmpty(branchProducts)}">
-						<td colspan="5" class="text-center text-secondary py-4">Chưa
-							có sản phẩm thuộc cửa hàng.</td>
-					</tr>
-				</tbody>
-			</table>
+					<div class="cover-editor">
+						<img id="coverPreviewForm" class="cover-image"
+							th:src="${branch.imageCloudinaryId}"
+							th:classappend="${branch.imageCloudinaryId == null or #strings.isEmpty(branch.imageCloudinaryId)} ? ' d-none' : ''"
+							th:attr="data-original-src=${branch.imageCloudinaryId}"
+							alt="Xem trước ảnh bìa">
+
+						<div id="coverPlaceholderForm" class="cover-placeholder"
+							th:classappend="${branch.imageCloudinaryId != null and !#strings.isEmpty(branch.imageCloudinaryId)} ? ' d-none' : ''">
+							<div class="cover-placeholder-icon">
+								<i class="bi bi-cloud-arrow-up"></i>
+							</div>
+							<div class="cover-placeholder-title">Tải lên ảnh bìa của
+								bạn</div>
+						</div>
+
+						<div class="cover-overlay">
+							<div class="cover-eyebrow">
+								<i class="bi bi-shop me-1"></i> Xem trước trang chi nhánh
+							</div>
+							<div class="cover-branch-name" th:text="${branch.name}">
+								Tên chi nhánh</div>
+							<div class="cover-branch-address"
+								th:if="${branch.address != null and !#strings.isEmpty(branch.address)}"
+								th:text="${branch.address}">Địa chỉ</div>
+						</div>
+					</div>
+
+					<div class="cover-upload">
+						<div class="cover-upload-label">
+							<i class="bi bi-file-earmark-image"></i>
+							<div>
+								<div class="fw-bold">Chọn ảnh mới</div>
+								<div class="form-text">JPG, PNG hoặc WEBP · Tối đa 5 MB</div>
+								<div id="selectedFileName" class="small text-orange mt-1">
+									Chưa chọn ảnh mới</div>
+							</div>
+						</div>
+
+						<label for="imageFile"
+							class="btn btn-outline-warning rounded-3 fw-semibold mb-0">
+							<i class="bi bi-folder2-open me-1"></i> Chọn ảnh
+						</label> <input type="file" id="imageFile" name="imageFile"
+							class="visually-hidden"
+							accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+					</div>
+				</div>
+
+				<!-- MÔ TẢ -->
+				<div class="mb-4">
+					<label for="description" class="form-label fw-bold"> <i
+						class="bi bi-card-text text-orange me-1"></i> Mô tả chi nhánh
+					</label>
+
+					<textarea id="description" name="description"
+						class="form-control description-area" rows="5" maxlength="3000"
+						placeholder="Giới thiệu về chi nhánh, món ăn nổi bật, không gian và dịch vụ..."
+						th:text="${branch.description}"></textarea>
+
+					<div class="d-flex justify-content-between flex-wrap gap-2 mt-2">
+						<small class="text-secondary"> <span id="descriptionCount">0</span>/3000
+							ký tự
+						</small>
+					</div>
+				</div>
+
+				<hr class="my-4">
+
+				<div class="d-flex justify-content-end gap-2 flex-wrap">
+					<button type="button" id="resetHomepageForm"
+						class="btn btn-outline-secondary rounded-3 px-3">
+						<i class="bi bi-arrow-counterclockwise me-1"></i> Hoàn tác
+					</button>
+
+					<button type="submit" id="saveHomepageButton" class="btn btn-save">
+						<i class="bi bi-cloud-check me-1"></i> Lưu thay đổi
+					</button>
+				</div>
+
+			</form>
 		</div>
 	</div>
 
-	<style>
-.info-label {
-	color: #64748b;
-	font-size: .9rem;
-	margin-bottom: .35rem;
-}
-</style>
+	<script>
+		document
+				.addEventListener(
+						'DOMContentLoaded',
+						function() {
+							const fileInput = document
+									.getElementById('imageFile');
+							const previewTop = document
+									.getElementById('coverPreview');
+							const previewForm = document
+									.getElementById('coverPreviewForm');
+							const placeholderTop = document
+									.getElementById('coverPlaceholder');
+							const placeholderForm = document
+									.getElementById('coverPlaceholderForm');
+							const fileName = document
+									.getElementById('selectedFileName');
+							const description = document
+									.getElementById('description');
+							const descriptionCount = document
+									.getElementById('descriptionCount');
+							const form = document
+									.getElementById('homepageForm');
+							const resetButton = document
+									.getElementById('resetHomepageForm');
+							const saveButton = document
+									.getElementById('saveHomepageButton');
+
+							const maxSize = 5 * 1024 * 1024;
+							const allowedTypes = [ 'image/jpeg', 'image/png',
+									'image/webp' ];
+
+							let currentObjectUrl = null;
+
+							function updatePreview(imageUrl) {
+								[ previewTop, previewForm ].forEach(function(
+										img) {
+									if (!img)
+										return;
+
+									if (imageUrl) {
+										img.src = imageUrl;
+										img.classList.remove('d-none');
+									} else {
+										img.removeAttribute('src');
+										img.classList.add('d-none');
+									}
+								});
+
+								[ placeholderTop, placeholderForm ]
+										.forEach(function(placeholder) {
+											if (!placeholder)
+												return;
+											placeholder.classList
+													.toggle('d-none',
+															Boolean(imageUrl));
+										});
+							}
+
+							function updateDescriptionCount() {
+								if (description && descriptionCount) {
+									descriptionCount.textContent = description.value.length;
+								}
+							}
+
+							if (fileInput) {
+								fileInput
+										.addEventListener(
+												'change',
+												function() {
+													const file = this.files
+															&& this.files[0];
+
+													if (!file)
+														return;
+
+													if (!allowedTypes
+															.includes(file.type)) {
+														alert('Vui lòng chọn ảnh JPG, PNG hoặc WEBP.');
+														this.value = '';
+														return;
+													}
+
+													if (file.size > maxSize) {
+														alert('Ảnh không được vượt quá 5 MB.');
+														this.value = '';
+														return;
+													}
+
+													if (currentObjectUrl) {
+														URL
+																.revokeObjectURL(currentObjectUrl);
+													}
+
+													currentObjectUrl = URL
+															.createObjectURL(file);
+													updatePreview(currentObjectUrl);
+
+													if (fileName) {
+														fileName.textContent = file.name;
+													}
+												});
+							}
+
+							if (description) {
+								description.addEventListener('input',
+										updateDescriptionCount);
+								updateDescriptionCount();
+							}
+
+							if (resetButton && form) {
+								resetButton
+										.addEventListener(
+												'click',
+												function() {
+													form.reset();
+
+													if (currentObjectUrl) {
+														URL
+																.revokeObjectURL(currentObjectUrl);
+														currentObjectUrl = null;
+													}
+
+													const originalSrc = previewForm ? previewForm
+															.getAttribute('data-original-src')
+															: null;
+
+													updatePreview(originalSrc
+															&& originalSrc
+																	.trim() ? originalSrc
+															: null);
+
+													if (fileName) {
+														fileName.textContent = 'Chưa chọn ảnh mới';
+													}
+
+													updateDescriptionCount();
+												});
+							}
+
+							if (form && saveButton) {
+								form
+										.addEventListener(
+												'submit',
+												function(event) {
+													const file = fileInput
+															&& fileInput.files ? fileInput.files[0]
+															: null;
+
+													if (file
+															&& !allowedTypes
+																	.includes(file.type)) {
+														event.preventDefault();
+														alert('Vui lòng chọn ảnh JPG, PNG hoặc WEBP.');
+														return;
+													}
+
+													if (file
+															&& file.size > maxSize) {
+														event.preventDefault();
+														alert('Ảnh không được vượt quá 5 MB.');
+														return;
+													}
+
+													saveButton.disabled = true;
+													saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Đang lưu...';
+												});
+							}
+						});
+	</script>
 
 </section>
 </html>
