@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<!--
+	Nội dung trang TÀI KHOẢN CỦA TÔI dùng chung cho Admin / Manager / Shipper (mỗi vai trò bọc trong layout riêng).
+	Tự sửa: họ tên, số điện thoại, ảnh đại diện, mật khẩu. Chỉ xem: email, tên đăng nhập, vai trò, chi nhánh (Admin quản lý).
+-->
+<div th:fragment="body" class="container-fluid px-0" style="max-width: 900px;">
+	<h2 class="fw-bold mb-1"><i class="bi bi-person-circle text-success me-2"></i>Tài khoản của tôi</h2>
+	<p class="text-muted mb-3">Thông tin cá nhân và mật khẩu đăng nhập.</p>
+
+	<div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+		<i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+	<div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+		<i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+
+	<ul class="nav nav-pills gap-2 mb-3">
+		<li class="nav-item"><a class="nav-link" th:classappend="${tab == 'info'} ? 'active bg-success' : 'text-success border border-success-subtle'"
+				th:href="@{/account(tab='info')}"><i class="bi bi-person me-1"></i> Thông tin</a></li>
+		<li class="nav-item"><a class="nav-link" th:classappend="${tab == 'password'} ? 'active bg-success' : 'text-success border border-success-subtle'"
+				th:href="@{/account(tab='password')}"><i class="bi bi-key me-1"></i> Mật khẩu</a></li>
+	</ul>
+
+	<!-- ===== TAB THÔNG TIN ===== -->
+	<div class="row g-4" th:if="${tab == 'info'}">
+		<div class="col-lg-7">
+			<div class="card border-0 shadow-sm rounded-4">
+				<div class="card-body p-4">
+					<form th:action="@{/account/profile}" method="post" enctype="multipart/form-data">
+						<div class="d-flex align-items-center gap-3 mb-3">
+							<img id="avatarPreview" th:src="${account.avatarCloudinaryId}" alt=""
+								th:classappend="${account.avatarCloudinaryId == null} ? 'd-none'" class="rounded-circle border"
+								style="width: 72px; height: 72px; object-fit: cover;">
+							<div id="avatarEmpty" th:classappend="${account.avatarCloudinaryId != null} ? 'd-none'"
+								class="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center"
+								style="width: 72px; height: 72px;"><i class="bi bi-person fs-2"></i></div>
+							<div class="flex-grow-1">
+								<label for="avatar" class="form-label small fw-semibold mb-1">Ảnh đại diện</label>
+								<input type="file" name="avatar" id="avatar" accept="image/*" class="form-control form-control-sm">
+								<div class="form-text">Không bắt buộc · tối đa 5MB</div>
+							</div>
+						</div>
+						<div class="mb-3">
+							<label for="fullName" class="form-label fw-semibold">Họ và tên</label>
+							<input type="text" id="fullName" name="fullName" class="form-control" maxlength="100" required
+								th:value="${account.fullName}">
+						</div>
+						<div class="mb-3">
+							<label for="phone" class="form-label fw-semibold">Số điện thoại</label>
+							<input type="tel" id="phone" name="phone" class="form-control" maxlength="10" pattern="0[0-9]{9}"
+								placeholder="VD: 0901234567" th:value="${account.phone}">
+						</div>
+						<button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Lưu thay đổi</button>
+					</form>
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-5">
+			<div class="card border-0 shadow-sm rounded-4">
+				<div class="card-header bg-white py-3 fw-bold"><i class="bi bi-shield-lock me-1"></i> Do Admin quản lý</div>
+				<ul class="list-group list-group-flush small">
+					<li class="list-group-item d-flex justify-content-between"><span class="text-muted">Tên đăng nhập</span>
+						<b th:text="${account.username}">manager1</b></li>
+					<li class="list-group-item d-flex justify-content-between"><span class="text-muted">Email</span>
+						<b th:text="${account.email}">a@utetra.vn</b></li>
+					<li class="list-group-item d-flex justify-content-between"><span class="text-muted">Vai trò</span>
+						<b th:text="${roleLabel}">Manager</b></li>
+					<li class="list-group-item" th:if="${roleName == 'MANAGER'}">
+						<div class="text-muted mb-1">Chi nhánh đang quản lý</div>
+						<div th:if="${#lists.isEmpty(myBranches)}" class="text-danger">Chưa được giao chi nhánh</div>
+						<div th:each="b : ${myBranches}" class="fw-semibold"><i class="bi bi-shop text-success me-1"></i><span
+								th:text="${b.name}">UTETra</span></div>
+					</li>
+					<li class="list-group-item d-flex justify-content-between"><span class="text-muted">Ngày tạo</span>
+						<span th:text="${account.createdAt != null} ? ${#temporals.format(account.createdAt, 'dd/MM/yyyy')} : ''">01/10/2026</span></li>
+				</ul>
+				<div class="card-body pt-2 small text-muted">Muốn đổi email, vai trò hoặc chi nhánh, hãy liên hệ quản trị viên.</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- ===== TAB MẬT KHẨU ===== -->
+	<div class="card border-0 shadow-sm rounded-4" style="max-width: 520px;" th:if="${tab == 'password'}">
+		<div class="card-body p-4">
+			<form method="post" th:action="@{/account/change-password}" autocomplete="off">
+				<div class="mb-3">
+					<label for="cpCurrent" class="form-label fw-semibold">Mật khẩu hiện tại</label>
+					<input type="password" id="cpCurrent" name="currentPassword" class="form-control" required autocomplete="current-password">
+				</div>
+				<div class="mb-3">
+					<label for="cpNew" class="form-label fw-semibold">Mật khẩu mới</label>
+					<input type="password" id="cpNew" name="newPassword" class="form-control" required minlength="6" maxlength="100"
+						autocomplete="new-password">
+					<div class="form-text">Tối thiểu 6 ký tự, khác mật khẩu hiện tại. Đổi xong sẽ có email xác nhận.</div>
+				</div>
+				<div class="mb-4">
+					<label for="cpConfirm" class="form-label fw-semibold">Nhập lại mật khẩu mới</label>
+					<input type="password" id="cpConfirm" name="confirmPassword" class="form-control" required minlength="6"
+						maxlength="100" autocomplete="new-password">
+				</div>
+				<button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Đổi mật khẩu</button>
+			</form>
+		</div>
+	</div>
+
+	<script>
+		(function () {
+			const avatar = document.getElementById('avatar');
+			if (!avatar) return;
+			avatar.addEventListener('change', function () {
+				const f = avatar.files && avatar.files[0];
+				if (!f) return;
+				if (f.size > 5 * 1024 * 1024) { alert('Ảnh đại diện tối đa 5MB'); avatar.value = ''; return; }
+				const img = document.getElementById('avatarPreview');
+				img.src = URL.createObjectURL(f);
+				img.classList.remove('d-none');
+				document.getElementById('avatarEmpty').classList.add('d-none');
+			});
+		})();
+	</script>
+</div>
+</html>

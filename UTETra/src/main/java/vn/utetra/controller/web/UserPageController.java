@@ -94,6 +94,8 @@ public class UserPageController {
 		Integer userId = currentUserService.requireUserId(principal, session);
 		try {
 			userService.changePassword(userId, currentPassword, newPassword, confirmPassword);
+			// Cập nhật phiên: tự đổi mật khẩu thì không bị đăng xuất (đổi từ nơi khác / Admin đặt lại mới bị đăng xuất)
+			session.setAttribute("user", userService.getProfile(userId));
 			ra.addFlashAttribute("success", "Đã đổi mật khẩu. Lần đăng nhập sau dùng mật khẩu mới");
 		} catch (BusinessException e) {
 			ra.addFlashAttribute("error", e.getMessage());

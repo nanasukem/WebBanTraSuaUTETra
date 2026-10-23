@@ -103,8 +103,9 @@ public class ManagerOrderController {
 		Integer managerId = currentUserService.requireUserId(principal, session);
 		String finalReason = OTHER.equals(reason) ? (otherReason == null ? null : otherReason.trim()) : reason;
 		try {
-			managerOrderService.changeStatus(managerId, id, parseStatus(status), finalReason);
-			ra.addFlashAttribute("success", "Đã cập nhật đơn #" + id);
+			OrderStatus to = parseStatus(status);
+			managerOrderService.changeStatus(managerId, id, to, finalReason);
+			ra.addFlashAttribute("success", OrderStatus.actionText(to, id, finalReason));
 		} catch (BusinessException | ResourceNotFoundException e) {
 			ra.addFlashAttribute("error", e.getMessage());
 		}

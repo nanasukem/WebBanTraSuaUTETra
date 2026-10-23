@@ -43,11 +43,13 @@ public class ManagerOrderApiController {
 
 	@PostMapping("/{orderId}/status")
 	public Map<String, String> changeStatus(@PathVariable Integer orderId, @RequestBody ManagerStatusReq req,
-			Principal principal, HttpSession session) {
+			Principal principal, HttpSession session, jakarta.servlet.http.HttpServletRequest request) {
 		if (req == null || req.status() == null) throw new BusinessException("Thiếu trạng thái mới");
 		managerOrderService.changeStatus(currentUserService.requireUserId(principal, session), orderId, req.status(),
 				req.reason());
-		return Map.of("message", "Đã cập nhật đơn #" + orderId);
+		String text = vn.utetra.entity.enums.OrderStatus.actionText(req.status(), orderId, req.reason());
+		request.setAttribute("activityLog", text); // ghi nhật ký hoạt động bằng câu dễ đọc
+		return Map.of("message", text);
 	}
 
 	// ================= LỖI -> {"message": "..."} =================

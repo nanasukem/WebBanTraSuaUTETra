@@ -102,6 +102,21 @@
 										Khóa tài khoản </span>
 								</button>
 							</form>
+
+							<!-- Xoá: chỉ khi tài khoản chưa có dữ liệu (tạo nhầm); đã có đơn / đánh giá thì hệ thống bắt khoá thay vì xoá -->
+							<form th:action="@{/admin/users/{id}/delete(id=${user.id})}" method="post" class="mt-2"
+								onsubmit="return confirm('Xoá hẳn tài khoản này? Chỉ xoá được tài khoản chưa có đơn hàng / đánh giá / chi nhánh. Không khôi phục được.');">
+								<button type="submit" class="btn btn-outline-danger w-100 btn-sm">
+									<i class="bi bi-trash"></i> Xoá tài khoản
+								</button>
+							</form>
+							<p class="small mt-2 mb-0" th:if="${user.mustChangePassword}"
+								th:with="hetHan=${tempExpired}"
+								th:classappend="${hetHan} ? 'text-danger' : 'text-muted'">
+								<i class="bi bi-hourglass-split me-1"></i>Đang dùng mật khẩu tạm, chưa đổi lần đầu
+								<span th:if="${user.tempPasswordExpiresAt != null and !hetHan}"
+									th:text="'· hết hạn lúc ' + ${#temporals.format(user.tempPasswordExpiresAt, 'HH:mm dd/MM/yyyy')}"></span>
+								<span th:if="${hetHan}">· <b>đã hết hạn</b>, bấm "Đặt lại mật khẩu" để cấp mới</span>.</p>
 						</div>
 					</div>
 				</div>
@@ -201,9 +216,9 @@
 						</div>
 						<div class="modal-body">
 							<p class="small text-muted">Tài khoản <b th:text="${user.username}">user</b>: mật khẩu cũ mất tác dụng ngay.
-								Gửi mật khẩu mới cho người dùng và nhắc họ đổi lại ở trang Hồ sơ.</p>
+								Mật khẩu tạm được <b>gửi qua email</b> cho người dùng; lần đăng nhập tới họ <b>bắt buộc đổi</b> sang mật khẩu riêng.</p>
 							<div class="mb-2">
-								<label for="rpNew" class="form-label fw-semibold">Mật khẩu mới</label>
+								<label for="rpNew" class="form-label fw-semibold">Mật khẩu tạm</label>
 								<div class="input-group">
 									<input type="text" id="rpNew" name="newPassword" class="form-control" required minlength="6"
 										autocomplete="new-password">
@@ -212,7 +227,7 @@
 								</div>
 							</div>
 							<div>
-								<label for="rpConfirm" class="form-label fw-semibold">Nhập lại mật khẩu mới</label>
+								<label for="rpConfirm" class="form-label fw-semibold">Nhập lại mật khẩu tạm</label>
 								<input type="text" id="rpConfirm" name="confirmPassword" class="form-control" required minlength="6"
 									autocomplete="new-password">
 							</div>

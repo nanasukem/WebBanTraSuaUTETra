@@ -105,7 +105,7 @@ public class ShipperOrderController {
 				orderRepository.saveAndFlush(order);
 			}
 			orderFlowService.updateStatus(id, status, null);
-			ra.addFlashAttribute("successMessage", "Đã cập nhật trạng thái đơn #" + id + " thành công.");
+			ra.addFlashAttribute("successMessage", OrderStatus.actionText(status, id, null));
 			String nextTab = status == OrderStatus.DELIVERED ? "DELIVERED" : "SHIPPING";
 			return "redirect:/shipper/orders?tab=" + nextTab;
 		} catch (BusinessException | ResourceNotFoundException e) {

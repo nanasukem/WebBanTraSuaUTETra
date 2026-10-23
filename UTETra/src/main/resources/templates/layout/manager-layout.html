@@ -329,7 +329,7 @@ body {
 			<!-- Chuông thông báo -->
 			<div th:replace="~{fragments/notification-bell :: bell('admin')}"></div>
 
-			<a href="#" class="admin-user"> <i class="bi bi-person-gear"></i>
+			<a th:href="@{/account}" class="admin-user" title="Tài khoản của tôi"> <i class="bi bi-person-gear"></i>
 				<span th:text="${session.user != null and session.user.fullName != null} ? ${session.user.fullName} : 'Quản lý chi nhánh'">Quản lý chi nhánh</span>
 			</a>
 

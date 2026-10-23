@@ -7,8 +7,8 @@
 	<div class="container-fluid py-3" style="max-width: 760px;">
 		<a th:href="@{/admin/users}" class="text-decoration-none text-success small"><i class="bi bi-arrow-left"></i> Quản lý người dùng</a>
 		<h2 class="fw-bold mt-2 mb-1"><i class="bi bi-person-plus text-success me-2"></i>Thêm tài khoản</h2>
-		<p class="text-muted mb-4">Tài khoản do Admin tạo được kích hoạt ngay (không cần xác minh email). Gửi tên đăng nhập và mật khẩu
-			cho người dùng, họ nên đổi mật khẩu ở trang Hồ sơ sau lần đăng nhập đầu.</p>
+		<p class="text-muted mb-4">Tài khoản do Admin tạo được kích hoạt ngay. Bạn đặt <b>mật khẩu tạm</b>: hệ thống gửi email tên đăng
+			nhập + mật khẩu tạm cho nhân viên, và lần đăng nhập đầu họ <b>bắt buộc đổi</b> sang mật khẩu riêng (Admin không biết mật khẩu đó).</p>
 
 		<div th:if="${errorMessage}" class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i><span
 				th:text="${errorMessage}"></span></div>
@@ -60,12 +60,12 @@
 								placeholder="VD: 0901234567" th:value="${form['phone']}">
 						</div>
 						<div class="col-md-6">
-							<label for="fPassword" class="form-label fw-semibold">Mật khẩu <span class="text-danger">*</span></label>
+							<label for="fPassword" class="form-label fw-semibold">Mật khẩu tạm <span class="text-danger">*</span></label>
 							<input type="password" id="fPassword" name="password" class="form-control" required minlength="6"
 								autocomplete="new-password">
 						</div>
 						<div class="col-md-6">
-							<label for="fConfirm" class="form-label fw-semibold">Nhập lại mật khẩu <span class="text-danger">*</span></label>
+							<label for="fConfirm" class="form-label fw-semibold">Nhập lại mật khẩu tạm <span class="text-danger">*</span></label>
 							<input type="password" id="fConfirm" name="confirmPassword" class="form-control" required minlength="6"
 								autocomplete="new-password">
 						</div>

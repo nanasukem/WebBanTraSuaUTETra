@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/manager-layout :: main('Tài khoản của tôi', 'account', ~{::#admin-content})}">
+<section id="admin-content">
+	<div th:replace="~{account/body :: body}"></div>
+</section>
+</html>
