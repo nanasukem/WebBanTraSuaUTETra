@@ -367,7 +367,8 @@ public class ManagerController {
 		branchProductRepository.save(branchProduct);
 		notifyAdminsStock(branch, "món", product.getName(), Boolean.TRUE.equals(branchProduct.getIsAvailable()));
 
-		ra.addFlashAttribute("success", "Đã cập nhật trạng thái sản phẩm tại chi nhánh.");
+		ra.addFlashAttribute("success", (Boolean.TRUE.equals(branchProduct.getIsAvailable()) ? "Đã mở bán lại " : "Đã báo hết ")
+				+ product.getName() + " tại chi nhánh.");
 
 		return "redirect:/manager/branches/" + branchId + "/products";
 	}
