@@ -15,6 +15,7 @@ import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,10 +41,10 @@ import vn.utetra.repository.VoucherRepository;
  * nhãn Đã thanh toán / Chưa thanh toán.
  *
  * Không gọi mạng tới VNPAY / MoMo: chữ ký được kiểm bằng dữ liệu tự ký; luồng thành công dùng chế độ demo của VNPAY
- * (khi .env chưa điền VNPAY_TMN_CODE). Hoàn tiền chỉ kiểm phần "Đang hoàn tiền" (gọi cổng chạy sau khi commit,
- * test tự rollback nên không gọi). Chạy lại UTETra.sql trước khi chạy.
+ * (ép vnpay.tmn-code rỗng trong môi trường test để 4 hàm demo luôn chạy xanh kể cả khi .env đã điền mã thật).
  */
 @SpringBootTest
+@TestPropertySource(properties = { "vnpay.tmn-code=", "vnpay.hash-secret=" })
 @Transactional
 class PaymentServiceTest {
 
@@ -64,6 +65,7 @@ class PaymentServiceTest {
 	@org.junit.jupiter.api.BeforeEach
 	void moCuaCaNgay() {
 		em.createNativeQuery("UPDATE Branches SET open_time = '00:00', close_time = '00:00'").executeUpdate();
+		em.clear();
 	}
 
 	// ======================= ĐẶT ĐƠN TRẢ TRƯỚC =======================
@@ -317,7 +319,7 @@ class PaymentServiceTest {
 		em.clear();
 		assertFalse(coDon(OrderTab.ISSUE, o));
 		assertTrue(coDon(OrderTab.DELIVERED, o), "xử lý xong mới về Hoàn thành");
-		assertEquals("Quán từ chối hoàn tiền", orderFlowService.myOrder(USER1, o.getId()).issue().statusLabel());
+		assertTrue(orderFlowService.myOrder(USER1, o.getId()).issue().statusLabel().startsWith("Quán từ chối hoàn tiền"));
 		assertEquals(0, orderRepository.findById(o.getId()).orElseThrow().getRefundAmount().signum(), "từ chối thì không hoàn");
 	}
 

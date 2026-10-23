@@ -337,16 +337,18 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				d.getNote())).toList();
 		int totalQty = items.stream().mapToInt(OrderDetailRes.Item::quantity).sum();
 
+		String carrierLabel = pickup ? null : OrderServiceImpl.DEFAULT_CARRIER_NAME;
+
 		return new OrderDetailRes(o.getId(), o.getStatus().name(), statusLabel(o.getStatus(), pickup),
 				badgeClass(o.getStatus()), pickup, steps(o.getStatus(), pickup),
 				o.getBranch().getName(), o.getBranch().getAddress(), o.getBranch().getPhone(),
 				o.getReceiverName(), o.getReceiverPhone(), o.getDeliveryAddress(), o.getDeliveryNote(),
-				o.getCarrier() == null ? null : o.getCarrier().getName(), o.getNote(),
+				carrierLabel, o.getNote(),
 				items, totalQty, money(o.getItemsTotal()),
 				money(o.getProductDiscount()), o.getProductVoucher() == null ? null : o.getProductVoucher().getCode(),
 				money(o.getMemberDiscount()), o.getMemberTierName(),
-				money(o.getShippingFee()), money(o.getShippingDiscount()),
-				o.getShippingVoucher() == null ? null : o.getShippingVoucher().getCode(),
+				money(o.getShippingFee()), BigDecimal.ZERO,
+				null,
 				money(o.getTotalAmount()), paymentMethodLabel(o.getPaymentMethod()),
 				paymentStatusLabel(o.getPaymentStatus()), o.getCancelReason(),
 				time(o.getCreatedAt()), time(o.getDeliveredAt()), canCustomerCancel(o),

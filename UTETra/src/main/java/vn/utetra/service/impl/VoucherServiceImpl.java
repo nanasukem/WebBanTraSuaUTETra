@@ -60,34 +60,38 @@ public class VoucherServiceImpl implements VoucherService {
 
 	@Override
 	public List<Voucher> findAppVouchers() {
-		return voucherRepository.findByBranchIsNullOrderByCreatedAtDesc();
+		return voucherRepository.findByBranchIsNullOrderByCreatedAtDesc().stream()
+				.filter(v -> v.getApplyTo() == VoucherApplyTo.PRODUCT).toList();
 	}
 
 	@Override
 	public List<Voucher> findByBranch(Integer branchId) {
-		return voucherRepository.findByBranch_IdOrderByCreatedAtDesc(branchId);
+		return voucherRepository.findByBranch_IdOrderByCreatedAtDesc(branchId).stream()
+				.filter(v -> v.getApplyTo() == VoucherApplyTo.PRODUCT).toList();
 	}
 
 	@Override
 	public List<Voucher> findAllVouchers() {
-		return voucherRepository.findAllByOrderByCreatedAtDesc();
+		return voucherRepository.findAllByOrderByCreatedAtDesc().stream()
+				.filter(v -> v.getApplyTo() == VoucherApplyTo.PRODUCT).toList();
 	}
 
 	@Override
 	public List<ManagerVoucherRes> branchView(Integer branchId) {
 		Map<Integer, Object[]> stats = new HashMap<>();
 		List<Object[]> rows = new ArrayList<>(orderRepository.productVoucherStatsOfBranch(branchId, OrderStatus.CANCELLED));
-		rows.addAll(orderRepository.shippingVoucherStatsOfBranch(branchId, OrderStatus.CANCELLED));
 		for (Object[] r : rows) {
 			stats.put(((Number) r[0]).intValue(), r);
 		}
 		LocalDateTime now = LocalDateTime.now();
 		List<String> order = List.of("RUNNING", "UPCOMING", "SOLD_OUT", "OFF", "ENDED");
-		return voucherRepository.findApplicableToBranch(branchId).stream().map(v -> {
+		return voucherRepository.findApplicableToBranch(branchId).stream()
+				.filter(v -> v.getApplyTo() == VoucherApplyTo.PRODUCT)
+				.map(v -> {
 			Object[] s = stats.get(v.getId());
 			String status = voucherStatus(v, now);
 			return new ManagerVoucherRes(v.getId(), v.getCode(), v.getName(), v.getBranch() == null,
-					v.getApplyTo() == VoucherApplyTo.SHIPPING ? "Giảm phí ship" : "Giảm tiền món", discountText(v),
+					"Giảm tiền món", discountText(v),
 					conditionText(v), DAY.format(v.getStartDate()) + " – " + DAY.format(v.getEndDate()), status,
 					STATUS_LABEL.get(status), STATUS_BADGE.get(status), nz(v.getQuantity()), nz(v.getUsedCount()),
 					s == null ? 0 : ((Number) s[1]).longValue(),
@@ -195,7 +199,7 @@ public class VoucherServiceImpl implements VoucherService {
 		req.setCode(v.getCode());
 		req.setName(v.getName());
 		req.setBranchId(v.getBranch() == null ? null : v.getBranch().getId());
-		req.setApplyTo(v.getApplyTo());
+		req.setApplyTo(VoucherApplyTo.PRODUCT);
 		req.setDiscountType(v.getDiscountType());
 		req.setDiscountValue(v.getDiscountValue());
 		req.setMaxDiscount(v.getMaxDiscount());
@@ -208,7 +212,8 @@ public class VoucherServiceImpl implements VoucherService {
 
 	@Override
 	public List<Voucher> findUsable(Integer branchId) {
-		return voucherRepository.findUsable(branchId, LocalDateTime.now());
+		return voucherRepository.findUsable(branchId, LocalDateTime.now()).stream()
+				.filter(v -> v.getApplyTo() == VoucherApplyTo.PRODUCT).toList();
 	}
 
 	// ================= KIỂM TRA CHUNG =================
@@ -219,6 +224,8 @@ public class VoucherServiceImpl implements VoucherService {
 				.orElseThrow(() -> new BusinessException("Mã voucher không tồn tại"));
 		LocalDateTime now = LocalDateTime.now();
 
+		if (v.getApplyTo() != VoucherApplyTo.PRODUCT)
+			throw new BusinessException("Hệ thống chỉ áp dụng mã giảm giá đồ uống");
 		if (!v.getIsActive())
 			throw new BusinessException("Voucher đã ngừng áp dụng");
 		if (now.isBefore(v.getStartDate()))
@@ -233,8 +240,8 @@ public class VoucherServiceImpl implements VoucherService {
 			throw new BusinessException(
 					"Đơn tối thiểu " + v.getMinOrderValue().toPlainString() + "đ mới dùng được voucher này");
 
-		// Giảm trên tiền món hay trên phí ship
-		BigDecimal base = v.getApplyTo() == VoucherApplyTo.PRODUCT ? itemsTotal : shippingFee;
+		// Chỉ giảm trên tiền món (PRODUCT)
+		BigDecimal base = itemsTotal;
 
 		BigDecimal discount;
 		if (v.getDiscountType() == DiscountType.PERCENT) {
@@ -297,17 +304,15 @@ public class VoucherServiceImpl implements VoucherService {
 	}
 
 	// ================= GHI NHẬN ĐÃ DÙNG =================
-	/** Bản cũ: chỉ tăng used_count (an toàn khi nhiều người đặt cùng lúc) */
 	@Override
 	@Transactional
 	public void markUsed(Integer voucherId) {
-		findById(voucherId); // báo "không tìm thấy" nếu id sai
+		findById(voucherId);
 		if (voucherRepository.increaseUsedCount(voucherId) == 0) {
 			throw new BusinessException("Voucher đã hết lượt sử dụng hoặc ngừng áp dụng");
 		}
 	}
 
-	/** v2: kiểm tra lượt mỗi người -> ghi lịch sử -> tăng used_count. Gọi SAU CÙNG khi đặt hàng */
 	@Override
 	@Transactional
 	public void markUsed(Integer voucherId, Integer userId, Integer orderId) {
@@ -322,11 +327,9 @@ public class VoucherServiceImpl implements VoucherService {
 		usage.setOrder(orderRepository.getReferenceById(orderId));
 		voucherUsageRepository.save(usage);
 
-		// UPDATE ... WHERE used_count < quantity: nhiều người dùng cùng lúc thì chỉ người còn lượt thành công
 		if (voucherRepository.increaseUsedCount(voucherId) == 0) {
 			throw new BusinessException("Mã " + v.getCode() + " đã hết lượt sử dụng hoặc ngừng áp dụng");
 		}
-		// Còn ít lượt / hết lượt -> báo Admin (chuông)
 		voucherAlertService.checkRemaining(voucherId);
 	}
 
@@ -339,10 +342,9 @@ public class VoucherServiceImpl implements VoucherService {
 		v.setCode(req.getCode().trim().toUpperCase());
 		v.setName(req.getName().trim());
 		v.setBranch(branch);
-		v.setApplyTo(req.getApplyTo());
+		v.setApplyTo(VoucherApplyTo.PRODUCT); // Chỉ áp dụng giảm tiền món
 		v.setDiscountType(req.getDiscountType());
 		v.setDiscountValue(req.getDiscountValue());
-		// max_discount chỉ có ý nghĩa với PERCENT
 		v.setMaxDiscount(req.getDiscountType() == DiscountType.PERCENT ? req.getMaxDiscount() : null);
 		v.setMinOrderValue(req.getMinOrderValue());
 		v.setQuantity(req.getQuantity());

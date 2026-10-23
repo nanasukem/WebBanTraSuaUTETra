@@ -1,6 +1,7 @@
 package vn.utetra.service;
 
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test tuần 1 - chạy trên database UTETra có dữ liệu mẫu.
- * 
+ *
  * @Transactional: mỗi test chạy xong tự rollback, không làm bẩn DB.
  */
 @SpringBootTest
@@ -39,6 +40,25 @@ class Week1ServiceTest {
 	VoucherService voucherService;
 	@Autowired
 	EntityManager em;
+
+	@BeforeEach
+	void chuanHoaDuLieuMau() {
+		// Đồng bộ dữ liệu mẫu trong transaction (tự rollback sau mỗi test) để chạy đúng dù chưa chạy lại UTETra.sql
+		em.createNativeQuery("UPDATE Users SET carrier_id = 1 WHERE carrier_id IS NOT NULL AND carrier_id <> 1").executeUpdate();
+		em.createNativeQuery("UPDATE Orders SET carrier_id = 1 WHERE delivery_type = 'DELIVERY'").executeUpdate();
+		em.createNativeQuery("DELETE FROM Carriers WHERE id <> 1 AND name = N'Ahamove'").executeUpdate();
+		em.createNativeQuery("UPDATE Carriers SET name = N'Shipper UTETra', fee = 15000, per_km_fee = 10000, is_active = 1 WHERE id = 1").executeUpdate();
+		em.createNativeQuery("UPDATE Orders SET shipping_voucher_id = NULL, shipping_discount = 0").executeUpdate();
+		em.createNativeQuery("DELETE FROM VoucherUsages WHERE voucher_id IN (SELECT id FROM Vouchers WHERE apply_to = 'SHIPPING')").executeUpdate();
+		em.createNativeQuery("DELETE FROM Vouchers WHERE apply_to = 'SHIPPING'").executeUpdate();
+		em.createNativeQuery("UPDATE Vouchers SET per_user_limit = 2, used_count = 1 WHERE code = 'VVN15'").executeUpdate();
+		em.createNativeQuery("UPDATE Orders SET product_voucher_id = (SELECT id FROM Vouchers WHERE code = 'VVN15'), "
+				+ "items_total = 148000, product_discount = 15000, shipping_fee = 15000, shipping_discount = 0, total_amount = 148000 WHERE id = 1").executeUpdate();
+		em.createNativeQuery("INSERT INTO VoucherUsages (voucher_id, user_id, order_id) "
+				+ "SELECT v.id, 6, 1 FROM Vouchers v WHERE v.code = 'VVN15' "
+				+ "AND NOT EXISTS (SELECT 1 FROM VoucherUsages u WHERE u.voucher_id = v.id AND u.order_id = 1)").executeUpdate();
+		em.clear();
+	}
 
 	private static BigDecimal vnd(long n) {
 		return BigDecimal.valueOf(n);
@@ -55,12 +75,14 @@ class Week1ServiceTest {
 		assertNotNull(o, "Không đọc được đơn #1");
 		assertEquals(OrderStatus.DELIVERED, o.getStatus());
 		assertEquals(PaymentMethod.VNPAY, o.getPaymentMethod());
-		assertMoney(153000, o.getTotalAmount());
+		assertMoney(148000, o.getTotalAmount());
+		assertMoney(148000, o.getSalesAmount()); // Doanh thu gồm cả phí ship của Shipper UTETra, khớp 100% với tổng tiền đơn
 		assertEquals(2, o.getDetails().size(), "Đơn #1 phải có 2 dòng chi tiết");
 		int soTopping = o.getDetails().stream().mapToInt(d -> d.getToppings().size()).sum();
 		assertEquals(2, soTopping, "Đơn #1 phải có 2 topping");
 		assertNotNull(o.getBranch().getName());
-		assertNotNull(o.getShippingVoucher(), "Đơn #1 có dùng voucher FREESHIP10K");
+		assertNotNull(o.getProductVoucher(), "Đơn #1 có dùng voucher giảm tiền món VVN15");
+		assertNull(o.getShippingVoucher(), "Hệ thống không dùng voucher freeship");
 	}
 
 	// ================= BRANCH SERVICE =================
@@ -131,29 +153,31 @@ class Week1ServiceTest {
 		assertEquals(0, branchService.search(null, BranchStatus.SUSPENDED).size());
 	}
 
-	// ================= VOUCHER SERVICE =================
+	// ================= VOUCHER SERVICE (CHỈ GIẢM TIỀN MÓN PRODUCT) =================
 	@Test
-	void voucher_freeship_giam10k() {
-		assertMoney(10000, voucherService.calculateDiscount("FREESHIP10K", 1, vnd(100000), vnd(15000)));
+	void voucher_giamSoTien_cuaShop() {
+		assertMoney(15000, voucherService.calculateDiscount("VVN15", 1, vnd(100000), vnd(15000)));
 	}
 
 	@Test
-	void voucher_freeship_phiShipNhoHon_khongGiamQua() {
-		assertMoney(8000, voucherService.calculateDiscount("FREESHIP10K", 1, vnd(100000), vnd(8000)));
+	void voucher_giamSoTien_tienMonNhoHonMucGiam_khongGiamQua() {
+		VoucherReq req = voucherReq("JUNITCAP1");
+		req.setDiscountValue(vnd(20000));
+		req.setMinOrderValue(vnd(0));
+		voucherService.create(req);
+		assertMoney(12000, voucherService.calculateDiscount("JUNITCAP1", 1, vnd(12000), vnd(15000)));
 	}
 
 	@Test
 	void voucher_chuaDuDonToiThieu_baoLoi() {
 		assertThrows(BusinessException.class,
-				() -> voucherService.calculateDiscount("FREESHIP10K", 1, vnd(40000), vnd(15000)));
+				() -> voucherService.calculateDiscount("UTETRA20", 1, vnd(40000), vnd(15000)));
 	}
 
 	@Test
 	void voucher_phanTram_vaTranGiam() {
 		assertMoney(20000, voucherService.calculateDiscount("UTETRA20", 2, vnd(100000), vnd(15000))); // 20%
-		assertMoney(30000, voucherService.calculateDiscount("utetra20", 2, vnd(500000), vnd(15000))); // trần 30k, không
-																										// phân biệt hoa
-																										// thường
+		assertMoney(30000, voucherService.calculateDiscount("utetra20", 2, vnd(500000), vnd(15000))); // trần 30k, không phân biệt hoa thường
 	}
 
 	@Test
@@ -173,7 +197,7 @@ class Week1ServiceTest {
 	void voucher_danhSachDungDuoc_theoShop() {
 		List<String> shop1 = voucherService.findUsable(1).stream().map(Voucher::getCode).toList();
 		List<String> shop2 = voucherService.findUsable(2).stream().map(Voucher::getCode).toList();
-		assertTrue(shop1.containsAll(List.of("FREESHIP10K", "UTETRA20", "VVN15")));
+		assertTrue(shop1.containsAll(List.of("UTETRA20", "VVN15")));
 		assertFalse(shop2.contains("VVN15"), "Chi nhánh 2 không được thấy voucher riêng của chi nhánh 1");
 	}
 
@@ -232,13 +256,14 @@ class Week1ServiceTest {
 		Voucher v = voucherService.create(voucherReq("JUNITNEW1"));
 		assertNotNull(v.getId());
 		assertEquals(0, v.getUsedCount());
+		assertEquals(VoucherApplyTo.PRODUCT, v.getApplyTo());
 		assertTrue(voucherService.findAppVouchers().stream().anyMatch(x -> x.getId().equals(v.getId())));
 		assertMoney(10000, voucherService.calculateDiscount("JUNITNEW1", 1, vnd(100000), vnd(15000)));
 	}
 
 	@Test
 	void voucher_trungMa_baoLoi() {
-		assertThrows(BusinessException.class, () -> voucherService.create(voucherReq("FREESHIP10K")));
+		assertThrows(BusinessException.class, () -> voucherService.create(voucherReq("UTETRA20")));
 	}
 
 	@Test

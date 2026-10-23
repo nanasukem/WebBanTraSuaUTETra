@@ -35,28 +35,9 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	// THANH TOÁN VNPAY / MOMO
 	// ==========================
 
-	/**
-	 * Tìm các đơn theo phương thức thanh toán, trạng thái thanh toán, trạng thái
-	 * đơn hàng và thời gian tạo.
-	 *
-	 * Có thể dùng cho cả VNPAY và MOMO.
-	 *
-	 * Ví dụ: - PaymentMethod.VNPAY - PaymentMethod.MOMO
-	 *
-	 * deadline là mốc thời gian bắt đầu của khoảng cần tìm.
-	 */
 	List<Order> findByPaymentMethodAndPaymentStatusAndStatusNotAndCreatedAtAfter(PaymentMethod paymentMethod,
 			PaymentStatus paymentStatus, OrderStatus excludedStatus, LocalDateTime deadline);
 
-	/**
-	 * Tìm các đơn chưa thanh toán được tạo trước thời điểm deadline.
-	 *
-	 * Có thể dùng để tìm đơn VNPAY/MOMO đã quá hạn thanh toán.
-	 *
-	 * Lưu ý: phương thức này loại trừ một trạng thái đơn hàng, nhưng không tự xác
-	 * định đơn có thực sự quá hạn hay không. Service cần truyền deadline phù hợp và
-	 * kiểm tra các điều kiện nghiệp vụ trước khi hủy.
-	 */
 	List<Order> findByPaymentMethodAndPaymentStatusAndStatusNotAndCreatedAtBefore(PaymentMethod paymentMethod,
 			PaymentStatus paymentStatus, OrderStatus excludedStatus, LocalDateTime deadline);
 
@@ -65,9 +46,9 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	// ==========================
 
 	/**
-	 * Chi tiêu của khách để xét hạng: tiền món sau giảm giá (không tính phí ship).
+	 * Chi tiêu của khách để xét hạng: tổng tiền đơn thực nhận (đã gồm phí ship Shipper UTETra, trừ tiền hoàn).
 	 */
-	@Query("SELECT SUM(o.itemsTotal - o.productDiscount - o.memberDiscount - o.refundAmount) FROM Order o " + "WHERE o.user.id = :userId " + "AND o.status = :status "
+	@Query("SELECT SUM(o.totalAmount - o.refundAmount) FROM Order o " + "WHERE o.user.id = :userId " + "AND o.status = :status "
 			+ "AND o.deliveredAt >= :since")
 	BigDecimal sumTotalByUserAndStatusSince(@Param("userId") Integer userId, @Param("status") OrderStatus status,
 			@Param("since") LocalDateTime since);
@@ -114,10 +95,10 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			OrderStatus status, LocalDateTime start, LocalDateTime end);
 
 	/**
-	 * Doanh thu bán hàng của các đơn đã giao trong khoảng thời gian
-	 * = tiền món - mã giảm món - ưu đãi hạng (không gồm phí ship).
+	 * Tổng doanh thu của các đơn đã giao trong khoảng thời gian
+	 * = tổng tiền đơn (đã gồm tiền món sau giảm + phí ship của Shipper UTETra) - tiền đã hoàn.
 	 */
-	@Query("SELECT COALESCE(SUM(o.itemsTotal - o.productDiscount - o.memberDiscount - o.refundAmount), 0) FROM Order o " + "WHERE o.status = :status "
+	@Query("SELECT COALESCE(SUM(o.totalAmount - o.refundAmount), 0) FROM Order o " + "WHERE o.status = :status "
 			+ "AND o.deliveredAt >= :start " + "AND o.deliveredAt < :end")
 	BigDecimal sumRevenueByStatusAndDeliveredAt(@Param("status") OrderStatus status,
 			@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);

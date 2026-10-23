@@ -16,7 +16,8 @@ import java.util.List;
 
 /**
  * Bảng Orders. Mỗi đơn thuộc 1 chi nhánh (khách chọn khi Checkout).
- * totalAmount = itemsTotal - productDiscount - memberDiscount + shippingFee - shippingDiscount
+ * Hệ thống dùng đội ngũ giao hàng nội bộ Shipper UTETra (<= 3km đồng giá 15.000đ, > 3km +10.000đ/km).
+ * totalAmount = itemsTotal - productDiscount - memberDiscount + shippingFee
  */
 @Entity
 @Table(name = "Orders") // "Order" là từ khoá SQL nên bảng tên Orders
@@ -43,7 +44,7 @@ public class Order {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "carrier_id")
-	private Carrier carrier; // null khi đến lấy
+	private Carrier carrier; // Shipper UTETra (null khi đến lấy)
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "shipper_id")
@@ -131,16 +132,13 @@ public class Order {
 	private List<OrderDetail> details = new ArrayList<>();
 
 	/**
-	 * Doanh thu bán hàng của đơn = tiền món - mã giảm món - ưu đãi hạng - tiền đã hoàn (báo vấn đề).
-	 * KHÔNG gồm phí ship (phí ship trả cho đối tác giao hàng, không phải tiền quán bán được).
-	 * Dùng cho báo cáo doanh thu, chi tiêu của khách và xét hạng thành viên.
+	 * Doanh thu của đơn = Tổng tiền đơn (tiền món sau giảm + phí ship của Shipper UTETra) - tiền đã hoàn (khi khách báo vấn đề).
+	 * Dùng thống nhất cho báo cáo doanh thu, chi tiêu của khách và xét hạng thành viên, khớp 100% với tổng tiền đơn hàng.
 	 */
 	public BigDecimal getSalesAmount() {
-		BigDecimal items = itemsTotal == null ? BigDecimal.ZERO : itemsTotal;
-		BigDecimal pd = productDiscount == null ? BigDecimal.ZERO : productDiscount;
-		BigDecimal md = memberDiscount == null ? BigDecimal.ZERO : memberDiscount;
+		BigDecimal total = totalAmount == null ? BigDecimal.ZERO : totalAmount;
 		BigDecimal rf = refundAmount == null ? BigDecimal.ZERO : refundAmount; // tiền đã hoàn khi khách báo vấn đề
-		return items.subtract(pd).subtract(md).subtract(rf).max(BigDecimal.ZERO);
+		return total.subtract(rf).max(BigDecimal.ZERO);
 	}
 
 	/** Thêm 1 dòng chi tiết và gắn 2 chiều */

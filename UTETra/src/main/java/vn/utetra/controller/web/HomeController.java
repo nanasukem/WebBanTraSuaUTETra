@@ -1,4 +1,3 @@
-
 package vn.utetra.controller.web;
 
 import jakarta.servlet.http.HttpSession;
@@ -75,13 +74,6 @@ public class HomeController {
 		this.viewedProductService = viewedProductService;
 	}
 
-	/**
-	 * Trang chủ "/" = trang TRƯNG BÀY (món nổi bật); toàn bộ món nằm ở trang Thực đơn (/menu).
-	 * - Guest         -> home.html: sản phẩm bán trên 10, xếp từ nhiều đến ít, 20 món / trang (?page=)
-	 * - USER          -> user/home.html: đơn hàng theo trạng thái, danh mục, 4 khối 20 món nhất (phân trang)
-	 * - MANAGER/ADMIN -> user/home.html chế độ CHỈ XEM (không có đơn hàng, không có nút đặt món)
-	 * Đăng nhập xong đi qua /login-success (Manager/Admin vào trang quản lý, USER về đây).
-	 */
 	@GetMapping("/")
 	public String index(@RequestParam(defaultValue = "0") int page, HttpSession session, Model model) {
 
@@ -106,6 +98,10 @@ public class HomeController {
 					roleName = user.getRole().getName().trim();
 				}
 
+				if ("SHIPPER".equalsIgnoreCase(roleName)) {
+					return "redirect:/shipper/orders";
+				}
+
 				if ("USER".equalsIgnoreCase(roleName) || "MANAGER".equalsIgnoreCase(roleName)
 						|| "ADMIN".equalsIgnoreCase(roleName)) {
 					return userHome(user, roleName.toUpperCase(), model);
@@ -124,7 +120,7 @@ public class HomeController {
 
 	/**
 	 * Đăng nhập thành công (SecurityConfiguration.defaultSuccessUrl) -> lưu session.user rồi chia theo vai trò:
-	 * ADMIN -> /admin/dashboard, MANAGER -> /manager/dashboard, còn lại -> trang chủ.
+	 * ADMIN -> /admin/dashboard, MANAGER -> /manager/dashboard, SHIPPER -> /shipper/orders, còn lại -> trang chủ.
 	 */
 	@GetMapping("/login-success")
 	public String loginSuccess(HttpSession session) {
@@ -144,6 +140,7 @@ public class HomeController {
 		return switch (role) {
 		case "ADMIN" -> "redirect:/admin/dashboard";
 		case "MANAGER" -> "redirect:/manager/dashboard";
+		case "SHIPPER" -> "redirect:/shipper/orders";
 		default -> "redirect:/";
 		};
 	}
@@ -155,7 +152,6 @@ public class HomeController {
 				.findBySoldCountGreaterThanAndIsAvailableTrueOrderBySoldCountDescIdAsc(GUEST_MIN_SOLD,
 						PageRequest.of(page, PAGE_SIZE));
 
-		// Trang vượt quá trang cuối -> về trang cuối
 		if (productPage.getTotalPages() > 0 && page >= productPage.getTotalPages()) {
 			page = productPage.getTotalPages() - 1;
 			productPage = productRepository.findBySoldCountGreaterThanAndIsAvailableTrueOrderBySoldCountDescIdAsc(
@@ -180,7 +176,6 @@ public class HomeController {
 		model.addAttribute("me", user);
 		model.addAttribute("role", role);
 
-		// USER: lịch sử mua hàng theo trạng thái (đơn mới, đã xác nhận, đang giao, đã giao, huỷ, trả hàng)
 		if (isBuyer) {
 			model.addAttribute("orderTabs", OrderTab.values());
 			try {
@@ -189,16 +184,12 @@ public class HomeController {
 				logger.error("Không đếm được đơn của user {}", user.getId(), e);
 				model.addAttribute("orderCounts", Map.of());
 			}
-			// Nhắc đánh giá: số đơn đã giao còn món chưa đánh giá (còn hạn 30 ngày)
 			model.addAttribute("reviewReminder", reviewService.pendingOrderCount(user.getId()));
-			// Sản phẩm đã xem gần đây (8 món)
 			model.addAttribute("recentViewed", viewedProductService.recent(user.getId(), 8));
 		}
 
-		// Danh mục -> trang sản phẩm theo danh mục
 		model.addAttribute("categories", categoryCards());
 
-		// 4 khối 20 món nhất, trang đầu (các trang sau tải bằng /menu/highlight/{type}?page=)
 		model.addAttribute("newestPage", productHighlightService.page("newest", 0, HIGHLIGHT_PAGE_SIZE));
 		model.addAttribute("soldPage", productHighlightService.page("sold", 0, HIGHLIGHT_PAGE_SIZE));
 		model.addAttribute("ratingPage", productHighlightService.page("rating", 0, HIGHLIGHT_PAGE_SIZE));
@@ -210,10 +201,6 @@ public class HomeController {
 		return "user/home";
 	}
 
-	/**
-	 * Phân trang (lazy loading) cho 4 khối 20 món nhất trên trang chủ User:
-	 * trả về đoạn HTML 1 trang, JS trên trang chủ thay vào khối. Vd /menu/highlight/sold?page=1
-	 */
 	@GetMapping("/menu/highlight/{type}")
 	public String highlightPage(@PathVariable("type") String type,
 			@RequestParam(name = "page", defaultValue = "0") int page, HttpSession session, Model model) {
@@ -222,9 +209,6 @@ public class HomeController {
 		return "fragments/product-card :: hlBody";
 	}
 
-	/**
-	 * Trang sản phẩm theo danh mục (ai cũng xem được): /category/1?sortBy=sold&page=0
-	 */
 	@GetMapping("/category/{id}")
 	public String category(@PathVariable("id") Integer id,
 			@RequestParam(name = "sortBy", defaultValue = "sold") String sortBy,
@@ -261,7 +245,6 @@ public class HomeController {
 		return "category";
 	}
 
-	/** Danh mục kèm số món đang bán */
 	private List<CategoryCardRes> categoryCards() {
 		Map<Integer, Long> counts = new HashMap<>();
 		try {
@@ -279,12 +262,10 @@ public class HomeController {
 				.toList();
 	}
 
-	/** buy = USER chọn món | guest = "+" dẫn tới đăng nhập | view = Manager/Admin chỉ xem */
 	private static String cardModeOf(String role) {
 		return "USER".equals(role) ? "buy" : (role.isEmpty() ? "guest" : "view");
 	}
 
-	/** Vai trò của người đang xem (lấy từ session do "/" lưu lúc đăng nhập); chưa đăng nhập = "" */
 	private String roleOf(HttpSession session) {
 		Object u = session.getAttribute("user");
 		if (!(u instanceof User user) || user.getRole() == null || user.getRole().getName() == null) {
@@ -293,15 +274,6 @@ public class HomeController {
 		return user.getRole().getName().trim().toUpperCase();
 	}
 
-	/**
-	 * Trang Thực đơn - AI CŨNG XEM ĐƯỢC: TOÀN BỘ món đang bán, xếp theo từng danh mục như tờ menu ở quán
-	 * (thanh danh mục bấm để cuộn tới, tìm kiếm, sắp xếp trong từng danh mục).
-	 * - USER: bấm "+" để chọn món, thêm vào giỏ
-	 * - Chưa đăng nhập: bấm "+" -> sang trang đăng nhập
-	 * - MANAGER / ADMIN: chỉ xem, không có nút mua
-	 * Ví dụ: /menu   /menu?keyword=tra   /menu?sortBy=price_asc
-	 * (link cũ /menu?categoryId=2 -> chuyển sang trang danh mục /category/2)
-	 */
 	@GetMapping("/menu")
 	public String menu(@RequestParam(name = "keyword", required = false) String keyword,
 			@RequestParam(name = "categoryId", required = false) Integer categoryId,
@@ -316,7 +288,6 @@ public class HomeController {
 
 		keyword = keyword == null ? "" : keyword.trim();
 
-		// default = thứ tự trong menu (theo mã món); còn lại giống trang danh mục
 		if (!List.of("default", "newest", "sold", "price_asc", "price_desc").contains(sortBy)) {
 			sortBy = "default";
 		}
@@ -328,7 +299,6 @@ public class HomeController {
 		}
 		List<ProductCardRes> cards = productHighlightService.toCards(products);
 
-		// Gom món theo danh mục, giữ thứ tự danh mục và thứ tự đã sắp xếp
 		Map<Integer, List<ProductCardRes>> byCategory = new LinkedHashMap<>();
 		for (int i = 0; i < products.size() && i < cards.size(); i++) {
 			Category c = products.get(i).getCategory();
@@ -354,3 +324,4 @@ public class HomeController {
 		return "menu";
 	}
 }
+

@@ -44,12 +44,12 @@ import vn.utetra.repository.UserRepository;
  * đánh giá + bình luận sản phẩm đã mua, cập nhật thông tin cá nhân, đổi mật khẩu,
  * khuyến mãi của chi nhánh (Manager chỉ xem, Admin tạo).
  *
- * Mỗi test tự rollback. Chạy lại UTETra.sql trước khi chạy để dữ liệu mẫu đúng.
+ * Mỗi test tự rollback.
  * Không test phần tải file thật lên Cloudinary (chỉ test các trường hợp file bị từ chối TRƯỚC khi tải).
  *
  * Dữ liệu mẫu dùng ở đây:
  * - user1 (id 6, mật khẩu 123456): giỏ 1 Bạc xỉu M = 34.000; thích món 1, 7; đã xem món 1, 2, 5
- *   đơn #1 ĐÃ GIAO: ly #1 = món 1 (ĐÃ đánh giá), ly #2 = món 2 (CHƯA đánh giá)
+ *   đơn #1 ĐÃ GIAO: ly #1 = món 1 (ĐÃ đánh giá), ly #2 = món 2 (CHƯA đánh giá), dùng mã giảm món VVN15 (15.000đ)
  *   đơn #2 CHỜ XÁC NHẬN: ly #3 = món 5
  * - user2 (id 7)
  * - 40 món, mỗi món có size S (+0), M (+5.000), L (+10.000). Món 1 = Trà sữa trân châu đường đen 35.000, danh mục Trà sữa
@@ -78,10 +78,24 @@ class Week3ServiceTest {
 	@Autowired vn.utetra.repository.MemberTierRepository memberTierRepository;
 	@Autowired jakarta.persistence.EntityManager em;
 
-	/** Giờ mở cửa mẫu 7:00 - 22:00: test chạy giờ nào cũng được -> cho chi nhánh mở cả ngày (rollback sau mỗi test) */
+	/** Giờ mở cửa mẫu 7:00 - 22:00 & chuẩn hoá dữ liệu mẫu (rollback sau mỗi test) */
 	@org.junit.jupiter.api.BeforeEach
 	void moCuaCaNgay() {
 		em.createNativeQuery("UPDATE Branches SET open_time = '00:00', close_time = '00:00'").executeUpdate();
+		em.createNativeQuery("UPDATE Users SET carrier_id = 1 WHERE carrier_id IS NOT NULL AND carrier_id <> 1").executeUpdate();
+		em.createNativeQuery("UPDATE Orders SET carrier_id = 1 WHERE delivery_type = 'DELIVERY'").executeUpdate();
+		em.createNativeQuery("DELETE FROM Carriers WHERE id <> 1 AND name = N'Ahamove'").executeUpdate();
+		em.createNativeQuery("UPDATE Carriers SET name = N'Shipper UTETra', fee = 15000, per_km_fee = 10000, is_active = 1 WHERE id = 1").executeUpdate();
+		em.createNativeQuery("UPDATE Orders SET shipping_voucher_id = NULL, shipping_discount = 0").executeUpdate();
+		em.createNativeQuery("DELETE FROM VoucherUsages WHERE voucher_id IN (SELECT id FROM Vouchers WHERE apply_to = 'SHIPPING')").executeUpdate();
+		em.createNativeQuery("DELETE FROM Vouchers WHERE apply_to = 'SHIPPING'").executeUpdate();
+		em.createNativeQuery("UPDATE Vouchers SET per_user_limit = 2, used_count = 1 WHERE code = 'VVN15'").executeUpdate();
+		em.createNativeQuery("UPDATE Orders SET product_voucher_id = (SELECT id FROM Vouchers WHERE code = 'VVN15'), "
+				+ "items_total = 148000, product_discount = 15000, shipping_fee = 15000, shipping_discount = 0, total_amount = 148000 WHERE id = 1").executeUpdate();
+		em.createNativeQuery("INSERT INTO VoucherUsages (voucher_id, user_id, order_id) "
+				+ "SELECT v.id, 6, 1 FROM Vouchers v WHERE v.code = 'VVN15' "
+				+ "AND NOT EXISTS (SELECT 1 FROM VoucherUsages u WHERE u.voucher_id = v.id AND u.order_id = 1)").executeUpdate();
+		em.clear();
 	}
 
 	// ======================= 20 SẢN PHẨM NHẤT (PHÂN TRANG) =======================
@@ -389,7 +403,7 @@ class Week3ServiceTest {
 		assertMoney(20000, memberService.calculateDiscount(tiers.get(2), trieu));  // Vàng tối đa 20.000
 		assertMoney(8000, memberService.calculateDiscount(tiers.get(3), tram));    // Kim cương 8%
 		assertMoney(30000, memberService.calculateDiscount(tiers.get(3), trieu));  // Kim cương tối đa 30.000
-		assertEquals("Thành viên", memberService.getTierInfo(USER1).tierName(), "user1 mới chi 153.000đ");
+		assertEquals("Thành viên", memberService.getTierInfo(USER1).tierName(), "user1 mới chi 148.000đ");
 	}
 
 	/** user1 đến lấy ở chi nhánh 1 (giỏ mẫu: 1 Bạc xỉu M = 34.000) */
@@ -541,11 +555,11 @@ class Week3ServiceTest {
 		assertTrue(cn1.stream().anyMatch(v -> v.code().equals("UTETRA20") && v.chainWide()));
 		assertTrue(cn2.stream().anyMatch(v -> v.code().equals("UTETRA20") && v.chainWide()));
 
-		// Đơn #1 (chi nhánh 1) dùng FREESHIP10K giảm 10.000đ phí ship
-		ManagerVoucherRes fs = cn1.stream().filter(v -> v.code().equals("FREESHIP10K")).findFirst().orElseThrow();
-		assertTrue(fs.usedAtBranch() >= 1);
-		assertTrue(fs.discountAtBranch().compareTo(new java.math.BigDecimal("10000")) >= 0);
-		assertEquals("Giảm phí ship", fs.applyToLabel());
+		// Đơn #1 (chi nhánh 1) dùng VVN15 giảm 15.000đ tiền món
+		assertTrue(vvn15.usedAtBranch() >= 1);
+		assertTrue(vvn15.discountAtBranch().compareTo(new java.math.BigDecimal("15000")) >= 0);
+		assertEquals("Giảm tiền món", vvn15.applyToLabel());
+		assertTrue(cn1.stream().noneMatch(v -> v.code().equals("FREESHIP10K")), "Đã bỏ voucher freeship");
 	}
 
 	@Test

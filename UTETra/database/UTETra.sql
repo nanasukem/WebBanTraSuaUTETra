@@ -505,8 +505,8 @@ GO
 INSERT INTO Roles (name) VALUES ('ADMIN'), ('MANAGER'), ('SHIPPER'), ('USER');
 -- 1 ADMIN, 2 MANAGER, 3 SHIPPER, 4 USER
 
--- Trong 6 km Shipper UTETra rẻ hơn; xa hơn thì Ahamove rẻ hơn
-INSERT INTO Carriers (name, fee, per_km_fee) VALUES (N'Shipper UTETra', 15000, 5000), (N'Ahamove', 18000, 3000);
+-- Đội ngũ giao hàng nội bộ Shipper UTETra: <= 3 km đồng giá 15.000đ, trên 3 km cộng 10.000đ/km
+INSERT INTO Carriers (name, fee, per_km_fee) VALUES (N'Shipper UTETra', 15000, 10000);
 
 INSERT INTO Users (username, password, full_name, email, phone, role_id, carrier_id, is_verified) VALUES
  ('admin',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Quản trị viên',      'admin@utetra.vn',    '0900000001', 1, NULL, 1),
@@ -601,16 +601,14 @@ CROSS JOIN (VALUES ('S', 0), ('M', 5000), ('L', 10000)) AS s(size, extra);
 INSERT INTO Toppings (name, price) VALUES
  (N'Trân châu đen', 5000), (N'Thạch phô mai', 8000), (N'Pudding trứng', 7000), (N'Kem cheese', 10000);
 
--- Voucher: id 1 FREESHIP10K, 2 UTETRA20, 3 VVN15, 4 CHAOBANMOI, 5 FREESHIPMOI, 6 VANG30K, 7 MOMO15K
+-- Voucher (chỉ áp dụng giảm tiền món PRODUCT): id 1 UTETRA20, 2 VVN15, 3 CHAOBANMOI, 4 VANG30K, 5 MOMO15K
 INSERT INTO Vouchers (code, name, branch_id, apply_to, discount_type, discount_value, max_discount, min_order_value,
                       quantity, used_count, start_date, end_date, per_user_limit, audience, min_tier_id, payment_method) VALUES
  -- Mã thường (có giới hạn mỗi người)
- ('FREESHIP10K', N'Giảm 10K phí ship toàn app',                        NULL, 'SHIPPING', 'AMOUNT',  10000, NULL,  50000,  100,    1, '2026-01-01', '2026-12-31', 3, 'ALL',      NULL, NULL),
  ('UTETRA20',    N'Giảm 20% tối đa 30K toàn app',                      NULL, 'PRODUCT',  'PERCENT', 20,    30000, 80000,  50,     0, '2026-01-01', '2026-12-31', 1, 'ALL',      NULL, NULL),
- ('VVN15',       N'Shop Võ Văn Ngân giảm 15K',                         1,    'PRODUCT',  'AMOUNT',  15000, NULL,  60000,  30,     0, '2026-01-01', '2026-12-31', 1, 'ALL',      NULL, NULL),
+ ('VVN15',       N'Shop Võ Văn Ngân giảm 15K',                         1,    'PRODUCT',  'AMOUNT',  15000, NULL,  60000,  30,     1, '2026-01-01', '2026-12-31', 1, 'ALL',      NULL, NULL),
  -- Ưu đãi tài khoản mới: chỉ đơn đầu tiên, mỗi người 1 lần
  ('CHAOBANMOI',  N'Bạn mới: giảm 30% tối đa 25K cho đơn đầu tiên',     NULL, 'PRODUCT',  'PERCENT', 30,    25000, 0,      100000, 0, '2026-01-01', '2027-12-31', 1, 'NEW_USER', NULL, NULL),
- ('FREESHIPMOI', N'Bạn mới: miễn phí ship tối đa 15K cho đơn đầu tiên', NULL, 'SHIPPING', 'AMOUNT',  15000, NULL,  0,      100000, 0, '2026-01-01', '2027-12-31', 1, 'NEW_USER', NULL, NULL),
  -- Theo hạng: từ hạng Vàng (id 3) trở lên, mỗi người 2 lần
  ('VANG30K',     N'Hạng Vàng trở lên: giảm 30K cho đơn từ 150K',       NULL, 'PRODUCT',  'AMOUNT',  30000, NULL,  150000, 500,    0, '2026-01-01', '2027-12-31', 2, 'MIN_TIER', 3,    NULL),
  -- Theo phương thức thanh toán: chỉ khi trả bằng MoMo, mỗi người 2 lần
@@ -624,13 +622,12 @@ INSERT INTO CartItemToppings (cart_item_id, topping_id) VALUES (2, 4);
 INSERT INTO Favorites (user_id, product_id) VALUES (6, 1), (6, 7), (7, 1);
 INSERT INTO ViewedProducts (user_id, product_id) VALUES (6, 1), (6, 2), (6, 5), (7, 7);
 
--- Đơn 1 (đã giao, giao tận nơi): (35000+10000+5000+8000)*1 + (40000+5000)*2 = 148000
---                  + ship 15000 - FREESHIP10K 10000 = 153000
-INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, shipping_voucher_id, receiver_name, receiver_phone, delivery_address,
+-- Đơn 1 (đã giao, giao tận nơi bởi Shipper UTETra): tiền món 148000 - VVN15 15000 + ship 15000 = 148000
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, product_voucher_id, receiver_name, receiver_phone, delivery_address,
                     items_total, product_discount, member_discount, member_tier_name, shipping_fee, shipping_discount, total_amount,
                     status, payment_method, payment_status, delivered_at)
-VALUES (6, 1, 'DELIVERY', 1, 5, 1, N'Trần Thị Khách', '0900000006', N'KTX Khu B, Dĩ An, Bình Dương',
-        148000, 0, 0, N'Thành viên', 15000, 10000, 153000, 'DELIVERED', 'VNPAY', 'PAID', SYSDATETIME());
+VALUES (6, 1, 'DELIVERY', 1, 5, 2, N'Trần Thị Khách', '0900000006', N'KTX Khu B, Dĩ An, Bình Dương',
+        148000, 15000, 0, N'Thành viên', 15000, 0, 148000, 'DELIVERED', 'VNPAY', 'PAID', SYSDATETIME());
 
 -- Đơn 2 (mới đặt, giao tận nơi): (30000+5000)*1 + ship 15000 = 50000
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, receiver_name, receiver_phone, delivery_address,
@@ -645,11 +642,11 @@ INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, qu
 
 INSERT INTO OrderDetailToppings (order_detail_id, topping_id, price) VALUES (1, 1, 5000), (1, 2, 8000);
 
--- Đơn #1 của user1 đã dùng FREESHIP10K -> ghi lịch sử dùng mã
-INSERT INTO VoucherUsages (voucher_id, user_id, order_id) VALUES (1, 6, 1);
+-- Đơn #1 của user1 đã dùng VVN15 (id 2) -> ghi lịch sử dùng mã
+INSERT INTO VoucherUsages (voucher_id, user_id, order_id) VALUES (2, 6, 1);
 
 INSERT INTO Payments (order_id, method, transaction_code, amount, status, paid_at)
-VALUES (1, 'VNPAY', 'VNP14567890', 153000, 'SUCCESS', SYSDATETIME());
+VALUES (1, 'VNPAY', 'VNP14567890', 148000, 'SUCCESS', SYSDATETIME());
 
 INSERT INTO Reviews (user_id, product_id, order_detail_id, rating, content) VALUES
  (6, 1, 1, 5, N'Trà sữa trân châu đường đen rất ngon, trân châu dẻo, vị ngọt vừa phải, giao hàng nhanh, sẽ ủng hộ quán dài dài.');

@@ -405,7 +405,7 @@
 					<span class="text-muted">· cách chi nhánh ${String(p.deliveryDistanceKm).replace('.', ',')} km</span></div>
 				<b class="text-nowrap">${fmt(p.shippingFee)}</b>
 			</div>
-			<div class="text-muted mt-1">Phí giao tính theo khoảng cách từ chi nhánh tới bạn (5 km đầu + mỗi km thêm), giao tối đa 15 km.</div>`;
+			<div class="text-muted mt-1">Phí giao hàng cố định (Shipper UTETra): đồng giá 15.000đ từ 3 km trở xuống, trên 3 km cộng 10.000đ/km (tối đa 15 km).</div>`;
 	}
 
 	function renderPreview(p) {
@@ -436,7 +436,7 @@
 		$('sum-member-label').textContent = 'Ưu đãi hạng ' + (p.memberTierName || '');
 		$('row-shipping').classList.toggle('d-none', state.deliveryType !== 'DELIVERY');
 		$('sum-shipping-fee').textContent = fmt(p.shippingFee);
-		setDiscountRow('row-shipping-discount', 'sum-shipping-discount', p.shippingDiscount);
+		
 		$('sum-total').textContent = fmt(p.totalAmount);
 
 		const saved = Number(p.productDiscount) + Number(p.memberDiscount) + Number(p.shippingDiscount);

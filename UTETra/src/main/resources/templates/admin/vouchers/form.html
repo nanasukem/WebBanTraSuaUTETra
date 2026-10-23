@@ -59,25 +59,24 @@
 							</div>
 
 							<div class="col-md-6">
-								<label for="branchId" class="form-label"> Áp dụng tại </label>
-								<select id="branchId" th:field="*{branchId}" class="form-select">
+								<label for="branchId" class="form-label"> Áp dụng tại </label> <select
+									id="branchId" th:field="*{branchId}" class="form-select">
 									<option value="">Toàn chuỗi (mọi chi nhánh)</option>
 									<option th:each="b : ${branches}" th:value="${b.id}"
-										th:text="${b.name} + (${b.status != null and b.status.name() == 'SUSPENDED'} ? ' (tạm ngưng)' : '')">Chi nhánh</option>
+										th:text="${b.name} + (${b.status != null and b.status.name() == 'SUSPENDED'} ? ' (tạm ngưng)' : '')">Chi
+										nhánh</option>
 								</select>
-								<div class="form-text">Chọn 1 chi nhánh nếu là khuyến mãi riêng (khai trương, giờ vắng khách...).</div>
+								<div class="form-text">Chọn 1 chi nhánh nếu là khuyến mãi
+									riêng (khai trương, giờ vắng khách...).</div>
 							</div>
 
 							<div class="col-md-6">
-								<label for="applyTo" class="form-label"> Phạm vi giảm
-									giá <span class="text-danger">*</span>
-								</label> <select id="applyTo" th:field="*{applyTo}" class="form-select"
-									required>
-									<option value="">-- Chọn phạm vi --</option>
-									<option th:each="item : ${applyToOptions}" th:value="${item}"
-										th:text="${item}"></option>
-								</select>
-								<div class="text-danger small" th:errors="*{applyTo}"></div>
+								<label class="form-label"> Phạm vi giảm giá </label> <input
+									type="hidden" name="applyTo" value="PRODUCT"> <input
+									type="text" class="form-control bg-light"
+									value="Giảm tiền món (PRODUCT)" readonly>
+								<div class="form-text">Voucher chỉ áp dụng giảm giá trên
+									tiền đồ uống.</div>
 							</div>
 
 							<div class="col-md-6">
@@ -149,8 +148,10 @@
 
 							<div class="col-12">
 								<div class="alert alert-info mb-0">
-									<i class="bi bi-info-circle me-1"></i> Chọn <b>Toàn chuỗi</b> để mọi chi nhánh dùng được, hoặc chọn 1 chi nhánh cho khuyến mãi riêng.
-									Quản lý chi nhánh chỉ xem được mã áp dụng tại chi nhánh mình, không tạo / sửa.
+									<i class="bi bi-info-circle me-1"></i> Chọn <b>Toàn chuỗi</b>
+									để mọi chi nhánh dùng được, hoặc chọn 1 chi nhánh cho khuyến
+									mãi riêng. Quản lý chi nhánh chỉ xem được mã áp dụng tại chi
+									nhánh mình, không tạo / sửa.
 								</div>
 							</div>
 
@@ -222,3 +223,4 @@
 	</th:block>
 </body>
 </html>
+

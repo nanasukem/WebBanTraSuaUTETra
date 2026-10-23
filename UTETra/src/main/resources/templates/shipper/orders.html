@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shipper UTETra - Giao hàng</title>
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
+	rel="stylesheet">
+<style>
+body {
+	background: #f5f8f6;
+	color: #26352d;
+}
+
+.shipper-header {
+	background: #198754;
+	color: #fff;
+	padding: 14px 24px;
+}
+
+.shipper-card {
+	border: 0;
+	border-radius: 14px;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, .05);
+}
+
+.nav-pills .nav-link {
+	color: #26352d;
+	background: #fff;
+	border: 1px solid #dee2e6;
+	border-radius: 999px;
+	font-weight: 600;
+}
+
+.nav-pills .nav-link.active {
+	background: #198754;
+	color: #fff;
+	border-color: #198754;
+}
+</style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+	<header
+		class="shipper-header d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm">
+		<div class="d-flex align-items-center gap-2">
+			<i class="bi bi-scooter fs-3 text-warning"></i>
+			<div>
+				<div class="fw-bold fs-5">Shipper UTETra</div>
+				<div class="small opacity-75">
+					Đội giao hàng nội bộ · <span
+						th:text="${shipper.fullName != null ? shipper.fullName : shipper.username}">Shipper</span>
+				</div>
+			</div>
+		</div>
+		<div class="d-flex align-items-center gap-2">
+			<a th:href="@{/shipper/orders(tab=${currentTab})}"
+				class="btn btn-sm btn-light fw-semibold"> <i
+				class="bi bi-arrow-clockwise me-1"></i>Làm mới
+			</a>
+			<form th:action="@{/auth/logout}" method="post" class="m-0">
+				<button type="submit" class="btn btn-sm btn-outline-light">
+					<i class="bi bi-box-arrow-right me-1"></i>Đăng xuất
+				</button>
+			</form>
+		</div>
+	</header>
+
+	<main class="container py-4 flex-grow-1" style="max-width: 960px;">
+
+		<div th:if="${successMessage}"
+			class="alert alert-success alert-dismissible fade show">
+			<i class="bi bi-check-circle-fill me-1"></i><span
+				th:text="${successMessage}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+		<div th:if="${errorMessage}"
+			class="alert alert-danger alert-dismissible fade show">
+			<i class="bi bi-exclamation-triangle-fill me-1"></i><span
+				th:text="${errorMessage}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+
+		<ul class="nav nav-pills gap-2 mb-4">
+			<li class="nav-item"><a class="nav-link"
+				th:classappend="${currentTab == 'READY'} ? 'active'"
+				th:href="@{/shipper/orders(tab='READY')}"> <i
+					class="bi bi-box-seam me-1"></i>Chờ lấy tại quán <span
+					class="badge rounded-pill ms-1"
+					th:classappend="${currentTab == 'READY'} ? 'text-bg-light' : 'text-bg-warning'"
+					th:text="${readyCount}">0</span>
+			</a></li>
+			<li class="nav-item"><a class="nav-link"
+				th:classappend="${currentTab == 'SHIPPING'} ? 'active'"
+				th:href="@{/shipper/orders(tab='SHIPPING')}"> <i
+					class="bi bi-truck me-1"></i>Đang giao <span
+					class="badge rounded-pill ms-1"
+					th:classappend="${currentTab == 'SHIPPING'} ? 'text-bg-light' : 'text-bg-primary'"
+					th:text="${shippingCount}">0</span>
+			</a></li>
+			<li class="nav-item"><a class="nav-link"
+				th:classappend="${currentTab == 'DELIVERED'} ? 'active'"
+				th:href="@{/shipper/orders(tab='DELIVERED')}"> <i
+					class="bi bi-check2-circle me-1"></i>Đã giao xong <span
+					class="badge rounded-pill ms-1"
+					th:classappend="${currentTab == 'DELIVERED'} ? 'text-bg-light' : 'text-bg-success'"
+					th:text="${deliveredCount}">0</span>
+			</a></li>
+		</ul>
+
+		<div th:if="${#lists.isEmpty(orders)}"
+			class="card shipper-card text-center py-5 text-muted">
+			<div class="card-body">
+				<i class="bi bi-inbox display-4 opacity-50 d-block mb-2"></i>
+				<div>Chưa có đơn hàng nào trong mục này.</div>
+			</div>
+		</div>
+
+		<div class="card shipper-card mb-3" th:each="o : ${orders}">
+			<div class="card-body">
+				<div
+					class="d-flex justify-content-between align-items-start flex-wrap gap-2 pb-2 border-bottom">
+					<div>
+						<span class="fw-bold fs-5 text-success"
+							th:text="${'Đơn #' + o.id}">Đơn #1</span> <span
+							class="badge ms-1"
+							th:classappend="${T(vn.utetra.service.impl.OrderFlowServiceImpl).badgeClass(o.status)}"
+							th:text="${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, false)}">Trạng
+							thái</span>
+						<div class="small text-muted mt-1">
+							<i class="bi bi-shop me-1"></i>Lấy hàng tại: <strong
+								th:text="${o.branch != null ? o.branch.name : 'Chi nhánh'}"></strong>
+							<span th:if="${o.branch != null and o.branch.address != null}"
+								th:text="${' (' + o.branch.address + ')'}"></span>
+						</div>
+					</div>
+					<div class="text-end">
+						<div class="small text-muted">
+							Tổng đơn (gồm phí ship <span
+								th:text="${#numbers.formatDecimal(o.shippingFee, 0, 'POINT', 0, 'COMMA') + 'đ'}"></span>)
+						</div>
+						<div class="fs-5 fw-bold text-danger"
+							th:text="${#numbers.formatDecimal(o.totalAmount, 0, 'POINT', 0, 'COMMA') + ' đ'}">0
+							đ</div>
+						<span class="badge"
+							th:classappend="${o.paymentMethod.name() == 'COD'} ? 'text-bg-warning' : 'text-bg-success'"
+							th:text="${o.paymentMethod.name() == 'COD'} ? ('Thu tiền mặt COD: ' + ${#numbers.formatDecimal(o.totalAmount, 0, 'POINT', 0, 'COMMA')} + 'đ') : ('Đã trả online (' + ${o.paymentMethod.name()} + ') - Không thu tiền')"></span>
+					</div>
+				</div>
+
+				<div class="row g-3 py-2">
+					<div class="col-md-7">
+						<div class="small text-muted mb-1">Giao đến khách hàng</div>
+						<div class="fw-semibold">
+							<i class="bi bi-person-fill text-success me-1"></i><span
+								th:text="${o.receiverName}"></span> · <a
+								th:href="${'tel:' + o.receiverPhone}"
+								class="text-decoration-none fw-bold"
+								th:text="${o.receiverPhone}"></a>
+						</div>
+						<div class="small mt-1">
+							<i class="bi bi-geo-alt-fill text-danger me-1"></i><span
+								th:text="${o.deliveryAddress}"></span>
+						</div>
+						<div class="small fst-italic text-secondary mt-1"
+							th:if="${o.deliveryNote != null and !o.deliveryNote.isBlank()}">
+							<i class="bi bi-sticky me-1"></i>Ghi chú địa chỉ: <span
+								th:text="${o.deliveryNote}"></span>
+						</div>
+						<div class="small text-danger mt-1"
+							th:if="${o.note != null and !o.note.isBlank()}">
+							<i class="bi bi-chat-left-text me-1"></i>Ghi chú đơn: <span
+								th:text="${o.note}"></span>
+						</div>
+					</div>
+					<div class="col-md-5">
+						<div class="small text-muted mb-1">
+							Món trong đơn (<span th:text="${#lists.size(o.details)}"></span>
+							dòng)
+						</div>
+						<ul class="small ps-3 mb-0">
+							<li th:each="d : ${o.details}"><b
+								th:text="${d.quantity + '×'}"></b> <span
+								th:text="${d.product.name}"></span> (<span
+								th:text="${'Size ' + d.size}"></span>)</li>
+						</ul>
+					</div>
+				</div>
+
+				<div
+					class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
+					<div class="small text-muted">
+						<span th:if="${o.deliveredAt != null}">Đã giao lúc <b
+							th:text="${#temporals.format(o.deliveredAt, 'HH:mm dd/MM/yyyy')}"></b></span>
+						<span th:if="${o.deliveredAt == null and o.createdAt != null}">Đặt
+							lúc <span
+							th:text="${#temporals.format(o.createdAt, 'HH:mm dd/MM/yyyy')}"></span>
+						</span>
+					</div>
+					<div class="d-flex gap-2">
+						<form th:if="${o.status.name() == 'READY'}"
+							th:action="@{/shipper/orders/{id}/status(id=${o.id})}"
+							method="post">
+							<input type="hidden" name="status" value="PICKED_UP">
+							<button type="submit" class="btn btn-primary fw-semibold">
+								<i class="bi bi-box-arrow-up me-1"></i>Nhận đơn &amp; Đã lấy
+								hàng
+							</button>
+						</form>
+						<form th:if="${o.status.name() == 'PICKED_UP'}"
+							th:action="@{/shipper/orders/{id}/status(id=${o.id})}"
+							method="post">
+							<input type="hidden" name="status" value="DELIVERING">
+							<button type="submit" class="btn btn-warning fw-semibold">
+								<i class="bi bi-scooter me-1"></i>Bắt đầu đi giao
+							</button>
+						</form>
+						<form th:if="${o.status.name() == 'DELIVERING'}"
+							th:action="@{/shipper/orders/{id}/status(id=${o.id})}"
+							method="post"
+							onsubmit="return confirm('Xác nhận đã giao đơn hàng này cho khách?');">
+							<input type="hidden" name="status" value="DELIVERED">
+							<button type="submit" class="btn btn-success fw-semibold">
+								<i class="bi bi-check-circle-fill me-1"></i>Đã giao thành công
+							</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</main>
+
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
