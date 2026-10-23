@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Quản lý đánh giá toàn hệ thống', 'reviews', ~{::#admin-content})}">
+
+<section id="admin-content">
+	<div class="container-fluid px-0">
+		<h2 class="fw-bold mb-1">
+			<i class="bi bi-star-fill text-warning me-2"></i>Quản lý Đánh giá Toàn hệ thống (Admin)
+		</h2>
+		<p class="text-muted mb-4">Xem và phản hồi đánh giá món ăn, dịch vụ quán của tất cả các chi nhánh.</p>
+
+		<div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+			<i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
+		<div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+			<i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
+
+		<!-- Bấm chọn chi nhánh trực tiếp -->
+		<div class="card border-0 shadow-sm mb-4">
+			<div class="card-body">
+				<label class="form-label fw-bold mb-3"><i class="bi bi-shop me-1"></i> Bấm chọn chi nhánh:</label>
+				<div class="d-flex flex-wrap gap-2">
+					<a th:href="@{/admin/reviews(type=${selectedType}, rating=${selectedRating})}" class="btn"
+						th:classappend="${selectedBranchId == null} ? 'btn-success fw-bold' : 'btn-outline-secondary'">
+						<i class="bi bi-globe me-1"></i> Tất cả chi nhánh
+					</a>
+					<a th:each="b : ${branches}"
+						th:href="@{/admin/reviews(branchId=${b.id}, type=${selectedType}, rating=${selectedRating})}"
+						class="btn"
+						th:classappend="${selectedBranchId == b.id} ? 'btn-success fw-bold' : 'btn-outline-secondary'"
+						th:text="${b.name}">Chi nhánh</a>
+				</div>
+			</div>
+		</div>
+
+		<!-- Bộ lọc phụ theo Loại và Số sao -->
+		<div class="card border-0 shadow-sm mb-4">
+			<div class="card-body py-3">
+				<form method="get" action="/admin/reviews" class="row g-3 align-items-center">
+					<input type="hidden" name="branchId" th:if="${selectedBranchId != null}"
+						th:value="${selectedBranchId}" />
+					<div class="col-md-5">
+						<label for="type" class="form-label fw-bold mb-0">Loại đánh giá:</label>
+						<select id="type" name="type" class="form-select form-select-sm" onchange="this.form.submit()">
+							<option value="">-- Tất cả (Quán & Món) --</option>
+							<option value="STORE" th:selected="${selectedType == 'STORE'}">Đánh giá quán</option>
+							<option value="PRODUCT" th:selected="${selectedType == 'PRODUCT'}">Đánh giá món</option>
+						</select>
+					</div>
+					<div class="col-md-5">
+						<label for="rating" class="form-label fw-bold mb-0">Lọc theo số sao:</label>
+						<select id="rating" name="rating" class="form-select form-select-sm"
+							onchange="this.form.submit()">
+							<option value="">-- Tất cả số sao --</option>
+							<option value="5" th:selected="${selectedRating == 5}">⭐⭐⭐⭐⭐ (5 sao)</option>
+							<option value="4" th:selected="${selectedRating == 4}">⭐⭐⭐⭐ (4 sao)</option>
+							<option value="3" th:selected="${selectedRating == 3}">⭐⭐⭐ (3 sao)</option>
+							<option value="2" th:selected="${selectedRating == 2}">⭐⭐ (2 sao)</option>
+							<option value="1" th:selected="${selectedRating == 1}">⭐ (1 sao)</option>
+						</select>
+					</div>
+					<div class="col-md-2">
+						<a href="/admin/reviews" class="btn btn-outline-secondary btn-sm w-100 mt-4">Đặt lại</a>
+					</div>
+				</form>
+			</div>
+		</div>
+
+		<!-- Bảng hiển thị danh sách -->
+		<div class="card border-0 shadow-sm mb-4">
+			<div class="card-header bg-white py-3 fw-bold d-flex justify-content-between align-items-center">
+				<span><i class="bi bi-chat-square-text me-2"></i> Danh sách đánh giá chi tiết</span>
+				<span class="badge bg-success" th:text="'Tổng số: ' + ${reviews.size()}">0</span>
+			</div>
+			<div class="card-body p-0">
+				<div class="table-responsive">
+					<table class="table table-hover align-middle mb-0">
+						<thead class="table-light">
+							<tr>
+								<th>#ID</th>
+								<th>Chi nhánh</th>
+								<th>Khách hàng</th>
+								<th>Phân loại</th>
+								<th>Số sao</th>
+								<th>Nội dung & Thẻ Tags</th>
+								<th>Phản hồi</th>
+								<th>Thời gian</th>
+								<th class="text-center">Thao tác</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr th:if="${#lists.isEmpty(reviews)}">
+								<td colspan="9" class="text-center text-muted py-5">
+									<i class="bi bi-inbox fs-2 d-block mb-2"></i> Không tìm thấy đánh giá nào.
+								</td>
+							</tr>
+							<tr th:each="r : ${reviews}">
+								<td th:text="${r.id}">1</td>
+								<td><span class="badge bg-secondary" th:text="${r.branchName}">Chi nhánh</span></td>
+								<td class="fw-bold" th:text="${r.customerName}">Khách</td>
+								<td>
+									<span th:if="${r.type == 'STORE'}" class="badge bg-primary text-white"><i
+											class="bi bi-shop me-1"></i> Quán</span>
+									<span th:if="${r.type == 'PRODUCT'}" class="badge bg-warning text-dark"><i
+											class="bi bi-cup-straw me-1"></i> Món: <strong
+											th:text="${r.productName}"></strong></span>
+								</td>
+								<td>
+									<span class="text-warning"><span
+											th:each="i : ${#numbers.sequence(1, r.rating)}">★</span></span>
+									(<span th:text="${r.rating}"></span>/5)
+								</td>
+								<td>
+									<p class="mb-1" th:text="${r.comment != null ? r.comment : '(Không có bình luận)'}">
+									</p>
+									<small class="text-muted" th:if="${r.tags != null}"
+										th:text="'#' + ${r.tags.replace('|', ' #')}"></small>
+								</td>
+								<td>
+									<div th:if="${not #lists.isEmpty(r.replies)}">
+										<div th:each="rep : ${r.replies}"
+											class="border-start border-3 border-success ps-2 mb-1 bg-light p-1 rounded">
+											<small class="fw-bold text-success"
+												th:text="${rep.responderName} + ' (' + ${rep.responderRole} + '):'"></small>
+											<small class="d-block" th:text="${rep.content}"></small>
+										</div>
+									</div>
+									<span th:if="${#lists.isEmpty(r.replies)}" class="text-muted fst-italic">Chưa phản
+										hồi</span>
+								</td>
+								<td
+									th:text="${r.createdAt != null ? #temporals.format(r.createdAt, 'dd-MM-yyyy HH:mm') : '—'}">
+								</td>
+								<td class="text-center">
+									<button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+										data-bs-target="#adminReplyModal" th:data-review-id="${r.id}"
+										th:data-review-type="${r.type}" th:onclick="prepareAdminReply(this)">
+										<i class="bi bi-reply"></i> Phản hồi
+									</button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal Phản hồi Admin -->
+	<div class="modal fade" id="adminReplyModal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<form th:action="@{/admin/reviews/reply}" method="post">
+					<div class="modal-header bg-primary text-white">
+						<h5 class="modal-title">Phản hồi đánh giá (Admin)</h5>
+						<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+							aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<input type="hidden" id="adminOrderReviewId" name="orderReviewId" />
+						<input type="hidden" id="adminReviewId" name="reviewId" />
+						<div class="mb-3">
+							<label for="adminContent" class="form-label fw-bold">Nội dung phản hồi:</label>
+							<textarea class="form-control" id="adminContent" name="content" rows="4"
+								placeholder="Nhập nội dung phản hồi..." required></textarea>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+						<button type="submit" class="btn btn-primary">Gửi phản hồi</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		function prepareAdminReply(button) {
+			let id = button.getAttribute("data-review-id");
+			let type = button.getAttribute("data-review-type");
+			document.getElementById("adminOrderReviewId").value = (type === "STORE") ? id : "";
+			document.getElementById("adminReviewId").value = (type === "PRODUCT") ? id : "";
+			document.getElementById("adminContent").value = "";
+		}
+	</script>
+</section>
+
+</html>

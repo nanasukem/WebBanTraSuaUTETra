@@ -5,122 +5,154 @@
 <section id="admin-content">
 
 	<!-- Tiêu đề trang -->
-	<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+	<div
+		class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
 		<div>
 			<h2 class="fw-bold mb-1">
-				<i class="bi bi-speedometer2 me-2"></i>
-				<span th:text="${branch != null} ? ${branch.name} : 'Tổng quan chi nhánh'">Tổng quan chi nhánh</span>
+				<i class="bi bi-speedometer2 me-2"></i> <span
+					th:text="${branch != null} ? ${branch.name} : 'Tổng quan chi nhánh'">Tổng
+					quan chi nhánh</span>
 			</h2>
-			<p class="text-muted mb-0">Tình hình hoạt động của chi nhánh bạn quản lý.</p>
+			<p class="text-muted mb-0">Tình hình hoạt động của chi nhánh bạn
+				quản lý.</p>
 		</div>
 
 		<div class="text-muted small">
-			<i class="bi bi-calendar3 me-1"></i>
-			<span th:text="${#temporals.format(T(java.time.LocalDateTime).now(), 'dd/MM/yyyy')}">21/10/2026</span>
+			<i class="bi bi-calendar3 me-1"></i> <span
+				th:text="${#temporals.format(T(java.time.LocalDateTime).now(), 'dd/MM/yyyy')}">21/10/2026</span>
 		</div>
 	</div>
 
 	<!-- Thông báo -->
-	<div th:if="${success != null}" class="alert alert-success alert-dismissible fade show" role="alert">
-		<i class="bi bi-check-circle-fill me-2"></i>
-		<span th:text="${success}">Thao tác thành công.</span>
-		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+	<div th:if="${success != null}"
+		class="alert alert-success alert-dismissible fade show" role="alert">
+		<i class="bi bi-check-circle-fill me-2"></i> <span
+			th:text="${success}">Thao tác thành công.</span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"
+			aria-label="Đóng"></button>
 	</div>
-	<div th:if="${error != null}" class="alert alert-danger alert-dismissible fade show" role="alert">
-		<i class="bi bi-exclamation-triangle-fill me-2"></i>
-		<span th:text="${error}">Đã xảy ra lỗi.</span>
-		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+	<div th:if="${error != null}"
+		class="alert alert-danger alert-dismissible fade show" role="alert">
+		<i class="bi bi-exclamation-triangle-fill me-2"></i> <span
+			th:text="${error}">Đã xảy ra lỗi.</span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert"
+			aria-label="Đóng"></button>
 	</div>
 
 	<!-- Manager chưa được giao chi nhánh -->
 	<div th:if="${branch == null}" class="card border-0 shadow-sm">
 		<div class="card-body text-center py-5">
 			<i class="bi bi-shop-window display-4 text-secondary"></i>
-			<h5 class="fw-bold mt-3" th:text="${noBranchMessage}">Chưa được giao chi nhánh</h5>
-			<p class="text-muted mb-0">Vui lòng liên hệ Admin để được giao chi nhánh quản lý.</p>
+			<h5 class="fw-bold mt-3" th:text="${noBranchMessage}">Chưa được
+				giao chi nhánh</h5>
+			<p class="text-muted mb-0">Vui lòng liên hệ Admin để được giao
+				chi nhánh quản lý.</p>
 		</div>
 	</div>
 
 	<th:block th:if="${branch != null}">
 
 		<!-- Chi nhánh đang tạm ngưng -->
-		<div th:if="${branch.status.name() != 'APPROVED'}" class="alert alert-warning">
-			<i class="bi bi-pause-circle me-2"></i>
-			Chi nhánh đang <strong th:text="${branch.status.label}">Tạm ngưng</strong>: khách không thấy chi nhánh
-			và không đặt được đơn mới. Liên hệ Admin để mở lại.
+		<div th:if="${branch.status.name() != 'APPROVED'}"
+			class="alert alert-warning">
+			<i class="bi bi-pause-circle me-2"></i> Chi nhánh đang <strong
+				th:text="${branch.status.label}">Tạm ngưng</strong>: khách không
+			thấy chi nhánh và không đặt được đơn mới. Liên hệ Admin để mở lại.
 		</div>
 
-		<!-- Lối tắt: đặt trên cùng cho dễ thấy -->
+		<!-- Lối tắt: đã bổ sung thêm nút "Quản lý đánh giá" vào đây -->
 		<div class="d-flex flex-wrap gap-2 mb-4">
-			<a th:href="@{/manager/orders}" class="btn btn-warning fw-semibold"><i class="bi bi-bell me-1"></i>Quầy đơn hàng</a>
-			<a th:href="@{/manager/orders/history}" class="btn btn-outline-primary"><i class="bi bi-receipt-cutoff me-1"></i>Đơn hàng của chi nhánh</a>
-			<a th:href="@{/manager/products}" class="btn btn-outline-primary"><i class="bi bi-toggles me-1"></i>Bật/tắt món</a>
-			<a th:href="@{/manager/vouchers}" class="btn btn-outline-success"><i class="bi bi-ticket-perforated me-1"></i>Khuyến mãi</a>
-			<a th:href="@{/manager/customers}" class="btn btn-outline-success"><i class="bi bi-people me-1"></i>Khách hàng</a>
-			<a th:href="@{/manager/reports}" class="btn btn-outline-dark"><i class="bi bi-bar-chart-line me-1"></i>Báo cáo doanh thu</a>
-			<a th:href="@{/manager/branch}" class="btn btn-outline-secondary"><i class="bi bi-info-circle me-1"></i>Thông tin chi nhánh</a>
+			<a th:href="@{/manager/orders}" class="btn btn-warning fw-semibold"><i
+				class="bi bi-bell me-1"></i>Quầy đơn hàng</a> <a
+				th:href="@{/manager/orders/history}" class="btn btn-outline-primary"><i
+				class="bi bi-receipt-cutoff me-1"></i>Đơn hàng của chi nhánh</a> <a
+				th:href="@{/manager/products}" class="btn btn-outline-primary"><i
+				class="bi bi-toggles me-1"></i>Bật/tắt món</a> <a
+				th:href="@{/manager/vouchers}" class="btn btn-outline-success"><i
+				class="bi bi-ticket-perforated me-1"></i>Khuyến mãi</a> <a
+				th:href="@{/manager/customers}" class="btn btn-outline-success"><i
+				class="bi bi-people me-1"></i>Khách hàng</a> <a
+				th:href="@{/manager/reviews}" class="btn btn-outline-warning"><i
+				class="bi bi-star me-1"></i>Quản lý đánh giá</a> <a
+				th:href="@{/manager/reports}" class="btn btn-outline-dark"><i
+				class="bi bi-bar-chart-line me-1"></i>Báo cáo doanh thu</a> <a
+				th:href="@{/manager/branch}" class="btn btn-outline-secondary"><i
+				class="bi bi-info-circle me-1"></i>Thông tin chi nhánh</a>
 		</div>
 
-		<!-- Đơn hàng: mỗi thẻ mở trang "Đơn hàng của chi nhánh" đúng tab trạng thái.
-		     Nhận và xử lý đơn mới trực tiếp: nút "Quầy đơn hàng" (menu trên cùng / hàng lối tắt ở trên) -->
-		<h5 class="fw-bold mb-3"><i class="bi bi-receipt me-2"></i>Đơn hàng</h5>
+		<!-- Đơn hàng: mỗi thẻ mở trang "Đơn hàng của chi nhánh" đúng tab trạng thái. -->
+		<h5 class="fw-bold mb-3">
+			<i class="bi bi-receipt me-2"></i>Đơn hàng
+		</h5>
 		<div class="row g-3 mb-4">
 			<div class="col-6 col-xl-3">
-				<a th:href="@{/manager/orders/history(status='PENDING')}" class="text-decoration-none">
+				<a th:href="@{/manager/orders/history(status='PENDING')}"
+					class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
 							<p class="text-muted mb-2">Chờ xác nhận</p>
 							<h3 class="fw-bold mb-0 text-warning" th:text="${pendingOrders}">0</h3>
 						</div>
 						<div class="card-footer bg-white border-0 pt-0">
-							<span class="small text-warning">Xem đơn hàng <i class="bi bi-arrow-right"></i></span>
+							<span class="small text-warning">Xem đơn hàng <i
+								class="bi bi-arrow-right"></i></span>
 						</div>
 					</div>
 				</a>
 			</div>
 			<div class="col-6 col-xl-3">
-				<a th:href="@{/manager/orders/history(status='CONFIRMED')}" class="text-decoration-none">
+				<a th:href="@{/manager/orders/history(status='CONFIRMED')}"
+					class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
 							<p class="text-muted mb-2">Đang làm / đang giao</p>
-							<h3 class="fw-bold mb-0 text-primary" th:text="${processingOrders}">0</h3>
+							<h3 class="fw-bold mb-0 text-primary"
+								th:text="${processingOrders}">0</h3>
 						</div>
 						<div class="card-footer bg-white border-0 pt-0">
-							<span class="small text-primary">Xem đơn hàng <i class="bi bi-arrow-right"></i></span>
+							<span class="small text-primary">Xem đơn hàng <i
+								class="bi bi-arrow-right"></i></span>
 						</div>
 					</div>
 				</a>
 			</div>
 			<div class="col-6 col-xl-3">
-				<a th:href="@{/manager/orders/history(status='DELIVERED')}" class="text-decoration-none">
+				<a th:href="@{/manager/orders/history(status='DELIVERED')}"
+					class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
 							<p class="text-muted mb-2">Đã giao</p>
-							<h3 class="fw-bold mb-0 text-success" th:text="${deliveredOrders}">0</h3>
+							<h3 class="fw-bold mb-0 text-success"
+								th:text="${deliveredOrders}">0</h3>
 						</div>
 						<div class="card-footer bg-white border-0 pt-0">
-							<span class="small text-success">Xem đơn hàng <i class="bi bi-arrow-right"></i></span>
+							<span class="small text-success">Xem đơn hàng <i
+								class="bi bi-arrow-right"></i></span>
 						</div>
 					</div>
 				</a>
 			</div>
 			<div class="col-6 col-xl-3">
-				<a th:href="@{/manager/orders/history(status='CANCELLED')}" class="text-decoration-none">
+				<a th:href="@{/manager/orders/history(status='CANCELLED')}"
+					class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
 							<p class="text-muted mb-2">Đã huỷ</p>
 							<h3 class="fw-bold mb-0 text-danger" th:text="${cancelledOrders}">0</h3>
 						</div>
 						<div class="card-footer bg-white border-0 pt-0">
-							<span class="small text-danger">Xem đơn hàng <i class="bi bi-arrow-right"></i></span>
+							<span class="small text-danger">Xem đơn hàng <i
+								class="bi bi-arrow-right"></i></span>
 						</div>
 					</div>
 				</a>
 			</div>
 		</div>
 
-		<!-- Doanh thu, món, voucher -->
-		<h5 class="fw-bold mb-3"><i class="bi bi-graph-up me-2"></i>Kinh doanh</h5>
+		<!-- Doanh thu, món, voucher và đánh giá -->
+		<h5 class="fw-bold mb-3">
+			<i class="bi bi-graph-up me-2"></i>Kinh doanh & Đánh giá
+		</h5>
 		<div class="row g-3 mb-4">
 			<div class="col-6 col-xl-3">
 				<a th:href="@{/manager/reports}" class="text-decoration-none">
@@ -128,7 +160,9 @@
 						<div class="card-body">
 							<p class="text-muted mb-2">Doanh thu hôm nay</p>
 							<h4 class="fw-bold mb-0 text-dark">
-								<span th:text="${#numbers.formatDecimal(todayRevenue, 0, 'POINT', 0, 'COMMA')}">0</span> đ
+								<span
+									th:text="${#numbers.formatDecimal(todayRevenue, 0, 'POINT', 0, 'COMMA')}">0</span>
+								đ
 							</h4>
 						</div>
 					</div>
@@ -140,7 +174,9 @@
 						<div class="card-body">
 							<p class="text-muted mb-2">Doanh thu tháng này</p>
 							<h4 class="fw-bold mb-0 text-dark">
-								<span th:text="${#numbers.formatDecimal(monthRevenue, 0, 'POINT', 0, 'COMMA')}">0</span> đ
+								<span
+									th:text="${#numbers.formatDecimal(monthRevenue, 0, 'POINT', 0, 'COMMA')}">0</span>
+								đ
 							</h4>
 						</div>
 					</div>
@@ -151,7 +187,8 @@
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
 							<p class="text-muted mb-2">Món đang tạm hết</p>
-							<h4 class="fw-bold mb-0 text-dark" th:text="${unavailableProducts}">0</h4>
+							<h4 class="fw-bold mb-0 text-dark"
+								th:text="${unavailableProducts}">0</h4>
 						</div>
 					</div>
 				</a>
