@@ -499,4 +499,14 @@
 	});
 
 	init();
+
+	// Tự kiểm tra lại giỏ (món / topping vừa hết, giá, quán đóng cửa...) mỗi 30 giây và khi khách quay lại tab,
+	// để món quán vừa báo hết chuyển đỏ ngay mà không cần bấm Đặt hàng mới biết
+	function recheck() {
+		const btn = $('btn-place-order');
+		if (document.hidden || $('co-page')?.classList.contains('d-none') || (btn && btn.querySelector('.spinner-border'))) return; // đang đặt hàng thì thôi
+		refresh();
+	}
+	setInterval(recheck, 30000);
+	document.addEventListener('visibilitychange', () => { if (!document.hidden) recheck(); });
 })();

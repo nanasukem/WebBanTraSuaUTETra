@@ -141,6 +141,16 @@ public class HomeController {
 		}
 		User user = userOptional.get();
 		session.setAttribute("user", user);
+		// Mật khẩu tạm do Admin đặt -> bắt buộc đổi trước khi làm gì khác
+		if (Boolean.TRUE.equals(user.getMustChangePassword())) {
+			// Mật khẩu tạm quá 72 giờ: hết hạn, phải nhờ Admin cấp lại
+			if (user.getTempPasswordExpiresAt() != null && user.getTempPasswordExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+				session.invalidate();
+				SecurityContextHolder.clearContext();
+				return "redirect:/auth/login?signedOut=tempExpired";
+			}
+			return "redirect:/account/change-password";
+		}
 		String role = user.getRole() != null && user.getRole().getName() != null
 				? user.getRole().getName().trim().toUpperCase()
 				: "";

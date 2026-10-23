@@ -22,4 +22,28 @@ public class EmailService {
 		message.setText("Mã OTP kích hoạt tài khoản UTETra của bạn là: " + otpCode + "\nMã có hiệu lực trong 5 phút.");
 		mailSender.send(message);
 	}
+
+	/**
+	 * Gửi email thường (tài khoản nhân viên, mật khẩu tạm, xác nhận đổi mật khẩu).
+	 * Chưa cấu hình email (chạy local) thì in ra console; gửi lỗi thì bỏ qua để không làm hỏng thao tác chính.
+	 * @return true nếu đã gửi qua máy chủ email
+	 */
+	public boolean send(String toEmail, String subject, String text) {
+		if (toEmail == null || toEmail.isBlank()) return false;
+		if (mailSender == null) {
+			System.out.println(">>> [DEV MODE] Email tới " + toEmail + " | " + subject + "\n" + text);
+			return false;
+		}
+		try {
+			SimpleMailMessage message = new SimpleMailMessage();
+			message.setTo(toEmail);
+			message.setSubject(subject);
+			message.setText(text);
+			mailSender.send(message);
+			return true;
+		} catch (RuntimeException e) {
+			System.err.println("Không gửi được email tới " + toEmail + ": " + e.getMessage());
+			return false;
+		}
+	}
 }

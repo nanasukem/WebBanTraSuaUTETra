@@ -298,6 +298,9 @@ body {
 						th:href="@{/admin/reports}"> <i class="bi bi-graph-up-arrow"></i>
 							Doanh thu &amp; báo cáo
 					</a></li>
+					<li><a class="dropdown-item d-flex align-items-center"
+						th:href="@{/admin/activity-logs}"> <i class="bi bi-journal-text"></i> Nhật ký hoạt động
+					</a></li>
 				</ul>
 			</div>
 
@@ -314,7 +317,7 @@ body {
 			<!-- Chuông thông báo -->
 			<div th:replace="~{fragments/notification-bell :: bell('admin')}"></div>
 
-			<a href="#" class="admin-user"> <i class="bi bi-person-gear"></i>
+			<a th:href="@{/account}" class="admin-user" title="Tài khoản của tôi"> <i class="bi bi-person-gear"></i>
 				<span>Quản trị viên</span>
 			</a>
 

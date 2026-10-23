@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Nhật ký hoạt động', 'activity-logs', ~{::#admin-content})}">
+
+<!-- Nhật ký hoạt động: mọi thao tác thành công của Admin / Manager / Shipper (đổi giá, báo hết món, khoá tài khoản, xử lý đơn...) -->
+<section id="admin-content">
+	<div class="container-fluid px-0">
+		<h2 class="fw-bold mb-1"><i class="bi bi-journal-text text-success me-2"></i>Nhật ký hoạt động</h2>
+		<p class="text-muted mb-4">Ai đã làm gì, lúc nào. Ghi tự động mỗi khi Admin, Manager hoặc Shipper thao tác thành công; không sửa / xoá được.</p>
+
+		<form method="get" th:action="@{/admin/activity-logs}" class="card border-0 shadow-sm rounded-4 mb-4">
+			<div class="card-body row g-2 align-items-end">
+				<div class="col-md-4">
+					<label for="kw" class="form-label small fw-semibold mb-1">Tìm theo người làm hoặc nội dung</label>
+					<input id="kw" name="keyword" class="form-control form-control-sm"
+						placeholder="Tên / tài khoản (VD: manager1) hoặc việc đã làm (VD: báo hết, Bạc xỉu, khoá)"
+						th:value="${keyword}">
+				</div>
+				<div class="col-md-2">
+					<label for="role" class="form-label small fw-semibold mb-1">Vai trò</label>
+					<select id="role" name="role" class="form-select form-select-sm">
+						<option value="">Tất cả</option>
+						<option th:each="r : ${ {'ADMIN', 'MANAGER', 'SHIPPER'} }" th:value="${r}" th:text="${r}"
+							th:selected="${role == r}">ADMIN</option>
+					</select>
+				</div>
+				<div class="col-md-2">
+					<label for="from" class="form-label small fw-semibold mb-1">Từ ngày</label>
+					<input type="date" id="from" name="from" class="form-control form-control-sm" th:value="${from}">
+				</div>
+				<div class="col-md-2">
+					<label for="to" class="form-label small fw-semibold mb-1">Đến ngày</label>
+					<input type="date" id="to" name="to" class="form-control form-control-sm" th:value="${to}">
+				</div>
+				<div class="col-md-2 d-flex gap-2">
+					<button type="submit" class="btn btn-success btn-sm flex-grow-1"><i class="bi bi-search"></i> Lọc</button>
+					<a th:href="@{/admin/activity-logs}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i></a>
+				</div>
+			</div>
+		</form>
+
+		<div class="card border-0 shadow-sm rounded-4">
+			<div class="card-header bg-white py-3 fw-bold d-flex justify-content-between">
+				<span><i class="bi bi-clock-history me-1"></i> Hoạt động gần đây</span>
+				<span class="badge bg-success" th:text="${logs.totalElements} + ' dòng'">0</span>
+			</div>
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0">
+					<thead class="table-light">
+						<tr><th class="ps-3" style="width: 150px;">Thời gian</th><th style="width: 260px;">Người làm</th><th>Hoạt động</th></tr>
+					</thead>
+					<tbody>
+						<tr th:if="${logs.empty}"><td colspan="3" class="text-center text-muted py-5">
+							<i class="bi bi-inbox fs-2 d-block mb-2"></i>Chưa có hoạt động nào.</td></tr>
+						<tr th:each="l : ${logs.content}">
+							<td class="ps-3 small text-nowrap" th:text="${#temporals.format(l.createdAt, 'HH:mm dd/MM/yyyy')}">10:20 23/10/2026</td>
+							<td>
+								<span class="badge me-1" th:text="${l.actorRole}"
+									th:classappend="${l.actorRole == 'ADMIN'} ? 'text-bg-danger' : (${l.actorRole == 'MANAGER'} ? 'text-bg-primary' : 'text-bg-warning')">ADMIN</span>
+								<span class="small fw-semibold" th:text="${l.actorName}">Quản trị viên (admin)</span>
+							</td>
+							<td>
+								<div th:text="${l.action}">Đã báo hết Bạc xỉu tại chi nhánh.</div>
+								<small class="text-muted" th:text="${l.path}">/manager/branches/1/products/3/toggle</small>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div class="card-footer bg-white d-flex justify-content-between align-items-center" th:if="${logs.totalPages > 1}">
+				<span class="small text-muted" th:text="'Trang ' + ${logs.number + 1} + ' / ' + ${logs.totalPages}">Trang 1 / 3</span>
+				<div class="d-flex gap-2">
+					<a class="btn btn-sm btn-outline-success" th:classappend="${logs.first} ? 'disabled'"
+						th:href="@{/admin/activity-logs(page=${logs.number - 1}, role=${role}, keyword=${keyword}, from=${from}, to=${to})}">‹ Trước</a>
+					<a class="btn btn-sm btn-outline-success" th:classappend="${logs.last} ? 'disabled'"
+						th:href="@{/admin/activity-logs(page=${logs.number + 1}, role=${role}, keyword=${keyword}, from=${from}, to=${to})}">Sau ›</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+</html>

@@ -62,6 +62,10 @@ body {
 				class="btn btn-sm btn-light fw-semibold"> <i
 				class="bi bi-arrow-clockwise me-1"></i>Làm mới
 			</a>
+			<!-- Đổi mật khẩu (tài khoản Admin cấp mật khẩu tạm thì lần đầu bắt buộc đổi) -->
+			<a th:href="@{/account}" class="btn btn-sm btn-outline-light">
+				<i class="bi bi-person-circle me-1"></i>Tài khoản
+			</a>
 			<form th:action="@{/auth/logout}" method="post" class="m-0">
 				<button type="submit" class="btn btn-sm btn-outline-light">
 					<i class="bi bi-box-arrow-right me-1"></i>Đăng xuất

@@ -22,6 +22,17 @@
 			</div>
 
 			<!-- Đăng xuất thành công -->
+			<!-- Bị đăng xuất do Admin thay đổi tài khoản / mật khẩu tạm hết hạn -->
+			<div th:if="${param.signedOut != null}" class="alert alert-warning py-2 small" role="alert"
+				th:switch="${param.signedOut[0]}">
+				<i class="bi bi-shield-exclamation me-1"></i>
+				<span th:case="'locked'">Tài khoản của bạn đã bị khoá. Vui lòng liên hệ quản trị viên.</span>
+				<span th:case="'deleted'">Tài khoản không còn tồn tại.</span>
+				<span th:case="'password'">Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại bằng mật khẩu mới.</span>
+				<span th:case="'role'">Quyền tài khoản vừa được thay đổi. Vui lòng đăng nhập lại.</span>
+				<span th:case="'tempExpired'">Mật khẩu tạm đã hết hạn (quá 72 giờ). Vui lòng liên hệ quản trị viên để được cấp lại.</span>
+				<span th:case="*">Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.</span>
+			</div>
 			<div th:if="${param.logout != null}" class="alert alert-success py-2"
 				role="alert">
 				<i class="bi bi-check-circle-fill me-1"></i> Bạn đã đăng xuất thành

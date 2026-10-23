@@ -27,6 +27,30 @@ public class AdminUserController {
 	private final vn.utetra.service.ShippingFeeService shippingFeeService;
 	@org.springframework.beans.factory.annotation.Autowired
 	private vn.utetra.service.NotificationService notificationService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.service.EmailService emailService;
+	@jakarta.persistence.PersistenceContext
+	private jakarta.persistence.EntityManager em;
+
+	private static final String LOGIN_URL = "http://localhost:8080/auth/login";
+	/** Mật khẩu tạm có hiệu lực 72 giờ; quá hạn chưa đổi thì phải nhờ Admin cấp lại */
+	public static final int TEMP_PASSWORD_HOURS = 72;
+
+	/** Gửi email mật khẩu tạm cho nhân viên (tạo mới hoặc Admin đặt lại) */
+	private boolean emailTempPassword(User user, String tempPassword, boolean isNew) {
+		String role = user.getRole() == null ? "" : user.getRole().getName();
+		return emailService.send(user.getEmail(),
+				isNew ? "UTETra - Tài khoản " + role + " của bạn đã được tạo" : "UTETra - Mật khẩu của bạn đã được đặt lại",
+				"Xin chào " + user.getFullName() + ",\n\n"
+						+ (isNew ? "Quản trị viên UTETra đã tạo tài khoản " + role + " cho bạn."
+								: "Quản trị viên UTETra đã đặt lại mật khẩu tài khoản của bạn. Mật khẩu cũ không dùng được nữa.")
+						+ "\n\nTên đăng nhập: " + user.getUsername() + "\nMật khẩu tạm: " + tempPassword
+						+ "\nĐăng nhập tại: " + LOGIN_URL
+						+ "\n\nMật khẩu tạm có hiệu lực " + TEMP_PASSWORD_HOURS + " giờ (tới "
+						+ user.getTempPasswordExpiresAt().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy"))
+						+ "). Lần đăng nhập đầu, hệ thống sẽ yêu cầu bạn đổi sang mật khẩu của riêng mình."
+						+ "\nNếu bạn không yêu cầu việc này, hãy liên hệ quản trị viên.\n\nUTETra");
+	}
 
 	public AdminUserController(UserRepository userRepository, RoleRepository roleRepository,
 			BranchRepository branchRepository,
@@ -107,6 +131,9 @@ public class AdminUserController {
 		}
 
 		model.addAttribute("user", user);
+		// mật khẩu tạm đã quá 72 giờ chưa đổi
+		model.addAttribute("tempExpired", user.getTempPasswordExpiresAt() != null
+				&& user.getTempPasswordExpiresAt().isBefore(java.time.LocalDateTime.now()));
 
 		return "admin/users/detail";
 	}
@@ -191,6 +218,8 @@ public class AdminUserController {
 		user.setRole(targetRole);
 		user.setIsVerified(true); // Admin tạo nên không cần xác minh email
 		user.setIsActive(true);
+		user.setMustChangePassword(true); // mật khẩu tạm -> lần đăng nhập đầu bắt buộc đổi
+		user.setTempPasswordExpiresAt(java.time.LocalDateTime.now().plusHours(TEMP_PASSWORD_HOURS));
 		if ("SHIPPER".equals(r)) {
 			user.setCarrier(shippingFeeService.shipper()); // shipper của quán (Shipper UTETra)
 		}
@@ -213,7 +242,11 @@ public class AdminUserController {
 		case "SHIPPER" -> " Shipper đăng nhập là thấy đơn chờ giao.";
 		default -> "";
 		};
-		ra.addFlashAttribute("successMessage", "Đã tạo tài khoản " + r + " \"" + u + "\" (" + name + ")." + next);
+		boolean daGui = emailTempPassword(user, password, true);
+		ra.addFlashAttribute("successMessage", "Đã tạo tài khoản " + r + " \"" + u + "\" (" + name + ")." + next
+				+ (daGui ? " Đã gửi email tên đăng nhập và mật khẩu tạm tới " + mail + "."
+						: " Chưa gửi được email, hãy tự gửi mật khẩu tạm cho người dùng.")
+				+ " Lần đăng nhập đầu họ phải đổi mật khẩu.");
 		return "redirect:/admin/users";
 	}
 
@@ -246,12 +279,76 @@ public class AdminUserController {
 			return "redirect:/admin/users/" + id;
 		}
 		user.setPassword(passwordEncoder.encode(newPassword));
+		user.setMustChangePassword(true); // mật khẩu tạm -> lần đăng nhập tới bắt buộc đổi
+		user.setTempPasswordExpiresAt(java.time.LocalDateTime.now().plusHours(TEMP_PASSWORD_HOURS));
 		userRepository.save(user);
 		notificationService.create(user, null, "USER", "Mật khẩu của bạn đã được Admin đặt lại",
-				"Hãy đăng nhập bằng mật khẩu mới Admin cung cấp rồi đổi mật khẩu ở trang Hồ sơ.", null);
-		ra.addFlashAttribute("successMessage", "Đã đặt lại mật khẩu cho " + user.getUsername()
-				+ ". Mật khẩu cũ không dùng được nữa; hãy gửi mật khẩu mới cho người dùng và nhắc họ đổi lại.");
+				"Đăng nhập bằng mật khẩu tạm (đã gửi qua email) rồi đặt mật khẩu mới.", null);
+		boolean daGui = emailTempPassword(user, newPassword, false);
+		ra.addFlashAttribute("successMessage", "Đã đặt lại mật khẩu tạm cho " + user.getUsername()
+				+ ". Mật khẩu cũ không dùng được nữa; lần đăng nhập tới họ phải đổi mật khẩu."
+				+ (daGui ? " Đã gửi mật khẩu tạm qua email " + user.getEmail() + "."
+						: " Chưa gửi được email, hãy tự gửi mật khẩu tạm cho người dùng."));
 		return "redirect:/admin/users/" + id;
+	}
+
+	/**
+	 * XOÁ TÀI KHOẢN - như hệ thống thật: chỉ xoá hẳn được tài khoản CHƯA có dữ liệu nghiệp vụ
+	 * (tạo nhầm, chưa từng đặt / giao đơn, chưa đánh giá, không quản lý chi nhánh).
+	 * Đã có dữ liệu thì chỉ KHOÁ để giữ lịch sử đơn hàng, doanh thu, đánh giá.
+	 */
+	@PostMapping("/{id}/delete")
+	@org.springframework.transaction.annotation.Transactional
+	public String delete(@PathVariable Integer id, Authentication authentication, RedirectAttributes ra) {
+		if (!isAdmin(authentication)) {
+			ra.addFlashAttribute("errorMessage", "Bạn không có quyền xoá tài khoản.");
+			return "redirect:/admin/users";
+		}
+		User user = userRepository.findById(id).orElse(null);
+		if (user == null) {
+			ra.addFlashAttribute("errorMessage", "Không tìm thấy tài khoản.");
+			return "redirect:/admin/users";
+		}
+		if (isCurrentUser(authentication, user)) {
+			ra.addFlashAttribute("errorMessage", "Bạn không thể xoá tài khoản đang đăng nhập.");
+			return "redirect:/admin/users/" + id;
+		}
+		String roleName = user.getRole() == null ? "" : user.getRole().getName();
+		if ("ADMIN".equalsIgnoreCase(roleName) && Boolean.TRUE.equals(user.getIsActive())
+				&& userRepository.countActiveAdmins() <= 1) {
+			ra.addFlashAttribute("errorMessage", "Không thể xoá Admin cuối cùng đang hoạt động.");
+			return "redirect:/admin/users/" + id;
+		}
+
+		java.util.List<String> lyDo = new java.util.ArrayList<>();
+		long n;
+		if ((n = count("SELECT COUNT(o) FROM Order o WHERE o.user.id = :id", id)) > 0) lyDo.add(n + " đơn đã đặt");
+		if ((n = count("SELECT COUNT(o) FROM Order o WHERE o.shipper.id = :id", id)) > 0) lyDo.add(n + " đơn đã giao");
+		if ((n = count("SELECT COUNT(r) FROM Review r WHERE r.user.id = :id", id)
+				+ count("SELECT COUNT(r) FROM OrderReview r WHERE r.user.id = :id", id)) > 0) lyDo.add(n + " đánh giá");
+		if ((n = count("SELECT COUNT(r) FROM ReviewReply r WHERE r.repliedBy.id = :id", id)) > 0) lyDo.add(n + " phản hồi đánh giá");
+		if ((n = count("SELECT COUNT(i) FROM OrderIssue i WHERE i.user.id = :id", id)) > 0) lyDo.add(n + " báo vấn đề");
+		if (!branchRepository.findByOwnerIdOrderByIdAsc(id).isEmpty()) lyDo.add("đang quản lý chi nhánh");
+		if (!lyDo.isEmpty()) {
+			ra.addFlashAttribute("errorMessage", "Không xoá được " + user.getUsername() + " vì đã có dữ liệu ("
+					+ String.join(", ", lyDo) + "). Hãy KHOÁ tài khoản để giữ lịch sử"
+					+ (lyDo.contains("đang quản lý chi nhánh") ? ", và giao chi nhánh cho Manager khác." : "."));
+			return "redirect:/admin/users/" + id;
+		}
+
+		// Dữ liệu cá nhân không có giá trị lưu lại: giỏ hàng, yêu thích, đã xem, địa chỉ, thông báo, phiên đăng nhập
+		em.createQuery("DELETE FROM CartItemTopping c WHERE c.cartItem.id IN (SELECT ci.id FROM CartItem ci WHERE ci.user.id = :id)")
+				.setParameter("id", id).executeUpdate();
+		for (String entity : java.util.List.of("CartItem", "Favorite", "ViewedProduct", "Address", "Notification", "RefreshToken")) {
+			em.createQuery("DELETE FROM " + entity + " x WHERE x.user.id = :id").setParameter("id", id).executeUpdate();
+		}
+		em.createQuery("DELETE FROM User u WHERE u.id = :id").setParameter("id", id).executeUpdate();
+		ra.addFlashAttribute("successMessage", "Đã xoá tài khoản " + user.getUsername() + ".");
+		return "redirect:/admin/users";
+	}
+
+	private long count(String jpql, Integer id) {
+		return em.createQuery(jpql, Long.class).setParameter("id", id).getSingleResult();
 	}
 
 	@PostMapping("/{id}/role")

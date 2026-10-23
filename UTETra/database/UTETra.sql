@@ -21,6 +21,9 @@
                đánh giá như app Katinat / Highlands (chấm sao từng món, chữ/ảnh/video tuỳ ý + đánh giá quán: OrderReviews),
                chuông thông báo (Notifications.type / link / ref_key)
          + Bổ sung Quản lý & Phản hồi đánh giá (ReviewReplies) cho Admin và Manager
+         + v15: nhật ký hoạt động (ActivityLogs) của Admin / Manager / Shipper; mật khẩu tạm hết hạn sau 72 giờ
+                (Users.temp_password_expires_at); khoá / đặt lại mật khẩu / đổi vai trò -> đăng xuất ngay
+         + v14: Admin tạo / đặt lại mật khẩu tạm cho nhân viên -> bắt buộc đổi ở lần đăng nhập đầu (Users.must_change_password)
          + v13: thời gian dự kiến giao / lấy món (Orders.eta_minutes)
          + v12: topping như Katinat - Admin quản lý ở /admin/toppings, mỗi topping có 1 món MUA RIÊNG trong
                 danh mục Topping (Products.topping_id); Manager báo hết topping theo chi nhánh (BranchToppings)
@@ -75,6 +78,8 @@ CREATE TABLE Users (
     carrier_id            INT           NULL,                   -- chỉ dùng cho SHIPPER
     is_verified           BIT           NOT NULL DEFAULT 0,     -- đã kích hoạt bằng OTP
     is_active             BIT           NOT NULL DEFAULT 1,     -- 0 = bị khoá
+    must_change_password  BIT           NOT NULL DEFAULT 0,     -- 1 = mật khẩu tạm do Admin đặt, phải đổi ở lần đăng nhập đầu
+    temp_password_expires_at DATETIME2  NULL,                   -- mật khẩu tạm hết hạn (72 giờ sau khi Admin cấp)
     created_at            DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_Users_Roles    FOREIGN KEY (role_id)    REFERENCES Roles(id),
     CONSTRAINT FK_Users_Carriers FOREIGN KEY (carrier_id) REFERENCES Carriers(id)
@@ -515,6 +520,18 @@ CREATE TABLE Notifications (
     CONSTRAINT FK_Notifications_Users  FOREIGN KEY (user_id)  REFERENCES Users(id) ON DELETE CASCADE,
     CONSTRAINT FK_Notifications_Orders FOREIGN KEY (order_id) REFERENCES Orders(id)
 );
+
+-- Nhật ký hoạt động: ai làm gì, lúc nào (Admin xem ở /admin/activity-logs). Giữ cả khi tài khoản bị xoá.
+CREATE TABLE ActivityLogs (
+    id           INT IDENTITY(1,1) PRIMARY KEY,
+    actor_id     INT            NULL,               -- tài khoản thực hiện (không ràng buộc khoá ngoại để còn giữ log)
+    actor_name   NVARCHAR(150)  NOT NULL,           -- "Nguyễn Quản Lý (manager1)"
+    actor_role   VARCHAR(20)    NOT NULL,           -- ADMIN / MANAGER / SHIPPER / USER
+    action       NVARCHAR(500)  NOT NULL,           -- "Đã báo hết Bạc xỉu tại chi nhánh."
+    path         VARCHAR(255)   NULL,               -- đường dẫn thao tác
+    created_at   DATETIME2      NOT NULL DEFAULT SYSDATETIME()
+);
+CREATE INDEX IX_ActivityLogs_Created ON ActivityLogs(created_at DESC);
 GO
 
 /* ---------- Index ---------- */

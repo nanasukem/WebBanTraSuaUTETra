@@ -47,6 +47,14 @@ public class User {
 	@Column(name = "is_active", nullable = false)
 	private Boolean isActive = true;
 
+	/** true = đang dùng mật khẩu tạm do Admin đặt -> lần đăng nhập tới bắt buộc đổi mật khẩu */
+	@Column(name = "must_change_password", nullable = false)
+	private Boolean mustChangePassword = false;
+
+	/** Mật khẩu tạm hết hạn lúc (72 giờ sau khi Admin cấp); null = không có mật khẩu tạm */
+	@Column(name = "temp_password_expires_at")
+	private LocalDateTime tempPasswordExpiresAt;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt = LocalDateTime.now();
 }
