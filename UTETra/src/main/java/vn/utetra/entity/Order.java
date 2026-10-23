@@ -54,9 +54,6 @@ public class Order {
 	@JoinColumn(name = "product_voucher_id")
 	private Voucher productVoucher;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "shipping_voucher_id")
-	private Voucher shippingVoucher;
 
 	@Column(name = "receiver_name", nullable = false, length = 100)
 	private String receiverName;
@@ -88,8 +85,6 @@ public class Order {
 	@Column(name = "shipping_fee", nullable = false, precision = 12, scale = 0)
 	private BigDecimal shippingFee = BigDecimal.ZERO;
 
-	@Column(name = "shipping_discount", nullable = false, precision = 12, scale = 0)
-	private BigDecimal shippingDiscount = BigDecimal.ZERO;
 
 	@Column(name = "total_amount", nullable = false, precision = 12, scale = 0)
 	private BigDecimal totalAmount = BigDecimal.ZERO;

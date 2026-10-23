@@ -41,59 +41,6 @@
 		</div>
 	</div>
 
-	<!-- ==================== HỆ THỐNG CHI NHÁNH & ĐÁNH GIÁ QUÁN (ĐÃ ĐƯA LÊN TRÊN) ==================== -->
-	<div class="mb-5">
-		<div class="mb-4">
-			<h2 class="fw-bold mb-1">
-				<i class="bi bi-shop text-success"></i> Hệ thống các chi nhánh &
-				Đánh giá quán
-			</h2>
-			<p class="text-muted mb-0">Chọn chi nhánh bên dưới để xem điểm số
-				đánh giá dịch vụ quán và phản hồi chi tiết từ khách hàng (không cần
-				đăng nhập).</p>
-		</div>
-
-		<div class="row g-4"
-			th:if="${branches != null and !#lists.isEmpty(branches)}">
-			<div class="col-12 col-md-6 col-lg-6" th:each="b : ${branches}">
-				<div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-					<div class="card-body d-flex flex-column p-4">
-						<div class="d-flex justify-content-between align-items-start mb-2">
-							<h4 class="fw-bold h5 mb-0" th:text="${b.name}">Tên chi
-								nhánh</h4>
-							<!-- Hiển thị số sao trung bình riêng của quán -->
-							<span class="badge bg-warning text-dark px-2 py-1 fw-bold fs-6">
-								⭐ <span th:text="${branchReviewSummaries[b.id]['avgRating']}">4.8</span>/5
-							</span>
-						</div>
-						<p class="text-muted small mb-2">
-							<i class="bi bi-geo-alt text-danger me-1"></i> <span
-								th:text="${b.address}">Địa chỉ</span>
-						</p>
-						<p class="text-muted small mb-3">
-							<i class="bi bi-telephone text-success me-1"></i> <span
-								th:text="${b.phone}">SĐT</span>
-						</p>
-
-						<div class="mt-auto">
-							<span class="text-muted small d-block mb-2"> <i
-								class="bi bi-chat-heart text-success me-1"></i> <strong
-								th:text="${branchReviewSummaries[b.id]['totalReviews']}">0</strong>
-								lượt đánh giá quán
-							</span>
-							<!-- Nút bấm chuyển hướng đến trang xem chi tiết đánh giá quán công khai -->
-							<a th:href="@{/branches/{id}/reviews-public(id=${b.id})}"
-								class="btn btn-outline-success btn-sm w-100 fw-semibold py-2">
-								<i class="bi bi-star-fill text-warning me-1"></i> Xem chi tiết
-								đánh giá quán & phản hồi <i class="bi bi-arrow-right ms-1"></i>
-							</a>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-
 	<!-- ==================== SẢN PHẨM BÁN TRÊN 10 ==================== -->
 	<div id="ban-chay" style="scroll-margin-top: 90px;"
 		class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">

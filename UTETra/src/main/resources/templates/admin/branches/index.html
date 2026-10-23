@@ -53,12 +53,12 @@
 					<label for="status" class="form-label fw-semibold"> Trạng
 						thái </label> <select id="status" name="status" class="form-select">
 						<option value="">Tất cả trạng thái</option>
-						<option value="ACTIVE"
-							th:selected="${status != null and status.toString() == 'ACTIVE'}">
+						<option value="APPROVED"
+							th:selected="${status != null and status.name() == 'APPROVED'}">
 							Đang hoạt động</option>
-						<option value="INACTIVE"
-							th:selected="${status != null and status.toString() == 'INACTIVE'}">
-							Ngừng hoạt động</option>
+						<option value="SUSPENDED"
+							th:selected="${status != null and status.name() == 'SUSPENDED'}">
+							Tạm ngưng</option>
 					</select>
 				</div>
 
@@ -119,8 +119,8 @@
 								<div class="fw-semibold" th:text="${branch.name}">Tên chi
 									nhánh</div> <small class="text-muted"
 								th:if="${branch.openTime != null and branch.closeTime != null}"
-								th:text="${branch.openTime + ' - ' + branch.closeTime}">
-									08:00 - 22:00 </small>
+								th:text="${branch.hoursLabel}">
+									07:00 - 22:00 </small>
 							</td>
 
 							<td><span
@@ -137,13 +137,13 @@
 									Chưa phân công </span></td>
 
 							<td class="text-center"><span
-								th:if="${branch.status != null and branch.status.toString() == 'ACTIVE'}"
+								th:if="${branch.status != null and branch.status.name() == 'APPROVED'}"
 								class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-3 py-2">
 									<i class="bi bi-check-circle me-1"></i> Đang hoạt động
 							</span> <span
-								th:unless="${branch.status != null and branch.status.toString() == 'ACTIVE'}"
+								th:unless="${branch.status != null and branch.status.name() == 'APPROVED'}"
 								class="badge rounded-pill bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2">
-									<i class="bi bi-pause-circle me-1"></i> Ngừng hoạt động
+									<i class="bi bi-pause-circle me-1"></i> Tạm ngưng
 							</span></td>
 
 							<!-- Các thao tác -->
@@ -167,16 +167,16 @@
 									<input type="hidden" th:if="${_csrf != null}"
 										th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
 
-									<input type="hidden" name="status"
-										th:value="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}">
+									<input type="hidden" name="value"
+										th:value="${branch.status != null and branch.status.name() == 'APPROVED' ? 'SUSPENDED' : 'APPROVED'}">
 
 									<button type="submit" class="btn btn-sm"
-										th:classappend="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'btn-outline-danger' : 'btn-outline-success'}"
-										th:title="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'Ngừng hoạt động' : 'Kích hoạt chi nhánh'}"
-										th:aria-label="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'Ngừng hoạt động' : 'Kích hoạt chi nhánh'}"
+										th:classappend="${branch.status != null and branch.status.name() == 'APPROVED' ? 'btn-outline-danger' : 'btn-outline-success'}"
+										th:title="${branch.status != null and branch.status.name() == 'APPROVED' ? 'Tạm ngưng chi nhánh' : 'Kích hoạt chi nhánh'}"
+										th:aria-label="${branch.status != null and branch.status.name() == 'APPROVED' ? 'Tạm ngưng chi nhánh' : 'Kích hoạt chi nhánh'}"
 										th:attr="data-branch-name=${branch.name},data-current-status=${branch.status}">
 										<i
-											th:class="${branch.status != null and branch.status.toString() == 'ACTIVE' ? 'bi bi-lock' : 'bi bi-unlock'}"></i>
+											th:class="${branch.status != null and branch.status.name() == 'APPROVED' ? 'bi bi-lock' : 'bi bi-unlock'}"></i>
 									</button>
 								</form>
 
@@ -220,11 +220,11 @@
                     const button = form.querySelector('button[type="submit"]');
                     const branchName = button?.dataset.branchName || 'chi nhánh';
                     const currentStatus = button?.dataset.currentStatus || '';
-                    const willDeactivate = currentStatus === 'ACTIVE';
+                    const willDeactivate = currentStatus === 'APPROVED';
 
                     const message = willDeactivate
-                        ? 'Bạn có chắc muốn ngừng hoạt động chi nhánh "' + branchName + '" không?'
-                        : 'Bạn có chắc muốn kích hoạt chi nhánh "' + branchName + '" không?';
+                        ? 'Bạn có chắc muốn tạm ngưng chi nhánh "' + branchName + '" không?'
+                        : 'Bạn có chắc muốn kích hoạt lại chi nhánh "' + branchName + '" không?';
 
                     if (!window.confirm(message)) {
                         event.preventDefault();
@@ -236,3 +236,4 @@
 
 </section>
 </html>
+

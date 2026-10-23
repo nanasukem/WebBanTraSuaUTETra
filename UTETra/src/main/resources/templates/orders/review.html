@@ -6,7 +6,7 @@
 	ĐÁNH GIÁ ĐƠN HÀNG /orders/{id}/review - như app Katinat / Highlands:
 	- Chấm sao TẤT CẢ món của đơn trong 1 lượt (mặc định 5 sao); món nào chưa muốn đánh giá thì bấm "Để sau"
 	- Bình luận, ảnh/video không bắt buộc, không giới hạn số chữ tối thiểu
-	- Đánh giá quán (phục vụ, đóng gói, tốc độ) + góp ý
+	- Đánh giá quán (phục vụ, đóng gói, tốc độ) + góp ý: 1 lần / đơn, đã đánh giá thì chỉ hiện kết quả
 -->
 <body>
 	<div id="review-content">
@@ -121,9 +121,30 @@
 
 			<!-- ===================== ĐÁNH GIÁ QUÁN ===================== -->
 			<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-3" th:if="${page.canReview or page.storeReviewed}">
-				<h2 class="h5 fw-bold mb-1"><i class="bi bi-shop text-success me-1"></i> Đánh giá quán</h2>
-				<p class="small text-muted mb-3" th:text="${page.branchName} + ' · phục vụ, đóng gói, tốc độ'">Chi nhánh</p>
+				<h2 class="h5 fw-bold mb-3"><i class="bi bi-shop text-success me-1"></i> Đánh giá quán</h2>
 
+				<!-- Ảnh quán (hoặc icon) + tên quán: bấm vào để xem trang đánh giá của quán (đánh giá của mọi khách + phản hồi) -->
+				<a th:href="@{/branches/{id}(id=${page.branchId})}"
+					class="d-flex align-items-center gap-3 mb-3 text-decoration-none text-reset rv-shop-link"
+					title="Xem đánh giá & phản hồi của quán">
+					<img th:if="${page.branchImage != null and !#strings.isEmpty(page.branchImage)}" th:src="${page.branchImage}"
+						th:alt="${page.branchName}" class="rounded-3 border flex-shrink-0"
+						style="width: 64px; height: 64px; object-fit: cover;">
+					<span th:unless="${page.branchImage != null and !#strings.isEmpty(page.branchImage)}"
+						class="rounded-3 bg-success-subtle text-success d-inline-flex align-items-center justify-content-center flex-shrink-0"
+						style="width: 64px; height: 64px;"><i class="bi bi-shop fs-3"></i></span>
+					<span class="min-w-0">
+						<span class="fw-semibold d-block" th:text="${page.branchName}">UTETra Võ Văn Ngân</span>
+						<span class="small text-muted">phục vụ, đóng gói, tốc độ ·
+							<span class="text-success">xem đánh giá của quán <i class="bi bi-chevron-right"></i></span></span>
+					</span>
+				</a>
+				<style>
+					.rv-shop-link img, .rv-shop-link > span:first-of-type { transition: transform .15s, box-shadow .15s; }
+					.rv-shop-link:hover img, .rv-shop-link:hover > span:first-of-type { transform: scale(1.05); box-shadow: 0 .25rem .75rem rgba(0,0,0,.12); }
+				</style>
+
+				<!-- Đã đánh giá quán: chỉ hiện kết quả, không sửa được nữa -->
 				<th:block th:if="${page.storeReviewed}">
 					<div class="mb-1"><span class="text-warning fs-5"
 						th:text="${#strings.repeat('★', page.storeRating)} + ${#strings.repeat('☆', 5 - page.storeRating)}"></span>
@@ -134,6 +155,7 @@
 					<p class="small mb-0" th:if="${page.storeComment}" th:text="${page.storeComment}"></p>
 				</th:block>
 
+				<!-- Chưa đánh giá quán: hiện form chấm sao -->
 				<th:block th:unless="${page.storeReviewed}">
 					<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
 						<input type="hidden" name="storeRating" value="5" class="rv-rating">
@@ -155,6 +177,7 @@
 				</th:block>
 			</section>
 
+			<!-- Nút gửi chỉ hiện khi còn món chưa đánh giá hoặc chưa đánh giá quán -->
 			<div class="d-flex justify-content-end mb-4"
 				th:if="${page.canReview and (page.pendingCount > 0 or !page.storeReviewed)}">
 				<button type="submit" class="btn btn-success btn-lg px-4" id="rvSubmit"><i class="bi bi-send me-1"></i> Gửi đánh giá</button>

@@ -11,7 +11,7 @@ public record ManagerVoucherRes(
 		String code,
 		String name,
 		boolean chainWide,          // true = toàn chuỗi, false = riêng chi nhánh này
-		String applyToLabel,        // Giảm tiền món / Giảm phí ship
+		String applyToLabel,        // Giảm tiền món
 		String discountText,        // "20% (tối đa 30.000đ)" / "10.000đ"
 		String conditionText,       // "Đơn từ 50.000đ · Mỗi khách 1 lần · Chỉ VNPAY"
 		String period,              // "01/10/2026 – 31/10/2026"

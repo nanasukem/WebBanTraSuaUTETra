@@ -7,7 +7,7 @@ import java.util.List;
 public record VoucherOptionRes(
 		String code,
 		String name,
-		String applyTo,          // PRODUCT / SHIPPING
+		String applyTo,          // luôn PRODUCT (mã giảm tiền món)
 		String discountType,     // PERCENT / AMOUNT
 		BigDecimal discountValue,
 		BigDecimal maxDiscount,

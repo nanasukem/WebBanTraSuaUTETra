@@ -86,12 +86,11 @@ class Week3ServiceTest {
 		em.createNativeQuery("UPDATE Orders SET carrier_id = 1 WHERE delivery_type = 'DELIVERY'").executeUpdate();
 		em.createNativeQuery("DELETE FROM Carriers WHERE id <> 1 AND name = N'Ahamove'").executeUpdate();
 		em.createNativeQuery("UPDATE Carriers SET name = N'Shipper UTETra', fee = 15000, per_km_fee = 10000, is_active = 1 WHERE id = 1").executeUpdate();
-		em.createNativeQuery("UPDATE Orders SET shipping_voucher_id = NULL, shipping_discount = 0").executeUpdate();
 		em.createNativeQuery("DELETE FROM VoucherUsages WHERE voucher_id IN (SELECT id FROM Vouchers WHERE apply_to = 'SHIPPING')").executeUpdate();
 		em.createNativeQuery("DELETE FROM Vouchers WHERE apply_to = 'SHIPPING'").executeUpdate();
 		em.createNativeQuery("UPDATE Vouchers SET per_user_limit = 2, used_count = 1 WHERE code = 'VVN15'").executeUpdate();
 		em.createNativeQuery("UPDATE Orders SET product_voucher_id = (SELECT id FROM Vouchers WHERE code = 'VVN15'), "
-				+ "items_total = 148000, product_discount = 15000, shipping_fee = 15000, shipping_discount = 0, total_amount = 148000 WHERE id = 1").executeUpdate();
+				+ "items_total = 148000, product_discount = 15000, shipping_fee = 15000, total_amount = 148000 WHERE id = 1").executeUpdate();
 		em.createNativeQuery("INSERT INTO VoucherUsages (voucher_id, user_id, order_id) "
 				+ "SELECT v.id, 6, 1 FROM Vouchers v WHERE v.code = 'VVN15' "
 				+ "AND NOT EXISTS (SELECT 1 FROM VoucherUsages u WHERE u.voucher_id = v.id AND u.order_id = 1)").executeUpdate();

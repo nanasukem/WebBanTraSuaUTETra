@@ -43,7 +43,8 @@ import vn.utetra.service.impl.OrderFlowServiceImpl;
  * - Đánh giá CẢ ĐƠN trong 1 lượt (đơn nhiều món thì nhắc đánh giá hết)
  * - Bắt buộc chấm sao 1..5; bình luận và ảnh/video KHÔNG bắt buộc, không giới hạn số chữ tối thiểu
  *   (tối đa 5 file / ly, ảnh <= 5MB, video <= 30MB)
- * - Đánh giá quán (phục vụ, đóng gói) + góp ý: 1 lần / đơn
+ * - Đánh giá quán (phục vụ, đóng gói) + góp ý: 1 lần / đơn, đã đánh giá thì không sửa được
+ * - Gửi xong -> báo cho manager chi nhánh (đánh giá <= 2 sao thì ghi rõ "Đánh giá thấp" để trả lời sớm)
  */
 @Service
 @Transactional(readOnly = true)
@@ -73,11 +74,12 @@ public class ReviewService {
 	private final OrderReviewRepository orderReviewRepository;
 	private final CloudinaryService cloudinaryService;
 	private final OrderIssueService orderIssueService;
+	private final NotificationService notificationService;
 
 	public ReviewService(ReviewRepository reviewRepository, ReviewMediaRepository reviewMediaRepository,
 			OrderDetailRepository orderDetailRepository, OrderRepository orderRepository,
 			OrderReviewRepository orderReviewRepository, CloudinaryService cloudinaryService,
-			OrderIssueService orderIssueService) {
+			OrderIssueService orderIssueService, NotificationService notificationService) {
 		this.reviewRepository = reviewRepository;
 		this.reviewMediaRepository = reviewMediaRepository;
 		this.orderDetailRepository = orderDetailRepository;
@@ -85,6 +87,7 @@ public class ReviewService {
 		this.orderReviewRepository = orderReviewRepository;
 		this.cloudinaryService = cloudinaryService;
 		this.orderIssueService = orderIssueService;
+		this.notificationService = notificationService;
 	}
 
 	// ================= XEM ĐÁNH GIÁ CỦA MÓN =================
@@ -160,7 +163,8 @@ public class ReviewService {
 		OrderReview or = orderReviewRepository.findByOrderId(orderId).orElse(null);
 		boolean can = o.getStatus() == OrderStatus.DELIVERED && inWindow(o)
 				&& orderIssueService.forOrder(orderId) == null;
-		return new OrderReviewPageRes(o.getId(), isPickup(o), o.getBranch().getName(), time(o.getDeliveredAt()),
+		return new OrderReviewPageRes(o.getId(), isPickup(o), o.getBranch().getName(), o.getBranch().getId(),
+				o.getBranch().getImageCloudinaryId(), time(o.getDeliveredAt()),
 				o.getDeliveredAt() == null ? null : o.getDeliveredAt().plusDays(REVIEW_DAYS).format(DAY), can, items,
 				pending, or != null, or == null ? null : or.getStoreRating(),
 				or == null ? List.of() : splitTags(or.getTags()), or == null ? null : or.getComment());
@@ -208,7 +212,7 @@ public class ReviewService {
 			toSave.add(it);
 		}
 
-		// 2. Đánh giá quán (1 lần / đơn)
+		// 2. Đánh giá quán (1 lần / đơn - đã đánh giá rồi thì bỏ qua, không cho sửa)
 		Integer store = req.storeRating();
 		boolean service = store != null && !orderReviewRepository.existsByOrderId(orderId);
 		if (store != null && (store < 1 || store > 5)) throw new BusinessException("Đánh giá quán phải từ 1 đến 5 sao");
@@ -264,6 +268,7 @@ public class ReviewService {
 			orderReviewRepository.save(or);
 		}
 		reviewRepository.flush();
+		notifyManager(o, toSave, service ? store : null);
 		return new ReviewSubmitRes(toSave.size(), service);
 	}
 
@@ -282,6 +287,32 @@ public class ReviewService {
 	}
 
 	// ================= HÀM PHỤ =================
+
+	/** Sao <= mức này coi là đánh giá thấp, báo nổi bật cho manager */
+	static final int LOW_RATING = 2;
+
+	/** Báo manager chi nhánh: 1 thông báo cho cả lượt đánh giá, bấm vào mở trang Quản lý đánh giá */
+	private void notifyManager(Order o, List<ReviewItemReq> items, Integer store) {
+		User manager = o.getBranch() == null ? null : o.getBranch().getOwner();
+		if (manager == null || (items.isEmpty() && store == null)) {
+			return;
+		}
+		List<String> parts = new ArrayList<>();
+		if (store != null) parts.add("quán " + store + "★");
+		if (!items.isEmpty()) parts.add(items.size() + " món");
+
+		int min = items.stream().mapToInt(ReviewItemReq::rating).min().orElse(5);
+		if (store != null) min = Math.min(min, store);
+		boolean low = min <= LOW_RATING;
+
+		User u = o.getUser();
+		String customer = u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername();
+		String title = low ? "⚠ Đánh giá thấp " + min + "★ – đơn #" + o.getId()
+				: "Đơn #" + o.getId() + " có đánh giá mới";
+		String content = customer + " đã đánh giá " + String.join(", ", parts)
+				+ (low ? ". Bạn nên phản hồi sớm cho khách." : ".");
+		notificationService.create(manager, o, "REVIEW", title, content, "/manager/reviews");
+	}
 
 	private Order ownOrder(Integer userId, Integer orderId) {
 		return orderRepository.findById(orderId).filter(o -> o.getUser().getId().equals(userId))

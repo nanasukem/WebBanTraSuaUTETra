@@ -28,8 +28,6 @@ public record OrderDetailRes(
 		BigDecimal memberDiscount,
 		String memberTierName,
 		BigDecimal shippingFee,
-		BigDecimal shippingDiscount,
-		String shippingVoucherCode,
 		BigDecimal totalAmount,
 		String paymentMethodLabel,
 		String paymentStatusLabel,

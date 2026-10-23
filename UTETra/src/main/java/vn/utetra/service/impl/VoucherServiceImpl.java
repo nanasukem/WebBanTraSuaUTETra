@@ -219,7 +219,7 @@ public class VoucherServiceImpl implements VoucherService {
 	// ================= KIỂM TRA CHUNG =================
 	@Override
 	@Transactional(readOnly = true, noRollbackFor = BusinessException.class)
-	public BigDecimal calculateDiscount(String code, Integer branchId, BigDecimal itemsTotal, BigDecimal shippingFee) {
+	public BigDecimal calculateDiscount(String code, Integer branchId, BigDecimal itemsTotal) {
 		Voucher v = voucherRepository.findByCodeIgnoreCase(code.trim())
 				.orElseThrow(() -> new BusinessException("Mã voucher không tồn tại"));
 		LocalDateTime now = LocalDateTime.now();
@@ -258,8 +258,8 @@ public class VoucherServiceImpl implements VoucherService {
 	@Override
 	@Transactional(readOnly = true, noRollbackFor = BusinessException.class)
 	public BigDecimal calculateDiscount(String code, Integer branchId, Integer userId, PaymentMethod paymentMethod,
-			BigDecimal itemsTotal, BigDecimal shippingFee) {
-		BigDecimal discount = calculateDiscount(code, branchId, itemsTotal, shippingFee); // kiểm tra chung trước
+			BigDecimal itemsTotal) {
+		BigDecimal discount = calculateDiscount(code, branchId, itemsTotal); // kiểm tra chung trước
 		Voucher v = voucherRepository.findByCodeIgnoreCase(code.trim())
 				.orElseThrow(() -> new BusinessException("Mã voucher không tồn tại"));
 

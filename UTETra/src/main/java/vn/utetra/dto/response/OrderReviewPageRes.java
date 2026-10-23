@@ -10,6 +10,8 @@ public record OrderReviewPageRes(
 		Integer orderId,
 		boolean pickup,
 		String branchName,
+		Integer branchId,           // để mở trang đánh giá công khai của quán
+		String branchImage,         // ảnh chi nhánh (null -> hiện icon quán)
 		String deliveredAt,
 		String deadline,            // hạn đánh giá (30 ngày sau khi nhận)
 		boolean canReview,          // đơn đã giao + còn hạn

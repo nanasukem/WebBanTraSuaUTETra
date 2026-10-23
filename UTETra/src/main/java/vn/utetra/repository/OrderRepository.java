@@ -123,19 +123,4 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	List<Object[]> productVoucherStatsOfBranch(@Param("branchId") Integer branchId,
 			@Param("cancelled") OrderStatus cancelled);
 
-	/**
-     * Mã giảm phí ship dùng tại chi nhánh (đơn không hủy).
-     */
-    @Query(
-        "SELECT o.shippingVoucher.id, COUNT(o), " +
-        "COALESCE(SUM(o.shippingDiscount), 0) FROM Order o " +
-        "WHERE o.branch.id = :branchId " +
-        "AND o.shippingVoucher IS NOT NULL " +
-        "AND o.status <> :cancelled " +
-        "GROUP BY o.shippingVoucher.id"
-    )
-    List<Object[]> shippingVoucherStatsOfBranch(
-            @Param("branchId") Integer branchId,
-            @Param("cancelled") OrderStatus cancelled
-    );
 }

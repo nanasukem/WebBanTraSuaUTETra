@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * Tổng quan hệ thống của Admin: số đơn, người dùng, sản phẩm, chi nhánh, doanh thu, 8 đơn mới nhất.
- * Doanh thu = tiền món sau giảm giá của các đơn đã giao (không gồm phí ship).
+ * Doanh thu = tiền món sau giảm giá của các đơn đã giao (tổng tiền đơn gồm cả phí ship Shipper UTETra, trừ tiền đã hoàn).
  */
 @Controller
 @Transactional(readOnly = true)

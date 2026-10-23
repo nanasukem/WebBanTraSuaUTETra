@@ -7,8 +7,10 @@
          + v5: ghi chú địa chỉ (Addresses.note, Orders.delivery_note)
          + v10: giờ mở cửa chi nhánh (Branches.open_time / close_time, mặc định 7:00 - 22:00);
                 "Báo vấn đề với đơn" thay cho Trả hàng (bảng OrderIssues, Orders.refund_amount, Payments.refund_amount)
-         + v9: phí giao theo khoảng cách (Carriers = đối tác giao hàng, thêm per_km_fee), mỗi đơn 1 mã giảm giá,
-               doanh thu / chi tiêu / xét hạng KHÔNG tính phí ship
+         + v9: phí giao theo khoảng cách (thêm per_km_fee), mỗi đơn 1 mã giảm giá
+         + v11: chỉ giao bằng Shipper UTETra của chuỗi (đồng giá 15.000đ <= 3 km, +10.000đ/km), doanh thu / chi tiêu
+                tính tổng tiền đơn (gồm phí ship); bỏ voucher freeship (Vouchers chỉ còn PRODUCT,
+                bỏ Orders.shipping_voucher_id / shipping_discount)
          + v9: bỏ hoa hồng / chiết khấu app (Branches.commission_rate, Orders.commission_amount) - chuỗi tự vận hành,
                chi nhánh là của công ty nên không thu % của chi nhánh
          + v8: thanh toán VNPAY / MoMo sandbox thật: đơn Chờ thanh toán (Orders.status AWAITING_PAYMENT),
@@ -211,7 +213,7 @@ CREATE TABLE Vouchers (
     code             VARCHAR(30)   NOT NULL UNIQUE,
     name             NVARCHAR(150) NOT NULL,
     branch_id        INT           NULL,
-    apply_to         VARCHAR(10)   NOT NULL CHECK (apply_to IN ('PRODUCT','SHIPPING')),      -- giảm tiền món / giảm phí ship
+    apply_to         VARCHAR(10)   NOT NULL CHECK (apply_to IN ('PRODUCT')),                 -- chỉ có mã giảm tiền món (không có voucher freeship)
     discount_type    VARCHAR(10)   NOT NULL CHECK (discount_type IN ('PERCENT','AMOUNT')),
     discount_value   DECIMAL(12,0) NOT NULL CHECK (discount_value > 0),
     max_discount     DECIMAL(12,0) NULL,                                                     -- trần giảm khi PERCENT
@@ -288,8 +290,8 @@ CREATE TABLE ViewedProducts (
 /* =========================================================
    5. ĐƠN HÀNG & THANH TOÁN
    Mỗi đơn thuộc 1 chi nhánh (khách chọn chi nhánh khi Checkout).
-   total_amount = items_total - product_discount - member_discount + shipping_fee - shipping_discount
-   delivery_type: DELIVERY = giao tận nơi (có carrier, địa chỉ, phí ship)
+   total_amount = items_total - product_discount - member_discount + shipping_fee
+   delivery_type: DELIVERY = giao tận nơi (Shipper UTETra giao, có địa chỉ, phí ship)
                   PICKUP   = khách đến chi nhánh lấy (không carrier, không địa chỉ, ship = 0)
    ========================================================= */
 CREATE TABLE Orders (
@@ -302,7 +304,6 @@ CREATE TABLE Orders (
     carrier_id           INT           NULL,                 -- NULL khi đến lấy
     shipper_id           INT           NULL,
     product_voucher_id   INT           NULL,
-    shipping_voucher_id  INT           NULL,
     receiver_name        NVARCHAR(100) NOT NULL,            -- chép từ Addresses lúc đặt (đến lấy: khách nhập)
     receiver_phone       VARCHAR(15)   NOT NULL,
     delivery_address     NVARCHAR(255) NULL,                 -- NULL khi đến lấy
@@ -315,7 +316,6 @@ CREATE TABLE Orders (
         CONSTRAINT CK_Orders_MemberDiscount CHECK (member_discount >= 0),                    -- giảm theo hạng thành viên
     member_tier_name     NVARCHAR(50)  NULL,                 -- hạng lúc đặt (chốt lại)
     shipping_fee         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
-    shipping_discount    DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (shipping_discount >= 0),
     total_amount         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
     status               VARCHAR(20)   NOT NULL DEFAULT 'PENDING'
         CHECK (status IN ('AWAITING_PAYMENT','PENDING','CONFIRMED','READY','PICKED_UP','DELIVERING','DELIVERED','CANCELLED','RETURNED')),
@@ -331,8 +331,7 @@ CREATE TABLE Orders (
     CONSTRAINT FK_Orders_Branches    FOREIGN KEY (branch_id)           REFERENCES Branches(id),
     CONSTRAINT FK_Orders_Carriers    FOREIGN KEY (carrier_id)          REFERENCES Carriers(id),
     CONSTRAINT FK_Orders_Shippers    FOREIGN KEY (shipper_id)          REFERENCES Users(id),
-    CONSTRAINT FK_Orders_ProdVoucher FOREIGN KEY (product_voucher_id)  REFERENCES Vouchers(id),
-    CONSTRAINT FK_Orders_ShipVoucher FOREIGN KEY (shipping_voucher_id) REFERENCES Vouchers(id)
+    CONSTRAINT FK_Orders_ProdVoucher FOREIGN KEY (product_voucher_id)  REFERENCES Vouchers(id)
 );
 
 CREATE TABLE OrderDetails (
@@ -645,10 +644,10 @@ INSERT INTO ViewedProducts (user_id, product_id) VALUES (6, 1), (6, 2), (6, 5), 
 
 -- Đơn 1 (đã giao, giao tận nơi bởi Shipper UTETra): tiền món 148000 - VVN15 15000 + ship 15000 = 148000
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, product_voucher_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, product_discount, member_discount, member_tier_name, shipping_fee, shipping_discount, total_amount,
+                    items_total, product_discount, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, delivered_at)
 VALUES (6, 1, 'DELIVERY', 1, 5, 2, N'Trần Thị Khách', '0900000006', N'KTX Khu B, Dĩ An, Bình Dương',
-        148000, 15000, 0, N'Thành viên', 15000, 0, 148000, 'DELIVERED', 'VNPAY', 'PAID', SYSDATETIME());
+        148000, 15000, 0, N'Thành viên', 15000, 148000, 'DELIVERED', 'VNPAY', 'PAID', SYSDATETIME());
 
 -- Đơn 2 (mới đặt, giao tận nơi): (30000+5000)*1 + ship 15000 = 50000
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, receiver_name, receiver_phone, delivery_address,

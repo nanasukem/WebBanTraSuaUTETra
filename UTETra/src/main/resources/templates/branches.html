@@ -34,10 +34,10 @@
 			<div class="col-12 col-md-6 col-lg-4 branch-item"
 				th:each="b : ${branches}"
 				th:attr="data-lat=${b.latitude}, data-lng=${b.longitude}">
-				<div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+				<!-- Bấm vào bất kỳ chỗ nào trên khung -> trang chủ chi nhánh /branches/{id} (giống thẻ món) -->
+				<div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden branch-card">
 
-					<div class="bg-success-subtle position-relative"
-						style="height: 160px;">
+					<div class="bg-success-subtle position-relative branch-cover" style="height: 160px;">
 						<img
 							th:if="${b.imageCloudinaryId != null and !#strings.isEmpty(b.imageCloudinaryId)}"
 							th:src="${b.imageCloudinaryId}" th:alt="${b.name}"
@@ -55,8 +55,15 @@
 					</div>
 
 					<div class="card-body d-flex flex-column">
-						<h2 class="h5 fw-bold mb-2" th:text="${b.name}">UTETra Võ Văn
-							Ngân</h2>
+						<div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+							<h2 class="h5 fw-bold mb-0"><a th:href="@{/branches/{id}(id=${b.id})}"
+								class="text-reset text-decoration-none stretched-link" th:text="${b.name}">UTETra Võ Văn Ngân</a></h2>
+							<span class="badge bg-warning text-dark px-2 py-1 fw-bold flex-shrink-0"
+								th:if="${branchReviewSummaries != null and branchReviewSummaries[b.id] != null}">
+								⭐ <span th:text="${branchReviewSummaries[b.id]['avgRating']}">4.7</span>/5
+								<small class="fw-normal" th:text="|(${branchReviewSummaries[b.id]['totalReviews']})|">(3)</small>
+							</span>
+						</div>
 						<p class="mb-2">
 							<i class="bi bi-geo-alt text-danger me-1"></i><span
 								th:text="${b.address}">Địa chỉ</span>
@@ -72,23 +79,19 @@
 						<p class="mb-2"
 							th:if="${b.phone != null and !#strings.isEmpty(b.phone)}">
 							<i class="bi bi-telephone text-success me-1"></i> <a
-								th:href="'tel:' + ${b.phone}" class="link-success"
+								th:href="'tel:' + ${b.phone}" class="link-success branch-inner-link"
 								th:text="${b.phone}">028</a>
 						</p>
 						<p class="text-muted small mb-3"
 							th:if="${b.description != null and !#strings.isEmpty(b.description)}"
 							th:text="${b.description}">Mô tả</p>
 
-						<div class="mt-auto d-flex flex-wrap gap-2">
+						<!-- Các nút bên trong vẫn bấm riêng được (nằm trên lớp bấm của cả khung) -->
+						<div class="mt-auto d-flex flex-wrap gap-2 branch-inner-link">
 							<a th:href="@{/menu}" class="btn btn-success btn-sm"> <i
 								class="bi bi-house-door me-1"></i> Xem thực đơn
 							</a>
-
-							<!-- Nút xem chi tiết đánh giá quán công khai -->
-							<a th:href="@{/branches/{id}/reviews-public(id=${b.id})}"
-								class="btn btn-outline-warning btn-sm text-dark"> <i
-								class="bi bi-star-fill text-warning me-1"></i> Đánh giá quán
-							</a> <a th:if="${b.latitude != null and b.longitude != null}"
+							<a th:if="${b.latitude != null and b.longitude != null}"
 								target="_blank" rel="noopener"
 								th:href="|https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}|"
 								class="btn btn-outline-success btn-sm"><i
@@ -113,6 +116,15 @@
 		</div>
 
 		<!-- GẦN TÔI NHẤT: tính khoảng cách đường chim bay (Haversine) rồi xếp lại thẻ chi nhánh -->
+		<style>
+	.branch-card { transition: transform .2s, box-shadow .2s; cursor: pointer; }
+	.branch-card:hover { transform: translateY(-4px); box-shadow: 0 .75rem 1.5rem rgba(0,0,0,.12) !important; }
+	.branch-card:hover h2 { color: var(--bs-success); }
+	.branch-cover { overflow: hidden; }
+	.branch-cover img { transition: transform .3s; }
+	.branch-card:hover .branch-cover img { transform: scale(1.05); }
+	.branch-inner-link { position: relative; z-index: 2; }
+</style>
 		<script>
 			(function () {
 				const btn = document.getElementById('btnNearest');
@@ -120,34 +132,45 @@
 				const list = document.getElementById('branchList');
 				if (!btn || !list) return;
 
-				function km(lat1, lng1, lat2, lng2) {
-					const R = 6371, rad = Math.PI / 180;
-					const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
-					const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
-					return 2 * R * Math.asin(Math.sqrt(a));
+				function km(lat1, lon1, lat2, lon2) {
+					const R = 6371, toRad = (d) => d * Math.PI / 180;
+					const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+					const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+					return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 				}
-				function show(text) { msg.textContent = text; msg.classList.remove('d-none'); }
 
 				btn.addEventListener('click', function () {
-					if (!navigator.geolocation) { show('Trình duyệt không hỗ trợ lấy vị trí.'); return; }
-					show('Đang lấy vị trí của bạn...');
+					if (!navigator.geolocation) {
+						msg.textContent = 'Trình duyệt không hỗ trợ lấy vị trí.';
+						msg.classList.remove('d-none');
+						return;
+					}
+					btn.disabled = true;
+					msg.textContent = 'Đang lấy vị trí của bạn...';
+					msg.classList.remove('d-none');
+
 					navigator.geolocation.getCurrentPosition(function (pos) {
-						const { latitude, longitude } = pos.coords;
 						const items = Array.from(list.querySelectorAll('.branch-item'));
 						items.forEach(function (el) {
 							const lat = parseFloat(el.dataset.lat), lng = parseFloat(el.dataset.lng);
-							el.dataset.km = isNaN(lat) || isNaN(lng) ? 'Infinity' : km(latitude, longitude, lat, lng);
-							const badge = el.querySelector('.branch-distance');
-							if (badge && isFinite(el.dataset.km)) {
-								badge.textContent = (+el.dataset.km).toFixed(1) + ' km';
+							if (!isNaN(lat) && !isNaN(lng)) {
+								const d = km(pos.coords.latitude, pos.coords.longitude, lat, lng);
+								el.dataset.dist = d;
+								const badge = el.querySelector('.branch-distance');
+								badge.textContent = d.toFixed(1) + ' km';
 								badge.classList.remove('d-none');
+							} else {
+								el.dataset.dist = 999999;
 							}
 						});
-						items.sort(function (a, b) { return a.dataset.km - b.dataset.km; }).forEach(function (el) { list.appendChild(el); });
-						show('Đã xếp chi nhánh từ gần đến xa so với vị trí của bạn.');
+						items.sort((a, b) => parseFloat(a.dataset.dist) - parseFloat(b.dataset.dist));
+						items.forEach((el) => list.appendChild(el));
+						msg.textContent = 'Đã sắp xếp chi nhánh từ gần đến xa vị trí của bạn.';
+						btn.disabled = false;
 					}, function () {
-						show('Không lấy được vị trí (bạn chưa cho phép truy cập vị trí).');
-					}, { timeout: 10000 });
+						msg.textContent = 'Không lấy được vị trí (bạn đã từ chối hoặc trình duyệt chặn).';
+						btn.disabled = false;
+					});
 				});
 			})();
 		</script>

@@ -7,7 +7,8 @@
 		<h2 class="fw-bold mb-1">
 			<i class="bi bi-star-fill text-warning me-2"></i>Quản lý Đánh giá Toàn hệ thống (Admin)
 		</h2>
-		<p class="text-muted mb-4">Xem và phản hồi đánh giá món ăn, dịch vụ quán của tất cả các chi nhánh.</p>
+		<p class="text-muted mb-4">Theo dõi đánh giá món và dịch vụ quán của tất cả chi nhánh. Việc phản hồi khách do
+			quản lý từng chi nhánh đảm nhận; admin chỉ xoá các đánh giá vi phạm (quá khích, xúc phạm, spam, quảng cáo).</p>
 
 		<div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
 			<i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
@@ -39,7 +40,7 @@
 		<!-- Bộ lọc phụ theo Loại và Số sao -->
 		<div class="card border-0 shadow-sm mb-4">
 			<div class="card-body py-3">
-				<form method="get" action="/admin/reviews" class="row g-3 align-items-center">
+				<form method="get" th:action="@{/admin/reviews}" class="row g-3 align-items-center">
 					<input type="hidden" name="branchId" th:if="${selectedBranchId != null}"
 						th:value="${selectedBranchId}" />
 					<div class="col-md-5">
@@ -63,7 +64,7 @@
 						</select>
 					</div>
 					<div class="col-md-2">
-						<a href="/admin/reviews" class="btn btn-outline-secondary btn-sm w-100 mt-4">Đặt lại</a>
+						<a th:href="@{/admin/reviews}" class="btn btn-outline-secondary btn-sm w-100 mt-4">Đặt lại</a>
 					</div>
 				</form>
 			</div>
@@ -85,8 +86,8 @@
 								<th>Khách hàng</th>
 								<th>Phân loại</th>
 								<th>Số sao</th>
-								<th>Nội dung & Thẻ Tags</th>
-								<th>Phản hồi</th>
+								<th style="min-width: 240px;">Nội dung & Thẻ Tags</th>
+								<th style="min-width: 200px;">Phản hồi của quán</th>
 								<th>Thời gian</th>
 								<th class="text-center">Thao tác</th>
 							</tr>
@@ -108,7 +109,7 @@
 											class="bi bi-cup-straw me-1"></i> Món: <strong
 											th:text="${r.productName}"></strong></span>
 								</td>
-								<td>
+								<td class="text-nowrap">
 									<span class="text-warning"><span
 											th:each="i : ${#numbers.sequence(1, r.rating)}">★</span></span>
 									(<span th:text="${r.rating}"></span>/5)
@@ -116,8 +117,10 @@
 								<td>
 									<p class="mb-1" th:text="${r.comment != null ? r.comment : '(Không có bình luận)'}">
 									</p>
-									<small class="text-muted" th:if="${r.tags != null}"
-										th:text="'#' + ${r.tags.replace('|', ' #')}"></small>
+									<div class="d-flex flex-wrap gap-1" th:if="${r.tags != null and !#strings.isEmpty(r.tags)}">
+										<span class="badge rounded-pill text-bg-light border fw-normal"
+											th:each="tag : ${#strings.arraySplit(r.tags, '|')}" th:text="${tag}"></span>
+									</div>
 								</td>
 								<td>
 									<div th:if="${not #lists.isEmpty(r.replies)}">
@@ -128,18 +131,24 @@
 											<small class="d-block" th:text="${rep.content}"></small>
 										</div>
 									</div>
-									<span th:if="${#lists.isEmpty(r.replies)}" class="text-muted fst-italic">Chưa phản
+									<span th:if="${#lists.isEmpty(r.replies)}" class="text-muted fst-italic">Quán chưa phản
 										hồi</span>
 								</td>
-								<td
+								<td class="text-nowrap"
 									th:text="${r.createdAt != null ? #temporals.format(r.createdAt, 'dd-MM-yyyy HH:mm') : '—'}">
 								</td>
 								<td class="text-center">
-									<button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
-										data-bs-target="#adminReplyModal" th:data-review-id="${r.id}"
-										th:data-review-type="${r.type}" th:onclick="prepareAdminReply(this)">
-										<i class="bi bi-reply"></i> Phản hồi
-									</button>
+									<!-- Xoá đánh giá vi phạm (giữ nguyên bộ lọc đang xem) -->
+									<form method="post" class="d-inline"
+										th:action="@{/admin/reviews/{type}/{id}/delete(type=${r.type}, id=${r.id})}"
+										onsubmit="return confirm('Xoá đánh giá này vì vi phạm (quá khích, xúc phạm, spam)? Phản hồi và ảnh/video kèm theo cũng bị xoá, không khôi phục được.');">
+										<input type="hidden" name="branchId" th:if="${selectedBranchId != null}" th:value="${selectedBranchId}">
+										<input type="hidden" name="filterType" th:if="${selectedType != null}" th:value="${selectedType}">
+										<input type="hidden" name="rating" th:if="${selectedRating != null}" th:value="${selectedRating}">
+										<button type="submit" class="btn btn-sm btn-outline-danger" title="Xoá đánh giá vi phạm">
+											<i class="bi bi-trash"></i> Xoá
+										</button>
+									</form>
 								</td>
 							</tr>
 						</tbody>
@@ -148,44 +157,6 @@
 			</div>
 		</div>
 	</div>
-
-	<!-- Modal Phản hồi Admin -->
-	<div class="modal fade" id="adminReplyModal" tabindex="-1" aria-hidden="true">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<form th:action="@{/admin/reviews/reply}" method="post">
-					<div class="modal-header bg-primary text-white">
-						<h5 class="modal-title">Phản hồi đánh giá (Admin)</h5>
-						<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-							aria-label="Close"></button>
-					</div>
-					<div class="modal-body">
-						<input type="hidden" id="adminOrderReviewId" name="orderReviewId" />
-						<input type="hidden" id="adminReviewId" name="reviewId" />
-						<div class="mb-3">
-							<label for="adminContent" class="form-label fw-bold">Nội dung phản hồi:</label>
-							<textarea class="form-control" id="adminContent" name="content" rows="4"
-								placeholder="Nhập nội dung phản hồi..." required></textarea>
-						</div>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-						<button type="submit" class="btn btn-primary">Gửi phản hồi</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-
-	<script>
-		function prepareAdminReply(button) {
-			let id = button.getAttribute("data-review-id");
-			let type = button.getAttribute("data-review-type");
-			document.getElementById("adminOrderReviewId").value = (type === "STORE") ? id : "";
-			document.getElementById("adminReviewId").value = (type === "PRODUCT") ? id : "";
-			document.getElementById("adminContent").value = "";
-		}
-	</script>
 </section>
 
 </html>
