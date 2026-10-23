@@ -29,13 +29,16 @@ import vn.utetra.dto.response.CategoryCardRes;
 import vn.utetra.dto.response.MenuSectionRes;
 import vn.utetra.dto.response.ProductCardRes;
 import vn.utetra.dto.response.OrderTab;
+import vn.utetra.entity.Branch;
 import vn.utetra.entity.Category;
 import vn.utetra.entity.Product;
 import vn.utetra.entity.User;
 
+import vn.utetra.repository.BranchRepository;
 import vn.utetra.repository.CategoryRepository;
 import vn.utetra.repository.ProductRepository;
 import vn.utetra.repository.UserRepository;
+import vn.utetra.service.BranchReviewManagementService;
 import vn.utetra.service.OrderFlowService;
 import vn.utetra.service.ProductHighlightService;
 import vn.utetra.service.ViewedProductService;
@@ -50,7 +53,10 @@ public class HomeController {
 	/** Đề - Guest: trang chủ hiện sản phẩm bán TRÊN 10 */
 	private static final int GUEST_MIN_SOLD = 10;
 
-	/** Trang chủ User: mỗi trang của khối "20 món nhất" hiện 8 món (20 món = 3 trang) */
+	/**
+	 * Trang chủ User: mỗi trang của khối "20 món nhất" hiện 8 món (20 món = 3
+	 * trang)
+	 */
 	private static final int HIGHLIGHT_PAGE_SIZE = 8;
 
 	private final UserRepository userRepository;
@@ -60,11 +66,14 @@ public class HomeController {
 	private final OrderFlowService orderFlowService;
 	private final ViewedProductService viewedProductService;
 	private final vn.utetra.service.ReviewService reviewService;
+	private final BranchRepository branchRepository;
+	private final BranchReviewManagementService branchReviewManagementService;
 
 	public HomeController(UserRepository userRepository, ProductRepository productRepository,
 			CategoryRepository categoryRepository, ProductHighlightService productHighlightService,
 			OrderFlowService orderFlowService, ViewedProductService viewedProductService,
-			vn.utetra.service.ReviewService reviewService) {
+			vn.utetra.service.ReviewService reviewService, BranchRepository branchRepository,
+			BranchReviewManagementService branchReviewManagementService) {
 		this.reviewService = reviewService;
 		this.userRepository = userRepository;
 		this.productRepository = productRepository;
@@ -72,6 +81,8 @@ public class HomeController {
 		this.productHighlightService = productHighlightService;
 		this.orderFlowService = orderFlowService;
 		this.viewedProductService = viewedProductService;
+		this.branchRepository = branchRepository;
+		this.branchReviewManagementService = branchReviewManagementService;
 	}
 
 	@GetMapping("/")
@@ -118,10 +129,6 @@ public class HomeController {
 		return guestHome(page, model);
 	}
 
-	/**
-	 * Đăng nhập thành công (SecurityConfiguration.defaultSuccessUrl) -> lưu session.user rồi chia theo vai trò:
-	 * ADMIN -> /admin/dashboard, MANAGER -> /manager/dashboard, SHIPPER -> /shipper/orders, còn lại -> trang chủ.
-	 */
 	@GetMapping("/login-success")
 	public String loginSuccess(HttpSession session) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -158,6 +165,16 @@ public class HomeController {
 					GUEST_MIN_SOLD, PageRequest.of(page, PAGE_SIZE));
 		}
 
+		// BỔ SUNG: Đưa danh sách chi nhánh và điểm đánh giá sao trung bình ra trang chủ
+		// cho Guest
+		List<Branch> branches = branchRepository.findAll();
+		Map<Integer, Map<String, Object>> branchReviewSummaries = new HashMap<>();
+		for (Branch b : branches) {
+			branchReviewSummaries.put(b.getId(), branchReviewManagementService.getBranchReviewSummary(b.getId()));
+		}
+		model.addAttribute("branches", branches);
+		model.addAttribute("branchReviewSummaries", branchReviewSummaries);
+
 		model.addAttribute("products", productHighlightService.toCards(productPage.getContent()));
 		model.addAttribute("currentPage", page);
 		model.addAttribute("totalPages", productPage.getTotalPages());
@@ -170,7 +187,10 @@ public class HomeController {
 		return "home";
 	}
 
-	/** Trang chủ trưng bày: USER (có đơn hàng + đặt món) hoặc MANAGER/ADMIN (chỉ xem) */
+	/**
+	 * Trang chủ trưng bày: USER (có đơn hàng + đặt món) hoặc MANAGER/ADMIN (chỉ
+	 * xem)
+	 */
 	private String userHome(User user, String role, Model model) {
 		boolean isBuyer = "USER".equals(role);
 		model.addAttribute("me", user);
@@ -190,6 +210,16 @@ public class HomeController {
 
 		model.addAttribute("categories", categoryCards());
 
+		// BỔ SUNG: Đưa danh sách chi nhánh và điểm đánh giá sao trung bình ra trang chủ
+		// cho User
+		List<Branch> branches = branchRepository.findAll();
+		Map<Integer, Map<String, Object>> branchReviewSummaries = new HashMap<>();
+		for (Branch b : branches) {
+			branchReviewSummaries.put(b.getId(), branchReviewManagementService.getBranchReviewSummary(b.getId()));
+		}
+		model.addAttribute("branches", branches);
+		model.addAttribute("branchReviewSummaries", branchReviewSummaries);
+
 		model.addAttribute("newestPage", productHighlightService.page("newest", 0, HIGHLIGHT_PAGE_SIZE));
 		model.addAttribute("soldPage", productHighlightService.page("sold", 0, HIGHLIGHT_PAGE_SIZE));
 		model.addAttribute("ratingPage", productHighlightService.page("rating", 0, HIGHLIGHT_PAGE_SIZE));
@@ -198,7 +228,8 @@ public class HomeController {
 		model.addAttribute("isBuyer", isBuyer);
 		model.addAttribute("isGuest", false);
 		model.addAttribute("cardMode", cardModeOf(role));
-		return "user/home";
+		return "user/home"; // Lưu ý: Nếu user dùng template riêng, bạn có thể bổ sung tương tự cho file
+							// user/home.html nếu cần
 	}
 
 	@GetMapping("/menu/highlight/{type}")
@@ -256,10 +287,8 @@ public class HomeController {
 		} catch (Exception e) {
 			logger.error("Không đếm được số món theo danh mục", e);
 		}
-		return categoryRepository.findAll().stream()
-				.map(c -> new CategoryCardRes(c.getId(), c.getName(), c.getImageCloudinaryId(),
-						counts.getOrDefault(c.getId(), 0L)))
-				.toList();
+		return categoryRepository.findAll().stream().map(c -> new CategoryCardRes(c.getId(), c.getName(),
+				c.getImageCloudinaryId(), counts.getOrDefault(c.getId(), 0L))).toList();
 	}
 
 	private static String cardModeOf(String role) {
@@ -277,8 +306,7 @@ public class HomeController {
 	@GetMapping("/menu")
 	public String menu(@RequestParam(name = "keyword", required = false) String keyword,
 			@RequestParam(name = "categoryId", required = false) Integer categoryId,
-			@RequestParam(name = "sortBy", defaultValue = "default") String sortBy, HttpSession session,
-			Model model) {
+			@RequestParam(name = "sortBy", defaultValue = "default") String sortBy, HttpSession session, Model model) {
 
 		if (categoryId != null && categoryId > 0) {
 			return "redirect:/category/" + categoryId;
@@ -324,4 +352,3 @@ public class HomeController {
 		return "menu";
 	}
 }
-

@@ -10,70 +10,102 @@
 	<div id="branches-content">
 
 		<section class="bg-white rounded-4 shadow-sm p-4 mb-4">
-			<div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+			<div
+				class="d-flex flex-wrap justify-content-between align-items-center gap-3">
 				<div>
 					<span class="badge bg-success mb-2">UTETra</span>
 					<h1 class="fw-bold text-success mb-1">Chi nhánh</h1>
-					<p class="text-muted mb-0"><strong th:text="${#lists.size(branches)}">2</strong> chi nhánh đang hoạt động
-						· cùng một thực đơn, đặt món online và giao tận nơi.</p>
+					<p class="text-muted mb-0">
+						<strong th:text="${#lists.size(branches)}">2</strong> chi nhánh
+						đang hoạt động · cùng một thực đơn, đặt món online và giao tận
+						nơi.
+					</p>
 				</div>
-				<button type="button" id="btnNearest" class="btn btn-outline-success">
+				<button type="button" id="btnNearest"
+					class="btn btn-outline-success">
 					<i class="bi bi-geo-alt me-1"></i> Gần tôi nhất
 				</button>
 			</div>
 			<p id="geoMsg" class="small text-muted mt-2 mb-0 d-none"></p>
 		</section>
 
-		<div class="row g-4" id="branchList" th:unless="${#lists.isEmpty(branches)}">
-			<div class="col-12 col-md-6 col-lg-4 branch-item" th:each="b : ${branches}"
+		<div class="row g-4" id="branchList"
+			th:unless="${#lists.isEmpty(branches)}">
+			<div class="col-12 col-md-6 col-lg-4 branch-item"
+				th:each="b : ${branches}"
 				th:attr="data-lat=${b.latitude}, data-lng=${b.longitude}">
 				<div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
 
-					<div class="bg-success-subtle position-relative" style="height: 160px;">
-						<img th:if="${b.imageCloudinaryId != null and !#strings.isEmpty(b.imageCloudinaryId)}"
-							th:src="${b.imageCloudinaryId}" th:alt="${b.name}" class="w-100 h-100"
-							style="object-fit: cover;" loading="lazy">
-						<div th:unless="${b.imageCloudinaryId != null and !#strings.isEmpty(b.imageCloudinaryId)}"
+					<div class="bg-success-subtle position-relative"
+						style="height: 160px;">
+						<img
+							th:if="${b.imageCloudinaryId != null and !#strings.isEmpty(b.imageCloudinaryId)}"
+							th:src="${b.imageCloudinaryId}" th:alt="${b.name}"
+							class="w-100 h-100" style="object-fit: cover;" loading="lazy">
+						<div
+							th:unless="${b.imageCloudinaryId != null and !#strings.isEmpty(b.imageCloudinaryId)}"
 							class="w-100 h-100 d-flex justify-content-center align-items-center text-success">
 							<i class="bi bi-shop" style="font-size: 3.5rem;"></i>
 						</div>
 						<span class="badge bg-success position-absolute top-0 start-0 m-2">
-							<i class="bi bi-circle-fill me-1" style="font-size: .5rem;"></i> Đang hoạt động</span>
-						<span class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-2 d-none branch-distance"></span>
+							<i class="bi bi-circle-fill me-1" style="font-size: .5rem;"></i>
+							Đang hoạt động
+						</span> <span
+							class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-2 d-none branch-distance"></span>
 					</div>
 
 					<div class="card-body d-flex flex-column">
-						<h2 class="h5 fw-bold mb-2" th:text="${b.name}">UTETra Võ Văn Ngân</h2>
-						<p class="mb-2"><i class="bi bi-geo-alt text-danger me-1"></i><span th:text="${b.address}">Địa chỉ</span></p>
+						<h2 class="h5 fw-bold mb-2" th:text="${b.name}">UTETra Võ Văn
+							Ngân</h2>
+						<p class="mb-2">
+							<i class="bi bi-geo-alt text-danger me-1"></i><span
+								th:text="${b.address}">Địa chỉ</span>
+						</p>
 						<p class="mb-2" th:with="mo=${b.isOpenAt(now)}">
-							<i class="bi bi-clock me-1" th:classappend="${mo} ? 'text-success' : 'text-secondary'"></i>
-							<span th:text="${b.hoursLabel}">7:00 - 22:00</span> ·
-							<span class="fw-semibold" th:classappend="${mo} ? 'text-success' : 'text-danger'"
+							<i class="bi bi-clock me-1"
+								th:classappend="${mo} ? 'text-success' : 'text-secondary'"></i>
+							<span th:text="${b.hoursLabel}">7:00 - 22:00</span> · <span
+								class="fw-semibold"
+								th:classappend="${mo} ? 'text-success' : 'text-danger'"
 								th:text="${b.openStatusAt(now)}">Đang mở cửa</span>
 						</p>
-						<p class="mb-2" th:if="${b.phone != null and !#strings.isEmpty(b.phone)}">
-							<i class="bi bi-telephone text-success me-1"></i>
-							<a th:href="'tel:' + ${b.phone}" class="link-success" th:text="${b.phone}">028</a>
+						<p class="mb-2"
+							th:if="${b.phone != null and !#strings.isEmpty(b.phone)}">
+							<i class="bi bi-telephone text-success me-1"></i> <a
+								th:href="'tel:' + ${b.phone}" class="link-success"
+								th:text="${b.phone}">028</a>
 						</p>
-						<p class="text-muted small mb-3" th:if="${b.description != null and !#strings.isEmpty(b.description)}"
+						<p class="text-muted small mb-3"
+							th:if="${b.description != null and !#strings.isEmpty(b.description)}"
 							th:text="${b.description}">Mô tả</p>
 
 						<div class="mt-auto d-flex flex-wrap gap-2">
-							<a th:href="@{/menu} + '#thuc-don'" class="btn btn-success btn-sm">
-								<i class="bi bi-journal-richtext me-1"></i> Xem thực đơn</a>
-							<a th:if="${b.latitude != null and b.longitude != null}" target="_blank" rel="noopener"
+							<a th:href="@{/menu}" class="btn btn-success btn-sm"> <i
+								class="bi bi-house-door me-1"></i> Xem thực đơn
+							</a>
+
+							<!-- Nút xem chi tiết đánh giá quán công khai -->
+							<a th:href="@{/branches/{id}/reviews-public(id=${b.id})}"
+								class="btn btn-outline-warning btn-sm text-dark"> <i
+								class="bi bi-star-fill text-warning me-1"></i> Đánh giá quán
+							</a> <a th:if="${b.latitude != null and b.longitude != null}"
+								target="_blank" rel="noopener"
 								th:href="|https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}|"
-								class="btn btn-outline-success btn-sm"><i class="bi bi-sign-turn-right me-1"></i> Chỉ đường</a>
-							<a th:if="${b.latitude == null or b.longitude == null}" target="_blank" rel="noopener"
+								class="btn btn-outline-success btn-sm"><i
+								class="bi bi-sign-turn-right me-1"></i> Chỉ đường</a> <a
+								th:if="${b.latitude == null or b.longitude == null}"
+								target="_blank" rel="noopener"
 								th:href="'https://www.google.com/maps/search/?api=1&query=' + ${#uris.escapeQueryParam(b.address)}"
-								class="btn btn-outline-success btn-sm"><i class="bi bi-map me-1"></i> Xem bản đồ</a>
+								class="btn btn-outline-success btn-sm"><i
+								class="bi bi-map me-1"></i> Xem bản đồ</a>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
 
-		<div class="card border-0 shadow-sm rounded-4" th:if="${#lists.isEmpty(branches)}">
+		<div class="card border-0 shadow-sm rounded-4"
+			th:if="${#lists.isEmpty(branches)}">
 			<div class="card-body text-center py-5">
 				<i class="bi bi-shop text-success" style="font-size: 3rem;"></i>
 				<h3 class="h5 mt-3">Chưa có chi nhánh nào đang hoạt động</h3>

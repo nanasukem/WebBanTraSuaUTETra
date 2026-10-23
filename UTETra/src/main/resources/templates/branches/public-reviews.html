@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/main :: main('Đánh giá chi nhánh - UTETra', ~{::#public-review-content})}">
+
+<section id="public-review-content">
+	<div class="container py-4">
+
+		<!-- Header thông tin chi nhánh -->
+		<div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-light">
+			<div class="row align-items-center">
+				<div class="col-md-8">
+					<span class="badge bg-success mb-2"><i class="bi bi-shop"></i>
+						Chi nhánh UTETra</span>
+					<h1 class="fw-bold text-success mb-2" th:text="${branch.name}">Tên
+						chi nhánh</h1>
+					<p class="text-muted mb-1">
+						<i class="bi bi-geo-alt-fill me-1"></i> <span
+							th:text="${branch.address}">Địa chỉ</span>
+					</p>
+					<p class="text-muted mb-0">
+						<i class="bi bi-telephone-fill me-1"></i> <span
+							th:text="${branch.phone}">Điện thoại</span>
+					</p>
+				</div>
+				<div class="col-md-4 text-md-end mt-3 mt-md-0">
+					<div
+						class="p-3 bg-white rounded-3 shadow-sm d-inline-block text-center">
+						<h3 class="fw-bold text-warning mb-0">
+							⭐ <span th:text="${avgRating}">4.8</span><small
+								class="text-muted fs-6">/5</small>
+						</h3>
+						<small class="text-muted"
+							th:text="${totalReviews} + ' lượt đánh giá từ khách hàng'"></small>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Tiêu đề danh sách đánh giá -->
+		<div class="d-flex justify-content-between align-items-center mb-3">
+			<h3 class="fw-bold mb-0">
+				<i class="bi bi-chat-square-heart me-2 text-success"></i> Đánh giá
+				chi tiết từ khách hàng
+			</h3>
+			<a th:href="@{/branches}" class="btn btn-outline-success btn-sm"><i
+				class="bi bi-arrow-left"></i> Quay lại danh sách chi nhánh</a>
+		</div>
+
+		<!-- Danh sách đánh giá quán & món -->
+		<div class="row g-3">
+			<div th:if="${#lists.isEmpty(reviews)}" class="col-12">
+				<div class="card border-0 shadow-sm rounded-4 text-center py-5">
+					<div class="card-body">
+						<i class="bi bi-chat-left-dots display-4 text-secondary"></i>
+						<h5 class="fw-bold mt-3">Chưa có đánh giá nào</h5>
+						<p class="text-muted mb-0">Hãy là người đầu tiên trải nghiệm
+							và đánh giá dịch vụ tại chi nhánh này!</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-12" th:each="r : ${reviews}">
+				<div class="card border-0 shadow-sm rounded-4 p-3">
+					<div class="d-flex justify-content-between align-items-start mb-2">
+						<div>
+							<h5 class="fw-bold mb-1" th:text="${r.customerName}">Tên
+								khách hàng</h5>
+							<div>
+								<!-- Phân loại Đánh giá Quán hay Món -->
+								<span th:if="${r.type == 'STORE'}"
+									class="badge bg-primary text-white"> <i
+									class="bi bi-shop me-1"></i> Đánh giá Quán
+								</span> <span th:if="${r.type == 'PRODUCT'}"
+									class="badge bg-warning text-dark"> <i
+									class="bi bi-cup-straw me-1"></i> Đánh giá Món: <strong
+									th:text="${r.productName}"></strong>
+								</span> <span class="text-warning ms-2"> <span
+									th:each="i : ${#numbers.sequence(1, r.rating)}">★</span>
+								</span>
+							</div>
+						</div>
+						<small class="text-muted"
+							th:text="${r.createdAt != null ? #temporals.format(r.createdAt, 'dd-MM-yyyy HH:mm') : ''}"></small>
+					</div>
+
+					<!-- Nội dung bình luận và tags -->
+					<p class="mb-2 text-dark"
+						th:text="${r.comment != null ? r.comment : '(Khách hàng không để lại bình luận văn bản)'}"></p>
+					<div class="mb-2" th:if="${r.tags != null}">
+						<span class="badge bg-light text-primary border me-1"
+							th:text="'#' + ${r.tags.replace('|', ' #')}"></span>
+					</div>
+
+					<!-- Phần phản hồi từ Quản lý / Hệ thống (nếu có) -->
+					<div th:if="${not #lists.isEmpty(r.replies)}"
+						class="mt-3 bg-light p-3 rounded-3 border-start border-4 border-success">
+						<div th:each="rep : ${r.replies}">
+							<div class="d-flex justify-content-between">
+								<strong class="text-success"
+									th:text="'Phản hồi từ ' + ${rep.responderName} + ' (' + ${rep.responderRole} + ')'"></strong>
+								<small class="text-muted"
+									th:text="${#temporals.format(rep.createdAt, 'dd-MM-yyyy HH:mm')}"></small>
+							</div>
+							<p class="mb-0 mt-1 text-muted" th:text="${rep.content}"></p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+</section>
+</html>

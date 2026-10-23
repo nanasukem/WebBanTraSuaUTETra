@@ -1,23 +1,24 @@
 /* =========================================================
    UTETra - DATABASE ĐẦY ĐỦ (bản gộp)
    Gộp sẵn: UTETra.sql (gốc, menu chung)
-          + v2: hạng thành viên, giới hạn voucher, ưu đãi tài khoản mới
-          + v3: giao tận nơi / đến lấy, voucher theo phương thức thanh toán, tọa độ chi nhánh & địa chỉ
-          + v4: địa chỉ kiểu Shopee (Tỉnh/Thành, Phường/Xã sau sáp nhập 2025, Tên đường, Loại địa chỉ)
-          + v5: ghi chú địa chỉ (Addresses.note, Orders.delivery_note)
-          + v10: giờ mở cửa chi nhánh (Branches.open_time / close_time, mặc định 7:00 - 22:00);
-                 "Báo vấn đề với đơn" thay cho Trả hàng (bảng OrderIssues, Orders.refund_amount, Payments.refund_amount)
-          + v9: phí giao theo khoảng cách (Carriers = đối tác giao hàng, thêm per_km_fee), mỗi đơn 1 mã giảm giá,
-                doanh thu / chi tiêu / xét hạng KHÔNG tính phí ship
-          + v9: bỏ hoa hồng / chiết khấu app (Branches.commission_rate, Orders.commission_amount) - chuỗi tự vận hành,
-                chi nhánh là của công ty nên không thu % của chi nhánh
-          + v8: thanh toán VNPAY / MoMo sandbox thật: đơn Chờ thanh toán (Orders.status AWAITING_PAYMENT),
-                hoàn tiền (Orders.payment_status REFUND_PENDING), Payments thêm txn_ref, bank_code, gateway_date,
-                response_code, message, refund_* (mỗi lần thanh toán / hoàn tiền 1 dòng)
-          + v7: ghi chú từng món (CartItems.note, OrderDetails.note), gợi ý đánh giá (Reviews.tags, OrderReviews.tags)
-          + v6: luồng đơn có READY (pha xong: chờ khách lấy / chờ shipper), ai huỷ đơn (Orders.cancelled_by),
-                đánh giá như app Katinat / Highlands (chấm sao từng món, chữ/ảnh/video tuỳ ý + đánh giá quán: OrderReviews),
-                chuông thông báo (Notifications.type / link / ref_key)
+         + v2: hạng thành viên, giới hạn voucher, ưu đãi tài khoản mới
+         + v3: giao tận nơi / đến lấy, voucher theo phương thức thanh toán, tọa độ chi nhánh & địa chỉ
+         + v4: địa chỉ kiểu Shopee (Tỉnh/Thành, Phường/Xã sau sáp nhập 2025, Tên đường, Loại địa chỉ)
+         + v5: ghi chú địa chỉ (Addresses.note, Orders.delivery_note)
+         + v10: giờ mở cửa chi nhánh (Branches.open_time / close_time, mặc định 7:00 - 22:00);
+                "Báo vấn đề với đơn" thay cho Trả hàng (bảng OrderIssues, Orders.refund_amount, Payments.refund_amount)
+         + v9: phí giao theo khoảng cách (Carriers = đối tác giao hàng, thêm per_km_fee), mỗi đơn 1 mã giảm giá,
+               doanh thu / chi tiêu / xét hạng KHÔNG tính phí ship
+         + v9: bỏ hoa hồng / chiết khấu app (Branches.commission_rate, Orders.commission_amount) - chuỗi tự vận hành,
+               chi nhánh là của công ty nên không thu % của chi nhánh
+         + v8: thanh toán VNPAY / MoMo sandbox thật: đơn Chờ thanh toán (Orders.status AWAITING_PAYMENT),
+               hoàn tiền (Orders.payment_status REFUND_PENDING), Payments thêm txn_ref, bank_code, gateway_date,
+               response_code, message, refund_* (mỗi lần thanh toán / hoàn tiền 1 dòng)
+         + v7: ghi chú từng món (CartItems.note, OrderDetails.note), gợi ý đánh giá (Reviews.tags, OrderReviews.tags)
+         + v6: luồng đơn có READY (pha xong: chờ khách lấy / chờ shipper), ai huỷ đơn (Orders.cancelled_by),
+               đánh giá như app Katinat / Highlands (chấm sao từng món, chữ/ảnh/video tuỳ ý + đánh giá quán: OrderReviews),
+               chuông thông báo (Notifications.type / link / ref_key)
+         + Bổ sung Quản lý & Phản hồi đánh giá (ReviewReplies) cho Admin và Manager
    CHỈ CẦN CHẠY FILE NÀY (không chạy thêm file v2, v3 nữa).
    LƯU Ý: nếu máy đã có database UTETra, file này sẽ XOÁ và tạo lại từ đầu (mất dữ liệu đang có).
    ========================================================= */
@@ -53,22 +54,22 @@ CREATE TABLE Carriers (
     id          INT IDENTITY(1,1) PRIMARY KEY,
     name        NVARCHAR(100) NOT NULL UNIQUE,
     fee         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (fee >= 0),         -- phí 5 km đầu
-    per_km_fee  DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (per_km_fee >= 0),  -- mỗi km thêm
+    per_km_fee  DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (per_km_fee >= 0), -- mỗi km thêm
     is_active   BIT           NOT NULL DEFAULT 1
 );
 
 CREATE TABLE Users (
     id                    INT IDENTITY(1,1) PRIMARY KEY,
     username              VARCHAR(50)   NOT NULL UNIQUE,
-    password              VARCHAR(255)  NOT NULL,              -- BCrypt hash
+    password              VARCHAR(255)  NOT NULL,               -- BCrypt hash
     full_name             NVARCHAR(100) NULL,
-    email                 VARCHAR(100)  NOT NULL UNIQUE,       -- bắt buộc để gửi OTP
+    email                 VARCHAR(100)  NOT NULL UNIQUE,        -- bắt buộc để gửi OTP
     phone                 VARCHAR(15)   NULL,
     avatar_cloudinary_id  VARCHAR(255)  NULL,
     role_id               INT           NOT NULL,
-    carrier_id            INT           NULL,                  -- chỉ dùng cho SHIPPER
-    is_verified           BIT           NOT NULL DEFAULT 0,    -- đã kích hoạt bằng OTP
-    is_active             BIT           NOT NULL DEFAULT 1,    -- 0 = bị khoá
+    carrier_id            INT           NULL,                   -- chỉ dùng cho SHIPPER
+    is_verified           BIT           NOT NULL DEFAULT 0,     -- đã kích hoạt bằng OTP
+    is_active             BIT           NOT NULL DEFAULT 1,     -- 0 = bị khoá
     created_at            DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_Users_Roles    FOREIGN KEY (role_id)    REFERENCES Roles(id),
     CONSTRAINT FK_Users_Carriers FOREIGN KEY (carrier_id) REFERENCES Carriers(id)
@@ -105,12 +106,12 @@ CREATE TABLE Addresses (
     receiver_name   NVARCHAR(100) NOT NULL,
     receiver_phone  VARCHAR(15)   NOT NULL,
     address_line    NVARCHAR(255) NOT NULL,
-    province        NVARCHAR(100) NULL,                     -- Tỉnh/Thành phố
-    ward            NVARCHAR(100) NULL,                     -- Phường/Xã/Đặc khu
-    street          NVARCHAR(150) NULL,                     -- Tên đường, Toà nhà, Số nhà
+    province        NVARCHAR(100) NULL,                      -- Tỉnh/Thành phố
+    ward            NVARCHAR(100) NULL,                      -- Phường/Xã/Đặc khu
+    street          NVARCHAR(150) NULL,                      -- Tên đường, Toà nhà, Số nhà
     address_type    VARCHAR(10)   NULL
         CONSTRAINT CK_Addresses_Type CHECK (address_type IS NULL OR address_type IN ('HOME', 'OFFICE')), -- Nhà riêng / Văn phòng
-    note            NVARCHAR(200) NULL,                     -- Ghi chú địa chỉ: cổng sau, gửi bảo vệ...
+    note            NVARCHAR(200) NULL,                      -- Ghi chú địa chỉ: cổng sau, gửi bảo vệ...
     latitude        DECIMAL(9,6)  NULL CONSTRAINT CK_Addresses_Lat CHECK (latitude  BETWEEN -90  AND 90),
     longitude       DECIMAL(9,6)  NULL CONSTRAINT CK_Addresses_Lng CHECK (longitude BETWEEN -180 AND 180),
     is_default      BIT           NOT NULL DEFAULT 0,
@@ -121,7 +122,7 @@ CREATE TABLE Addresses (
 CREATE TABLE MemberTiers (
     id                INT IDENTITY(1,1) PRIMARY KEY,
     name              NVARCHAR(50)  NOT NULL UNIQUE,
-    min_spent         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (min_spent >= 0),                     -- chi tiêu tối thiểu để đạt hạng
+    min_spent         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (min_spent >= 0),                       -- chi tiêu tối thiểu để đạt hạng
     discount_percent  DECIMAL(5,2)  NOT NULL DEFAULT 0 CHECK (discount_percent BETWEEN 0 AND 100), -- % giảm tiền món mỗi đơn
     max_discount      DECIMAL(12,0) NULL,                                                          -- giảm tối đa mỗi đơn
     sort_order        INT           NOT NULL DEFAULT 0
@@ -136,7 +137,7 @@ CREATE TABLE MemberTiers (
 -- Branches = chi nhánh (shop). Admin mở chi nhánh và chỉ định 1 Manager quản lý (chuỗi tự mở, Manager không tự đăng ký; mỗi Manager 1 chi nhánh)
 CREATE TABLE Branches (
     id                  INT IDENTITY(1,1) PRIMARY KEY,
-    owner_id            INT           NOT NULL,                -- Manager quản lý chi nhánh
+    owner_id            INT           NOT NULL,                 -- Manager quản lý chi nhánh
     name                NVARCHAR(100) NOT NULL,
     address             NVARCHAR(255) NOT NULL,
     latitude            DECIMAL(9,6)  NULL CONSTRAINT CK_Branches_Lat CHECK (latitude  BETWEEN -90  AND 90),   -- vĩ độ
@@ -144,8 +145,8 @@ CREATE TABLE Branches (
     phone               VARCHAR(15)   NULL,
     description         NVARCHAR(500) NULL,
     image_cloudinary_id VARCHAR(255)  NULL,
-    open_time           TIME(0)       NOT NULL DEFAULT '07:00',   -- giờ mở cửa: ngoài giờ không nhận đơn
-    close_time          TIME(0)       NOT NULL DEFAULT '22:00',   -- mở = đóng (00:00 - 00:00) nghĩa là mở cả ngày
+    open_time           TIME(0)       NOT NULL DEFAULT '07:00',    -- giờ mở cửa: ngoài giờ không nhận đơn
+    close_time          TIME(0)       NOT NULL DEFAULT '22:00',    -- mở = đóng (00:00 - 00:00) nghĩa là mở cả ngày
     status              VARCHAR(20)   NOT NULL DEFAULT 'APPROVED' CHECK (status IN ('APPROVED','SUSPENDED')), -- APPROVED = đang hoạt động, SUSPENDED = tạm ngưng (Admin bật/tắt)
     created_at          DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_Branches_Users FOREIGN KEY (owner_id) REFERENCES Users(id)
@@ -210,7 +211,7 @@ CREATE TABLE Vouchers (
     code             VARCHAR(30)   NOT NULL UNIQUE,
     name             NVARCHAR(150) NOT NULL,
     branch_id        INT           NULL,
-    apply_to         VARCHAR(10)   NOT NULL CHECK (apply_to IN ('PRODUCT','SHIPPING')),     -- giảm tiền món / giảm phí ship
+    apply_to         VARCHAR(10)   NOT NULL CHECK (apply_to IN ('PRODUCT','SHIPPING')),      -- giảm tiền món / giảm phí ship
     discount_type    VARCHAR(10)   NOT NULL CHECK (discount_type IN ('PERCENT','AMOUNT')),
     discount_value   DECIMAL(12,0) NOT NULL CHECK (discount_value > 0),
     max_discount     DECIMAL(12,0) NULL,                                                     -- trần giảm khi PERCENT
@@ -223,7 +224,7 @@ CREATE TABLE Vouchers (
     created_at       DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     -- v2: giới hạn theo người dùng
     per_user_limit   INT           NULL
-        CONSTRAINT CK_Vouchers_PerUser CHECK (per_user_limit IS NULL OR per_user_limit > 0),      -- NULL = không giới hạn mỗi người
+        CONSTRAINT CK_Vouchers_PerUser CHECK (per_user_limit IS NULL OR per_user_limit > 0),       -- NULL = không giới hạn mỗi người
     audience         VARCHAR(20)   NOT NULL
         CONSTRAINT DF_Vouchers_Audience DEFAULT 'ALL'
         CONSTRAINT CK_Vouchers_Audience CHECK (audience IN ('ALL', 'NEW_USER', 'MIN_TIER')),
@@ -231,7 +232,7 @@ CREATE TABLE Vouchers (
     -- v3: chỉ áp dụng cho 1 phương thức thanh toán
     payment_method   VARCHAR(20)   NULL
         CONSTRAINT CK_Vouchers_PaymentMethod
-        CHECK (payment_method IS NULL OR payment_method IN ('COD', 'VNPAY', 'MOMO')),           -- NULL = mọi phương thức
+        CHECK (payment_method IS NULL OR payment_method IN ('COD', 'VNPAY', 'MOMO')),            -- NULL = mọi phương thức
     CONSTRAINT FK_Vouchers_Branches FOREIGN KEY (branch_id)   REFERENCES Branches(id),
     CONSTRAINT FK_Vouchers_MinTier  FOREIGN KEY (min_tier_id) REFERENCES MemberTiers(id),
     CONSTRAINT CK_Vouchers_Dates   CHECK (end_date > start_date),
@@ -249,7 +250,7 @@ CREATE TABLE CartItems (
     sugar_level  TINYINT   NOT NULL DEFAULT 100 CHECK (sugar_level IN (0,30,50,70,100)),
     ice_level    TINYINT   NOT NULL DEFAULT 100 CHECK (ice_level   IN (0,30,50,70,100)),
     quantity     INT       NOT NULL DEFAULT 1 CHECK (quantity > 0),
-    note         NVARCHAR(200) NULL,                       -- ghi chú món: "Đá để riêng, Không ống hút · ít sữa thôi"
+    note         NVARCHAR(200) NULL,                        -- ghi chú món: "Đá để riêng, Không ống hút · ít sữa thôi"
     created_at   DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_CartItems_Users    FOREIGN KEY (user_id)    REFERENCES Users(id)    ON DELETE CASCADE,
     CONSTRAINT FK_CartItems_Products FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE CASCADE
@@ -278,7 +279,7 @@ CREATE TABLE ViewedProducts (
     id          INT IDENTITY(1,1) PRIMARY KEY,
     user_id     INT       NOT NULL,
     product_id  INT       NOT NULL,
-    viewed_at   DATETIME2 NOT NULL DEFAULT SYSDATETIME(),   -- xem lại thì cập nhật thời gian
+    viewed_at   DATETIME2 NOT NULL DEFAULT SYSDATETIME(),    -- xem lại thì cập nhật thời gian
     CONSTRAINT FK_Viewed_Users    FOREIGN KEY (user_id)    REFERENCES Users(id)    ON DELETE CASCADE,
     CONSTRAINT FK_Viewed_Products FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE CASCADE,
     CONSTRAINT UQ_Viewed UNIQUE (user_id, product_id)
@@ -298,21 +299,21 @@ CREATE TABLE Orders (
     delivery_type        VARCHAR(10)   NOT NULL
         CONSTRAINT DF_Orders_DeliveryType DEFAULT 'DELIVERY'
         CONSTRAINT CK_Orders_DeliveryType CHECK (delivery_type IN ('DELIVERY', 'PICKUP')),
-    carrier_id           INT           NULL,                -- NULL khi đến lấy
+    carrier_id           INT           NULL,                 -- NULL khi đến lấy
     shipper_id           INT           NULL,
     product_voucher_id   INT           NULL,
     shipping_voucher_id  INT           NULL,
     receiver_name        NVARCHAR(100) NOT NULL,            -- chép từ Addresses lúc đặt (đến lấy: khách nhập)
     receiver_phone       VARCHAR(15)   NOT NULL,
-    delivery_address     NVARCHAR(255) NULL,                -- NULL khi đến lấy
-    delivery_note        NVARCHAR(200) NULL,                -- ghi chú địa chỉ, chép từ Addresses lúc đặt
+    delivery_address     NVARCHAR(255) NULL,                 -- NULL khi đến lấy
+    delivery_note        NVARCHAR(200) NULL,                 -- ghi chú địa chỉ, chép từ Addresses lúc đặt
     note                 NVARCHAR(500) NULL,
     items_total          DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (items_total >= 0),
     product_discount     DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (product_discount >= 0),
     member_discount      DECIMAL(12,0) NOT NULL
         CONSTRAINT DF_Orders_MemberDiscount DEFAULT 0
-        CONSTRAINT CK_Orders_MemberDiscount CHECK (member_discount >= 0),                  -- giảm theo hạng thành viên
-    member_tier_name     NVARCHAR(50)  NULL,                -- hạng lúc đặt (chốt lại)
+        CONSTRAINT CK_Orders_MemberDiscount CHECK (member_discount >= 0),                    -- giảm theo hạng thành viên
+    member_tier_name     NVARCHAR(50)  NULL,                 -- hạng lúc đặt (chốt lại)
     shipping_fee         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
     shipping_discount    DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (shipping_discount >= 0),
     total_amount         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
@@ -406,6 +407,7 @@ CREATE UNIQUE INDEX UX_Payments_TxnRef ON Payments(txn_ref) WHERE txn_ref IS NOT
    - Chỉ món đã mua (đơn Đã giao, trong 30 ngày), mỗi ly đánh giá 1 lần, đánh giá cả đơn 1 lượt
    - Bắt buộc chấm sao; chữ / ảnh / video không bắt buộc, không giới hạn số chữ tối thiểu
    - Đánh giá quán (phục vụ, đóng gói) riêng: OrderReviews (1 dòng / đơn)
+   - Bổ sung: ReviewReplies lưu phản hồi của Admin / Manager cho đánh giá quán và món
    ========================================================= */
 CREATE TABLE Reviews (
     id               INT IDENTITY(1,1) PRIMARY KEY,
@@ -416,9 +418,9 @@ CREATE TABLE Reviews (
     content          NVARCHAR(2000) NULL,                    -- không bắt buộc
     tags             NVARCHAR(255)  NULL,                    -- gợi ý khách chọn: "Đúng vị, rất ngon|Sẽ mua lại"
     created_at       DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
-    CONSTRAINT FK_Reviews_Users     FOREIGN KEY (user_id)         REFERENCES Users(id),
-    CONSTRAINT FK_Reviews_Products  FOREIGN KEY (product_id)      REFERENCES Products(id),
-    CONSTRAINT FK_Reviews_OrderDet  FOREIGN KEY (order_detail_id) REFERENCES OrderDetails(id)
+    CONSTRAINT FK_Reviews_Users    FOREIGN KEY (user_id)         REFERENCES Users(id),
+    CONSTRAINT FK_Reviews_Products FOREIGN KEY (product_id)      REFERENCES Products(id),
+    CONSTRAINT FK_Reviews_OrderDet FOREIGN KEY (order_detail_id) REFERENCES OrderDetails(id)
 );
 
 CREATE TABLE ReviewMedia (
@@ -450,14 +452,31 @@ CREATE TABLE OrderIssues (
 -- Đánh giá quán của cả đơn (phục vụ, đóng gói, tốc độ): 1 đơn 1 lần
 CREATE TABLE OrderReviews (
     id                INT IDENTITY(1,1) PRIMARY KEY,
-    order_id          INT           NOT NULL UNIQUE,
-    user_id           INT           NOT NULL,
-    store_rating      TINYINT       NOT NULL CHECK (store_rating BETWEEN 1 AND 5),
-    comment           NVARCHAR(1000) NULL,                   -- góp ý cho quán (không bắt buộc)
-    tags              NVARCHAR(255) NULL,                    -- gợi ý khách chọn: "Nhân viên thân thiện|Làm món nhanh"
-    created_at        DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
+    order_id          INT            NOT NULL UNIQUE,
+    user_id           INT            NOT NULL,
+    store_rating      TINYINT        NOT NULL CHECK (store_rating BETWEEN 1 AND 5),
+    comment           NVARCHAR(1000) NULL,                    -- góp ý cho quán (không bắt buộc)
+    tags              NVARCHAR(255)  NULL,                    -- gợi ý khách chọn: "Nhân viên thân thiện|Làm món nhanh"
+    created_at        DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_OrderReviews_Orders FOREIGN KEY (order_id) REFERENCES Orders(id),
     CONSTRAINT FK_OrderReviews_Users  FOREIGN KEY (user_id)  REFERENCES Users(id)
+);
+
+-- BỔ SUNG: Bảng lưu phản hồi đánh giá món & quán từ Admin (tất cả chi nhánh) và Manager (chi nhánh quản lý)
+CREATE TABLE ReviewReplies (
+    id                  INT IDENTITY(1,1) PRIMARY KEY,
+    order_review_id     INT            NULL,
+    review_id           INT            NULL,
+    replied_by_user_id  INT            NOT NULL,
+    reply_content       NVARCHAR(2000) NOT NULL,
+    created_at          DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
+    CONSTRAINT FK_ReviewReplies_OrderReviews FOREIGN KEY (order_review_id)    REFERENCES OrderReviews(id) ON DELETE CASCADE,
+    CONSTRAINT FK_ReviewReplies_Reviews      FOREIGN KEY (review_id)          REFERENCES Reviews(id)      ON DELETE CASCADE,
+    CONSTRAINT FK_ReviewReplies_Users        FOREIGN KEY (replied_by_user_id) REFERENCES Users(id),
+    CONSTRAINT CK_ReviewReplies_Target CHECK (
+        (order_review_id IS NOT NULL AND review_id IS NULL) OR
+        (order_review_id IS NULL AND review_id IS NOT NULL)
+    )
 );
 
 /* =========================================================
@@ -469,9 +488,9 @@ CREATE TABLE Notifications (
     order_id    INT           NULL,
     title       NVARCHAR(150) NOT NULL,
     content     NVARCHAR(500) NULL,
-    type        VARCHAR(20)   NOT NULL DEFAULT 'ORDER',   -- ORDER, REVIEW, VOUCHER, USER, PAYMENT, REFUND (chọn biểu tượng)
-    link        VARCHAR(255)  NULL,                       -- bấm vào thông báo thì mở trang này
-    ref_key     VARCHAR(100)  NULL,                       -- chống báo trùng (vd VOUCHER_LOW:5)
+    type        VARCHAR(20)   NOT NULL DEFAULT 'ORDER',    -- ORDER, REVIEW, VOUCHER, USER, PAYMENT, REFUND (chọn biểu tượng)
+    link        VARCHAR(255)  NULL,                        -- bấm vào thông báo thì mở trang này
+    ref_key     VARCHAR(100)  NULL,                        -- chống báo trùng (vd VOUCHER_LOW:5)
     is_read     BIT           NOT NULL DEFAULT 0,
     created_at  DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     CONSTRAINT FK_Notifications_Users  FOREIGN KEY (user_id)  REFERENCES Users(id) ON DELETE CASCADE,
@@ -495,6 +514,8 @@ CREATE INDEX IX_Orders_CreatedAt           ON Orders(created_at);
 CREATE INDEX IX_OrderDetails_Order         ON OrderDetails(order_id);
 CREATE INDEX IX_VoucherUsages_Voucher_User ON VoucherUsages(voucher_id, user_id);
 CREATE INDEX IX_Reviews_Product            ON Reviews(product_id);
+CREATE INDEX IX_ReviewReplies_OrderReview  ON ReviewReplies(order_review_id);
+CREATE INDEX IX_ReviewReplies_Review       ON ReviewReplies(review_id);
 CREATE INDEX IX_Notifications_User         ON Notifications(user_id, is_read);
 GO
 
@@ -605,14 +626,14 @@ INSERT INTO Toppings (name, price) VALUES
 INSERT INTO Vouchers (code, name, branch_id, apply_to, discount_type, discount_value, max_discount, min_order_value,
                       quantity, used_count, start_date, end_date, per_user_limit, audience, min_tier_id, payment_method) VALUES
  -- Mã thường (có giới hạn mỗi người)
- ('UTETRA20',    N'Giảm 20% tối đa 30K toàn app',                      NULL, 'PRODUCT',  'PERCENT', 20,    30000, 80000,  50,     0, '2026-01-01', '2026-12-31', 1, 'ALL',      NULL, NULL),
- ('VVN15',       N'Shop Võ Văn Ngân giảm 15K',                         1,    'PRODUCT',  'AMOUNT',  15000, NULL,  60000,  30,     1, '2026-01-01', '2026-12-31', 1, 'ALL',      NULL, NULL),
+ ('UTETRA20',   N'Giảm 20% tối đa 30K toàn app',                     NULL, 'PRODUCT',  'PERCENT', 20,    30000, 80000,  50,     0, '2026-01-01', '2026-12-31', 1, 'ALL',      NULL, NULL),
+ ('VVN15',      N'Shop Võ Văn Ngân giảm 15K',                        1,    'PRODUCT',  'AMOUNT',  15000, NULL,  60000,  30,     1, '2026-01-01', '2026-12-31', 1, 'ALL',      NULL, NULL),
  -- Ưu đãi tài khoản mới: chỉ đơn đầu tiên, mỗi người 1 lần
- ('CHAOBANMOI',  N'Bạn mới: giảm 30% tối đa 25K cho đơn đầu tiên',     NULL, 'PRODUCT',  'PERCENT', 30,    25000, 0,      100000, 0, '2026-01-01', '2027-12-31', 1, 'NEW_USER', NULL, NULL),
+ ('CHAOBANMOI', N'Bạn mới: giảm 30% tối đa 25K cho đơn đầu tiên',    NULL, 'PRODUCT',  'PERCENT', 30,    25000, 0,      100000, 0, '2026-01-01', '2027-12-31', 1, 'NEW_USER', NULL, NULL),
  -- Theo hạng: từ hạng Vàng (id 3) trở lên, mỗi người 2 lần
- ('VANG30K',     N'Hạng Vàng trở lên: giảm 30K cho đơn từ 150K',       NULL, 'PRODUCT',  'AMOUNT',  30000, NULL,  150000, 500,    0, '2026-01-01', '2027-12-31', 2, 'MIN_TIER', 3,    NULL),
+ ('VANG30K',    N'Hạng Vàng trở lên: giảm 30K cho đơn từ 150K',      NULL, 'PRODUCT',  'AMOUNT',  30000, NULL,  150000, 500,    0, '2026-01-01', '2027-12-31', 2, 'MIN_TIER', 3,    NULL),
  -- Theo phương thức thanh toán: chỉ khi trả bằng MoMo, mỗi người 2 lần
- ('MOMO15K',     N'Thanh toán MoMo: giảm 15K cho đơn từ 70K',          NULL, 'PRODUCT',  'AMOUNT',  15000, NULL,  70000,  200,    0, '2026-01-01', '2027-12-31', 2, 'ALL',      NULL, 'MOMO');
+ ('MOMO15K',    N'Thanh toán MoMo: giảm 15K cho đơn từ 70K',         NULL, 'PRODUCT',  'AMOUNT',  15000, NULL,  70000,  200,    0, '2026-01-01', '2027-12-31', 2, 'ALL',      NULL, 'MOMO');
 
 INSERT INTO CartItems (user_id, product_id, size, sugar_level, ice_level, quantity) VALUES
  (6, 3, 'M', 50, 70, 1),
@@ -658,6 +679,7 @@ INSERT INTO Users (username, password, full_name, email, phone, role_id, carrier
  ('user4', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Ngô Gia Bảo', 'user4@gmail.com', '0900000009', 4, NULL, 1),
  ('user5', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Võ Thanh Hà', 'user5@gmail.com', '0900000010', 4, NULL, 1),
  ('user6', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Đặng Quốc Huy', 'user6@gmail.com', '0900000011', 4, NULL, 1);
+
 -- 10 đơn ĐÃ GIAO (id 3-12), đặt trong tháng 9-10/2026 (cũ hơn đơn #1, #2)
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
                     items_total, member_discount, member_tier_name, shipping_fee, total_amount,
@@ -709,6 +731,7 @@ INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, r
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (10, 2, 'DELIVERY', 1, 5, N'Võ Thanh Hà', '0900000010', N'45 Lê Lợi, Phường Sài Gòn, Thành phố Hồ Chí Minh',
         94000, 0, N'Thành viên', 15000, 109000, 'DELIVERED', 'COD', 'PAID', '2026-10-14 12:00', DATEADD(MINUTE, 45, '2026-10-14 12:00'), DATEADD(MINUTE, 45, '2026-10-14 12:00'));
+
 INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, quantity, unit_price, subtotal) VALUES
  (3, 1, 'M', 70, 70, 2, 40000, 80000),
  (3, 17, 'L', 70, 70, 1, 42000, 42000),
@@ -730,6 +753,7 @@ INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, qu
  (11, 34, 'M', 70, 70, 1, 48000, 48000),
  (12, 2, 'L', 70, 70, 1, 50000, 50000),
  (12, 9, 'M', 70, 70, 1, 44000, 44000);
+
 -- Đơn trả online: ghi giao dịch thành công
 INSERT INTO Payments (order_id, method, transaction_code, amount, status, paid_at) VALUES
  (4, 'VNPAY', 'VNP2026100004', 72000, 'SUCCESS', '2026-09-08 14:30'),
@@ -737,6 +761,7 @@ INSERT INTO Payments (order_id, method, transaction_code, amount, status, paid_a
  (7, 'VNPAY', 'VNP2026100007', 76000, 'SUCCESS', '2026-09-20 16:20'),
  (9, 'VNPAY', 'VNP2026100009', 107000, 'SUCCESS', '2026-09-29 20:10'),
  (11, 'MOMO', 'MOM2026100011', 147000, 'SUCCESS', '2026-10-08 18:30');
+
 -- Đánh giá (chỉ món đã mua trong đơn đã giao, nội dung trên 50 ký tự)
 INSERT INTO Reviews (user_id, product_id, order_detail_id, rating, content) VALUES
  (8, 1, 4, 5, N'Uống rất ngon, vị vừa miệng, đá không bị nhạt, nhân viên đóng gói cẩn thận, giao hàng đúng giờ, sẽ đặt tiếp.'),
@@ -755,45 +780,35 @@ INSERT INTO Reviews (user_id, product_id, order_detail_id, rating, content) VALU
  (11, 17, 19, 5, N'Món này tuyệt vời, thơm và đậm vị đúng như mô tả, size L uống đã, giá hợp lý so với chất lượng của quán.'),
  (8, 7, 20, 4, N'Khá ngon, vị đậm và thơm, chỉ hơi ngọt một chút so với khẩu vị của mình, lần sau sẽ chọn ít đường hơn.'),
  (10, 2, 22, 5, N'Uống rất ngon, vị vừa miệng, đá không bị nhạt, nhân viên đóng gói cẩn thận, giao hàng đúng giờ, sẽ đặt tiếp.');
+
 -- Lượt thích (cho danh sách Yêu thích nhất)
 INSERT INTO Favorites (user_id, product_id) VALUES
- (8, 1),
- (8, 9),
- (8, 17),
- (8, 25),
- (8, 33),
- (8, 7),
- (9, 1),
- (9, 17),
- (9, 25),
- (9, 19),
- (9, 2),
- (9, 12),
- (10, 1),
- (10, 9),
- (10, 2),
- (10, 17),
- (10, 26),
- (10, 10),
- (10, 34),
- (11, 1),
- (11, 17),
- (11, 33),
- (11, 7),
- (11, 9),
- (11, 25),
- (11, 13),
- (11, 20),
- (11, 27);
+ (8, 1), (8, 9), (8, 17), (8, 25), (8, 33), (8, 7),
+ (9, 1), (9, 17), (9, 25), (9, 19), (9, 2), (9, 12),
+ (10, 1), (10, 9), (10, 2), (10, 17), (10, 26), (10, 10), (10, 34),
+ (11, 1), (11, 17), (11, 33), (11, 7), (11, 9), (11, 25), (11, 13), (11, 20), (11, 27);
 
--- user1 đã đánh giá quán cho đơn #1
+-- user1 đã đánh giá quán cho đơn #1 (dữ liệu gốc)
 INSERT INTO OrderReviews (order_id, user_id, store_rating, comment) VALUES
  (1, 6, 5, N'Quán đóng gói kỹ, nhân viên dễ thương');
 
+-- BỔ SUNG DỮ LIỆU MẪU: Đánh giá quán cho các đơn đã giao ở Chi nhánh 1 & Chi nhánh 2
+INSERT INTO OrderReviews (order_id, user_id, store_rating, comment, tags) VALUES
+ (3, 8,  5, N'Quán làm nước nhanh, đóng gói chắc chắn không bị đổ giọt nào.', N'Làm món nhanh|Đóng gói kỹ'),
+ (4, 9,  4, N'Đến lấy tại quầy nhân viên nhiệt tình, không gian sạch sẽ.', N'Nhân viên thân thiện'),
+ (5, 10, 5, N'Chi nhánh Quận 1 view đẹp, shipper giao tới đá vẫn còn nguyên.', N'Đóng gói kỹ|Nhân viên thân thiện'),
+ (6, 11, 4, N'Phục vụ tốt, đóng gói cẩn thận nhưng giờ cao điểm chờ hơi lâu xíu.', N'Đóng gói kỹ');
+
+-- BỔ SUNG DỮ LIỆU MẪU: Phản hồi đánh giá từ Manager Chi nhánh 1 (id 3), Manager Chi nhánh 2 (id 4) và Admin (id 1)
+INSERT INTO ReviewReplies (order_review_id, review_id, replied_by_user_id, reply_content) VALUES
+ (1, NULL, 3, N'Cảm ơn bạn Trần Thị Khách đã ủng hộ UTETra Võ Văn Ngân! Mong sớm được phục vụ bạn lần tới ạ.'),
+ (4, NULL, 4, N'UTETra Quận 1 cảm ơn bạn Thanh Hà rất nhiều! Chúc bạn một ngày tốt lành nhé.'),
+ (NULL, 1, 1, N'UTETra cảm ơn đánh giá 5 sao của bạn dành cho món Trà sữa trân châu đường đen ạ!');
+
 INSERT INTO Notifications (user_id, order_id, type, title, content, link, is_read) VALUES
  (6, 1, 'REVIEW', N'Đơn #1 đã giao thành công', N'Bạn thấy món và quán thế nào? Đánh giá ngay nhé', '/orders/1/review', 0),
- (4, 2, 'ORDER',  N'Có đơn hàng mới #2',        N'Giao tận nơi · 1 ly · 50.000đ',           '/manager/orders/2', 0),
- (1, NULL, 'USER', N'Khách mới đăng ký: user2',  N'Phạm Văn Mua · user2@gmail.com',          '/admin/users', 0);
+ (4, 2, 'ORDER',  N'Có đơn hàng mới #2',        N'Giao tận nơi · 1 ly · 50.000đ',            '/manager/orders/2', 0),
+ (1, NULL, 'USER', N'Khách mới đăng ký: user2',  N'Phạm Văn Mua · user2@gmail.com',           '/admin/users', 0);
 GO
 
 /* ---------- Kiểm tra nhanh ---------- */
@@ -812,3 +827,5 @@ SELECT id, code, apply_to, quantity, used_count, per_user_limit, audience, min_t
 SELECT * FROM VoucherUsages;
 SELECT id, name, latitude, longitude, status FROM Branches;
 SELECT id, user_id, street, ward, province, address_type, address_line, latitude, longitude FROM Addresses;
+SELECT * FROM OrderReviews;
+SELECT * FROM ReviewReplies;

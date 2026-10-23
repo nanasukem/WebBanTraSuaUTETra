@@ -1,4 +1,3 @@
-
 package vn.utetra.config;
 
 import java.util.List;
@@ -49,9 +48,8 @@ public class SecurityConfiguration {
 								"/webjars/**", "/favicon.ico", "/error")
 						.permitAll()
 
-						// Thực đơn, trang danh mục, chi tiết sản phẩm, trang Chi nhánh: ai cũng xem được (không cần đăng nhập).
-						// Mua hàng (giỏ, đặt hàng) vẫn chỉ USER - xem quy tắc bên dưới.
-						.requestMatchers("/menu", "/menu/**", "/category/**", "/branches", "/products/**").permitAll()
+						// Thực đơn, trang danh mục, chi tiết sản phẩm, trang Chi nhánh & Xem đánh giá công khai: ai cũng xem được.
+						.requestMatchers("/menu", "/menu/**", "/category/**", "/branches", "/branches/**", "/products/**", "/api/reviews/**").permitAll()
 
 						// Cổng thanh toán gọi về: VNPAY / MoMo đưa khách quay lại (returnUrl) và máy chủ cổng báo kết quả (IPN).
 						// Không cần đăng nhập vì dữ liệu được kiểm bằng chữ ký HMAC của cổng.
