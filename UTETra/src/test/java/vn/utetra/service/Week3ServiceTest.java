@@ -82,6 +82,14 @@ class Week3ServiceTest {
 	@org.junit.jupiter.api.BeforeEach
 	void moCuaCaNgay() {
 		em.createNativeQuery("UPDATE Branches SET open_time = '00:00', close_time = '00:00'").executeUpdate();
+		// Dữ liệu thử tay trên web (báo hết món / topping, Admin ngừng bán) không làm test sai -> trả về như dữ liệu mẫu (tự rollback)
+		em.createNativeQuery("DELETE FROM BranchToppings").executeUpdate();
+		em.createNativeQuery("UPDATE Toppings SET is_available = 1").executeUpdate();
+		em.createNativeQuery("UPDATE Products SET is_available = 1").executeUpdate();
+		em.createNativeQuery("DELETE FROM BranchProducts WHERE NOT (branch_id = 2 AND product_id = 4)").executeUpdate();
+		em.createNativeQuery("IF NOT EXISTS (SELECT 1 FROM BranchProducts WHERE branch_id = 2 AND product_id = 4) "
+				+ "INSERT INTO BranchProducts (branch_id, product_id, is_available) VALUES (2, 4, 0)").executeUpdate();
+		em.createNativeQuery("UPDATE BranchProducts SET is_available = 0 WHERE branch_id = 2 AND product_id = 4").executeUpdate();
 		em.createNativeQuery("UPDATE Users SET carrier_id = 1 WHERE carrier_id IS NOT NULL AND carrier_id <> 1").executeUpdate();
 		em.createNativeQuery("UPDATE Orders SET carrier_id = 1 WHERE delivery_type = 'DELIVERY'").executeUpdate();
 		em.createNativeQuery("DELETE FROM Carriers WHERE id <> 1 AND name = N'Ahamove'").executeUpdate();
