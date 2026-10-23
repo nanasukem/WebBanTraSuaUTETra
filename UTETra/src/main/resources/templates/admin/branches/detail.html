@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Chi tiết chi nhánh', 'branches', ~{::#admin-content})}">
+
+<section id="admin-content">
+
+	<style>
+#admin-content {
+	--branch-primary: #f07836;
+	--branch-primary-dark: #d95f20;
+	--branch-primary-light: #fff3e9;
+	--branch-primary-border: #ffdfc8;
+	--branch-text: #202832;
+	--branch-muted: #77808c;
+	--branch-border: #e9edf2;
+	--branch-surface: #ffffff;
+	--branch-page: #f7f8fa;
+	color: var(--branch-text);
+}
+
+#admin-content>main {
+	max-width: 1600px;
+	margin-inline: auto;
+}
+
+#admin-content .detail-header {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;
+	gap: 20px;
+	margin-bottom: 28px;
+}
+
+#admin-content .detail-header>div:first-child {
+	min-width: 0;
+}
+
+#admin-content .detail-header>div:first-child>a {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	color: var(--branch-muted) !important;
+	font-weight: 500;
+	transition: color .2s ease;
+}
+
+#admin-content .detail-header>div:first-child>a:hover {
+	color: var(--branch-primary) !important;
+}
+
+#admin-content .detail-title {
+	color: var(--branch-text);
+	font-size: clamp(1.55rem, 2.5vw, 2rem);
+	font-weight: 800;
+	letter-spacing: -.7px;
+}
+
+#admin-content .detail-header p {
+	color: var(--branch-muted) !important;
+	font-size: .94rem;
+	line-height: 1.7;
+}
+
+#admin-content .detail-header .btn, #admin-content .btn-branch-primary {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	min-height: 42px;
+	padding: 10px 16px;
+	border-radius: 10px;
+	font-size: .9rem;
+	font-weight: 650;
+	transition: transform .2s ease, box-shadow .2s ease, background-color
+		.2s ease, border-color .2s ease;
+}
+
+#admin-content .detail-header .btn:hover, #admin-content .btn-branch-primary:hover
+	{
+	transform: translateY(-1px);
+}
+
+#admin-content .btn-branch-primary {
+	border: 1px solid var(--branch-primary);
+	background: linear-gradient(135deg, #f58a4a, #ed702e);
+	color: #fff;
+	box-shadow: 0 4px 12px rgba(240, 120, 54, .19);
+}
+
+#admin-content .btn-branch-primary:hover {
+	border-color: var(--branch-primary-dark);
+	background: var(--branch-primary-dark);
+	color: #fff;
+	box-shadow: 0 6px 16px rgba(240, 120, 54, .24);
+}
+
+#admin-content .detail-header .btn-outline-secondary {
+	border-color: #dfe3e8;
+	background: #fff;
+	color: #505965;
+}
+
+#admin-content .detail-header .btn-outline-secondary:hover {
+	border-color: #c9cfd7;
+	background: #f8f9fb;
+}
+
+#admin-content .alert {
+	border: 1px solid transparent;
+	border-radius: 12px;
+	padding: 14px 17px;
+	box-shadow: 0 3px 12px rgba(25, 35, 45, .025);
+}
+
+#admin-content .alert-success {
+	border-color: #ccebd8;
+}
+
+#admin-content .alert-danger {
+	border-color: #f3d0d0;
+}
+
+#admin-content .detail-card {
+	overflow: hidden;
+	border: 1px solid var(--branch-border);
+	border-radius: 18px;
+	background: var(--branch-surface);
+	box-shadow: 0 5px 22px rgba(31, 41, 55, .035);
+	transition: box-shadow .25s ease, border-color .25s ease;
+}
+
+#admin-content .detail-card:hover {
+	border-color: #e1e5eb;
+	box-shadow: 0 9px 28px rgba(31, 41, 55, .055);
+}
+
+#admin-content .detail-card>.p-3, #admin-content .detail-card>.p-md-4 {
+	padding: 24px !important;
+}
+
+#admin-content .section-heading {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--branch-text);
+	font-size: 1.08rem;
+	font-weight: 800;
+	letter-spacing: -.2px;
+	line-height: 1.5;
+}
+
+#admin-content .section-heading i {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	flex-shrink: 0;
+	border-radius: 11px;
+	background: var(--branch-primary-light);
+	color: var(--branch-primary) !important;
+	font-size: 1rem;
+}
+
+#admin-content .section-subtitle {
+	margin-top: 5px;
+	color: var(--branch-muted);
+	font-size: .88rem;
+	line-height: 1.7;
+}
+
+/* Ảnh bìa */
+#admin-content .branch-cover {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 16/7;
+	min-height: 240px;
+	max-height: 460px;
+	overflow: hidden;
+	isolation: isolate;
+	border: 1px solid rgba(30, 40, 50, .06);
+	border-radius: 15px;
+	background: linear-gradient(135deg, #fff4e9, #ffe0c5 55%, #fbd0ad);
+}
+
+#admin-content .branch-cover::after {
+	position: absolute;
+	z-index: 1;
+	inset: 35% 0 0;
+	background: linear-gradient(to bottom, transparent 0%, rgba(15, 20, 27, .22)
+		40%, rgba(15, 20, 27, .78) 100%);
+	content: "";
+	pointer-events: none;
+}
+
+#admin-content .branch-cover img {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform .55s ease;
+}
+
+#admin-content .detail-card:hover .branch-cover img {
+	transform: scale(1.025);
+}
+
+#admin-content .cover-placeholder {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	width: 100%;
+	height: 100%;
+	min-height: 240px;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	text-align: center;
+	color: #956a49;
+	background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, .85),
+		transparent 34%), linear-gradient(135deg, #fff4e9, #ffe0c5);
+}
+
+#admin-content .cover-placeholder>div {
+	position: relative;
+	z-index: 2;
+}
+
+#admin-content .cover-placeholder i {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 82px;
+	height: 82px;
+	border: 1px solid rgba(216, 162, 122, .25);
+	border-radius: 24px;
+	background: rgba(255, 255, 255, .62);
+	color: #d8a27a;
+	font-size: 2.6rem;
+}
+
+#admin-content .cover-placeholder h3 {
+	color: #956a49;
+	font-weight: 750;
+}
+
+#admin-content .branch-name-overlay {
+	position: absolute;
+	z-index: 2;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	padding: 42px 26px 24px;
+	color: #fff;
+}
+
+#admin-content .branch-name-overlay h2 {
+	margin: 0 0 9px;
+	color: #fff;
+	font-size: clamp(1.4rem, 3vw, 2.15rem);
+	font-weight: 850;
+	letter-spacing: -.5px;
+	line-height: 1.3;
+	overflow-wrap: anywhere;
+	text-shadow: 0 2px 8px rgba(0, 0, 0, .22);
+}
+
+#admin-content .branch-name-overlay p {
+	display: flex;
+	align-items: flex-start;
+	gap: 7px;
+	margin: 0;
+	color: rgba(255, 255, 255, .94);
+	font-size: .92rem;
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+	text-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+}
+
+#admin-content .branch-name-overlay p i {
+	margin-top: 3px;
+	flex-shrink: 0;
+}
+
+/* Mô tả */
+#admin-content .description-content {
+	padding: 20px 22px;
+	border: 1px solid #f0e8e2;
+	border-left: 4px solid var(--branch-primary);
+	border-radius: 12px;
+	background: linear-gradient(135deg, #fffaf6, #fff);
+	color: #4d5662;
+	font-size: .96rem;
+	line-height: 1.95;
+	white-space: pre-line;
+	overflow-wrap: anywhere;
+}
+
+#admin-content .description-content+div {
+	border: 1px dashed #e0e5eb;
+}
+
+/* Thông tin cơ bản */
+#admin-content .info-item {
+	position: relative;
+	height: 100%;
+	padding: 19px;
+	border: 1px solid var(--branch-border);
+	border-radius: 14px;
+	background: #fff;
+	transition: transform .2s ease, border-color .2s ease, box-shadow .2s
+		ease, background-color .2s ease;
+}
+
+#admin-content .info-item:hover {
+	transform: translateY(-2px);
+	border-color: var(--branch-primary-border);
+	background: #fffdfa;
+	box-shadow: 0 6px 17px rgba(31, 41, 55, .04);
+}
+
+#admin-content .info-label {
+	margin-bottom: 7px;
+	color: var(--branch-muted);
+	font-size: .82rem;
+	font-weight: 500;
+	letter-spacing: .1px;
+}
+
+#admin-content .info-value {
+	color: var(--branch-text);
+	font-size: .95rem;
+	font-weight: 700;
+	line-height: 1.7;
+	overflow-wrap: anywhere;
+}
+
+#admin-content .info-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 42px;
+	height: 42px;
+	flex-shrink: 0;
+	border: 1px solid #ffe6d5;
+	border-radius: 12px;
+	background: var(--branch-primary-light);
+	color: var(--branch-primary);
+	font-size: 1.1rem;
+}
+
+#admin-content .info-item .badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 8px 12px;
+	border-radius: 999px;
+	font-size: .8rem;
+	font-weight: 700;
+}
+
+#admin-content .info-item a, #admin-content a.btn-outline-primary {
+	transition: background-color .2s ease, border-color .2s ease, color .2s
+		ease;
+}
+
+#admin-content a.btn-outline-primary {
+	padding: 10px 15px;
+	border-color: #d8e2f3;
+	border-radius: 10px;
+	background: #f7faff;
+	color: #315e9e;
+	font-size: .88rem;
+	font-weight: 650;
+}
+
+#admin-content a.btn-outline-primary:hover {
+	border-color: #b8ccef;
+	background: #eaf2ff;
+	color: #234a83;
+}
+
+/* Cuối trang */
+#admin-content>main>div:last-child {
+	margin-top: 6px;
+	padding-top: 18px;
+	border-top: 1px solid var(--branch-border);
+}
+
+#admin-content>main>div:last-child>span {
+	color: var(--branch-muted) !important;
+	font-size: .84rem;
+	line-height: 1.7;
+}
+
+#admin-content>main>div:last-child>span i {
+	color: var(--branch-primary);
+}
+
+/* Tablet */
+@media ( max-width : 991.98px) {
+	#admin-content .detail-card>.p-3, #admin-content .detail-card>.p-md-4 {
+		padding: 20px !important;
+	}
+	#admin-content .branch-cover {
+		aspect-ratio: 16/8;
+	}
+	#admin-content .info-item {
+		padding: 16px;
+	}
+}
+
+/* Mobile */
+@media ( max-width : 575.98px) {
+	#admin-content>main {
+		padding: 20px 12px !important;
+	}
+	#admin-content .detail-header {
+		align-items: flex-start;
+		gap: 15px;
+		margin-bottom: 20px;
+	}
+	#admin-content .detail-title {
+		font-size: 1.55rem;
+	}
+	#admin-content .detail-header>.d-flex {
+		width: 100%;
+	}
+	#admin-content .detail-header>.d-flex .btn {
+		flex: 1 1 auto;
+		padding: 9px 11px;
+		font-size: .82rem;
+	}
+	#admin-content .detail-card {
+		margin-bottom: 18px !important;
+		border-radius: 15px;
+	}
+	#admin-content .detail-card>.p-3, #admin-content .detail-card>.p-md-4 {
+		padding: 15px !important;
+	}
+	#admin-content .section-heading {
+		font-size: 1rem;
+	}
+	#admin-content .section-heading i {
+		width: 32px;
+		height: 32px;
+		border-radius: 9px;
+	}
+	#admin-content .branch-cover {
+		min-height: 250px;
+		aspect-ratio: 4/3;
+		border-radius: 12px;
+	}
+	#admin-content .cover-placeholder {
+		min-height: 250px;
+	}
+	#admin-content .cover-placeholder i {
+		width: 68px;
+		height: 68px;
+		border-radius: 20px;
+		font-size: 2.1rem;
+	}
+	#admin-content .branch-name-overlay {
+		padding: 40px 15px 16px;
+	}
+	#admin-content .branch-name-overlay h2 {
+		font-size: 1.35rem;
+	}
+	#admin-content .branch-name-overlay p {
+		font-size: .83rem;
+	}
+	#admin-content .description-content {
+		padding: 15px;
+		font-size: .91rem;
+		line-height: 1.8;
+	}
+	#admin-content .info-item {
+		padding: 14px;
+		border-radius: 12px;
+	}
+	#admin-content .info-icon {
+		width: 36px;
+		height: 36px;
+		border-radius: 10px;
+		font-size: 1rem;
+	}
+	#admin-content .info-value {
+		font-size: .9rem;
+	}
+	#admin-content>main>div:last-child {
+		align-items: flex-start !important;
+	}
+}
+
+/* Giảm chuyển động nếu người dùng yêu cầu */
+@media ( prefers-reduced-motion : reduce) {
+	#admin-content *, #admin-content *::before, #admin-content *::after {
+		scroll-behavior: auto !important;
+		transition-duration: .01ms !important;
+		animation-duration: .01ms !important;
+		animation-iteration-count: 1 !important;
+	}
+}
+</style>
+
+	<main class="container-fluid py-4 px-3 px-lg-4">
+
+		<!-- Tiêu đề -->
+		<div class="detail-header">
+			<div>
+				<a th:href="@{/admin/branches}"
+					class="text-decoration-none text-muted small"> <i
+					class="bi bi-arrow-left me-1"></i> Quay lại danh sách chi nhánh
+				</a>
+
+				<h1 class="h3 detail-title mt-2 mb-1">Chi tiết chi nhánh</h1>
+
+				<p class="text-muted mb-0">Xem ảnh bìa, mô tả và thông tin chi
+					nhánh.</p>
+			</div>
+
+			<div class="d-flex flex-wrap gap-2">
+				<a th:href="@{/admin/branches/{id}/edit(id=${branch.id})}"
+					class="btn btn-branch-primary"> <i
+					class="bi bi-pencil-square me-1"></i> Sửa thông tin quản lý
+				</a> <a th:href="@{/admin/branches}" class="btn btn-outline-secondary">
+					<i class="bi bi-list-ul me-1"></i> Danh sách
+				</a>
+			</div>
+		</div>
+
+		<!-- Thông báo -->
+		<div th:if="${success}"
+			class="alert alert-success alert-dismissible fade show" role="alert">
+			<i class="bi bi-check-circle me-2"></i> <span th:text="${success}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"
+				aria-label="Đóng"></button>
+		</div>
+
+		<div th:if="${error}"
+			class="alert alert-danger alert-dismissible fade show" role="alert">
+			<i class="bi bi-exclamation-circle me-2"></i> <span
+				th:text="${error}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"
+				aria-label="Đóng"></button>
+		</div>
+
+		<!-- Ảnh bìa -->
+		<div class="detail-card mb-4">
+			<div class="p-3 p-md-4">
+				<div
+					class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+					<div>
+						<h2 class="section-heading mb-1">
+							<i class="bi bi-image me-2"></i> Ảnh bìa chi nhánh
+						</h2>
+					</div>
+				</div>
+
+				<div class="branch-cover">
+
+					<img
+						th:if="${branch.imageCloudinaryId != null
+                              and !#strings.isEmpty(branch.imageCloudinaryId)}"
+						th:src="${branch.imageCloudinaryId}"
+						th:alt="${'Ảnh bìa ' + branch.name}">
+
+					<div
+						th:unless="${branch.imageCloudinaryId != null
+                                  and !#strings.isEmpty(branch.imageCloudinaryId)}"
+						class="cover-placeholder">
+						<div>
+							<i class="bi bi-image"></i>
+							<h3 class="h6 fw-bold mt-3 mb-2">Chi nhánh chưa có ảnh bìa</h3>
+						</div>
+					</div>
+
+					<div class="branch-name-overlay">
+						<h2 th:text="${branch.name}">Tên chi nhánh</h2>
+						<p>
+							<i class="bi bi-geo-alt-fill me-1"></i> <span
+								th:text="${branch.address}">Địa chỉ chi nhánh</span>
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Mô tả -->
+		<div class="detail-card mb-4">
+			<div class="p-3 p-md-4">
+				<div
+					class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+					<div>
+						<h2 class="section-heading mb-1">
+							<i class="bi bi-card-text me-2"></i> Mô tả chi nhánh
+						</h2>
+					</div>
+				</div>
+
+				<div
+					th:if="${branch.description != null
+                          and !#strings.isEmpty(branch.description)}"
+					class="description-content" th:text="${branch.description}">
+					Mô tả chi nhánh</div>
+
+				<div
+					th:unless="${branch.description != null
+                              and !#strings.isEmpty(branch.description)}"
+					class="rounded-3 p-4 text-center" style="background: #f8f9fa;">
+					<i class="bi bi-card-text fs-2 text-secondary"></i>
+					<p class="text-muted mt-2 mb-0">Chi nhánh chưa có mô tả.</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Thông tin cơ bản -->
+		<div class="detail-card mb-4">
+			<div class="p-3 p-md-4">
+				<h2 class="section-heading mb-1">
+					<i class="bi bi-shop me-2"></i> Thông tin quản lý chi nhánh
+				</h2>
+
+				<p class="section-subtitle mb-4">Thông tin cơ bản của chi nhánh
+					trong hệ thống.</p>
+
+				<div class="row g-3">
+
+					<!-- Tên -->
+					<div class="col-12 col-md-6">
+						<div class="info-item">
+							<div class="d-flex gap-3 align-items-start">
+								<span class="info-icon"> <i class="bi bi-shop"></i>
+								</span>
+								<div>
+									<div class="info-label">Tên chi nhánh</div>
+									<div class="info-value" th:text="${branch.name}">Tên chi
+										nhánh</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Mã -->
+					<div class="col-12 col-md-6">
+						<div class="info-item">
+							<div class="d-flex gap-3 align-items-start">
+								<span class="info-icon"> <i class="bi bi-hash"></i>
+								</span>
+								<div>
+									<div class="info-label">Mã chi nhánh</div>
+									<div class="info-value" th:text="${branch.id}">1</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Địa chỉ -->
+					<div class="col-12">
+						<div class="info-item">
+							<div class="d-flex gap-3 align-items-start">
+								<span class="info-icon"> <i class="bi bi-geo-alt"></i>
+								</span>
+								<div>
+									<div class="info-label">Địa chỉ</div>
+									<div class="info-value" th:text="${branch.address}">Địa
+										chỉ</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Điện thoại -->
+					<div class="col-12 col-md-6">
+						<div class="info-item">
+							<div class="d-flex gap-3 align-items-start">
+								<span class="info-icon"> <i class="bi bi-telephone"></i>
+								</span>
+								<div>
+									<div class="info-label">Số điện thoại</div>
+
+									<div class="info-value"
+										th:if="${branch.phone != null
+                                             and !#strings.isEmpty(branch.phone)}"
+										th:text="${branch.phone}">Số điện thoại</div>
+
+									<div class="text-muted"
+										th:unless="${branch.phone != null
+                                                 and !#strings.isEmpty(branch.phone)}">
+										Chưa cập nhật</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Giờ hoạt động -->
+					<div class="col-12 col-md-6">
+						<div class="info-item">
+							<div class="d-flex gap-3 align-items-start">
+								<span class="info-icon"> <i class="bi bi-clock"></i>
+								</span>
+								<div>
+									<div class="info-label">Giờ hoạt động</div>
+
+									<div class="info-value"
+										th:if="${branch.hoursLabel != null
+                                             and !#strings.isEmpty(branch.hoursLabel)}"
+										th:text="${branch.hoursLabel}">Giờ hoạt động</div>
+
+									<div class="info-value"
+										th:unless="${branch.hoursLabel != null
+                                                 and !#strings.isEmpty(branch.hoursLabel)}">
+										<span th:if="${branch.openTime != null}"
+											th:text="${branch.openTime}"></span> <span> - </span> <span
+											th:if="${branch.closeTime != null}"
+											th:text="${branch.closeTime}"></span> <span
+											th:if="${branch.openTime == null
+                                                  and branch.closeTime == null}"
+											class="text-muted"> Chưa cập nhật </span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Trạng thái -->
+					<div class="col-12 col-md-6">
+						<div class="info-item">
+							<div class="d-flex gap-3 align-items-start">
+								<span class="info-icon"> <i class="bi bi-toggle-on"></i>
+								</span>
+								<div>
+									<div class="info-label">Trạng thái</div>
+									<span class="badge"
+										th:classappend="${branch.status.name() == 'APPROVED'}
+                                          ? ' text-bg-success'
+                                          : ' text-bg-secondary'"
+										th:text="${branch.status.label}"> Trạng thái </span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Manager -->
+					<div class="col-12 col-md-6">
+						<div class="info-item">
+							<div class="d-flex gap-3 align-items-start">
+								<span class="info-icon"> <i class="bi bi-person-badge"></i>
+								</span>
+								<div>
+									<div class="info-label">Manager phụ trách</div>
+
+									<div class="info-value"
+										th:if="${branch.owner != null
+                                             and branch.owner.fullName != null}"
+										th:text="${branch.owner.fullName}">Manager</div>
+
+									<div class="info-value"
+										th:if="${branch.owner != null
+                                             and branch.owner.fullName == null}"
+										th:text="${branch.owner.username}">Tài khoản Manager</div>
+
+									<div class="text-muted" th:unless="${branch.owner != null}">
+										Chưa phân công Manager</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Vĩ độ -->
+					<div class="col-12 col-md-6" th:if="${branch.latitude != null}">
+						<div class="info-item">
+							<div class="info-label">Vĩ độ (Latitude)</div>
+							<div class="info-value" th:text="${branch.latitude}">
+								Latitude</div>
+						</div>
+					</div>
+
+					<!-- Kinh độ -->
+					<div class="col-12 col-md-6" th:if="${branch.longitude != null}">
+						<div class="info-item">
+							<div class="info-label">Kinh độ (Longitude)</div>
+							<div class="info-value" th:text="${branch.longitude}">
+								Longitude</div>
+						</div>
+					</div>
+
+					<!-- Google Maps -->
+					<div class="col-12"
+						th:if="${branch.latitude != null
+                             and branch.longitude != null}">
+						<a class="btn btn-outline-primary" target="_blank" rel="noopener"
+							th:href="${'https://www.google.com/maps?q='
+                           + branch.latitude + ',' + branch.longitude}">
+							<i class="bi bi-map me-1"></i> Xem vị trí trên Google Maps
+						</a>
+					</div>
+
+				</div>
+			</div>
+		</div>
+
+		<!-- Cuối trang -->
+		<div
+			class="d-flex flex-wrap justify-content-between align-items-center gap-2 pb-3">
+			<span class="small text-muted"> <i
+				class="bi bi-info-circle me-1"></i> Ảnh bìa và mô tả được cập nhật
+				từ tài khoản Manager.
+			</span> <a th:href="@{/admin/branches}" class="btn btn-outline-secondary">
+				<i class="bi bi-arrow-left me-1"></i> Về danh sách chi nhánh
+			</a>
+		</div>
+
+	</main>
+</section>
+</html>
