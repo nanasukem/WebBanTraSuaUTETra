@@ -76,10 +76,15 @@
 					<div class="alert alert-warning py-2" th:unless="${product.available}">
 						<i class="bi bi-pause-circle me-1"></i> Món này đang tạm ngưng bán.
 					</div>
+					<div class="alert alert-warning py-2"
+						th:if="${product.available and menuBranch != null and menuOutIds.contains(product.id)}">
+						<i class="bi bi-exclamation-circle me-1"></i> Món này đang hết ở <b th:text="${menuBranch.name}">chi nhánh</b>.
+						Bạn đổi chi nhánh ở đầu trang Thực đơn để đặt.
+					</div>
 
 					<!-- Nút -->
 					<div class="mt-auto d-flex flex-wrap gap-2">
-						<button th:if="${isBuyer and product.available}" type="button" class="btn btn-success btn-lg px-4 js-open-product"
+						<button th:if="${isBuyer and product.available and !menuOutIds.contains(product.id)}" type="button" class="btn btn-success btn-lg px-4 js-open-product"
 							th:attr="data-id=${product.id}, data-name=${product.name}, data-price=${product.basePrice},
 							         data-image=${product.imageCloudinaryId}, data-description=${product.description}">
 							<i class="bi bi-cart-plus me-1"></i> Chọn món

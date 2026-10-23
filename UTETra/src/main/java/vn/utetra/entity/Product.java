@@ -45,4 +45,17 @@ public class Product {
 
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt = LocalDateTime.now();
+
+	/**
+	 * != null: món này là TOPPING BÁN RIÊNG (danh mục Topping), tạo tự động khi Admin thêm topping
+	 * ở trang /admin/toppings. Món loại này không chọn size / đường / đá / topping.
+	 */
+	@ManyToOne
+	@JoinColumn(name = "topping_id")
+	private Topping topping;
+
+	/** true = topping bán riêng (ẩn size, đường, đá khi đặt) */
+	public boolean isToppingItem() {
+		return topping != null;
+	}
 }

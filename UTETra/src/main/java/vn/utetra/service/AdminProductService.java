@@ -30,12 +30,5 @@ public interface AdminProductService {
 
 	void deleteCategory(Integer id);
 
-	// === QUẢN LÝ TOPPING (ADMIN) ===
-	List<Topping> getAllToppings();
-
-	Topping getToppingById(Integer id);
-
-	Topping saveTopping(Topping topping);
-
-	void deleteTopping(Integer id);
+	// Topping: quản lý ở ToppingService (/admin/toppings) - topping vừa thêm vào ly vừa bán riêng
 }

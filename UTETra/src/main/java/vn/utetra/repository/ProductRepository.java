@@ -2,6 +2,7 @@
 package vn.utetra.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -81,4 +82,36 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query("UPDATE Product p SET p.soldCount = p.soldCount + :qty " + "WHERE p.id = :id")
 	int increaseSoldCount(@Param("id") Integer id, @Param("qty") Integer qty);
+
+	/** Món bán riêng của 1 topping (danh mục Topping) */
+	Optional<Product> findByTopping_Id(Integer toppingId);
+
+	/** Các món là topping bán riêng */
+	List<Product> findByToppingIsNotNull();
+
+	/**
+	 * Thực đơn / trang danh mục: gồm cả món Admin NGỪNG BÁN (hiện nhãn "Ngừng bán", không đặt được),
+	 * món đang bán xếp trước. Món bị xoá thì không còn trong bảng nên tự biến mất.
+	 */
+	@Query(value = "SELECT * FROM Products p WHERE (:keyword IS NULL OR :keyword = '' "
+			+ "OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) "
+			+ "AND (:categoryId IS NULL OR p.category_id = :categoryId) ORDER BY p.is_available DESC, "
+			+ "CASE WHEN :sortBy = 'price_asc' THEN p.base_price END ASC, "
+			+ "CASE WHEN :sortBy = 'price_desc' THEN p.base_price END DESC, "
+			+ "CASE WHEN :sortBy = 'sold' THEN p.sold_count END DESC, "
+			+ "CASE WHEN :sortBy = 'newest' OR :sortBy IS NULL OR :sortBy = '' THEN p.created_at END DESC, "
+			+ "p.id ASC", nativeQuery = true)
+	List<Product> menuProducts(@Param("keyword") String keyword, @Param("categoryId") Integer categoryId,
+			@Param("sortBy") String sortBy);
+
+	@Query(value = "SELECT * FROM Products p WHERE (:categoryId IS NULL OR p.category_id = :categoryId) "
+			+ "ORDER BY p.is_available DESC, "
+			+ "CASE WHEN :sortBy = 'price_asc' THEN p.base_price END ASC, "
+			+ "CASE WHEN :sortBy = 'price_desc' THEN p.base_price END DESC, "
+			+ "CASE WHEN :sortBy = 'sold' THEN p.sold_count END DESC, "
+			+ "CASE WHEN :sortBy = 'newest' THEN p.created_at END DESC, p.id DESC",
+			countQuery = "SELECT COUNT(*) FROM Products p WHERE (:categoryId IS NULL OR p.category_id = :categoryId)",
+			nativeQuery = true)
+	Page<Product> menuProductsPaged(@Param("categoryId") Integer categoryId, @Param("sortBy") String sortBy,
+			Pageable pageable);
 }

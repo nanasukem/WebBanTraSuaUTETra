@@ -402,6 +402,7 @@ public class ReviewService {
 
 	/** "Size L · 70% đường · 50% đá" */
 	static String info(OrderDetail d) {
+		if (d.getProduct() != null && d.getProduct().isToppingItem()) return "Topping mua riêng";
 		return "Size " + d.getSize() + " · " + d.getSugarLevel() + "% đường · " + d.getIceLevel() + "% đá";
 	}
 

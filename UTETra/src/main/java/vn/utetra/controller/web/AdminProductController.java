@@ -21,6 +21,7 @@ import vn.utetra.service.AdminProductService;
 public class AdminProductController {
 
 	private final AdminProductService adminProductService;
+	private final vn.utetra.repository.BranchProductRepository branchProductRepository;
 
 	// Danh sách và tìm kiếm sản phẩm
 	@GetMapping
@@ -28,7 +29,12 @@ public class AdminProductController {
 			@RequestParam(required = false) Integer categoryId, @RequestParam(required = false) String status,
 			Model model) {
 
-		List<Product> products = adminProductService.getAllProducts();
+		// Topping mua riêng nằm ở tab Topping (/admin/toppings), không hiện ở tab Đồ uống
+		List<Product> all = adminProductService.getAllProducts();
+		java.util.Set<Integer> toppingCategoryIds = all.stream().filter(Product::isToppingItem)
+				.filter(p -> p.getCategory() != null).map(p -> p.getCategory().getId())
+				.collect(java.util.stream.Collectors.toSet());
+		List<Product> products = all.stream().filter(p -> !p.isToppingItem()).toList();
 
 		if (keyword != null && !keyword.isBlank()) {
 			String search = keyword.trim().toLowerCase();
@@ -49,8 +55,16 @@ public class AdminProductController {
 		}
 
 		model.addAttribute("products", products);
-		model.addAttribute("categories", adminProductService.getAllCategories());
+		model.addAttribute("categories", adminProductService.getAllCategories().stream()
+				.filter(c -> !toppingCategoryIds.contains(c.getId())).toList());
 		model.addAttribute("keyword", keyword);
+
+		// Chi nhánh nào đang báo hết món nào (Manager bật / tắt) - Admin chỉ xem
+		java.util.Map<Integer, List<String>> outAt = new java.util.HashMap<>();
+		for (Object[] r : branchProductRepository.findAllUnavailable()) {
+			outAt.computeIfAbsent((Integer) r[0], k -> new java.util.ArrayList<>()).add((String) r[1]);
+		}
+		model.addAttribute("outAt", outAt);
 		model.addAttribute("categoryId", categoryId);
 		model.addAttribute("status", status);
 

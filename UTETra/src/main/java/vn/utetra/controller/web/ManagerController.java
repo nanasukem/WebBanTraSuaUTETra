@@ -58,11 +58,16 @@ public class ManagerController {
 	private final CurrentUserService currentUserService;
 	private final ManagerCustomerService managerCustomerService;
 	private final BranchService branchService;
+	private final vn.utetra.repository.ToppingRepository toppingRepository;
+	private final vn.utetra.service.ToppingService toppingService;
+	private final vn.utetra.service.NotificationService notificationService;
 
 	public ManagerController(BranchRepository branchRepository, BranchProductRepository branchProductRepository,
 			ProductRepository productRepository, OrderRepository orderRepository, VoucherService voucherService,
 			CurrentUserService currentUserService, ManagerCustomerService managerCustomerService,
-			BranchService branchService) {
+			BranchService branchService, vn.utetra.repository.ToppingRepository toppingRepository,
+			vn.utetra.service.ToppingService toppingService,
+			vn.utetra.service.NotificationService notificationService) {
 
 		this.branchRepository = branchRepository;
 		this.branchProductRepository = branchProductRepository;
@@ -72,6 +77,17 @@ public class ManagerController {
 		this.currentUserService = currentUserService;
 		this.managerCustomerService = managerCustomerService;
 		this.branchService = branchService;
+		this.toppingRepository = toppingRepository;
+		this.toppingService = toppingService;
+		this.notificationService = notificationService;
+	}
+
+	/** Báo Admin: chi nhánh vừa báo hết / mở bán lại 1 món hoặc topping (bấm vào xem kho của chi nhánh) */
+	private void notifyAdminsStock(Branch branch, String what, String name, boolean dangBan) {
+		notificationService.notifyAdmins("STOCK",
+				branch.getName() + (dangBan ? " mở bán lại: " : " báo hết: ") + name,
+				(dangBan ? "Đã có lại " : "Tạm hết ") + what + " " + name + " tại " + branch.getName(),
+				"/admin/branches/" + branch.getId() + "/stock", null);
 	}
 
 	// =========================================================
@@ -282,9 +298,13 @@ public class ManagerController {
 			return denied(ra);
 		}
 
-		List<Product> products = productRepository.findAll();
+		// Topping mua riêng có khu riêng bên dưới (bật / tắt topping là bật / tắt luôn món mua riêng)
+		List<Product> products = productRepository.findAll().stream().filter(p -> !p.isToppingItem()).toList();
 
 		List<Integer> unavailableProductIds = branchProductRepository.findUnavailableProductIds(branchId);
+		model.addAttribute("toppings", toppingRepository.findAll().stream()
+				.sorted(java.util.Comparator.comparing(vn.utetra.entity.Topping::getId)).toList());
+		model.addAttribute("unavailableToppingIds", toppingService.unavailableToppingIds(branchId));
 
 		model.addAttribute("branch", branch);
 		model.addAttribute("products", products);
@@ -345,10 +365,35 @@ public class ManagerController {
 		}
 
 		branchProductRepository.save(branchProduct);
+		notifyAdminsStock(branch, "món", product.getName(), Boolean.TRUE.equals(branchProduct.getIsAvailable()));
 
 		ra.addFlashAttribute("success", "Đã cập nhật trạng thái sản phẩm tại chi nhánh.");
 
 		return "redirect:/manager/branches/" + branchId + "/products";
+	}
+
+	/** Báo hết / mở bán lại 1 topping tại chi nhánh (cả thêm vào ly lẫn mua riêng) */
+	@PostMapping("/branches/{branchId}/toppings/{toppingId}/toggle")
+	public String toggleBranchTopping(@PathVariable Integer branchId, @PathVariable Integer toppingId,
+			Principal principal, HttpSession session, RedirectAttributes ra) {
+
+		Branch branch = ownBranch(branchId, principal, session);
+		if (branch == null) {
+			return denied(ra);
+		}
+		if (branch.getStatus() != BranchStatus.APPROVED) {
+			ra.addFlashAttribute("error", "Chi nhánh đang tạm ngưng, không thể điều chỉnh topping.");
+			return "redirect:/manager/branches/" + branchId + "/products#toppings";
+		}
+		try {
+			boolean dangBan = toppingService.toggleAtBranch(branch, toppingId);
+			notifyAdminsStock(branch, "topping", toppingService.get(toppingId).getName(), dangBan);
+			ra.addFlashAttribute("success", dangBan ? "Đã mở bán lại topping tại chi nhánh."
+					: "Đã báo hết topping tại chi nhánh (khách không chọn được topping này khi đặt ở chi nhánh bạn).");
+		} catch (vn.utetra.exception.BusinessException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+		}
+		return "redirect:/manager/branches/" + branchId + "/products#toppings";
 	}
 
 	// =========================================================

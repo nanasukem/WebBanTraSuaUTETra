@@ -113,12 +113,15 @@ public class ProductHighlightService {
 					p.getCategory() != null ? p.getCategory().getName() : "",
 					p.getBasePrice(), p.getImageCloudinaryId(), p.getDescription(),
 					p.getSoldCount() != null ? p.getSoldCount() : 0,
-					Math.round(avg * 10) / 10.0, reviews, favorites.getOrDefault(p.getId(), 0L));
+					Math.round(avg * 10) / 10.0, reviews, favorites.getOrDefault(p.getId(), 0L),
+					Boolean.TRUE.equals(p.getIsAvailable()));
 		}).toList();
 	}
 
 	private static List<Product> available(List<Product> products) {
 		if (products == null) return Collections.emptyList();
-		return products.stream().filter(p -> p != null && !Boolean.FALSE.equals(p.getIsAvailable())).toList();
+		// Bỏ topping mua riêng khỏi các khối nổi bật (mới / bán chạy / đánh giá / yêu thích): chỉ xếp hạng đồ uống
+		return products.stream().filter(p -> p != null && !Boolean.FALSE.equals(p.getIsAvailable()) && !p.isToppingItem())
+				.toList();
 	}
 }

@@ -34,4 +34,8 @@ public interface BranchProductRepository extends JpaRepository<BranchProduct, In
 			ORDER BY p.name ASC
 			""")
 	List<BranchProduct> findProductsOfBranch(@Param("branchId") Integer branchId);
+
+	/** [productId, tên chi nhánh] của mọi món đang báo hết ở chi nhánh (Admin xem "Đang hết ở") */
+	@Query("SELECT bp.product.id, bp.branch.name FROM BranchProduct bp WHERE bp.isAvailable = false ORDER BY bp.branch.id")
+	List<Object[]> findAllUnavailable();
 }

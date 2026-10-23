@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Quản lý topping', 'products', ~{::#admin-content})}">
+
+<!--
+	QUẢN LÝ TOPPING (Admin, toàn chuỗi) /admin/toppings
+	- Topping dùng 2 kiểu như Katinat: thêm vào ly khi chọn món, hoặc mua riêng ở danh mục "Topping" trên menu
+	- Thêm topping -> hệ thống tự tạo món bán riêng (cùng tên, giá, ảnh; 1 cỡ, không chọn đường / đá)
+	- Ngưng bán: tắt cả 2 kiểu. Đã có trong đơn hàng thì không xoá được, chỉ ngưng bán
+	- Hết topping ở 1 chi nhánh: Manager tự bật / tắt ở trang Sản phẩm của chi nhánh
+-->
+<section id="admin-content">
+	<div class="container-fluid px-0">
+		<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+			<div>
+				<h2 class="fw-bold mb-1"><i class="bi bi-plus-circle-dotted text-success me-2"></i>Quản lý topping</h2>
+				<p class="text-muted mb-0">Topping dùng chung cho cả chuỗi: khách thêm vào ly khi chọn món, hoặc mua riêng ở
+					danh mục <b>Topping</b> trên menu. Chi nhánh hết topping thì quản lý chi nhánh tự báo hết.</p>
+			</div>
+		</div>
+
+		<!-- 2 tab: Đồ uống (sản phẩm thường) | Topping (thêm vào ly + mua riêng) -->
+		<ul class="nav nav-pills gap-2 mb-4">
+			<li class="nav-item"><a class="nav-link text-success border border-success-subtle" th:href="@{/admin/products}">
+					<i class="bi bi-cup-straw me-1"></i> Đồ uống</a></li>
+			<li class="nav-item"><a class="nav-link active bg-success" th:href="@{/admin/toppings}">
+					<i class="bi bi-plus-circle-dotted me-1"></i> Topping</a></li>
+		</ul>
+
+		<div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+			<i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
+		<div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+			<i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
+
+		<div class="row g-4">
+			<!-- ===== FORM THÊM / SỬA ===== -->
+			<div class="col-lg-4">
+				<div class="card border-0 shadow-sm rounded-4">
+					<div class="card-header bg-white py-3 fw-bold">
+						<span th:if="${editing == null}"><i class="bi bi-plus-lg me-1"></i> Thêm topping</span>
+						<span th:if="${editing != null}"><i class="bi bi-pencil-square me-1"></i> Sửa topping #<span
+								th:text="${editing.id}"></span></span>
+					</div>
+					<div class="card-body">
+						<form method="post" enctype="multipart/form-data"
+							th:action="${editing == null} ? @{/admin/toppings} : @{/admin/toppings/{id}(id=${editing.id})}">
+							<div class="mb-3">
+								<label for="tpName" class="form-label fw-semibold">Tên topping <span class="text-danger">*</span></label>
+								<input type="text" id="tpName" name="name" class="form-control" maxlength="100" required
+									placeholder="VD: Trân châu trắng" th:value="${editing != null} ? ${editing.name} : ''">
+							</div>
+							<div class="mb-3">
+								<label for="tpPrice" class="form-label fw-semibold">Giá (đ) <span class="text-danger">*</span></label>
+								<input type="number" id="tpPrice" name="price" class="form-control" min="0" max="100000" step="1000"
+									required placeholder="VD: 6000" th:value="${editing != null} ? ${editing.price} : ''">
+								<div class="form-text">Cùng 1 giá khi thêm vào ly và khi mua riêng.</div>
+							</div>
+							<div class="mb-3">
+								<label for="tpDesc" class="form-label fw-semibold">Mô tả (khi mua riêng)</label>
+								<textarea id="tpDesc" name="description" class="form-control" rows="2" maxlength="500"
+									placeholder="VD: Trân châu trắng dai giòn, ngọt nhẹ"
+									th:text="${editingRow != null and editingRow.product() != null} ? ${editingRow.product().description} : ''"></textarea>
+							</div>
+							<div class="mb-3">
+								<label for="tpImage" class="form-label fw-semibold">Ảnh</label>
+								<div class="mb-2" th:if="${editingRow != null and editingRow.product() != null and editingRow.product().imageCloudinaryId != null}">
+									<img th:src="${editingRow.product().imageCloudinaryId}" alt="" class="rounded-3 border"
+										style="width: 72px; height: 72px; object-fit: cover;">
+								</div>
+								<input type="file" id="tpImage" name="image" class="form-control" accept="image/*">
+								<div class="form-text">Không bắt buộc · tối đa 5MB<span th:if="${editing != null}"> · bỏ trống = giữ ảnh cũ</span>.</div>
+							</div>
+							<div class="d-flex gap-2">
+								<button type="submit" class="btn btn-success flex-grow-1">
+									<i class="bi" th:classappend="${editing == null} ? 'bi-plus-lg' : 'bi-check-lg'"></i>
+									<span th:text="${editing == null} ? 'Thêm topping' : 'Lưu thay đổi'">Thêm topping</span>
+								</button>
+								<a th:if="${editing != null}" th:href="@{/admin/toppings}" class="btn btn-outline-secondary">Huỷ</a>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+
+			<!-- ===== DANH SÁCH ===== -->
+			<div class="col-lg-8">
+				<div class="card border-0 shadow-sm rounded-4">
+					<div class="card-header bg-white py-3 fw-bold d-flex justify-content-between align-items-center">
+						<span><i class="bi bi-list-ul me-1"></i> Danh sách topping</span>
+						<span class="badge bg-success" th:text="'Tổng số: ' + ${#lists.size(rows)}">0</span>
+					</div>
+					<div class="table-responsive">
+						<table class="table table-hover align-middle mb-0">
+							<thead class="table-light">
+								<tr>
+									<th class="ps-3">Topping</th>
+									<th class="text-end">Giá</th>
+									<th class="text-center">Đã bán</th>
+									<th>Trạng thái</th>
+									<th class="text-end pe-3">Thao tác</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr th:if="${#lists.isEmpty(rows)}">
+									<td colspan="5" class="text-center text-muted py-5">
+										<i class="bi bi-inbox fs-2 d-block mb-2"></i> Chưa có topping nào.
+									</td>
+								</tr>
+								<tr th:each="r : ${rows}" th:classappend="${editing != null and editing.id == r.topping().id} ? 'table-success' : ''">
+									<td class="ps-3">
+										<div class="d-flex align-items-center gap-2">
+											<img th:if="${r.product() != null and r.product().imageCloudinaryId != null}"
+												th:src="${r.product().imageCloudinaryId}" alt="" class="rounded-3 border flex-shrink-0"
+												style="width: 44px; height: 44px; object-fit: cover;">
+											<span th:unless="${r.product() != null and r.product().imageCloudinaryId != null}"
+												class="rounded-3 bg-success-subtle text-success d-inline-flex align-items-center justify-content-center flex-shrink-0"
+												style="width: 44px; height: 44px;"><i class="bi bi-plus-circle-dotted"></i></span>
+											<div>
+												<div class="fw-semibold" th:text="${r.topping().name}">Trân châu đen</div>
+												<small class="text-muted" th:text="'#' + ${r.topping().id}">#1</small>
+											</div>
+										</div>
+									</td>
+									<td class="text-end text-nowrap fw-semibold"
+										th:text="${#numbers.formatDecimal(r.topping().price, 0, 'POINT', 0, 'COMMA')} + 'đ'">5.000đ</td>
+									<td class="text-center small">
+										<div th:text="${r.usedAsAddOn()} + ' ly có thêm'">0 ly có thêm</div>
+										<div class="text-muted" th:text="${r.soldAlone()} + ' lần mua riêng'">0 lần mua riêng</div>
+									</td>
+									<td>
+										<span th:if="${r.topping().isAvailable}" class="badge rounded-pill text-bg-success">Đang bán</span>
+										<span th:unless="${r.topping().isAvailable}" class="badge rounded-pill text-bg-secondary">Ngưng bán</span>
+										<!-- Chi nhánh đang báo hết topping này (Manager bật / tắt) -->
+										<div class="small text-danger mt-1" th:if="${r.topping().isAvailable and !#lists.isEmpty(r.outAt())}">
+											<i class="bi bi-shop"></i> Đang hết ở:
+											<span th:text="${#strings.listJoin(r.outAt(), ', ')}">UTETra Quận 1</span>
+										</div>
+									</td>
+									<td class="text-end pe-3 text-nowrap">
+										<a th:href="@{/admin/toppings(edit=${r.topping().id})}" class="btn btn-sm btn-outline-primary"
+											title="Sửa"><i class="bi bi-pencil"></i></a>
+										<form method="post" class="d-inline" th:action="@{/admin/toppings/{id}/toggle(id=${r.topping().id})}">
+											<button type="submit" class="btn btn-sm"
+												th:classappend="${r.topping().isAvailable} ? 'btn-outline-warning' : 'btn-outline-success'"
+												th:text="${r.topping().isAvailable} ? 'Ngưng bán' : 'Mở bán'">Ngưng bán</button>
+										</form>
+										<form method="post" class="d-inline" th:action="@{/admin/toppings/{id}/delete(id=${r.topping().id})}"
+											th:unless="${r.used()}"
+											onsubmit="return confirm('Xoá hẳn topping này? (chưa có trong đơn hàng nào)');">
+											<button type="submit" class="btn btn-sm btn-outline-danger" title="Xoá"><i class="bi bi-trash"></i></button>
+										</form>
+										<button th:if="${r.used()}" type="button" class="btn btn-sm btn-outline-secondary" disabled
+											title="Đã có trong đơn hàng nên không xoá được, chỉ ngưng bán"><i class="bi bi-lock"></i></button>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+</html>

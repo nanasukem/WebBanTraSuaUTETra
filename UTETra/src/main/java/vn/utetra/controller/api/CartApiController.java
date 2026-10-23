@@ -27,8 +27,11 @@ public class CartApiController {
 
 	private final CartService cartService;
 	private final CurrentUserService currentUserService;
+	private final vn.utetra.service.MenuBranchService menuBranchService;
 
-	public CartApiController(CartService cartService, CurrentUserService currentUserService) {
+	public CartApiController(CartService cartService, CurrentUserService currentUserService,
+			vn.utetra.service.MenuBranchService menuBranchService) {
+		this.menuBranchService = menuBranchService;
 		this.cartService = cartService;
 		this.currentUserService = currentUserService;
 	}
@@ -47,8 +50,9 @@ public class CartApiController {
 	 * login
 	 */
 	@GetMapping("/options/{productId}")
-	public ProductOptionsRes options(@PathVariable Integer productId) {
-		return cartService.getOptions(productId);
+	public ProductOptionsRes options(@PathVariable Integer productId, HttpSession session) {
+		// Có chọn chi nhánh ở đầu menu -> báo luôn topping hết ở chi nhánh đó
+		return cartService.getOptions(productId, menuBranchService.currentId(session));
 	}
 
 	@PostMapping
@@ -60,6 +64,13 @@ public class CartApiController {
 	public CartRes updateQuantity(@PathVariable Integer id, @RequestBody QuantityReq body, Principal principal,
 			HttpSession session) {
 		return cartService.updateQuantity(currentUserService.requireUserId(principal, session), id, body.quantity());
+	}
+
+	/** Điều chỉnh 1 dòng trong giỏ (bấm tên món ở trang giỏ hàng) */
+	@PutMapping("/{id}/options")
+	public CartRes updateOptions(@PathVariable Integer id, @Valid @RequestBody CartAddReq req, Principal principal,
+			HttpSession session) {
+		return cartService.updateOptions(currentUserService.requireUserId(principal, session), id, req);
 	}
 
 	@DeleteMapping("/{id}")

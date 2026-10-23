@@ -118,6 +118,57 @@
 		</div>
 	</div>
 
+	<!-- ===== TOPPING: báo hết cho riêng chi nhánh (cả thêm vào ly lẫn mua riêng) ===== -->
+	<div class="card border-0 shadow-sm rounded-4 mt-4" id="toppings">
+		<div class="card-header bg-white py-3">
+			<h5 class="fw-bold mb-1">
+				<i class="bi bi-plus-circle-dotted me-2"></i>Topping
+			</h5>
+			<p class="text-secondary small mb-0">Hết topping thì bấm <b>Báo hết</b>: khách đặt ở chi nhánh bạn sẽ không
+				thêm được topping này vào ly và không mua riêng được. Giá và tên topping do Admin quản lý.</p>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-hover align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th class="ps-3">ID</th>
+						<th>Topping</th>
+						<th>Giá</th>
+						<th>Trạng thái hệ thống</th>
+						<th>Tại chi nhánh</th>
+						<th>Thao tác</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="t : ${toppings}" th:with="het=${unavailableToppingIds.contains(t.id)}">
+						<td class="ps-3" th:text="${t.id}">1</td>
+						<td class="fw-semibold" th:text="${t.name}">Trân châu đen</td>
+						<td class="text-nowrap" th:text="${#numbers.formatDecimal(t.price, 0, 'POINT', 0, 'COMMA')} + ' đ'">5.000 đ</td>
+						<td>
+							<span class="badge bg-success" th:if="${t.isAvailable}">Đang bán</span>
+							<span class="badge bg-danger" th:unless="${t.isAvailable}">Ngưng bán toàn chuỗi</span>
+						</td>
+						<td>
+							<span class="badge bg-secondary" th:if="${het}">Hết topping</span>
+							<span class="badge bg-success" th:unless="${het}">Còn topping</span>
+						</td>
+						<td>
+							<form th:if="${branch.status.name() == 'APPROVED' and t.isAvailable}" method="post"
+								th:action="@{/manager/branches/{branchId}/toppings/{toppingId}/toggle(branchId=${branch.id},toppingId=${t.id})}">
+								<button type="submit" class="btn btn-sm" th:classappend="${het} ? 'btn-success' : 'btn-warning'"
+									th:text="${het} ? 'Mở bán lại' : 'Báo hết'">Báo hết</button>
+							</form>
+							<span th:if="${!t.isAvailable}" class="text-muted small">Admin đã ngưng bán</span>
+						</td>
+					</tr>
+					<tr th:if="${toppings == null or #lists.isEmpty(toppings)}">
+						<td colspan="6" class="text-center py-4 text-secondary">Chưa có topping.</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
 </section>
 
 </html>

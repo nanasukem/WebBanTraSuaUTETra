@@ -123,4 +123,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	List<Object[]> productVoucherStatsOfBranch(@Param("branchId") Integer branchId,
 			@Param("cancelled") OrderStatus cancelled);
 
+
+	/** Số đơn đang chờ / đang pha ở chi nhánh (tính thời gian dự kiến) */
+	long countByBranch_IdAndStatusIn(Integer branchId, Collection<OrderStatus> statuses);
 }

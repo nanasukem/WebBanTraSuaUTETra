@@ -75,26 +75,8 @@
 			</div>
 		</section>
 
-		<!-- ==================== BỔ SUNG: XEM ĐÁNH GIÁ QUÁN THEO CHI NHÁNH ==================== -->
-		<div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-light">
-			<div
-				class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-				<div>
-					<h5 class="fw-bold mb-1 text-success">
-						<i class="bi bi-star-fill text-warning me-1"></i> Đánh giá chất
-						lượng quán theo chi nhánh
-					</h5>
-					<p class="text-muted small mb-0">Xem điểm số trung bình và chi
-						tiết phản hồi dịch vụ quán từ khách hàng tại từng cơ sở.</p>
-				</div>
-				<div class="d-flex flex-wrap gap-2">
-					<a th:href="@{/branches}" class="btn btn-outline-success btn-sm">
-						<i class="bi bi-shop me-1"></i> Chọn chi nhánh xem đánh giá <i
-						class="bi bi-arrow-right"></i>
-					</a>
-				</div>
-			</div>
-		</div>
+		<!-- Đang đặt tại chi nhánh nào (món hết báo ngay) -->
+		<div th:replace="~{fragments/menu-branch :: bar}"></div>
 
 		<!-- THANH DANH MỤC (dính trên đầu khi cuộn) -->
 		<nav class="menu-cats bg-light py-2 mb-3"

@@ -328,8 +328,8 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		boolean pickup = isPickup(o);
 		List<OrderDetailRes.Item> items = o.getDetails().stream().map(d -> new OrderDetailRes.Item(
 				d.getProduct().getName(),
-				String.valueOf(d.getSize()),
-				d.getSugarLevel() + "% đường · " + d.getIceLevel() + "% đá",
+				d.getProduct().isToppingItem() ? null : String.valueOf(d.getSize()), // topping mua riêng: không size
+				d.getProduct().isToppingItem() ? null : d.getSugarLevel() + "% đường · " + d.getIceLevel() + "% đá",
 				d.getToppings().stream().map(t -> t.getTopping().getName()).collect(Collectors.joining(", ")),
 				d.getQuantity(),
 				money(d.getUnitPrice()),
@@ -355,7 +355,20 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				orderIssueService.forOrder(o.getId()), orderIssueService.canReport(o),
 				vn.utetra.service.OrderIssueService.deadline(o) == null ? 0
 						: vn.utetra.service.OrderIssueService.deadline(o).atZone(java.time.ZoneId.systemDefault())
-								.toInstant().toEpochMilli());
+								.toInstant().toEpochMilli(),
+				etaLabel(o, pickup));
+	}
+
+	/** "Dự kiến giao lúc 14:20 - 14:30" / "Dự kiến món xong lúc ..." - chỉ khi đơn còn đang làm / đang giao */
+	private static String etaLabel(Order o, boolean pickup) {
+		if (o.getEtaMinutes() == null || o.getCreatedAt() == null) return null;
+		OrderStatus s = o.getStatus();
+		if (s == OrderStatus.DELIVERED || s == OrderStatus.CANCELLED || s == OrderStatus.RETURNED
+				|| s == OrderStatus.AWAITING_PAYMENT) return null;
+		java.time.format.DateTimeFormatter hm = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+		LocalDateTime from = o.getCreatedAt().plusMinutes(o.getEtaMinutes());
+		return (pickup ? "Dự kiến món xong lúc " : "Dự kiến giao lúc ") + from.format(hm) + " - "
+				+ from.plusMinutes(10).format(hm);
 	}
 
 	/** Trạng thái được chuyển tiếp từ trạng thái hiện tại (theo kiểu đơn) */

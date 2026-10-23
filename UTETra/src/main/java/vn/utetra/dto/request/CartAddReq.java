@@ -14,7 +14,7 @@ public class CartAddReq {
 	private Integer productId;
 
 	@Pattern(regexp = "^[SMLsml]$", message = "Size phải là S, M hoặc L")
-	private String size = "M";
+	private String size = "S"; // mặc định size S (đúng giá trên thẻ món)
 
 	private Integer sugarLevel = 100;
 

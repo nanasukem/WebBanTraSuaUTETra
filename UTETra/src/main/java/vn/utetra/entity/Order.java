@@ -123,6 +123,10 @@ public class Order {
 	@Column(name = "refund_amount", nullable = false, precision = 12, scale = 0)
 	private BigDecimal refundAmount = BigDecimal.ZERO;
 
+	/** Thời gian dự kiến (phút) từ lúc đặt tới lúc giao xong / món sẵn sàng để lấy - chốt lúc đặt */
+	@Column(name = "eta_minutes")
+	private Integer etaMinutes;
+
 	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OrderDetail> details = new ArrayList<>();
 
