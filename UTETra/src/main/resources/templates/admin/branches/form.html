@@ -4,141 +4,201 @@
 
 <section id="admin-content">
 
-
 	<main class="container py-4" style="max-width: 760px">
-		<a th:href="@{/admin/branches}" class="text-decoration-none"><i
-			class="bi bi-arrow-left"></i> Danh sách chi nhánh</a>
+
+		<a th:href="@{/admin/branches}" class="text-decoration-none"> <i
+			class="bi bi-arrow-left"></i> Danh sách chi nhánh
+		</a>
+
 		<h1 class="h4 my-3"
-			th:text="${branchId == null} ? 'Thêm chi nhánh' : 'Sửa chi nhánh #' + ${branchId}"></h1>
+			th:text="${branchId == null ? 'Thêm chi nhánh' : 'Sửa chi nhánh #' + branchId}">
+			Thêm chi nhánh</h1>
 
-		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+		<div th:if="${error}" class="alert alert-danger" role="alert"
+			th:text="${error}"></div>
 
-		<!-- Cùng 1 form cho Thêm và Sửa -->
 		<form th:object="${branchReq}" method="post" novalidate
 			class="card card-body"
-			th:action="${branchId == null} ? @{/admin/branches/create} : @{/admin/branches/{id}/edit(id=${branchId})}">
+			th:action="${branchId == null
+                  ? '/admin/branches/create'
+                  : '/admin/branches/' + branchId + '/edit'}">
 
+			<!-- Tên chi nhánh -->
 			<div class="mb-3">
-				<label class="form-label">Tên chi nhánh <span
-					class="text-danger">*</span></label> <input type="text" th:field="*{name}"
-					class="form-control" th:errorclass="is-invalid">
+				<label class="form-label"> Tên chi nhánh <span
+					class="text-danger">*</span>
+				</label> <input type="text" th:field="*{name}" class="form-control"
+					th:errorclass="is-invalid">
+
 				<div class="invalid-feedback" th:errors="*{name}"></div>
 			</div>
 
+			<!-- Địa chỉ -->
 			<div class="mb-3">
-				<label class="form-label">Địa chỉ <span class="text-danger">*</span></label>
-				<input type="text" th:field="*{address}" class="form-control"
+				<label class="form-label"> Địa chỉ <span class="text-danger">*</span>
+				</label> <input type="text" th:field="*{address}" class="form-control"
 					th:errorclass="is-invalid">
+
 				<div class="invalid-feedback" th:errors="*{address}"></div>
 			</div>
 
-			<!-- Tọa độ chi nhánh (gợi ý chi nhánh gần khách nhất) -->
+			<!-- Tọa độ -->
 			<div class="row g-3 mb-1">
+
 				<div class="col-md-6">
 					<label class="form-label">Vĩ độ (latitude)</label> <input
-						type="number" step="0.000001" min="-90" max="90"
+						id="latitude" type="number" step="0.000001" min="-90" max="90"
 						th:field="*{latitude}" class="form-control"
 						th:errorclass="is-invalid" placeholder="VD: 10.850700">
+
 					<div class="invalid-feedback" th:errors="*{latitude}"></div>
 				</div>
+
 				<div class="col-md-6">
 					<label class="form-label">Kinh độ (longitude)</label> <input
-						type="number" step="0.000001" min="-180" max="180"
+						id="longitude" type="number" step="0.000001" min="-180" max="180"
 						th:field="*{longitude}" class="form-control"
 						th:errorclass="is-invalid" placeholder="VD: 106.771900">
+
 					<div class="invalid-feedback" th:errors="*{longitude}"></div>
 				</div>
+
 			</div>
+
 			<div class="form-text mb-3">
-				<i class="bi bi-geo-alt"></i> Mở Google Maps → chuột phải vào vị trí
-				chi nhánh → bấm dòng số đầu tiên (VD
+				<i class="bi bi-geo-alt"></i> Mở Google Maps, nhấp chuột phải vào vị
+				trí chi nhánh và sao chép tọa độ. Dán dạng
 				<code>10.8507, 106.7719</code>
-				) để copy, rồi dán vào ô <b>Vĩ độ</b> (tự tách 2 ô). Bỏ trống thì
-				chi nhánh vẫn hiện cho khách nhưng không tính được khoảng cách. <a
-					id="mapLink" href="#" target="_blank" class="ms-1 d-none"> <i
+				vào ô Vĩ độ để tự điền cả hai ô. Nếu bỏ trống tọa độ, chi nhánh vẫn
+				hoạt động nhưng không tính được khoảng cách. <a id="mapLink"
+					href="#" target="_blank" rel="noopener" class="ms-1 d-none"> <i
 					class="bi bi-box-arrow-up-right"></i> Xem trên Google Maps
 				</a>
 			</div>
 
+			<!-- Số điện thoại và giờ hoạt động -->
 			<div class="row g-3 mb-3">
+
 				<div class="col-md-6">
 					<label class="form-label">Số điện thoại</label> <input type="tel"
 						th:field="*{phone}" class="form-control"
 						th:errorclass="is-invalid">
+
 					<div class="invalid-feedback" th:errors="*{phone}"></div>
 				</div>
+
 				<div class="col-6 col-md-3">
-					<label class="form-label">Mở cửa</label>
-					<input type="time" th:field="*{openTime}" class="form-control">
+					<label class="form-label">Mở cửa</label> <input type="time"
+						th:field="*{openTime}" class="form-control">
 				</div>
+
 				<div class="col-6 col-md-3">
-					<label class="form-label">Đóng cửa</label>
-					<input type="time" th:field="*{closeTime}" class="form-control">
-					<div class="form-text">Ngoài giờ này khách không đặt được đơn ở chi nhánh.</div>
+					<label class="form-label">Đóng cửa</label> <input type="time"
+						th:field="*{closeTime}" class="form-control">
+
+					<div class="form-text">Ngoài giờ này khách không đặt được đơn
+						ở chi nhánh.</div>
 				</div>
+
 			</div>
 
-			<div class="mb-3">
-				<label class="form-label">Quản lý chi nhánh (Manager) <span
-					class="text-danger">*</span></label> <select th:field="*{ownerId}"
-					class="form-select" th:errorclass="is-invalid">
-					<option value="">-- Chọn tài khoản Manager --</option>
-					<option th:each="v : ${managers}" th:value="${v.id}"
-						th:text="${v.fullName} + ' (' + ${v.username} + ')'"></option>
-				</select>
-				<div class="invalid-feedback" th:errors="*{ownerId}"></div>
-				<div class="form-text">Mỗi Manager chỉ quản lý 1 chi nhánh: chọn Manager chưa được giao chi nhánh nào.</div>
-			</div>
-
+			<!-- Manager phụ trách -->
 			<div class="mb-4">
-				<label class="form-label">Mô tả</label>
-				<textarea th:field="*{description}" rows="3" class="form-control"
-					th:errorclass="is-invalid"></textarea>
-				<div class="invalid-feedback" th:errors="*{description}"></div>
+				<label class="form-label"> Quản lý chi nhánh (Manager) <span
+					class="text-danger">*</span>
+				</label> <select th:field="*{ownerId}" class="form-select"
+					th:errorclass="is-invalid">
+
+					<option value="">-- Chọn tài khoản Manager --</option>
+
+					<option th:each="v : ${managers}" th:value="${v.id}"
+						th:text="${v.fullName + ' (' + v.username + ')'}"></option>
+
+				</select>
+
+				<div class="invalid-feedback" th:errors="*{ownerId}"></div>
+
+				<div class="form-text">Mỗi Manager chỉ quản lý một chi nhánh.
+					Chọn Manager chưa được giao chi nhánh nào.</div>
+			</div>
+
+			<!-- Không có trường mô tả hoặc ảnh bìa ở form Admin -->
+
+			<div class="alert alert-info small">
+				<i class="bi bi-info-circle me-1"></i> Ảnh bìa và mô tả trang chủ do
+				Manager quản lý. Admin có thể xem hai nội dung này tại trang chi
+				tiết chi nhánh.
 			</div>
 
 			<div class="d-flex gap-2">
-				<button class="btn btn-primary">
-					<i class="bi bi-save"></i> Lưu
+				<button type="submit" class="btn btn-primary">
+					<i class="bi bi-save me-1"></i> Lưu
 				</button>
-				<a th:href="@{/admin/branches}" class="btn btn-outline-secondary">Huỷ</a>
+
+				<a th:href="@{/admin/branches}" class="btn btn-outline-secondary">
+					Hủy </a>
 			</div>
+
 		</form>
 	</main>
+
 	<script>
-		(function () {
-			const lat = document.getElementById('latitude');
-			const lng = document.getElementById('longitude');
-			const mapLink = document.getElementById('mapLink');
-			if (!lat || !lng) return;
+        (function () {
+            const lat = document.getElementById('latitude');
+            const lng = document.getElementById('longitude');
+            const mapLink = document.getElementById('mapLink');
 
-			// Dán "10.8507, 106.7719" (copy từ Google Maps) vào ô Vĩ độ -> tự tách 2 ô
-			lat.addEventListener('paste', function (e) {
-				const text = (e.clipboardData || window.clipboardData).getData('text');
-				const parts = text.split(',').map(s => s.trim());
-				if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-					e.preventDefault();
-					lat.value = Number(parts[0]).toFixed(6);
-					lng.value = Number(parts[1]).toFixed(6);
-					updateMapLink();
-				}
-			});
+            if (!lat || !lng || !mapLink) return;
 
-			// Hiện link "Xem trên Google Maps" khi đã có đủ 2 số
-			function updateMapLink() {
-				if (lat.value !== '' && lng.value !== '') {
-					mapLink.href = 'https://www.google.com/maps?q=' + lat.value + ',' + lng.value;
-					mapLink.classList.remove('d-none');
-				} else {
-					mapLink.classList.add('d-none');
-				}
-			}
-			lat.addEventListener('input', updateMapLink);
-			lng.addEventListener('input', updateMapLink);
-			updateMapLink(); // trang Sửa: đã có tọa độ thì hiện link ngay
-		})();
-	</script>
+            function updateMapLink() {
+                if (lat.value !== '' && lng.value !== '') {
+                    mapLink.href =
+                        'https://www.google.com/maps?q='
+                        + encodeURIComponent(lat.value + ',' + lng.value);
+
+                    mapLink.classList.remove('d-none');
+                } else {
+                    mapLink.classList.add('d-none');
+                }
+            }
+
+            lat.addEventListener('paste', function (event) {
+                const clipboard = event.clipboardData
+                    || window.clipboardData;
+
+                if (!clipboard) return;
+
+                const text = clipboard.getData('text').trim();
+                const parts = text.split(',').map(s => s.trim());
+
+                if (parts.length !== 2) return;
+
+                const latitude = Number(parts[0]);
+                const longitude = Number(parts[1]);
+
+                if (!Number.isFinite(latitude)
+                    || !Number.isFinite(longitude)
+                    || latitude < -90
+                    || latitude > 90
+                    || longitude < -180
+                    || longitude > 180) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                lat.value = latitude.toFixed(6);
+                lng.value = longitude.toFixed(6);
+
+                updateMapLink();
+            });
+
+            lat.addEventListener('input', updateMapLink);
+            lng.addEventListener('input', updateMapLink);
+
+            updateMapLink();
+        })();
+    </script>
 
 </section>
-
 </html>
