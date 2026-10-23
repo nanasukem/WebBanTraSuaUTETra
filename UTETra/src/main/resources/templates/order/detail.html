@@ -5,137 +5,284 @@
 <body>
 	<div id="order-detail-content">
 		<style>
-.od-card { border: 0; border-radius: 1rem; box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06); }
-.od-title { font-size: 1rem; font-weight: 700; color: #198754; margin-bottom: .75rem; }
-/* Thanh tiến trình */
-.od-steps { display: flex; }
-.od-step { flex: 1; text-align: center; position: relative; font-size: .8rem; color: #adb5bd; }
-.od-step .dot { width: 30px; height: 30px; border-radius: 50%; background: #dee2e6; color: #fff; display: grid;
-	place-items: center; margin: 0 auto .35rem; position: relative; z-index: 1; }
-.od-step::before { content: ''; position: absolute; top: 14px; left: -50%; width: 100%; height: 3px; background: #dee2e6; }
-.od-step:first-child::before { display: none; }
-.od-step.done { color: #198754; }
-.od-step.done .dot, .od-step.done::before { background: #198754; }
-.od-step.current { font-weight: 700; }
-.od-payline { font-size: .875rem; background: #f8f9fa; border-radius: .75rem; padding: .5rem .75rem; }
-.od-refund { background: #eef8fb; border: 1px solid #cfe9f2; border-radius: .75rem; padding: .85rem 1rem; }
-.od-refund-steps { list-style: none; padding-left: 0; }
-.od-refund-steps li { position: relative; padding-left: 1.4rem; margin-bottom: .2rem; color: #6c757d; }
-.od-refund-steps li::before { content: ''; position: absolute; left: .2rem; top: .35rem; width: .6rem; height: .6rem;
-	border-radius: 50%; border: 2px solid #adb5bd; background: #fff; }
-.od-refund-steps li.done { color: #212529; }
-.od-refund-steps li.done::before { background: #198754; border-color: #198754; }
-		</style>
+.od-card {
+	border: 0;
+	border-radius: 1rem;
+	box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06);
+}
 
-		<a th:href="@{/orders}" class="text-decoration-none text-success small">
-			<i class="bi bi-arrow-left"></i> Đơn hàng của tôi
+.od-title {
+	font-size: 1rem;
+	font-weight: 700;
+	color: #198754;
+	margin-bottom: .75rem;
+}
+/* Thanh tiến trình */
+.od-steps {
+	display: flex;
+}
+
+.od-step {
+	flex: 1;
+	text-align: center;
+	position: relative;
+	font-size: .8rem;
+	color: #adb5bd;
+}
+
+.od-step .dot {
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	background: #dee2e6;
+	color: #fff;
+	display: grid;
+	place-items: center;
+	margin: 0 auto .35rem;
+	position: relative;
+	z-index: 1;
+}
+
+.od-step::before {
+	content: '';
+	position: absolute;
+	top: 14px;
+	left: -50%;
+	width: 100%;
+	height: 3px;
+	background: #dee2e6;
+}
+
+.od-step:first-child::before {
+	display: none;
+}
+
+.od-step.done {
+	color: #198754;
+}
+
+.od-step.done .dot, .od-step.done::before {
+	background: #198754;
+}
+
+.od-step.current {
+	font-weight: 700;
+}
+
+.od-payline {
+	font-size: .875rem;
+	background: #f8f9fa;
+	border-radius: .75rem;
+	padding: .5rem .75rem;
+}
+
+.od-refund {
+	background: #eef8fb;
+	border: 1px solid #cfe9f2;
+	border-radius: .75rem;
+	padding: .85rem 1rem;
+}
+
+.od-refund-steps {
+	list-style: none;
+	padding-left: 0;
+}
+
+.od-refund-steps li {
+	position: relative;
+	padding-left: 1.4rem;
+	margin-bottom: .2rem;
+	color: #6c757d;
+}
+
+.od-refund-steps li::before {
+	content: '';
+	position: absolute;
+	left: .2rem;
+	top: .35rem;
+	width: .6rem;
+	height: .6rem;
+	border-radius: 50%;
+	border: 2px solid #adb5bd;
+	background: #fff;
+}
+
+.od-refund-steps li.done {
+	color: #212529;
+}
+
+.od-refund-steps li.done::before {
+	background: #198754;
+	border-color: #198754;
+}
+</style>
+
+		<a th:href="@{/orders}"
+			class="text-decoration-none text-success small"> <i
+			class="bi bi-arrow-left"></i> Đơn hàng của tôi
 		</a>
 		<div class="d-flex align-items-center gap-2 mt-2 mb-3 flex-wrap">
-			<h1 class="h4 fw-bold text-success mb-0">Đơn #<span th:text="${order.id}"></span></h1>
-			<span class="badge" th:classappend="${order.badgeClass}" th:text="${order.status == 'CANCELLED'} ? (${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ' : 'Đã huỷ')) : ${order.statusLabel}"></span>
-			<span class="badge rounded-pill" th:unless="${order.payment.awaiting}" th:classappend="${order.payment.badgeClass}">
-				<i class="bi me-1" th:classappend="${order.payment.icon}"></i><span th:text="${order.payment.badge}"></span></span>
-			<span class="small text-muted ms-auto">Đặt lúc <span th:text="${order.createdAt}"></span></span>
-			<a th:unless="${#lists.isEmpty(order.steps)}" th:href="@{/orders/{id}/tracking(id=${order.id})}"
-				class="btn btn-sm btn-success"><i class="bi bi-geo-alt me-1"></i> Theo dõi đơn</a>
-			<form th:if="${order.status == 'DELIVERED' or order.status == 'CANCELLED'}" method="post"
-				th:action="@{/orders/{id}/reorder(id=${order.id})}" class="d-inline">
-				<button type="submit" class="btn btn-sm btn-success"><i class="bi bi-arrow-repeat me-1"></i> Mua lại</button>
+			<h1 class="h4 fw-bold text-success mb-0">
+				Đơn #<span th:text="${order.id}"></span>
+			</h1>
+			<span class="badge" th:classappend="${order.badgeClass}"
+				th:text="${order.status == 'CANCELLED'} ? (${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ' : 'Đã huỷ')) : ${order.statusLabel}"></span>
+			<span class="badge rounded-pill"
+				th:unless="${order.payment.awaiting}"
+				th:classappend="${order.payment.badgeClass}"> <i
+				class="bi me-1" th:classappend="${order.payment.icon}"></i><span
+				th:text="${order.payment.badge}"></span></span> <span
+				class="small text-muted ms-auto">Đặt lúc <span
+				th:text="${order.createdAt}"></span></span> <a
+				th:unless="${#lists.isEmpty(order.steps)}"
+				th:href="@{/orders/{id}/tracking(id=${order.id})}"
+				class="btn btn-sm btn-success"><i class="bi bi-geo-alt me-1"></i>
+				Theo dõi đơn</a>
+			<form
+				th:if="${order.status == 'DELIVERED' or order.status == 'CANCELLED'}"
+				method="post" th:action="@{/orders/{id}/reorder(id=${order.id})}"
+				class="d-inline">
+				<button type="submit" class="btn btn-sm btn-success">
+					<i class="bi bi-arrow-repeat me-1"></i> Mua lại
+				</button>
 			</form>
 		</div>
 
-		<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+		<div th:if="${success}" class="alert alert-success"
+			th:text="${success}"></div>
 		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
 		<!-- Trạng thái -->
 		<div class="card od-card mb-3">
 			<div class="card-body">
 				<!-- Chờ thanh toán (VNPAY / MoMo chưa trả xong): quán chưa nhận được đơn -->
-				<div th:if="${order.status == 'AWAITING_PAYMENT'}" class="alert alert-warning mb-0 d-flex gap-3 align-items-center flex-wrap">
+				<div th:if="${order.status == 'AWAITING_PAYMENT'}"
+					class="alert alert-warning mb-0 d-flex gap-3 align-items-center flex-wrap">
 					<i class="bi bi-hourglass-split fs-3"></i>
 					<div class="flex-grow-1">
-						<div class="fw-bold">Đơn đang chờ thanh toán
-							<span class="od-count text-danger" th:attr="data-deadline=${order.payment.payDeadlineMillis}"></span></div>
+						<div class="fw-bold">
+							Đơn đang chờ thanh toán <span class="od-count text-danger"
+								th:attr="data-deadline=${order.payment.payDeadlineMillis}"></span>
+						</div>
 						<div class="small" th:text="${order.payment.line}"></div>
-						<div class="small text-muted">Quán chỉ nhận được đơn sau khi bạn thanh toán xong.</div>
+						<div class="small text-muted">Quán chỉ nhận được đơn sau khi
+							bạn thanh toán xong.</div>
 					</div>
-					<a th:href="@{/payment/{id}/result(id=${order.id})}" class="btn btn-warning fw-semibold">
-						<i class="bi bi-credit-card me-1"></i>Thanh toán ngay</a>
+					<a th:href="@{/payment/{id}/result(id=${order.id})}"
+						class="btn btn-warning fw-semibold"> <i
+						class="bi bi-credit-card me-1"></i>Thanh toán ngay
+					</a>
 				</div>
 
-				<div th:if="${order.status == 'CANCELLED'}" class="alert alert-secondary mb-0">
-					<i class="bi bi-x-circle me-1"></i>
-					<b th:text="${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ đơn này.' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ đơn này.' : (${order.cancelledBy == 'SYSTEM'} ? 'Hệ thống đã tự huỷ đơn này.' : 'Đơn đã huỷ.'))">Đơn đã huỷ.</b>
-					<span th:if="${order.cancelReason}">Lý do: <b th:text="${order.cancelReason}"></b></span>
+				<div th:if="${order.status == 'CANCELLED'}"
+					class="alert alert-secondary mb-0">
+					<i class="bi bi-x-circle me-1"></i> <b
+						th:text="${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ đơn này.' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ đơn này.' : (${order.cancelledBy == 'SYSTEM'} ? 'Hệ thống đã tự huỷ đơn này.' : 'Đơn đã huỷ.'))">Đơn
+						đã huỷ.</b> <span th:if="${order.cancelReason}">Lý do: <b
+						th:text="${order.cancelReason}"></b></span>
 				</div>
 
 				<!-- Hoàn tiền: đơn đã trả trước bị huỷ -->
 				<div th:if="${order.payment.refund}" class="od-refund mt-3">
 					<div class="d-flex align-items-start gap-3">
-						<i class="bi fs-3" th:classappend="${order.payment.refund.status == 'REFUNDED'} ? 'bi-check-circle-fill text-success' : 'bi-arrow-repeat text-info'"></i>
+						<i class="bi fs-3"
+							th:classappend="${order.payment.refund.status == 'REFUNDED'} ? 'bi-check-circle-fill text-success' : 'bi-arrow-repeat text-info'"></i>
 						<div class="flex-grow-1">
 							<div class="fw-bold">
-								<span th:text="${order.payment.refund.statusLabel}"></span>
-								<span class="text-danger" th:text="|${#numbers.formatInteger(order.payment.refund.amount, 1, 'POINT')}đ|"></span>
+								<span th:text="${order.payment.refund.statusLabel}"></span> <span
+									class="text-danger"
+									th:text="|${#numbers.formatInteger(order.payment.refund.amount, 1, 'POINT')}đ|"></span>
 							</div>
-							<div class="small">Hoàn về <b th:text="${order.payment.refund.destination}"></b></div>
+							<div class="small">
+								Hoàn về <b th:text="${order.payment.refund.destination}"></b>
+							</div>
 							<ul class="od-refund-steps small mt-2 mb-1">
-								<li class="done"><span>Yêu cầu hoàn tiền</span> <span class="text-muted" th:text="${order.payment.refund.requestedAt}"></span></li>
-								<li th:classappend="${order.payment.refund.status == 'REFUNDED'} ? 'done'">
-									<span th:text="${order.payment.method == 'MOMO'} ? 'MoMo đã hoàn tiền' : 'VNPAY đã chuyển lệnh hoàn cho ngân hàng'"></span>
-									<span class="text-muted" th:text="${order.payment.refund.refundedAt}"></span></li>
-								<li th:classappend="${order.payment.refund.arrived} ? 'done'"><span th:text="${order.payment.refund.arrivalLabel}">Tiền về tài khoản của bạn</span></li>
+								<li class="done"><span>Yêu cầu hoàn tiền</span> <span
+									class="text-muted"
+									th:text="${order.payment.refund.requestedAt}"></span></li>
+								<li
+									th:classappend="${order.payment.refund.status == 'REFUNDED'} ? 'done'">
+									<span
+									th:text="${order.payment.method == 'MOMO'} ? 'MoMo đã hoàn tiền' : 'VNPAY đã chuyển lệnh hoàn cho ngân hàng'"></span>
+									<span class="text-muted"
+									th:text="${order.payment.refund.refundedAt}"></span>
+								</li>
+								<li th:classappend="${order.payment.refund.arrived} ? 'done'"><span
+									th:text="${order.payment.refund.arrivalLabel}">Tiền về
+										tài khoản của bạn</span></li>
 							</ul>
-							<div class="small text-muted" th:text="${order.payment.refund.arrival}"></div>
-							<div class="small text-muted" th:if="${order.payment.refund.transactionCode}">Mã hoàn tiền:
-								<code th:text="${order.payment.refund.transactionCode}"></code></div>
+							<div class="small text-muted"
+								th:text="${order.payment.refund.arrival}"></div>
+							<div class="small text-muted"
+								th:if="${order.payment.refund.transactionCode}">
+								Mã hoàn tiền:
+								<code th:text="${order.payment.refund.transactionCode}"></code>
+							</div>
 						</div>
 					</div>
 				</div>
-				<div th:if="${order.status == 'RETURNED'}" class="alert alert-danger mb-0">
-					<i class="bi bi-arrow-counterclockwise me-1"></i> Đơn đã được trả hàng.
+				<div th:if="${order.status == 'RETURNED'}"
+					class="alert alert-danger mb-0">
+					<i class="bi bi-arrow-counterclockwise me-1"></i> Đơn đã được trả
+					hàng.
 				</div>
 				<div th:unless="${#lists.isEmpty(order.steps)}" class="od-steps">
 					<div class="od-step" th:each="s, i : ${order.steps}"
 						th:classappend="${(s.done ? 'done' : '') + (s.current ? ' current' : '')}">
 						<div class="dot">
-							<i th:if="${s.done}" class="bi bi-check-lg"></i>
-							<span th:unless="${s.done}" th:text="${i.count}"></span>
+							<i th:if="${s.done}" class="bi bi-check-lg"></i> <span
+								th:unless="${s.done}" th:text="${i.count}"></span>
 						</div>
 						<div th:text="${s.label}"></div>
 					</div>
 				</div>
 				<div th:if="${!#lists.isEmpty(order.steps)}" class="od-payline mt-3">
-					<i class="bi me-1" th:classappend="${order.payment.icon} + ' ' + (${order.payment.status == 'PAID'} ? 'text-success' : 'text-secondary')"></i>
-					<b th:text="${order.payment.badge}"></b> · <span th:text="${order.payment.line}"></span>
+					<i class="bi me-1"
+						th:classappend="${order.payment.icon} + ' ' + (${order.payment.status == 'PAID'} ? 'text-success' : 'text-secondary')"></i>
+					<b th:text="${order.payment.badge}"></b> · <span
+						th:text="${order.payment.line}"></span>
 				</div>
-				<div th:if="${order.deliveredAt}" class="small text-success text-center mt-2">
-					<span th:text="${order.pickup} ? 'Nhận món lúc ' : 'Giao thành công lúc '"></span>
+				<div th:if="${order.deliveredAt}"
+					class="small text-success text-center mt-2">
+					<span
+						th:text="${order.pickup} ? 'Nhận món lúc ' : 'Giao thành công lúc '"></span>
 					<span th:text="${order.deliveredAt}"></span>
 				</div>
 			</div>
 		</div>
 
 		<!-- Khách đã báo vấn đề với đơn -->
-		<div th:if="${order.issue}" class="card od-card mb-3 border border-warning-subtle">
+		<div th:if="${order.issue}"
+			class="card od-card mb-3 border border-warning-subtle">
 			<div class="card-body">
 				<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
-					<div class="fw-bold"><i class="bi bi-exclamation-triangle me-1 text-warning"></i>Báo vấn đề với đơn</div>
-					<span class="badge" th:classappend="${order.issue.badgeClass}" th:text="${order.issue.statusLabel}"></span>
-					<span class="small text-muted ms-auto" th:text="${order.issue.createdAt}"></span>
+					<div class="fw-bold">
+						<i class="bi bi-exclamation-triangle me-1 text-warning"></i>Báo
+						vấn đề với đơn
+					</div>
+					<span class="badge" th:classappend="${order.issue.badgeClass}"
+						th:text="${order.issue.statusLabel}"></span> <span
+						class="small text-muted ms-auto"
+						th:text="${order.issue.createdAt}"></span>
 				</div>
-				<div class="small"><b th:text="${order.issue.reasonLabel}"></b>
-					<span th:if="${order.issue.description}" th:text="| - ${order.issue.description}|"></span></div>
+				<div class="small">
+					<b th:text="${order.issue.reasonLabel}"></b> <span
+						th:if="${order.issue.description}"
+						th:text="| - ${order.issue.description}|"></span>
+				</div>
 				<div class="d-flex gap-2 mt-2 flex-wrap">
-					<a th:each="img : ${order.issue.images}" th:href="${img}" target="_blank" rel="noopener">
-						<img th:src="${img}" alt="Ảnh" style="width:72px;height:72px;object-fit:cover;border-radius:.5rem"></a>
+					<a th:each="img : ${order.issue.images}" th:href="${img}"
+						target="_blank" rel="noopener"> <img th:src="${img}" alt="Ảnh"
+						style="width: 72px; height: 72px; object-fit: cover; border-radius: .5rem"></a>
 				</div>
-				<div th:if="${order.issue.status != 'PENDING'}" class="small mt-2 p-2 rounded" style="background:#f8f9fa">
-					<b>Quán phản hồi:</b>
-					<span th:if="${order.issue.status == 'REFUNDED'}" th:text="|Hoàn ${#numbers.formatInteger(order.issue.refundAmount, 1, 'POINT')}đ.|"></span>
-					<span th:if="${order.issue.status == 'REMADE'}">Quán sẽ làm lại món cho bạn.</span>
-					<span th:if="${order.issue.status == 'REJECTED'}">Quán từ chối hoàn tiền. Lý do:</span>
-					<span th:text="${order.issue.storeNote}"></span>
+				<div th:if="${order.issue.status != 'PENDING'}"
+					class="small mt-2 p-2 rounded" style="background: #f8f9fa">
+					<b>Quán phản hồi:</b> <span
+						th:if="${order.issue.status == 'REFUNDED'}"
+						th:text="|Hoàn ${#numbers.formatInteger(order.issue.refundAmount, 1, 'POINT')}đ.|"></span>
+					<span th:if="${order.issue.status == 'REMADE'}">Quán sẽ làm
+						lại món cho bạn.</span> <span th:if="${order.issue.status == 'REJECTED'}">Quán
+						từ chối hoàn tiền. Lý do:</span> <span th:text="${order.issue.storeNote}"></span>
 				</div>
 			</div>
 		</div>
@@ -145,11 +292,16 @@
 			<div class="card-body d-flex align-items-center gap-3 flex-wrap">
 				<i class="bi bi-chat-square-dots fs-3 text-success"></i>
 				<div class="flex-grow-1 small">
-					<div class="fw-semibold">Món có vấn đề? (giao sai, thiếu, đổ vỡ...)</div>
-					<div class="text-muted">Báo cho quán trong 2 giờ sau khi nhận
-						<span class="od-issue-count text-danger fw-semibold" th:attr="data-deadline=${order.issueDeadlineMillis}"></span></div>
+					<div class="fw-semibold">Món có vấn đề? (giao sai, thiếu, đổ
+						vỡ...)</div>
+					<div class="text-muted">
+						Báo cho quán trong 2 giờ sau khi nhận <span
+							class="od-issue-count text-danger fw-semibold"
+							th:attr="data-deadline=${order.issueDeadlineMillis}"></span>
+					</div>
 				</div>
-				<a th:href="@{/orders/{id}/issue(id=${order.id})}" class="btn btn-outline-success btn-sm">Báo vấn đề</a>
+				<a th:href="@{/orders/{id}/issue(id=${order.id})}"
+					class="btn btn-outline-success btn-sm">Báo vấn đề</a>
 			</div>
 		</div>
 
@@ -158,18 +310,28 @@
 			<div class="col-lg-7">
 				<div class="card od-card mb-3">
 					<div class="card-body">
-						<div class="od-title">Món đã đặt (<span th:text="${order.totalQty}"></span> ly)</div>
-						<div class="d-flex justify-content-between border-bottom py-2" th:each="it : ${order.items}">
+						<div class="od-title">
+							Món đã đặt (<span th:text="${order.totalQty}"></span> ly)
+						</div>
+						<div class="d-flex justify-content-between border-bottom py-2"
+							th:each="it : ${order.items}">
 							<div class="me-2">
-								<div><b th:text="|${it.quantity}×|"></b> <span th:text="${it.productName}"></span></div>
-								<div class="small text-muted">
-									Size <span th:text="${it.size}"></span> · <span th:text="${it.sugarIce}"></span>
+								<div>
+									<b th:text="|${it.quantity}×|"></b> <span
+										th:text="${it.productName}"></span>
 								</div>
-								<div class="small text-muted" th:if="${!#strings.isEmpty(it.toppings)}">
+								<div class="small text-muted">
+									Size <span th:text="${it.size}"></span> · <span
+										th:text="${it.sugarIce}"></span>
+								</div>
+								<div class="small text-muted"
+									th:if="${!#strings.isEmpty(it.toppings)}">
 									+ <span th:text="${it.toppings}"></span>
 								</div>
-								<div class="small text-warning-emphasis" th:if="${!#strings.isEmpty(it.note)}">
-									<i class="bi bi-pencil-square me-1"></i>Ghi chú: <span th:text="${it.note}"></span>
+								<div class="small text-warning-emphasis"
+									th:if="${!#strings.isEmpty(it.note)}">
+									<i class="bi bi-pencil-square me-1"></i>Ghi chú: <span
+										th:text="${it.note}"></span>
 								</div>
 								<div class="small text-muted"
 									th:text="|${#numbers.formatInteger(it.unitPrice, 1, 'POINT')}đ / ly|"></div>
@@ -178,8 +340,8 @@
 								th:text="|${#numbers.formatInteger(it.subtotal, 1, 'POINT')}đ|"></div>
 						</div>
 						<div th:if="${order.note}" class="small mt-2">
-							<i class="bi bi-chat-left-text me-1 text-success"></i> Ghi chú cho quán:
-							<i th:text="${order.note}"></i>
+							<i class="bi bi-chat-left-text me-1 text-success"></i> Ghi chú
+							cho quán: <i th:text="${order.note}"></i>
 						</div>
 					</div>
 				</div>
@@ -188,27 +350,37 @@
 				<div class="card od-card mb-3">
 					<div class="card-body">
 						<th:block th:if="${order.pickup}">
-							<div class="od-title"><i class="bi bi-shop me-1"></i>Đến lấy tại cửa hàng</div>
+							<div class="od-title">
+								<i class="bi bi-shop me-1"></i>Đến lấy tại cửa hàng
+							</div>
 							<div class="fw-semibold" th:text="${order.branchName}"></div>
 							<div class="small text-muted" th:text="${order.branchAddress}"></div>
 							<div class="small text-muted" th:if="${order.branchPhone}">
 								ĐT quán: <span th:text="${order.branchPhone}"></span>
 							</div>
-							<div class="small mt-2">Người đến lấy: <b th:text="${order.receiverName}"></b> ·
-								<span th:text="${order.receiverPhone}"></span></div>
+							<div class="small mt-2">
+								Người đến lấy: <b th:text="${order.receiverName}"></b> · <span
+									th:text="${order.receiverPhone}"></span>
+							</div>
 						</th:block>
 						<th:block th:unless="${order.pickup}">
-							<div class="od-title"><i class="bi bi-geo-alt me-1"></i>Giao tận nơi</div>
+							<div class="od-title">
+								<i class="bi bi-geo-alt me-1"></i>Giao tận nơi
+							</div>
 							<div class="fw-semibold">
-								<span th:text="${order.receiverName}"></span> · <span th:text="${order.receiverPhone}"></span>
+								<span th:text="${order.receiverName}"></span> · <span
+									th:text="${order.receiverPhone}"></span>
 							</div>
 							<div class="small text-muted" th:text="${order.deliveryAddress}"></div>
-							<div class="small fst-italic text-secondary" th:if="${order.deliveryNote}">
-								<i class="bi bi-sticky me-1"></i><span th:text="${order.deliveryNote}"></span>
+							<div class="small fst-italic text-secondary"
+								th:if="${order.deliveryNote}">
+								<i class="bi bi-sticky me-1"></i><span
+									th:text="${order.deliveryNote}"></span>
 							</div>
 							<div class="small mt-2">
-								Chi nhánh làm món: <b th:text="${order.branchName}"></b>
-								<span th:if="${order.carrierName}"> · Vận chuyển: <b th:text="${order.carrierName}"></b></span>
+								Chi nhánh làm món: <b th:text="${order.branchName}"></b> <span
+									th:if="${order.carrierName}"> · Vận chuyển: <b
+									th:text="${order.carrierName}"></b></span>
 							</div>
 						</th:block>
 					</div>
@@ -221,86 +393,116 @@
 					<div class="card-body">
 						<div class="od-title">Thanh toán</div>
 						<div class="d-flex justify-content-between mb-1">
-							<span>Tạm tính</span>
-							<span th:text="|${#numbers.formatInteger(order.itemsTotal, 1, 'POINT')}đ|"></span>
+							<span>Tạm tính</span> <span
+								th:text="|${#numbers.formatInteger(order.itemsTotal, 1, 'POINT')}đ|"></span>
 						</div>
-						<div class="d-flex justify-content-between mb-1 text-success" th:if="${order.productDiscount > 0}">
+						<div class="d-flex justify-content-between mb-1 text-success"
+							th:if="${order.productDiscount > 0}">
 							<span>Mã giảm món <b th:text="${order.productVoucherCode}"></b></span>
-							<span th:text="|−${#numbers.formatInteger(order.productDiscount, 1, 'POINT')}đ|"></span>
+							<span
+								th:text="|−${#numbers.formatInteger(order.productDiscount, 1, 'POINT')}đ|"></span>
 						</div>
-						<div class="d-flex justify-content-between mb-1 text-success" th:if="${order.memberDiscount > 0}">
+						<div class="d-flex justify-content-between mb-1 text-success"
+							th:if="${order.memberDiscount > 0}">
 							<span>Ưu đãi hạng <span th:text="${order.memberTierName}"></span></span>
-							<span th:text="|−${#numbers.formatInteger(order.memberDiscount, 1, 'POINT')}đ|"></span>
+							<span
+								th:text="|−${#numbers.formatInteger(order.memberDiscount, 1, 'POINT')}đ|"></span>
 						</div>
-						<div class="d-flex justify-content-between mb-1" th:unless="${order.pickup}">
-							<span>Phí ship</span>
-							<span th:text="|${#numbers.formatInteger(order.shippingFee, 1, 'POINT')}đ|"></span>
+						<div class="d-flex justify-content-between mb-1"
+							th:unless="${order.pickup}">
+							<span>Phí ship</span> <span
+								th:text="|${#numbers.formatInteger(order.shippingFee, 1, 'POINT')}đ|"></span>
 						</div>
-						<div class="d-flex justify-content-between mb-1 text-success" th:if="${order.shippingDiscount > 0}">
-							<span>Giảm phí ship <b th:text="${order.shippingVoucherCode}"></b></span>
-							<span th:text="|−${#numbers.formatInteger(order.shippingDiscount, 1, 'POINT')}đ|"></span>
-						</div>
-						<div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
-							<span class="fw-bold">Tổng thanh toán</span>
-							<span class="fs-4 fw-bold text-danger"
+						<div
+							class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+							<span class="fw-bold">Tổng thanh toán</span> <span
+								class="fs-4 fw-bold text-danger"
 								th:text="|${#numbers.formatInteger(order.totalAmount, 1, 'POINT')}đ|"></span>
 						</div>
 						<div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
 							<span class="small" th:text="${order.payment.methodLabel}"></span>
-							<span class="badge rounded-pill" th:classappend="${order.payment.badgeClass}">
-								<i class="bi me-1" th:classappend="${order.payment.icon}"></i><span th:text="${order.payment.badge}"></span></span>
+							<span class="badge rounded-pill"
+								th:classappend="${order.payment.badgeClass}"> <i
+								class="bi me-1" th:classappend="${order.payment.icon}"></i><span
+								th:text="${order.payment.badge}"></span></span>
 						</div>
-						<div class="small text-muted mt-1" th:if="${order.payment.transactionCode}">
-							Mã giao dịch: <code th:text="${order.payment.transactionCode}"></code>
-							<span th:if="${order.payment.paidAt}"> · <span th:text="${order.payment.paidAt}"></span></span>
+						<div class="small text-muted mt-1"
+							th:if="${order.payment.transactionCode}">
+							Mã giao dịch:
+							<code th:text="${order.payment.transactionCode}"></code>
+							<span th:if="${order.payment.paidAt}"> · <span
+								th:text="${order.payment.paidAt}"></span></span>
 						</div>
 					</div>
 				</div>
 
 				<!-- Đánh giá: đơn đã giao, mỗi ly đánh giá 1 lần (form nằm ở trang chi tiết món) -->
-				<div class="card od-card mb-3" id="danh-gia" th:if="${reviewItems != null and !#lists.isEmpty(reviewItems)}">
+				<div class="card od-card mb-3" id="danh-gia"
+					th:if="${reviewItems != null and !#lists.isEmpty(reviewItems)}">
 					<div class="card-body">
-						<div class="od-title"><i class="bi bi-star me-1"></i>Đánh giá món đã mua</div>
-						<a th:href="@{/orders/{id}/review(id=${order.id})}" class="btn btn-warning w-100 fw-semibold mb-2"
-							th:if="${pendingReview > 0}">
-							<i class="bi bi-star me-1"></i> Đánh giá ngay
-							(<span th:text="${pendingReview}">1</span> món chưa đánh giá)</a>
-						<div class="d-flex justify-content-between align-items-center gap-2 border-bottom py-2" th:each="it : ${reviewItems}">
+						<div class="od-title">
+							<i class="bi bi-star me-1"></i>Đánh giá món đã mua
+						</div>
+						<a th:href="@{/orders/{id}/review(id=${order.id})}"
+							class="btn btn-warning w-100 fw-semibold mb-2"
+							th:if="${pendingReview > 0}"> <i class="bi bi-star me-1"></i>
+							Đánh giá ngay (<span th:text="${pendingReview}">1</span> món chưa
+							đánh giá)
+						</a>
+						<div
+							class="d-flex justify-content-between align-items-center gap-2 border-bottom py-2"
+							th:each="it : ${reviewItems}">
 							<div class="small">
 								<div class="fw-semibold" th:text="${it.productName}">Món</div>
 								<div class="text-muted" th:text="${it.info}">Size M</div>
 							</div>
-							<a th:unless="${it.reviewed}" class="btn btn-sm btn-outline-success text-nowrap"
-								th:href="@{/orders/{id}/review(id=${order.id})}">
-								<i class="bi bi-pencil me-1"></i>Đánh giá</a>
-							<a th:if="${it.reviewed}" class="small text-success text-nowrap text-decoration-none"
-								th:href="@{/products/{p}(p=${it.productId})} + '#danh-gia'"><i class="bi bi-check-circle me-1"></i>Đã đánh giá</a>
+							<a th:unless="${it.reviewed}"
+								class="btn btn-sm btn-outline-success text-nowrap"
+								th:href="@{/orders/{id}/review(id=${order.id})}"> <i
+								class="bi bi-pencil me-1"></i>Đánh giá
+							</a> <a th:if="${it.reviewed}"
+								class="small text-success text-nowrap text-decoration-none"
+								th:href="@{/products/{p}(p=${it.productId})} + '#danh-gia'"><i
+								class="bi bi-check-circle me-1"></i>Đã đánh giá</a>
 						</div>
 					</div>
 				</div>
 
 				<!-- Huỷ đơn: chỉ khi Chờ xác nhận -->
-				<div class="card od-card mb-3 border border-danger-subtle" id="huy-don" th:if="${order.canCancel}">
+				<div class="card od-card mb-3 border border-danger-subtle"
+					id="huy-don" th:if="${order.canCancel}">
 					<div class="card-body">
-						<div class="fw-bold text-danger mb-1"><i class="bi bi-x-octagon me-1"></i>Huỷ đơn hàng</div>
-						<p class="small text-muted mb-2">Bạn chỉ huỷ được khi quán chưa xác nhận đơn.
-							Mã giảm giá đã dùng sẽ được hoàn lại.
-							<b th:if="${order.payment.status == 'PAID'}" class="text-dark">Số tiền đã thanh toán qua
-								<span th:text="${order.payment.methodLabel}"></span> sẽ được hoàn tự động.</b></p>
-						<form th:action="@{/orders/{id}/cancel(id=${order.id})}" method="post">
+						<div class="fw-bold text-danger mb-1">
+							<i class="bi bi-x-octagon me-1"></i>Huỷ đơn hàng
+						</div>
+						<p class="small text-muted mb-2">
+							Bạn chỉ huỷ được khi quán chưa xác nhận đơn. Mã giảm giá đã dùng
+							sẽ được hoàn lại. <b th:if="${order.payment.status == 'PAID'}"
+								class="text-dark">Số tiền đã thanh toán qua <span
+								th:text="${order.payment.methodLabel}"></span> sẽ được hoàn tự
+								động.
+							</b>
+						</p>
+						<form th:action="@{/orders/{id}/cancel(id=${order.id})}"
+							method="post">
 							<div class="form-check mb-1" th:each="r, s : ${cancelReasons}">
-								<input class="form-check-input" type="radio" name="reason" th:id="|reason-${s.index}|"
-									th:value="${r}" required>
-								<label class="form-check-label small" th:for="|reason-${s.index}|" th:text="${r}"></label>
+								<input class="form-check-input" type="radio" name="reason"
+									th:id="|reason-${s.index}|" th:value="${r}" required> <label
+									class="form-check-label small" th:for="|reason-${s.index}|"
+									th:text="${r}"></label>
 							</div>
 							<div class="form-check mb-1">
-								<input class="form-check-input" type="radio" name="reason" id="reason-other" value="OTHER">
-								<label class="form-check-label small" for="reason-other">Lý do khác</label>
+								<input class="form-check-input" type="radio" name="reason"
+									id="reason-other" value="OTHER"> <label
+									class="form-check-label small" for="reason-other">Lý do
+									khác</label>
 							</div>
-							<textarea name="otherReason" class="form-control form-control-sm mt-2" rows="2" maxlength="200"
-								placeholder="Ghi rõ lý do (nếu chọn Lý do khác)"></textarea>
+							<textarea name="otherReason"
+								class="form-control form-control-sm mt-2" rows="2"
+								maxlength="200" placeholder="Ghi rõ lý do (nếu chọn Lý do khác)"></textarea>
 							<button type="submit" class="btn btn-outline-danger w-100 mt-3"
-								onclick="return confirm('Bạn chắc chắn muốn huỷ đơn này?')">Huỷ đơn</button>
+								onclick="return confirm('Bạn chắc chắn muốn huỷ đơn này?')">Huỷ
+								đơn</button>
 						</form>
 					</div>
 				</div>

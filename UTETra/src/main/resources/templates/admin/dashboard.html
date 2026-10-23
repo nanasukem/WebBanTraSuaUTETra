@@ -293,7 +293,8 @@
 
 									<td><span class="badge"
 										th:classappend="${T(vn.utetra.service.impl.OrderFlowServiceImpl).badgeClass(o.status)}"
-										th:text="${o.status.name() == 'CANCELLED'} ? ${T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(o.cancelledBy, false)} : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, o.deliveryType != null and o.deliveryType.name() == 'PICKUP')}"> PENDING </span></td>
+										th:text="${o.status.name() == 'CANCELLED'} ? ${T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(o.cancelledBy, false)} : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, o.deliveryType != null and o.deliveryType.name() == 'PICKUP')}">
+											PENDING </span></td>
 								</tr>
 							</tbody>
 						</table>
@@ -328,9 +329,7 @@
 						</a> <a th:href="@{/admin/vouchers}" class="quick-link"> <i
 							class="bi bi-ticket-perforated"></i> <span>Quản lý khuyến
 								mãi</span> <i class="bi bi-chevron-right arrow"></i>
-						</a> <a th:href="@{/admin/carriers}" class="quick-link">
-							<i class="bi bi-truck"></i> <span>Đối tác giao hàng</span> <i
-							class="bi bi-chevron-right arrow"></i>
+
 						</a> <a th:href="@{/admin/reports}" class="quick-link"> <i
 							class="bi bi-graph-up-arrow"></i> <span>Doanh thu và báo
 								cáo</span> <i class="bi bi-chevron-right arrow"></i>

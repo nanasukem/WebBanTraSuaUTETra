@@ -38,6 +38,17 @@ public class OrderServiceImpl implements OrderService {
     private static final DateTimeFormatter DATE_TIME =
             DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 
+    /**
+     * Đội ngũ giao hàng nội bộ của quán: Shipper UTETra
+     * - Từ 3 km trở xuống: đồng giá 15.000đ
+     * - Trên 3 km: cộng thêm 10.000đ cho mỗi km vượt quá (làm tròn lên), giao tối đa 15 km
+     */
+    public static final int BASE_KM = 3;
+    public static final int MAX_KM = 15;
+    public static final BigDecimal BASE_SHIPPING_FEE = BigDecimal.valueOf(15000);
+    public static final BigDecimal EXTRA_KM_FEE = BigDecimal.valueOf(10000);
+    public static final String DEFAULT_CARRIER_NAME = "Shipper UTETra";
+
     private final CartService cartService;
     private final VoucherService voucherService;
     private final MemberService memberService;
@@ -125,6 +136,10 @@ public class OrderServiceImpl implements OrderService {
                 && c.productVoucherError == null
                 && c.shippingVoucherError == null;
 
+        String carrierLabel = c.deliveryType == DeliveryType.DELIVERY
+                ? (c.carrier != null ? c.carrier.getName() : DEFAULT_CARRIER_NAME)
+                : null;
+
         return new CheckoutPreviewRes(
                 c.cart.items(),
                 c.cart.totalQty(),
@@ -141,11 +156,11 @@ public class OrderServiceImpl implements OrderService {
                 c.errors,
                 canOrder,
                 c.distanceKm,
-                c.carrier == null ? null : c.carrier.getName()
+                carrierLabel
         );
     }
 
-    // ================= DANH SÁCH VOUCHER =================
+    // ================= DANH SÁCH VOUCHER (CHỈ VOUCHER GIẢM MÓN) =================
 
     @Override
     public List<VoucherOptionRes> voucherOptions(Integer userId, CheckoutReq req) {
@@ -160,6 +175,11 @@ public class OrderServiceImpl implements OrderService {
 
         for (Voucher v : voucherService.findUsable(branchId)) {
 
+            // Hệ thống chỉ áp dụng voucher giảm giá đồ uống (PRODUCT), bỏ voucher freeship
+            if (v.getApplyTo() != VoucherApplyTo.PRODUCT) {
+                continue;
+            }
+
             if (v.getAudience() == VoucherAudience.NEW_USER && !newCustomer) {
                 continue;
             }
@@ -167,12 +187,7 @@ public class OrderServiceImpl implements OrderService {
             String reason = null;
             BigDecimal discount = BigDecimal.ZERO;
 
-            if (v.getApplyTo() == VoucherApplyTo.SHIPPING
-                    && c.deliveryType == DeliveryType.PICKUP) {
-
-                reason = "Chỉ dùng cho đơn giao tận nơi";
-
-            } else if (c.itemsTotal.compareTo(v.getMinOrderValue()) < 0) {
+            if (c.itemsTotal.compareTo(v.getMinOrderValue()) < 0) {
 
                 reason = "Mua thêm "
                         + money(v.getMinOrderValue().subtract(c.itemsTotal))
@@ -267,6 +282,10 @@ public class OrderServiceImpl implements OrderService {
                 .mapToInt(d -> d.getQuantity())
                 .sum();
 
+        String carrierName = o.getDeliveryType() == DeliveryType.DELIVERY
+                ? (o.getCarrier() != null ? o.getCarrier().getName() : DEFAULT_CARRIER_NAME)
+                : null;
+
         return new OrderSummaryRes(
                 o.getId(),
                 o.getBranch().getName(),
@@ -276,7 +295,7 @@ public class OrderServiceImpl implements OrderService {
                 o.getReceiverName(),
                 o.getReceiverPhone(),
                 o.getDeliveryAddress(),
-                o.getCarrier() == null ? null : o.getCarrier().getName(),
+                carrierName,
                 o.getTotalAmount(),
                 o.getPaymentMethod(),
                 o.getStatus(),
@@ -308,7 +327,7 @@ public class OrderServiceImpl implements OrderService {
         o.setDeliveryType(c.deliveryType);
         o.setCarrier(c.carrier);
         o.setProductVoucher(c.productVoucher);
-        o.setShippingVoucher(c.shippingVoucher);
+        o.setShippingVoucher(null);
 
         o.setReceiverName(c.receiverName);
         o.setReceiverPhone(c.receiverPhone);
@@ -332,7 +351,7 @@ public class OrderServiceImpl implements OrderService {
         o.setMemberDiscount(c.memberDiscount);
         o.setMemberTierName(c.memberTierName);
         o.setShippingFee(c.shippingFee);
-        o.setShippingDiscount(c.shippingDiscount);
+        o.setShippingDiscount(BigDecimal.ZERO);
         o.setTotalAmount(c.totalAmount);
 
         // COD: vào quán ngay (Chờ xác nhận). VNPAY/MoMo: Chờ thanh toán, trả xong quán mới thấy đơn
@@ -378,14 +397,6 @@ public class OrderServiceImpl implements OrderService {
         // 3. Lưu đơn hàng
         Order saved = orderRepository.save(o);
 
-        /*
-         * 4. Giống app thật (Shopee, GrabFood...):
-         * - Giữ chỗ mã giảm giá ngay khi đặt (đơn huỷ / quá hạn thanh toán thì trả lại lượt).
-         * - Xoá giỏ: món đã nằm trong đơn. Thanh toán lỗi khách bấm "Thanh toán lại" hoặc "Quay lại sửa đơn".
-         * - COD: báo quán có đơn mới ngay.
-         * - VNPAY/MoMo: CHƯA báo quán. PaymentService báo khi cổng xác nhận đã trả (kiểm chữ ký + số tiền),
-         *   quá hạn chưa trả thì hệ thống tự huỷ đơn.
-         */
         markVouchersUsed(c, userId, saved.getId());
         cartService.clear(userId);
         if (!online) {
@@ -401,14 +412,6 @@ public class OrderServiceImpl implements OrderService {
         if (c.productVoucher != null) {
             voucherService.markUsed(
                     c.productVoucher.getId(),
-                    userId,
-                    orderId
-            );
-        }
-
-        if (c.shippingVoucher != null) {
-            voucherService.markUsed(
-                    c.shippingVoucher.getId(),
                     userId,
                     orderId
             );
@@ -459,7 +462,6 @@ public class OrderServiceImpl implements OrderService {
 
             } else if (!c.branch.isOpenAt(java.time.LocalTime.now())) {
 
-                // Giờ mở cửa: ngoài giờ thì không nhận đơn (giống app thật)
                 fail(
                         c,
                         strict,
@@ -548,7 +550,7 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
 
-            // 3b. Phí giao theo khoảng cách (giống app chuỗi thật: khách không chọn hãng vận chuyển)
+            // 3b. Phí giao cố định bởi Shipper UTETra (<= 3km đồng giá 15.000đ, trên 3km +10.000đ/km)
             if (c.address != null && c.branch != null) {
                 deliveryFee(c, strict);
             }
@@ -591,19 +593,18 @@ public class OrderServiceImpl implements OrderService {
             fail(c, strict, "Phương thức thanh toán không hợp lệ");
         }
 
-        // 5. Mỗi đơn chỉ áp 1 mã giảm giá (giảm tiền món HOẶC giảm phí ship) như app chuỗi thật
-        if (notBlank(req.getProductVoucherCode()) && notBlank(req.getShippingVoucherCode())) {
-            if (strict) {
-                throw new BusinessException("Mỗi đơn chỉ dùng được 1 mã giảm giá");
-            }
-            c.shippingVoucherError = "Mỗi đơn chỉ dùng được 1 mã giảm giá, vui lòng bỏ bớt 1 mã";
-            req.setShippingVoucherCode(null);
-        }
-
-        // 5a. Voucher giảm tiền món
+        // 5. Voucher giảm tiền món (không sử dụng voucher freeship)
         Integer branchId = c.branch == null
                 ? null
                 : c.branch.getId();
+
+        if (notBlank(req.getShippingVoucherCode())) {
+            String msg = "Hệ thống chỉ áp dụng mã giảm giá đồ uống, không áp dụng mã giảm phí vận chuyển";
+            if (strict) {
+                throw new BusinessException(msg);
+            }
+            c.shippingVoucherError = msg;
+        }
 
         if (notBlank(req.getProductVoucherCode())) {
 
@@ -636,45 +637,6 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 5b. Voucher giảm phí ship
-        if (notBlank(req.getShippingVoucherCode())) {
-
-            try {
-
-                if (c.deliveryType == DeliveryType.PICKUP) {
-                    throw new BusinessException(
-                            "Đơn đến lấy không có phí ship "
-                                    + "nên không dùng được mã giảm ship"
-                    );
-                }
-
-                c.shippingVoucher = findVoucher(
-                        req.getShippingVoucherCode(),
-                        VoucherApplyTo.SHIPPING,
-                        "giảm phí ship"
-                );
-
-                c.shippingDiscount = voucherService.calculateDiscount(
-                        c.shippingVoucher.getCode(),
-                        branchId,
-                        userId,
-                        req.getPaymentMethod(),
-                        c.itemsTotal,
-                        c.shippingFee
-                );
-
-            } catch (BusinessException e) {
-
-                if (strict) {
-                    throw e;
-                }
-
-                c.shippingVoucher = null;
-                c.shippingDiscount = BigDecimal.ZERO;
-                c.shippingVoucherError = e.getMessage();
-            }
-        }
-
         // 6. Giảm giá theo hạng thành viên
         MemberTier tier = memberService.getCurrentTier(userId);
 
@@ -689,21 +651,15 @@ public class OrderServiceImpl implements OrderService {
         c.totalAmount = c.itemsTotal
                 .subtract(c.productDiscount)
                 .subtract(c.memberDiscount)
-                .add(c.shippingFee)
-                .subtract(c.shippingDiscount);
+                .add(c.shippingFee);
 
         return c;
     }
 
-
-    /** Phí cho {@value #BASE_KM} km đầu, mỗi km thêm tính theo đối tác; giao tối đa {@value #MAX_KM} km */
-    public static final int BASE_KM = 5;
-    public static final int MAX_KM = 15;
-
     /**
-     * Phí giao = phí {@value #BASE_KM} km đầu + mỗi km thêm (làm tròn lên) x phí/km của đối tác.
-     * Khoảng cách: đường chim bay từ chi nhánh tới vị trí đã ghim của địa chỉ.
-     * Hệ thống tự chọn đối tác đang hoạt động có phí rẻ nhất (khách không phải chọn hãng).
+     * Phí giao hàng nội bộ Shipper UTETra:
+     * - Từ {@value #BASE_KM} km trở xuống: đồng giá 15.000đ
+     * - Trên {@value #BASE_KM} km: cộng thêm 10.000đ cho mỗi km vượt quá (làm tròn lên), giao tối đa {@value #MAX_KM} km.
      */
     private void deliveryFee(Calc c, boolean strict) {
         Address a = c.address;
@@ -719,28 +675,18 @@ public class OrderServiceImpl implements OrderService {
         double km = distanceKm(b.getLatitude().doubleValue(), b.getLongitude().doubleValue(),
                 a.getLatitude().doubleValue(), a.getLongitude().doubleValue());
         c.distanceKm = BigDecimal.valueOf(km).setScale(1, RoundingMode.HALF_UP);
-        if (km > MAX_KM) {
+        if (c.distanceKm.doubleValue() > MAX_KM) {
             fail(c, strict, "Địa chỉ cách " + b.getName() + " " + c.distanceKm + " km, quán chỉ giao trong "
                     + MAX_KM + " km. Vui lòng chọn chi nhánh gần hơn hoặc đến lấy tại quán");
             return;
         }
-        int extraKm = (int) Math.max(0, Math.ceil(km - BASE_KM));
-        Carrier best = null;
-        BigDecimal bestFee = null;
-        for (Carrier cr : carrierRepository.findByIsActiveTrueOrderByFeeAsc()) {
-            BigDecimal perKm = cr.getPerKmFee() == null ? BigDecimal.ZERO : cr.getPerKmFee();
-            BigDecimal fee = cr.getFee().add(perKm.multiply(BigDecimal.valueOf(extraKm)));
-            if (bestFee == null || fee.compareTo(bestFee) < 0) {
-                best = cr;
-                bestFee = fee;
-            }
-        }
-        if (best == null) {
-            fail(c, strict, "Hiện chưa có đối tác giao hàng nào hoạt động, vui lòng chọn Đến lấy tại quán");
-            return;
-        }
-        c.carrier = best;
-        c.shippingFee = bestFee;
+        double diffKm = c.distanceKm.subtract(BigDecimal.valueOf(BASE_KM)).doubleValue();
+        int extraKm = (int) Math.max(0, Math.ceil(diffKm));
+        c.shippingFee = BASE_SHIPPING_FEE.add(EXTRA_KM_FEE.multiply(BigDecimal.valueOf(extraKm)));
+
+        // Gắn bản ghi Shipper UTETra trong bảng Carriers (nếu có) để đồng bộ dữ liệu đơn hàng
+        c.carrier = carrierRepository.findByNameContainingIgnoreCaseOrderByIdAsc("Shipper UTETra").stream().findFirst()
+                .orElseGet(() -> carrierRepository.findAll().stream().findFirst().orElse(null));
     }
 
     /** Khoảng cách 2 toạ độ (km), công thức Haversine */

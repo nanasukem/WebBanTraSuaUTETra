@@ -16,6 +16,7 @@ import vn.utetra.repository.BranchRepository;
 import vn.utetra.service.VoucherService;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin/vouchers")
@@ -29,7 +30,7 @@ public class AdminVoucherController {
 		this.branchRepository = branchRepository;
 	}
 
-	// Danh sách TẤT CẢ voucher: toàn chuỗi + riêng từng chi nhánh (Admin là người duy nhất tạo / sửa voucher)
+	// Danh sách TẤT CẢ voucher giảm tiền món: toàn chuỗi + riêng từng chi nhánh
 	@GetMapping
 	public String index(Model model) {
 		model.addAttribute("vouchers", voucherService.findAllVouchers());
@@ -41,6 +42,7 @@ public class AdminVoucherController {
 	@GetMapping("/new")
 	public String createForm(Model model) {
 		VoucherReq req = new VoucherReq();
+		req.setApplyTo(VoucherApplyTo.PRODUCT);
 		req.setMinOrderValue(java.math.BigDecimal.ZERO);
 		req.setQuantity(100);
 		req.setStartDate(LocalDateTime.now().withSecond(0).withNano(0));
@@ -58,6 +60,8 @@ public class AdminVoucherController {
 	public String create(@Valid @ModelAttribute("voucherReq") VoucherReq req, BindingResult result, Model model,
 			RedirectAttributes redirectAttributes) {
 
+		req.setApplyTo(VoucherApplyTo.PRODUCT);
+
 		if (result.hasErrors()) {
 			model.addAttribute("voucherId", null);
 			addFormOptions(model);
@@ -65,7 +69,6 @@ public class AdminVoucherController {
 		}
 
 		try {
-			// branchId trống = toàn chuỗi; chọn chi nhánh = khuyến mãi riêng của chi nhánh đó
 			voucherService.create(req);
 
 			redirectAttributes.addFlashAttribute("successMessage", "Tạo voucher thành công!");
@@ -97,7 +100,8 @@ public class AdminVoucherController {
 	public String update(@PathVariable Integer id, @Valid @ModelAttribute("voucherReq") VoucherReq req,
 			BindingResult result, Model model, RedirectAttributes redirectAttributes) {
 
-		voucherService.findById(id); // không tồn tại -> báo lỗi
+		voucherService.findById(id);
+		req.setApplyTo(VoucherApplyTo.PRODUCT);
 
 		if (result.hasErrors()) {
 			model.addAttribute("voucherId", id);
@@ -147,7 +151,8 @@ public class AdminVoucherController {
 
 	private void addFormOptions(Model model) {
 		model.addAttribute("discountTypes", DiscountType.values());
-		model.addAttribute("applyToOptions", VoucherApplyTo.values());
+		model.addAttribute("applyToOptions", List.of(VoucherApplyTo.PRODUCT));
 		model.addAttribute("branches", branchRepository.findAll());
 	}
 }
+

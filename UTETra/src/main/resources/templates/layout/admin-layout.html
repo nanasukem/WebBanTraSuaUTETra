@@ -253,30 +253,44 @@ body {
 		<!-- Menu: Tổng quan + "Quản lý" (các chức năng Admin theo đề) + Thực đơn -->
 		<nav class="admin-menu">
 
-			<a th:href="@{/admin/dashboard}"> <i class="bi bi-speedometer2"></i> <span>Tổng quan</span></a>
+			<a th:href="@{/admin/dashboard}"> <i class="bi bi-speedometer2"></i>
+				<span>Tổng quan</span></a>
 
 			<div class="dropdown">
-				<button class="dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+				<button class="dropdown-toggle" type="button"
+					data-bs-toggle="dropdown" aria-expanded="false">
 					<i class="bi bi-grid"></i> <span>Quản lý</span>
 				</button>
 				<ul class="dropdown-menu shadow">
-					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/users}">
-						<i class="bi bi-people"></i> Người dùng</a></li>
-					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/products}">
-						<i class="bi bi-cup-straw"></i> Sản phẩm</a></li>
-					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/categories}">
-						<i class="bi bi-tags"></i> Danh mục</a></li>
-					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/branches}">
-						<i class="bi bi-shop"></i> Chi nhánh</a></li>
-					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/vouchers}">
-						<i class="bi bi-ticket-perforated"></i> Khuyến mãi</a></li>
-					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/carriers}">
-						<i class="bi bi-truck"></i> Đối tác giao hàng</a></li>
+					<li><a class="dropdown-item d-flex align-items-center"
+						th:href="@{/admin/users}"> <i class="bi bi-people"></i> Người
+							dùng
+					</a></li>
+					<li><a class="dropdown-item d-flex align-items-center"
+						th:href="@{/admin/products}"> <i class="bi bi-cup-straw"></i>
+							Sản phẩm
+					</a></li>
+					<li><a class="dropdown-item d-flex align-items-center"
+						th:href="@{/admin/categories}"> <i class="bi bi-tags"></i>
+							Danh mục
+					</a></li>
+					<li><a class="dropdown-item d-flex align-items-center"
+						th:href="@{/admin/branches}"> <i class="bi bi-shop"></i> Chi
+							nhánh
+					</a></li>
+					<li><a class="dropdown-item d-flex align-items-center"
+						th:href="@{/admin/vouchers}"> <i
+							class="bi bi-ticket-perforated"></i> Khuyến mãi
+					</a></li>
 					<li><hr class="dropdown-divider"></li>
-					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/orders}">
-						<i class="bi bi-receipt"></i> Đơn hàng</a></li>
-					<li><a class="dropdown-item d-flex align-items-center" th:href="@{/admin/reports}">
-						<i class="bi bi-graph-up-arrow"></i> Doanh thu &amp; báo cáo</a></li>
+					<li><a class="dropdown-item d-flex align-items-center"
+						th:href="@{/admin/orders}"> <i class="bi bi-receipt"></i> Đơn
+							hàng
+					</a></li>
+					<li><a class="dropdown-item d-flex align-items-center"
+						th:href="@{/admin/reports}"> <i class="bi bi-graph-up-arrow"></i>
+							Doanh thu &amp; báo cáo
+					</a></li>
 				</ul>
 			</div>
 
@@ -339,6 +353,8 @@ body {
 	</script>
 
 	<!-- Chuông thông báo (chỉ khi đã đăng nhập) -->
-	<th:block th:if="${session.user != null}"><th:block th:replace="~{fragments/notification-bell :: scripts}"></th:block></th:block>
+	<th:block th:if="${session.user != null}">
+		<th:block th:replace="~{fragments/notification-bell :: scripts}"></th:block>
+	</th:block>
 </body>
 </html>
