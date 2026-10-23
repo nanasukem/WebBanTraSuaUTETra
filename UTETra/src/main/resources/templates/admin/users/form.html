@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Thêm tài khoản', 'users', ~{::#admin-content})}">
+
+<!-- Admin tạo tài khoản: Manager (quản lý chi nhánh), Shipper (giao hàng), Admin, hoặc khách. Khách thường tự đăng ký -->
+<section id="admin-content">
+	<div class="container-fluid py-3" style="max-width: 760px;">
+		<a th:href="@{/admin/users}" class="text-decoration-none text-success small"><i class="bi bi-arrow-left"></i> Quản lý người dùng</a>
+		<h2 class="fw-bold mt-2 mb-1"><i class="bi bi-person-plus text-success me-2"></i>Thêm tài khoản</h2>
+		<p class="text-muted mb-4">Tài khoản do Admin tạo được kích hoạt ngay (không cần xác minh email). Gửi tên đăng nhập và mật khẩu
+			cho người dùng, họ nên đổi mật khẩu ở trang Hồ sơ sau lần đăng nhập đầu.</p>
+
+		<div th:if="${errorMessage}" class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i><span
+				th:text="${errorMessage}"></span></div>
+
+		<div class="card border-0 shadow-sm rounded-4">
+			<div class="card-body p-4">
+				<form method="post" th:action="@{/admin/users/new}" autocomplete="off">
+					<div class="mb-3">
+						<label class="form-label fw-semibold d-block">Vai trò <span class="text-danger">*</span></label>
+						<div class="d-flex flex-wrap gap-2">
+							<th:block th:each="r : ${ {'MANAGER', 'SHIPPER', 'ADMIN'} }">
+								<input type="radio" class="btn-check" name="role" th:id="'role' + ${r}" th:value="${r}"
+									th:checked="${form['role'] == r}" required>
+								<label class="btn btn-outline-success" th:for="'role' + ${r}"
+									th:text="${r == 'MANAGER'} ? 'Manager (quản lý chi nhánh)' : (${r == 'SHIPPER'} ? 'Shipper' : 'Admin')">Manager</label>
+							</th:block>
+						</div>
+						<div class="form-text">Chỉ tạo tài khoản nhân viên; khách hàng tự đăng ký trên web. Shipper: giao đơn của quán.</div>
+					</div>
+					<!-- Manager: giao chi nhánh luôn khi tạo -->
+					<div class="mb-3" id="branchBox">
+						<label for="fBranch" class="form-label fw-semibold">Giao chi nhánh</label>
+						<select id="fBranch" name="branchId" class="form-select">
+							<option value="">Chưa giao (giao sau ở trang Chi nhánh)</option>
+							<option th:each="b : ${branches}" th:value="${b.id}"
+								th:selected="${form['branchId'] != null and form['branchId'] == '' + b.id}"
+								th:text="${b.name} + (${b.owner != null} ? ' · đang do ' + ${b.owner.fullName} + ' quản lý (sẽ chuyển sang người mới)' : ' · chưa có quản lý')">UTETra</option>
+						</select>
+					</div>
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label for="fUsername" class="form-label fw-semibold">Tên đăng nhập <span class="text-danger">*</span></label>
+							<input type="text" id="fUsername" name="username" class="form-control" required maxlength="50"
+								pattern="[A-Za-z0-9_.]{3,50}" placeholder="VD: manager_q7" th:value="${form['username']}">
+						</div>
+						<div class="col-md-6">
+							<label for="fFullName" class="form-label fw-semibold">Họ tên <span class="text-danger">*</span></label>
+							<input type="text" id="fFullName" name="fullName" class="form-control" required maxlength="100"
+								placeholder="VD: Trần Văn Quản Lý" th:value="${form['fullName']}">
+						</div>
+						<div class="col-md-6">
+							<label for="fEmail" class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+							<input type="email" id="fEmail" name="email" class="form-control" required maxlength="100"
+								placeholder="VD: q7@utetra.vn" th:value="${form['email']}">
+						</div>
+						<div class="col-md-6">
+							<label for="fPhone" class="form-label fw-semibold">Số điện thoại</label>
+							<input type="tel" id="fPhone" name="phone" class="form-control" pattern="0\d{9}" maxlength="10"
+								placeholder="VD: 0901234567" th:value="${form['phone']}">
+						</div>
+						<div class="col-md-6">
+							<label for="fPassword" class="form-label fw-semibold">Mật khẩu <span class="text-danger">*</span></label>
+							<input type="password" id="fPassword" name="password" class="form-control" required minlength="6"
+								autocomplete="new-password">
+						</div>
+						<div class="col-md-6">
+							<label for="fConfirm" class="form-label fw-semibold">Nhập lại mật khẩu <span class="text-danger">*</span></label>
+							<input type="password" id="fConfirm" name="confirmPassword" class="form-control" required minlength="6"
+								autocomplete="new-password">
+						</div>
+					</div>
+					<div class="d-flex gap-2 mt-4">
+						<button type="submit" class="btn btn-success px-4"><i class="bi bi-check-lg me-1"></i> Tạo tài khoản</button>
+						<a th:href="@{/admin/users}" class="btn btn-outline-secondary">Huỷ</a>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+	<script>
+		// Chỉ hiện ô "Giao chi nhánh" khi chọn vai trò Manager
+		(function () {
+			const box = document.getElementById('branchBox');
+			function sync() {
+				const r = document.querySelector('input[name="role"]:checked');
+				box.classList.toggle('d-none', !r || r.value !== 'MANAGER');
+				if (!r || r.value !== 'MANAGER') document.getElementById('fBranch').value = '';
+			}
+			document.querySelectorAll('input[name="role"]').forEach((x) => x.addEventListener('change', sync));
+			sync();
+		})();
+	</script>
+</section>
+</html>

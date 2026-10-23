@@ -84,6 +84,12 @@
 								<i class="bi bi-person-gear"></i> Đổi vai trò
 							</button>
 
+							<!-- Đặt lại mật khẩu: nhân viên quên mật khẩu / Admin cần lấy lại quyền vào tài khoản -->
+							<button type="button" class="btn btn-outline-warning w-100 mb-2"
+								data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
+								<i class="bi bi-key"></i> Đặt lại mật khẩu
+							</button>
+
 							<form th:action="@{/admin/users/{id}/toggle(id=${user.id})}"
 								method="post"
 								onsubmit="return confirm('Bạn có chắc muốn thay đổi trạng thái tài khoản này?');">
@@ -183,6 +189,63 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Modal đặt lại mật khẩu -->
+		<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true" sec:authorize="hasRole('ADMIN')">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+					<form th:action="@{/admin/users/{id}/reset-password(id=${user.id})}" method="post" autocomplete="off">
+						<div class="modal-header">
+							<h5 class="modal-title"><i class="bi bi-key me-1"></i> Đặt lại mật khẩu</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+						</div>
+						<div class="modal-body">
+							<p class="small text-muted">Tài khoản <b th:text="${user.username}">user</b>: mật khẩu cũ mất tác dụng ngay.
+								Gửi mật khẩu mới cho người dùng và nhắc họ đổi lại ở trang Hồ sơ.</p>
+							<div class="mb-2">
+								<label for="rpNew" class="form-label fw-semibold">Mật khẩu mới</label>
+								<div class="input-group">
+									<input type="text" id="rpNew" name="newPassword" class="form-control" required minlength="6"
+										autocomplete="new-password">
+									<button type="button" class="btn btn-outline-secondary" id="rpGen" title="Tạo mật khẩu ngẫu nhiên">
+										<i class="bi bi-shuffle"></i> Tạo ngẫu nhiên</button>
+								</div>
+							</div>
+							<div>
+								<label for="rpConfirm" class="form-label fw-semibold">Nhập lại mật khẩu mới</label>
+								<input type="text" id="rpConfirm" name="confirmPassword" class="form-control" required minlength="6"
+									autocomplete="new-password">
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
+							<button type="submit" class="btn btn-warning"><i class="bi bi-key"></i> Đặt lại</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+		<script>
+			(function () {
+				const gen = document.getElementById('rpGen');
+				if (gen) gen.addEventListener('click', function () {
+					const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+					let p = '';
+					const a = new Uint32Array(10);
+					crypto.getRandomValues(a);
+					a.forEach(function (n) { p += chars[n % chars.length]; });
+					document.getElementById('rpNew').value = p;
+					document.getElementById('rpConfirm').value = p;
+				});
+				// Từ trang danh sách bấm nút chìa khoá -> mở sẵn hộp đặt lại mật khẩu
+				if (location.hash === '#reset') {
+					window.addEventListener('load', function () { // chờ Bootstrap nạp xong
+						const m = document.getElementById('resetPasswordModal');
+						if (m && window.bootstrap) bootstrap.Modal.getOrCreateInstance(m).show();
+					});
+				}
+			})();
+		</script>
 
 		<!-- Modal đổi vai trò -->
 		<div class="modal fade" id="detailRoleModal" tabindex="-1"
