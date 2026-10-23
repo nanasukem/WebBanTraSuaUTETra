@@ -71,16 +71,16 @@
 						</td>
 
 						<td>
-							<span class="badge bg-success" th:if="${product.isAvailable}">Đang mở</span>
-							<span class="badge bg-danger" th:unless="${product.isAvailable}">Đã khóa</span>
+							<span class="badge bg-success" th:if="${product.isAvailable}">Đang bán</span>
+							<span class="badge bg-danger" th:unless="${product.isAvailable}">Ngừng bán toàn chuỗi</span>
 						</td>
 
 						<td>
 							<span class="badge bg-secondary" th:if="${unavailableProductIds.contains(product.id)}">
-								Ngừng bán
+								Hết món
 							</span>
 							<span class="badge bg-success" th:unless="${unavailableProductIds.contains(product.id)}">
-								Đang bán mặc định
+								Còn món
 							</span>
 						</td>
 
@@ -88,16 +88,16 @@
 							<form th:if="${branch.status.name() == 'APPROVED'
                                 and product.isAvailable}" th:action="@{/manager/branches/{branchId}/products/{productId}/toggle(
                                   branchId=${branch.id},productId=${product.id})}" method="post"
-								onsubmit="return confirm('Bạn có chắc muốn thay đổi trạng thái bán sản phẩm này?')">
+								onsubmit="return confirm('Đổi tình trạng còn / hết của món này tại chi nhánh?')">
 
 								<button class="btn btn-sm" th:classappend="${unavailableProductIds.contains(product.id)
                                         ? ' btn-success' : ' btn-warning'}" type="submit" th:text="${unavailableProductIds.contains(product.id)
-                                        ? 'Mở bán' : 'Ngừng bán'}">
+                                        ? 'Mở bán lại' : 'Báo hết'}">
 								</button>
 							</form>
 
 							<span th:if="${!product.isAvailable}" class="text-muted small">
-								Bị khóa toàn hệ thống
+								Admin đã ngừng bán
 							</span>
 
 							<span th:if="${branch.status.name() != 'APPROVED'

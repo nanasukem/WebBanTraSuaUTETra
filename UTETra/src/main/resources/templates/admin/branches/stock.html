@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/admin-layout :: main('Món còn / hết - ' + ${branch.name}, 'branches', ~{::#admin-content})}">
 
-<!-- Admin xem món và topping CÒN / HẾT của 1 chi nhánh (chỉ xem; Manager bật / tắt ở trang Sản phẩm của chi nhánh) -->
+<!-- Admin xem món và topping CÒN / HẾT của 1 chi nhánh (Admin và Manager đều bật / tắt được) -->
 <section id="admin-content">
 	<div class="container-fluid px-0">
 		<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
@@ -16,6 +16,15 @@
 			<a th:href="@{/admin/branches}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Danh sách chi nhánh</a>
 		</div>
 
+		<div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+			<i class="bi bi-check-circle-fill me-2"></i><span th:text="${successMessage}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
+		<div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+			<i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${errorMessage}"></span>
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
+
 		<div class="d-flex flex-wrap gap-2 mb-3" id="stockFilter">
 			<button type="button" class="btn btn-sm btn-success" data-f="ALL">Tất cả</button>
 			<button type="button" class="btn btn-sm btn-outline-danger" data-f="NOT_OK">Chỉ món đang hết / ngừng bán</button>
@@ -27,14 +36,23 @@
 					<div class="card-header bg-white py-3 fw-bold"><i class="bi bi-cup-straw me-1"></i> Đồ uống</div>
 					<div class="table-responsive">
 						<table class="table table-hover align-middle mb-0">
-							<thead class="table-light"><tr><th class="ps-3">Món</th><th>Danh mục</th><th class="pe-3">Tình trạng</th></tr></thead>
+							<thead class="table-light"><tr><th class="ps-3">Món</th><th>Danh mục</th><th>Tình trạng</th><th class="pe-3 text-end">Thao tác</th></tr></thead>
 							<tbody>
 								<tr th:each="r : ${products}" th:attr="data-status=${r.status()}">
 									<td class="ps-3 fw-semibold" th:text="${r.name()}">Trà sữa</td>
 									<td class="text-muted small" th:text="${r.category()}">Trà sữa</td>
-									<td class="pe-3"><span class="badge rounded-pill"
+									<td><span class="badge rounded-pill"
 										th:classappend="${r.status() == 'OK'} ? 'text-bg-success' : (${r.status() == 'OUT'} ? 'text-bg-warning' : 'text-bg-secondary')"
 										th:text="${r.label()}">Còn bán</span></td>
+									<td class="pe-3 text-end text-nowrap">
+										<form th:if="${r.status() != 'OFF'}" method="post" class="d-inline m-0"
+											th:action="@{/admin/branches/{b}/stock/products/{x}/toggle(b=${branch.id},x=${r.id()})}">
+											<button type="submit" class="btn btn-sm"
+												th:classappend="${r.status() == 'OUT'} ? 'btn-success' : 'btn-outline-warning'"
+												th:text="${r.status() == 'OUT'} ? 'Mở bán lại' : 'Báo hết'">Báo hết</button>
+										</form>
+										<span th:if="${r.status() == 'OFF'}" class="small text-muted">Ngừng toàn chuỗi</span>
+									</td>
 								</tr>
 							</tbody>
 						</table>
@@ -49,16 +67,25 @@
 							<tbody>
 								<tr th:each="r : ${toppings}" th:attr="data-status=${r.status()}">
 									<td class="ps-3 fw-semibold" th:text="${r.name()}">Trân châu đen</td>
-									<td class="pe-3 text-end"><span class="badge rounded-pill"
+									<td class="text-end"><span class="badge rounded-pill"
 										th:classappend="${r.status() == 'OK'} ? 'text-bg-success' : (${r.status() == 'OUT'} ? 'text-bg-warning' : 'text-bg-secondary')"
 										th:text="${r.label()}">Còn bán</span></td>
+									<td class="pe-3 text-end text-nowrap">
+										<form th:if="${r.status() != 'OFF'}" method="post" class="d-inline m-0"
+											th:action="@{/admin/branches/{b}/stock/toppings/{x}/toggle(b=${branch.id},x=${r.id()})}">
+											<button type="submit" class="btn btn-sm"
+												th:classappend="${r.status() == 'OUT'} ? 'btn-success' : 'btn-outline-warning'"
+												th:text="${r.status() == 'OUT'} ? 'Mở bán lại' : 'Báo hết'">Báo hết</button>
+										</form>
+										<span th:if="${r.status() == 'OFF'}" class="small text-muted">Ngừng toàn chuỗi</span>
+									</td>
 								</tr>
 							</tbody>
 						</table>
 					</div>
 				</div>
 				<p class="small text-muted mt-3 mb-0"><span class="badge text-bg-warning">Hết ở chi nhánh</span> do quản lý chi
-					nhánh báo · <span class="badge text-bg-secondary">Ngừng bán</span> do Admin tắt cho cả chuỗi.</p>
+					nhánh hoặc Admin báo (Admin bật / tắt thì quản lý chi nhánh được thông báo) · <span class="badge text-bg-secondary">Ngừng bán</span> do Admin tắt cho cả chuỗi.</p>
 			</div>
 		</div>
 	</div>
