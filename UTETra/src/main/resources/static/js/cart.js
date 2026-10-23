@@ -123,7 +123,7 @@
             ['S', 'M', 'L'].filter(s => s in sizes).forEach(s => {
                 const id = 'pmSize' + s;
                 box.insertAdjacentHTML('beforeend', `
-                    <input type="radio" class="btn-check" name="pmSize" id="${id}" value="${s}" ${s === 'M' ? 'checked' : ''}>
+                    <input type="radio" class="btn-check" name="pmSize" id="${id}" value="${s}" ${s === 'S' ? 'checked' : ''}>
                     <label class="btn btn-outline-success" for="${id}">
                         ${s}${sizes[s] > 0 ? ' <small>(+' + formatVnd(sizes[s]) + ')</small>' : ''}
                     </label>`);
@@ -134,13 +134,29 @@
             }
         }
 
-        function renderToppings(toppings) {
+        function renderToppings(toppings, stopped, outHere) {
             const box = $('pmToppings');
-            if (!toppings || !toppings.length) {
+            // Topping Admin đã ngừng bán: vẫn hiện nhưng mờ, không chọn được
+            const stoppedHtml = (stopped || []).map(t => `
+                <div class="form-check d-flex justify-content-between opacity-50">
+                    <div>
+                        <input class="form-check-input" type="checkbox" disabled>
+                        <label class="form-check-label text-decoration-line-through">${escapeHtml(t.name)}</label>
+                    </div>
+                    <small class="text-danger">Đã ngừng bán</small>
+                </div>`).join('') + (outHere || []).map(t => `
+                <div class="form-check d-flex justify-content-between opacity-50">
+                    <div>
+                        <input class="form-check-input" type="checkbox" disabled>
+                        <label class="form-check-label">${escapeHtml(t.name)}</label>
+                    </div>
+                    <small class="text-warning-emphasis">Hết ở chi nhánh</small>
+                </div>`).join('');
+            if ((!toppings || !toppings.length) && !stoppedHtml && !(outHere || []).length) {
                 box.innerHTML = '<div class="text-muted small">Chưa có topping</div>';
                 return;
             }
-            box.innerHTML = toppings.map(t => `
+            box.innerHTML = (toppings || []).map(t => `
                 <div class="form-check d-flex justify-content-between">
                     <div>
                         <input class="form-check-input pm-topping" type="checkbox" id="top${t.id}" value="${t.id}"
@@ -148,7 +164,7 @@
                         <label class="form-check-label" for="top${t.id}">${escapeHtml(t.name)}</label>
                     </div>
                     <small class="text-muted">+${formatVnd(t.price)}</small>
-                </div>`).join('');
+                </div>`).join('') + stoppedHtml;
         }
 
         function resetOptions() {
@@ -160,7 +176,7 @@
         }
 
         function readSelection() {
-            const size = modalEl.querySelector('input[name="pmSize"]:checked')?.value || 'M';
+            const size = modalEl.querySelector('input[name="pmSize"]:checked')?.value || 'S'; // mặc định size S (đúng giá trên thẻ món)
             const sugarLevel = parseInt(modalEl.querySelector('input[name="pmSugar"]:checked')?.value ?? 100, 10);
             const iceLevel = parseInt(modalEl.querySelector('input[name="pmIce"]:checked')?.value ?? 100, 10);
             const checked = [...modalEl.querySelectorAll('.pm-topping:checked')];
@@ -181,6 +197,56 @@
             $('pmTotal').textContent = formatVnd(sel.unitPrice * sel.quantity);
         }
 
+        // Mở modal cho 1 món. preset != null: SỬA 1 dòng trong giỏ (điền sẵn size, đường, đá, topping, ghi chú, số lượng)
+        async function openProduct(info, preset) {
+            const opt = await api('GET', `${API}/options/${info.id}`);
+            const sizes = {};
+            Object.entries(opt.sizes).forEach(([k, v]) => (sizes[k] = Number(v)));
+            current = {
+                productId: parseInt(info.id, 10),
+                name: info.name,
+                image: info.image || NO_IMAGE,
+                basePrice: Number(info.price),
+                sizes,
+                toppingItem: !!opt.toppingItem, // topping mua riêng: không chọn size / đường / đá
+                editId: preset ? preset.id : null
+            };
+            $('pmDrinkOptions')?.classList.toggle('d-none', current.toppingItem);
+            $('pmToppingNotice')?.classList.toggle('d-none', !current.toppingItem);
+            $('pmName').textContent = current.name;
+            $('pmBranch').textContent = opt.branchName ? 'Đặt tại ' + opt.branchName : 'Chọn chi nhánh ở bước thanh toán';
+            $('pmImage').src = current.image;
+            $('pmImage').alt = current.name;
+            renderSizes(current.sizes);
+            renderToppings(opt.toppings, opt.stoppedToppings, opt.outToppings);
+            resetOptions();
+            if (preset) {
+                // giá gốc = giá 1 ly - size - topping (giỏ chỉ có giá 1 ly)
+                const toppingSum = (preset.toppings || []).reduce((s, t) => s + Number(t.price), 0);
+                current.basePrice = Number(preset.unitPrice) - Number(sizes[preset.size] || 0) - toppingSum;
+                const pick = (sel) => { const el = modalEl.querySelector(sel); if (el) el.checked = true; };
+                pick(`input[name="pmSize"][value="${preset.size}"]`);
+                pick(`input[name="pmSugar"][value="${preset.sugarLevel}"]`);
+                pick(`input[name="pmIce"][value="${preset.iceLevel}"]`);
+                (preset.toppings || []).forEach(t => pick(`.pm-topping[value="${t.id}"]`));
+                // Ghi chú "gợi ý, gợi ý · phần tự gõ" -> tô lại gợi ý + điền phần còn lại
+                let rest = preset.note || '';
+                modalEl.querySelectorAll('.pm-note-tag').forEach(c => {
+                    if (rest.includes(c.value)) { c.checked = true; rest = rest.replace(c.value, ''); }
+                });
+                rest = rest.replace(/^[\s,·]+|[\s,·]+$/g, '').replace(/,\s*,/g, ',');
+                if ($('pmNote')) { $('pmNote').value = rest; $('pmNoteCount').textContent = rest.length; }
+                $('pmQty').value = clampQty(preset.quantity);
+            }
+            $('pmBasePrice').textContent = formatVnd(current.basePrice);
+            $('pmAddToCart').innerHTML = preset
+                ? '<i class="bi bi-check-lg"></i> Lưu thay đổi'
+                : '<i class="bi bi-cart-plus"></i> Thêm vào giỏ';
+            refreshTotal();
+            modal.show();
+        }
+        window.UtetraOpenProduct = openProduct; // trang giỏ hàng dùng để sửa món
+
         // Bấm nút "+" (class js-open-product) -> tải size/topping từ server -> mở modal
         document.addEventListener('click', async (e) => {
             const btn = e.target.closest('.js-open-product');
@@ -188,26 +254,8 @@
             e.preventDefault();
             btn.disabled = true;
             try {
-                const opt = await api('GET', `${API}/options/${btn.dataset.id}`);
-                const sizes = {};
-                Object.entries(opt.sizes).forEach(([k, v]) => (sizes[k] = Number(v)));
-                current = {
-                    productId: parseInt(btn.dataset.id, 10),
-                    name: btn.dataset.name,
-                    image: btn.dataset.image || NO_IMAGE,
-                    basePrice: Number(btn.dataset.price),
-                    sizes
-                };
-                $('pmName').textContent = current.name;
-                $('pmBranch').textContent = 'Chọn chi nhánh ở bước thanh toán';
-                $('pmBasePrice').textContent = formatVnd(current.basePrice);
-                $('pmImage').src = current.image;
-                $('pmImage').alt = current.name;
-                renderSizes(current.sizes);
-                renderToppings(opt.toppings);
-                resetOptions();
-                refreshTotal();
-                modal.show();
+                await openProduct({ id: btn.dataset.id, name: btn.dataset.name, image: btn.dataset.image,
+                    price: btn.dataset.price }, null);
             } catch (err) {
                 if (!err.message.startsWith('Vui lòng đăng nhập')) toast(err.message, 'danger');
             } finally {
@@ -228,7 +276,7 @@
             addBtn.disabled = true;
             try {
                 // Chỉ gửi lựa chọn, KHÔNG gửi giá
-                await Cart.add({
+                const req = {
                     productId: current.productId,
                     size: sel.size,
                     sugarLevel: sel.sugarLevel,
@@ -236,9 +284,17 @@
                     toppingIds: sel.toppingIds,
                     quantity: sel.quantity,
                     note: sel.note || null
-                });
-                modal.hide();
-                toast(`Đã thêm ${sel.quantity} × ${current.name} vào giỏ`);
+                };
+                if (current.editId) {
+                    // Sửa 1 dòng trong giỏ: đổi size / đường / đá / topping / ghi chú / số lượng
+                    Cart.set(await api('PUT', `${API}/${current.editId}/options`, req));
+                    modal.hide();
+                    toast(`Đã cập nhật ${current.name}`);
+                } else {
+                    await Cart.add(req);
+                    modal.hide();
+                    toast(`Đã thêm ${sel.quantity} × ${current.name} vào giỏ`);
+                }
             } catch (err) {
                 toast(err.message, 'danger');
             } finally {
@@ -257,6 +313,7 @@
         const CONFIRM_REMOVE = 'Bạn muốn xoá món này khỏi giỏ hàng?';
 
         function optionText(i) {
+            if (i.toppingItem) return 'Topping mua riêng' + (i.note ? ' · Ghi chú: ' + i.note : '');
             const parts = [`Size ${i.size}`, `${i.sugarLevel}% đường`, `${i.iceLevel}% đá`];
             if (i.toppings.length) parts.push('Topping: ' + i.toppings.map(t => t.name).join(', '));
             if (i.note) parts.push('Ghi chú: ' + i.note);
@@ -281,11 +338,17 @@
                                      width="72" height="72">
                                 <div class="flex-grow-1">
                                     <div class="d-flex justify-content-between gap-2">
-                                        <span class="fw-semibold">${escapeHtml(i.productName)}</span>
+                                        <button type="button" class="btn btn-link p-0 text-start text-decoration-none text-dark fw-semibold js-edit"
+                                                title="Bấm để đổi size, đường, đá, topping">${escapeHtml(i.productName)}
+                                            <i class="bi bi-pencil-square text-success small ms-1"></i></button>
                                         <button class="btn btn-sm btn-link text-danger p-0 js-remove" title="Xoá">
                                             <i class="bi bi-trash"></i></button>
                                     </div>
-                                    <div class="small text-muted">${escapeHtml(optionText(i))}</div>
+                                    <div class="small text-muted js-edit" role="button" title="Bấm để điều chỉnh">${escapeHtml(optionText(i))}
+                                        <span class="text-success ms-1">· Điều chỉnh</span></div>
+                                    ${i.stopNote ? `<div class="small text-danger fw-semibold mt-1"><i class="bi bi-slash-circle me-1"></i>${escapeHtml(i.stopNote)}</div>` : ''}
+                                    ${i.outNote ? `<div class="small ${i.blocked ? 'text-danger fw-semibold' : 'text-warning-emphasis'} mt-1"><i class="bi bi-exclamation-circle me-1"></i>${escapeHtml(i.outNote)}${i.blocked ? '' : ' · vui lòng điều chỉnh hoặc chọn chi nhánh khác khi thanh toán'}</div>` : ''}
+                                    ${i.blocked ? '<div class="small text-danger mt-1">Vui lòng xoá món này khỏi giỏ để thanh toán</div>' : ''}
                                     <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
                                         <div class="input-group input-group-sm" style="width: 120px">
                                             <button class="btn btn-outline-success js-minus" type="button">−</button>
@@ -294,7 +357,7 @@
                                             <button class="btn btn-outline-success js-plus" type="button">+</button>
                                         </div>
                                         <div class="text-end">
-                                            <div class="small text-muted">${formatVnd(i.unitPrice)} / ly</div>
+                                            <div class="small text-muted">${formatVnd(i.unitPrice)} / ${i.toppingItem ? 'phần' : 'ly'}</div>
                                             <div class="fw-bold text-danger">${formatVnd(i.lineTotal)}</div>
                                         </div>
                                     </div>
@@ -306,7 +369,18 @@
 
             document.getElementById('cart-total-qty').textContent = totalQty;
             document.getElementById('cart-subtotal').textContent = formatVnd(subtotal);
-            if (checkoutBtn) checkoutBtn.classList.toggle('disabled', items.length === 0);
+            // Còn món ngừng bán / hết ở mọi chi nhánh -> phải xoá mới thanh toán được
+            const blocked = items.filter(i => i.blocked).length;
+            if (checkoutBtn) checkoutBtn.classList.toggle('disabled', items.length === 0 || blocked > 0);
+            let note = document.getElementById('cart-blocked-note');
+            if (!note && checkoutBtn) {
+                checkoutBtn.insertAdjacentHTML('beforebegin', '<div id="cart-blocked-note" class="alert alert-danger small py-2 d-none"></div>');
+                note = document.getElementById('cart-blocked-note');
+            }
+            if (note) {
+                note.classList.toggle('d-none', blocked === 0);
+                note.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Có ${blocked} món đã ngừng bán / hết hàng. Xoá khỏi giỏ để tiếp tục thanh toán.`;
+            }
         }
 
         // Chạy 1 thao tác; lỗi thì báo và vẽ lại theo dữ liệu cũ
@@ -321,6 +395,15 @@
             const id = li.dataset.id;
             const qty = +li.querySelector('.js-qty').value;
 
+            if (e.target.closest('.js-edit')) {
+                // Mở modal chọn món với lựa chọn hiện tại để điều chỉnh
+                const item = Cart.data.items.find(x => String(x.id) === String(id));
+                if (item && window.UtetraOpenProduct) {
+                    window.UtetraOpenProduct({ id: item.productId, name: item.productName, image: item.image,
+                        price: item.unitPrice }, item).catch(err => toast(err.message, 'danger'));
+                }
+                return;
+            }
             if (e.target.closest('.js-remove')) {
                 if (confirm(CONFIRM_REMOVE)) run(() => Cart.remove(id));
             } else if (e.target.closest('.js-minus')) {

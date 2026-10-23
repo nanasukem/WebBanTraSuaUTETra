@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Món còn / hết - ' + ${branch.name}, 'branches', ~{::#admin-content})}">
+
+<!-- Admin xem món và topping CÒN / HẾT của 1 chi nhánh (chỉ xem; Manager bật / tắt ở trang Sản phẩm của chi nhánh) -->
+<section id="admin-content">
+	<div class="container-fluid px-0">
+		<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+			<div>
+				<h2 class="fw-bold mb-1"><i class="bi bi-box-seam text-success me-2"></i>Món còn / hết</h2>
+				<p class="text-muted mb-0">Chi nhánh <b th:text="${branch.name}">UTETra Quận 1</b> ·
+					<span th:if="${outCount == 0}" class="text-success">mọi món và topping đều đang bán</span>
+					<span th:if="${outCount > 0}" class="text-danger" th:text="${outCount} + ' món / topping đang hết hoặc ngừng bán'">2 món đang hết</span>
+				</p>
+			</div>
+			<a th:href="@{/admin/branches}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Danh sách chi nhánh</a>
+		</div>
+
+		<div class="d-flex flex-wrap gap-2 mb-3" id="stockFilter">
+			<button type="button" class="btn btn-sm btn-success" data-f="ALL">Tất cả</button>
+			<button type="button" class="btn btn-sm btn-outline-danger" data-f="NOT_OK">Chỉ món đang hết / ngừng bán</button>
+		</div>
+
+		<div class="row g-4">
+			<div class="col-lg-8">
+				<div class="card border-0 shadow-sm rounded-4">
+					<div class="card-header bg-white py-3 fw-bold"><i class="bi bi-cup-straw me-1"></i> Đồ uống</div>
+					<div class="table-responsive">
+						<table class="table table-hover align-middle mb-0">
+							<thead class="table-light"><tr><th class="ps-3">Món</th><th>Danh mục</th><th class="pe-3">Tình trạng</th></tr></thead>
+							<tbody>
+								<tr th:each="r : ${products}" th:attr="data-status=${r.status()}">
+									<td class="ps-3 fw-semibold" th:text="${r.name()}">Trà sữa</td>
+									<td class="text-muted small" th:text="${r.category()}">Trà sữa</td>
+									<td class="pe-3"><span class="badge rounded-pill"
+										th:classappend="${r.status() == 'OK'} ? 'text-bg-success' : (${r.status() == 'OUT'} ? 'text-bg-warning' : 'text-bg-secondary')"
+										th:text="${r.label()}">Còn bán</span></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			<div class="col-lg-4">
+				<div class="card border-0 shadow-sm rounded-4">
+					<div class="card-header bg-white py-3 fw-bold"><i class="bi bi-plus-circle-dotted me-1"></i> Topping</div>
+					<div class="table-responsive">
+						<table class="table table-hover align-middle mb-0">
+							<tbody>
+								<tr th:each="r : ${toppings}" th:attr="data-status=${r.status()}">
+									<td class="ps-3 fw-semibold" th:text="${r.name()}">Trân châu đen</td>
+									<td class="pe-3 text-end"><span class="badge rounded-pill"
+										th:classappend="${r.status() == 'OK'} ? 'text-bg-success' : (${r.status() == 'OUT'} ? 'text-bg-warning' : 'text-bg-secondary')"
+										th:text="${r.label()}">Còn bán</span></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<p class="small text-muted mt-3 mb-0"><span class="badge text-bg-warning">Hết ở chi nhánh</span> do quản lý chi
+					nhánh báo · <span class="badge text-bg-secondary">Ngừng bán</span> do Admin tắt cho cả chuỗi.</p>
+			</div>
+		</div>
+	</div>
+	<script>
+		(function () {
+			const box = document.getElementById('stockFilter');
+			box.addEventListener('click', (e) => {
+				const b = e.target.closest('button[data-f]');
+				if (!b) return;
+				box.querySelectorAll('button').forEach((x) => {
+					x.classList.toggle('btn-success', x === b && x.dataset.f === 'ALL');
+					x.classList.toggle('btn-outline-success', false);
+					x.classList.toggle('btn-danger', x === b && x.dataset.f === 'NOT_OK');
+					x.classList.toggle('btn-outline-danger', x.dataset.f === 'NOT_OK' && x !== b);
+					if (x.dataset.f === 'ALL' && x !== b) x.classList.add('btn-outline-success');
+				});
+				document.querySelectorAll('#admin-content tr[data-status]').forEach((tr) => {
+					tr.classList.toggle('d-none', b.dataset.f === 'NOT_OK' && tr.dataset.status === 'OK');
+				});
+			});
+		})();
+	</script>
+</section>
+</html>

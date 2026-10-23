@@ -138,6 +138,8 @@
 				th:href="@{/orders/{id}/tracking(id=${order.id})}"
 				class="btn btn-sm btn-success"><i class="bi bi-geo-alt me-1"></i>
 				Theo dõi đơn</a>
+			<span class="badge rounded-pill text-bg-light border text-success" th:if="${order.etaLabel}"><i
+				class="bi bi-clock me-1"></i><span th:text="${order.etaLabel}">Dự kiến giao lúc 14:20 - 14:30</span></span>
 			<form
 				th:if="${order.status == 'DELIVERED' or order.status == 'CANCELLED'}"
 				method="post" th:action="@{/orders/{id}/reorder(id=${order.id})}"
@@ -320,10 +322,11 @@
 									<b th:text="|${it.quantity}×|"></b> <span
 										th:text="${it.productName}"></span>
 								</div>
-								<div class="small text-muted">
+								<div class="small text-muted" th:if="${it.size != null}">
 									Size <span th:text="${it.size}"></span> · <span
 										th:text="${it.sugarIce}"></span>
 								</div>
+								<div class="small text-muted" th:if="${it.size == null}">Topping mua riêng</div>
 								<div class="small text-muted"
 									th:if="${!#strings.isEmpty(it.toppings)}">
 									+ <span th:text="${it.toppings}"></span>

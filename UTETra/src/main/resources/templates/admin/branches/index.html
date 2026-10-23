@@ -153,6 +153,10 @@
 								class="btn btn-sm btn-outline-info"
 								title="Xem chi tiết chi nhánh" aria-label="Xem chi tiết"> <i
 									class="bi bi-eye"></i>
+							</a> <!-- Món còn / hết của chi nhánh (chỉ xem) --> <a
+								th:href="@{/admin/branches/{id}/stock(id=${branch.id})}"
+								class="btn btn-sm btn-outline-success" title="Món còn / hết ở chi nhánh"
+								aria-label="Món còn / hết"> <i class="bi bi-box-seam"></i>
 							</a> <!-- Sửa thông tin quản lý chi nhánh --> <a
 								th:href="@{/admin/branches/{id}/edit(id=${branch.id})}"
 								class="btn btn-sm btn-outline-primary"

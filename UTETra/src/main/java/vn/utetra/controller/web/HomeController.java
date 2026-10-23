@@ -255,11 +255,11 @@ public class HomeController {
 		}
 		page = Math.max(page, 0);
 
-		Page<Product> productPage = productRepository.filterProductsPaged(null, id, sortBy,
-				PageRequest.of(page, PAGE_SIZE));
+		// Gồm cả món Admin ngừng bán (hiện nhãn "Ngừng bán", xếp sau)
+		Page<Product> productPage = productRepository.menuProductsPaged(id, sortBy, PageRequest.of(page, PAGE_SIZE));
 		if (productPage.getTotalPages() > 0 && page >= productPage.getTotalPages()) {
 			page = productPage.getTotalPages() - 1;
-			productPage = productRepository.filterProductsPaged(null, id, sortBy, PageRequest.of(page, PAGE_SIZE));
+			productPage = productRepository.menuProductsPaged(id, sortBy, PageRequest.of(page, PAGE_SIZE));
 		}
 
 		String role = roleOf(session);
@@ -320,10 +320,12 @@ public class HomeController {
 			sortBy = "default";
 		}
 
-		List<Product> products = productRepository.filterProducts(keyword.isEmpty() ? null : keyword, null,
+		// Gồm cả món Admin ngừng bán: vẫn hiện trên menu với nhãn "Ngừng bán" (xếp cuối danh mục), xoá mới mất
+		List<Product> products = productRepository.menuProducts(keyword.isEmpty() ? null : keyword, null,
 				"default".equals(sortBy) ? "id" : sortBy);
 		if ("default".equals(sortBy)) {
-			products = products.stream().sorted(Comparator.comparing(Product::getId)).toList();
+			products = products.stream().sorted(Comparator.comparing((Product p) -> !Boolean.TRUE.equals(p.getIsAvailable()))
+					.thenComparing(Product::getId)).toList();
 		}
 		List<ProductCardRes> cards = productHighlightService.toCards(products);
 

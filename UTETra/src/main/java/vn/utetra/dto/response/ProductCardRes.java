@@ -16,5 +16,6 @@ public record ProductCardRes(
 		int soldCount,
 		double avgRating,     // điểm đánh giá trung bình (0 = chưa có đánh giá)
 		long reviewCount,     // số lượt đánh giá
-		long favoriteCount) { // số lượt thích
+		long favoriteCount,   // số lượt thích
+		boolean available) {  // false = Admin ngừng bán (hiện nhãn, không đặt được)
 }

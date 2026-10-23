@@ -8,10 +8,9 @@ public record CheckoutInitRes(
 		String receiverName,          // điền sẵn cho "Đến lấy"
 		String receiverPhone,
 		List<AddressRes> addresses,
-		List<CarrierOption> carriers,
 		MemberTierInfo tier,
-		boolean newCustomer) {
-
-	public record CarrierOption(Integer id, String name, BigDecimal fee) {
-	}
+		boolean newCustomer,
+		java.math.BigDecimal shippingBaseFee,   // phí đồng giá 3 km đầu (Admin cài)
+		java.math.BigDecimal shippingPerKmFee,  // mỗi km thêm
+		Integer preferredBranchId) {            // chi nhánh đã chọn ở đầu menu (null = tự chọn gần nhất)
 }

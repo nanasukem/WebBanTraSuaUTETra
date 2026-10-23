@@ -8,7 +8,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import vn.utetra.dto.request.AddressReq;
 import vn.utetra.dto.request.BranchReq;
-import vn.utetra.dto.request.CarrierReq;
 import vn.utetra.dto.request.CartAddReq;
 import vn.utetra.dto.request.CheckoutReq;
 import vn.utetra.dto.response.AddressRes;
@@ -76,7 +75,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Transactional
 class Week2ServiceTest {
 
-	@Autowired CarrierService carrierService;
+	@Autowired vn.utetra.service.ShippingFeeService shippingFeeService;
 	@Autowired CartService cartService;
 	@Autowired OrderService orderService;
 	@Autowired BranchService branchService;
@@ -105,14 +104,6 @@ class Week2ServiceTest {
 
 	private static void assertMoney(long expected, BigDecimal actual) {
 		assertEquals(0, BigDecimal.valueOf(expected).compareTo(actual), "Mong đợi " + expected + " nhưng là " + actual);
-	}
-
-	private CarrierReq carrierReq(String name, long fee) {
-		CarrierReq r = new CarrierReq();
-		r.setName(name);
-		r.setFee(BigDecimal.valueOf(fee));
-		r.setPerKmFee(BigDecimal.valueOf(10000));
-		return r;
 	}
 
 	private CartAddReq cartReq(int productId, String size, int sugar, int ice, int qty, Integer... toppingIds) {
@@ -159,7 +150,6 @@ class Week2ServiceTest {
 		CheckoutReq r = new CheckoutReq();
 		r.setBranchId(branchId);
 		r.setAddressId(addressId);
-		r.setCarrierId(carrierId);
 		r.setProductVoucherCode(productCode);
 		r.setPaymentMethod(PaymentMethod.COD);
 		r.setNote("Ít ngọt giúp em");
@@ -172,7 +162,6 @@ class Week2ServiceTest {
 		r.setDeliveryType(DeliveryType.DELIVERY);
 		r.setBranchId(branchId);
 		r.setAddressId(addressId);
-		r.setCarrierId(carrierId);
 		r.setProductVoucherCode(productCode);
 		r.setPaymentMethod(pm);
 		return r;
@@ -273,44 +262,25 @@ class Week2ServiceTest {
 	}
 
 	// =====================================================================
-	// 1. NHÀ VẬN CHUYỂN
+	// 1. PHÍ GIAO HÀNG (Shipper UTETra, không có đối tác vận chuyển)
 	// =====================================================================
 
 	@Test
-	void carrier_themMoi_dangHoatDong() {
-		Carrier c = carrierService.create(carrierReq("  JUnit Express  ", 18000));
-		assertNotNull(c.getId());
-		assertEquals("JUnit Express", c.getName(), "Tên phải được cắt khoảng trắng");
-		assertTrue(c.getIsActive());
-		assertTrue(carrierService.findActive().stream().anyMatch(x -> x.getId().equals(c.getId())));
+	void phiGiao_macDinh_vaTinhTheoKm() {
+		assertMoney(15000, shippingFeeService.baseFee());
+		assertMoney(10000, shippingFeeService.perKmFee());
+		assertMoney(15000, shippingFeeService.feeFor(BigDecimal.valueOf(3)));    // <= 3 km đồng giá
+		assertMoney(25000, shippingFeeService.feeFor(BigDecimal.valueOf(3.2)));  // vượt 0,2 km -> làm tròn 1 km
+		assertMoney(55000, shippingFeeService.feeFor(BigDecimal.valueOf(7)));    // vượt 4 km
 	}
 
 	@Test
-	void carrier_trungTen_baoLoi() {
-		assertThrows(BusinessException.class, () -> carrierService.create(carrierReq("shipper utetra", 20000)));
-	}
-
-	@Test
-	void carrier_capNhatPhi() {
-		Carrier c = carrierService.create(carrierReq("JUnit Update", 15000));
-		carrierService.update(c.getId(), carrierReq("JUnit Update", 22000));
-		assertEquals(0, BigDecimal.valueOf(22000).compareTo(carrierService.findById(c.getId()).getFee()));
-	}
-
-	@Test
-	void carrier_tat_khongConHienOCheckout() {
-		Carrier c = carrierService.create(carrierReq("JUnit Toggle", 15000));
-		carrierService.toggleActive(c.getId());
-		assertFalse(carrierService.findById(c.getId()).getIsActive());
-		assertTrue(carrierService.findActive().stream().noneMatch(x -> x.getId().equals(c.getId())));
-		carrierService.toggleActive(c.getId()); // bật lại
-		assertTrue(carrierService.findById(c.getId()).getIsActive());
-	}
-
-	@Test
-	void carrier_timKiem() {
-		assertEquals(1, carrierService.search("shipper").size()); // "Shipper UTETra" trong dữ liệu mẫu
-		assertEquals(1, carrierService.search(null).size());
+	void phiGiao_adminDoiPhi_apDungNgay() {
+		shippingFeeService.update(BigDecimal.valueOf(18000), BigDecimal.valueOf(5000));
+		assertMoney(18000, shippingFeeService.feeFor(BigDecimal.valueOf(2)));
+		assertMoney(28000, shippingFeeService.feeFor(BigDecimal.valueOf(4.5))); // vượt 1,5 km -> 2 km
+		assertThrows(BusinessException.class, () -> shippingFeeService.update(BigDecimal.valueOf(-1), BigDecimal.ONE));
+		assertThrows(BusinessException.class, () -> shippingFeeService.update(BigDecimal.valueOf(200000), BigDecimal.ONE));
 	}
 
 	// =====================================================================

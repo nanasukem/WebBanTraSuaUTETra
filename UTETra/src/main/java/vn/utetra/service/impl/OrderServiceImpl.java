@@ -14,6 +14,7 @@ import vn.utetra.entity.enums.*;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.*;
+import vn.utetra.service.ToppingService;
 import vn.utetra.service.CartService;
 import vn.utetra.service.MemberService;
 import vn.utetra.service.OrderNotifier;
@@ -45,8 +46,6 @@ public class OrderServiceImpl implements OrderService {
      */
     public static final int BASE_KM = 3;
     public static final int MAX_KM = 15;
-    public static final BigDecimal BASE_SHIPPING_FEE = BigDecimal.valueOf(15000);
-    public static final BigDecimal EXTRA_KM_FEE = BigDecimal.valueOf(10000);
     public static final String DEFAULT_CARRIER_NAME = "Shipper UTETra";
 
     private final CartService cartService;
@@ -56,12 +55,13 @@ public class OrderServiceImpl implements OrderService {
     private final BranchRepository branchRepository;
     private final BranchProductRepository branchProductRepository;
     private final AddressRepository addressRepository;
-    private final CarrierRepository carrierRepository;
+    private final vn.utetra.service.ShippingFeeService shippingFeeService;
     private final VoucherRepository voucherRepository;
     private final ProductRepository productRepository;
     private final ToppingRepository toppingRepository;
     private final UserRepository userRepository;
     private final OrderNotifier orderNotifier;
+    private final ToppingService toppingService;
 
     public OrderServiceImpl(
             CartService cartService,
@@ -71,12 +71,13 @@ public class OrderServiceImpl implements OrderService {
             BranchRepository branchRepository,
             BranchProductRepository branchProductRepository,
             AddressRepository addressRepository,
-            CarrierRepository carrierRepository,
+            vn.utetra.service.ShippingFeeService shippingFeeService,
             VoucherRepository voucherRepository,
             ProductRepository productRepository,
             ToppingRepository toppingRepository,
             UserRepository userRepository,
-            OrderNotifier orderNotifier) {
+            OrderNotifier orderNotifier,
+            ToppingService toppingService) {
 
         this.cartService = cartService;
         this.voucherService = voucherService;
@@ -85,12 +86,13 @@ public class OrderServiceImpl implements OrderService {
         this.branchRepository = branchRepository;
         this.branchProductRepository = branchProductRepository;
         this.addressRepository = addressRepository;
-        this.carrierRepository = carrierRepository;
+        this.shippingFeeService = shippingFeeService;
         this.voucherRepository = voucherRepository;
         this.productRepository = productRepository;
         this.toppingRepository = toppingRepository;
         this.userRepository = userRepository;
         this.orderNotifier = orderNotifier;
+        this.toppingService = toppingService;
     }
 
     /** Kết quả tính toán dùng chung cho preview và placeOrder */
@@ -116,6 +118,11 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         List<String> unavailable = new ArrayList<>();
+        java.util.Map<Integer, String> itemWarnings = new java.util.LinkedHashMap<>(); // dòng giỏ có topping đã hết
+        List<String> toppingOut = new ArrayList<>();
+        Integer etaMinutes;                            // thời gian dự kiến (phút)
+        List<String> stopped = new ArrayList<>();
+        boolean stockBlocked;                          // có món / topping hết hoặc ngừng bán -> chưa đặt được      // món Admin đã ngừng bán (khác "hết ở chi nhánh")                                   // tên topping đã hết
 
         String productVoucherError;
 
@@ -130,6 +137,7 @@ public class OrderServiceImpl implements OrderService {
         Calc c = calculate(userId, req, false);
 
         boolean canOrder = c.errors.isEmpty()
+                && !c.stockBlocked
                 && c.productVoucherError == null;
 
         String carrierLabel = c.deliveryType == DeliveryType.DELIVERY
@@ -146,11 +154,14 @@ public class OrderServiceImpl implements OrderService {
                 c.shippingFee,
                 c.totalAmount,
                 c.unavailable,
+                c.stopped,
+                c.itemWarnings,
                 c.productVoucherError,
                 c.errors,
                 canOrder,
                 c.distanceKm,
-                carrierLabel
+                carrierLabel,
+                c.etaMinutes
         );
     }
 
@@ -338,6 +349,7 @@ public class OrderServiceImpl implements OrderService {
         o.setMemberTierName(c.memberTierName);
         o.setShippingFee(c.shippingFee);
         o.setTotalAmount(c.totalAmount);
+        o.setEtaMinutes(c.etaMinutes);
 
         // COD: vào quán ngay (Chờ xác nhận). VNPAY/MoMo: Chờ thanh toán, trả xong quán mới thấy đơn
         boolean online = req.getPaymentMethod() == PaymentMethod.VNPAY
@@ -468,41 +480,94 @@ public class OrderServiceImpl implements OrderService {
                         )
                 );
 
+        // Topping chi nhánh đang báo hết (Manager bật / tắt)
+        Set<Integer> hetToppingOChiNhanh = c.branch == null
+                ? Set.of()
+                : toppingService.unavailableToppingIds(c.branch.getId());
+
+        String taiDau = c.branch == null
+                ? ""
+                : " tại " + c.branch.getName();
+
         for (CartItemRes line : c.cart.items()) {
 
-            boolean conBan = productRepository.findById(line.productId())
-                    .map(p -> Boolean.TRUE.equals(p.getIsAvailable()))
-                    .orElse(false);
+            Product p = productRepository.findById(line.productId()).orElse(null);
+            Topping tp = p == null ? null : p.getTopping(); // != null: topping mua riêng
 
-            conBan = conBan
-                    && !hetOChiNhanh.contains(line.productId())
-                    && line.toppings()
-                            .stream()
-                            .allMatch(t ->
-                                    toppingRepository.findById(t.id())
-                                            .map(tp -> Boolean.TRUE.equals(
-                                                    tp.getIsAvailable()
-                                            ))
-                                            .orElse(false)
-                            );
+            // a) Admin NGỪNG BÁN toàn chuỗi (món, hoặc topping của món mua riêng)
+            boolean ngungBan = p == null
+                    || !Boolean.TRUE.equals(p.getIsAvailable())
+                    || (tp != null && !Boolean.TRUE.equals(tp.getIsAvailable()));
+            if (ngungBan) {
+                if (!c.stopped.contains(line.productName())) {
+                    c.stopped.add(line.productName());
+                }
+                continue;
+            }
 
-            if (!conBan && !c.unavailable.contains(line.productName())) {
-                c.unavailable.add(line.productName());
+            // b) Chi nhánh báo HẾT món (hoặc hết topping của món mua riêng)
+            boolean het = hetOChiNhanh.contains(line.productId())
+                    || (tp != null && hetToppingOChiNhanh.contains(tp.getId()));
+            if (het) {
+                if (!c.unavailable.contains(line.productName())) {
+                    c.unavailable.add(line.productName());
+                }
+                continue;
+            }
+
+            // c) Món còn nhưng topping thêm vào ly đã ngừng bán / đã hết -> báo đúng topping
+            List<String> ngungTopping = new ArrayList<>();
+            List<String> hetTopping = new ArrayList<>();
+            for (CartItemRes.ToppingRes t : line.toppings()) {
+                boolean conTopping = toppingRepository.findById(t.id())
+                        .map(x -> Boolean.TRUE.equals(x.getIsAvailable()))
+                        .orElse(false);
+                if (!conTopping) {
+                    ngungTopping.add(t.name());
+                } else if (hetToppingOChiNhanh.contains(t.id())) {
+                    hetTopping.add(t.name());
+                }
+            }
+            List<String> canhBao = new ArrayList<>();
+            if (!ngungTopping.isEmpty()) {
+                canhBao.add("Topping " + String.join(", ", ngungTopping) + " đã ngừng bán");
+            }
+            if (!hetTopping.isEmpty()) {
+                canhBao.add("Hết topping " + String.join(", ", hetTopping) + " tại chi nhánh này");
+            }
+            if (!canhBao.isEmpty()) {
+                c.itemWarnings.put(line.id(), String.join(" · ", canhBao));
+                java.util.stream.Stream.concat(ngungTopping.stream(), hetTopping.stream())
+                        .filter(n -> !c.toppingOut.contains(n))
+                        .forEach(c.toppingOut::add);
             }
         }
 
+        if (!c.stopped.isEmpty()) {
+            failStock(
+                    c,
+                    strict,
+                    "Các món sau đã ngừng bán: " + String.join(", ", c.stopped)
+                            + ". Vui lòng xoá khỏi giỏ hàng"
+            );
+        }
+
         if (!c.unavailable.isEmpty()) {
-
-            String taiDau = c.branch == null
-                    ? ""
-                    : " tại " + c.branch.getName();
-
-            fail(
+            failStock(
                     c,
                     strict,
                     "Các món sau đã hết" + taiDau + ": "
                             + String.join(", ", c.unavailable)
                             + ". Vui lòng xoá khỏi giỏ hoặc chọn chi nhánh khác"
+            );
+        }
+
+        if (!c.toppingOut.isEmpty()) {
+            failStock(
+                    c,
+                    strict,
+                    "Topping " + String.join(", ", c.toppingOut) + " không còn" + taiDau
+                            + ". Bạn vào giỏ hàng bỏ ly có topping này rồi thêm lại với topping khác"
             );
         }
 
@@ -628,13 +693,33 @@ public class OrderServiceImpl implements OrderService {
                 .subtract(c.memberDiscount)
                 .add(c.shippingFee);
 
+        // 8. Thời gian dự kiến
+        c.etaMinutes = c.branch == null || c.cart.items().isEmpty() ? null : eta(c);
+
         return c;
     }
 
     /**
+     * Thời gian dự kiến (phút), ước lượng như app giao đồ uống:
+     * - Pha chế: 8 phút + 1 phút mỗi ly (tối đa 20 phút)
+     * - Hàng chờ: mỗi đơn đang chờ / đang pha ở chi nhánh thêm 2 phút (tối đa 20 phút)
+     * - Giao: 5 phút lấy hàng + khoảng 4 phút mỗi km (xe máy trong thành phố); đến lấy thì không có
+     */
+    private int eta(Calc c) {
+        int prep = Math.min(20, 8 + c.cart.totalQty());
+        long dangLam = orderRepository.countByBranch_IdAndStatusIn(c.branch.getId(),
+                List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED));
+        int queue = (int) Math.min(20, dangLam * 2);
+        int ship = c.deliveryType == DeliveryType.DELIVERY && c.distanceKm != null
+                ? 5 + (int) Math.ceil(c.distanceKm.doubleValue() * 4)
+                : 0;
+        return prep + queue + ship;
+    }
+
+    /**
      * Phí giao hàng nội bộ Shipper UTETra:
-     * - Từ {@value #BASE_KM} km trở xuống: đồng giá 15.000đ
-     * - Trên {@value #BASE_KM} km: cộng thêm 10.000đ cho mỗi km vượt quá (làm tròn lên), giao tối đa {@value #MAX_KM} km.
+     * - Từ {@value #BASE_KM} km trở xuống: đồng giá (Admin cài, mặc định 15.000đ)
+     * - Trên {@value #BASE_KM} km: cộng thêm phí mỗi km (mặc định 10.000đ) cho mỗi km vượt quá (làm tròn lên), giao tối đa {@value #MAX_KM} km.
      */
     private void deliveryFee(Calc c, boolean strict) {
         Address a = c.address;
@@ -655,13 +740,9 @@ public class OrderServiceImpl implements OrderService {
                     + MAX_KM + " km. Vui lòng chọn chi nhánh gần hơn hoặc đến lấy tại quán");
             return;
         }
-        double diffKm = c.distanceKm.subtract(BigDecimal.valueOf(BASE_KM)).doubleValue();
-        int extraKm = (int) Math.max(0, Math.ceil(diffKm));
-        c.shippingFee = BASE_SHIPPING_FEE.add(EXTRA_KM_FEE.multiply(BigDecimal.valueOf(extraKm)));
-
-        // Gắn bản ghi Shipper UTETra trong bảng Carriers (nếu có) để đồng bộ dữ liệu đơn hàng
-        c.carrier = carrierRepository.findByNameContainingIgnoreCaseOrderByIdAsc("Shipper UTETra").stream().findFirst()
-                .orElseGet(() -> carrierRepository.findAll().stream().findFirst().orElse(null));
+        // Phí giao do Admin cài ở trang "Phí giao hàng" (mặc định 15.000đ <= 3 km, +10.000đ mỗi km thêm)
+        c.shippingFee = shippingFeeService.feeFor(c.distanceKm);
+        c.carrier = shippingFeeService.shipper(); // Shipper UTETra của quán
     }
 
     /** Khoảng cách 2 toạ độ (km), công thức Haversine */
@@ -694,6 +775,19 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return v;
+    }
+
+    /**
+     * Món / topping hết hoặc ngừng bán: lúc đặt hàng thì báo lỗi; lúc xem trước thì KHÔNG thêm khung lỗi
+     * (từng dòng món đã ghi rõ + nút "Sửa giỏ hàng ngay"), chỉ khoá nút Đặt hàng.
+     */
+    private void failStock(Calc c, boolean strict, String message) {
+
+        if (strict) {
+            throw new BusinessException(message);
+        }
+
+        c.stockBlocked = true;
     }
 
     private void fail(Calc c, boolean strict, String message) {

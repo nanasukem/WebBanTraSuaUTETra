@@ -23,6 +23,11 @@
                     </div>
 
                     <div class="col-md-7">
+                        <!-- Topping mua riêng (danh mục Topping): ẩn khối này, chỉ chọn số lượng -->
+                        <div class="alert alert-success small py-2 d-none" id="pmToppingNotice">
+                            <i class="bi bi-plus-circle-dotted me-1"></i> Topping mua riêng · 1 phần, không chọn size / đường / đá
+                        </div>
+                        <div id="pmDrinkOptions">
                         <h6 class="fw-semibold">Chọn size</h6>
                         <div class="d-flex flex-wrap gap-2 mb-3" id="pmSizes"></div>
 
@@ -67,6 +72,7 @@
                         <textarea class="form-control form-control-sm mb-1" id="pmNote" rows="2" maxlength="120"
                                   placeholder="Ghi chú thêm cho quán, ví dụ: ít ngọt hơn nữa, cho thêm đá..."></textarea>
                         <div class="text-end small text-muted mb-3"><span id="pmNoteCount">0</span>/120</div>
+                        </div>
 
                         <h6 class="fw-semibold">Số lượng</h6>
                         <div class="input-group" style="max-width: 150px">

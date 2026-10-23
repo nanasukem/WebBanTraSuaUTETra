@@ -39,7 +39,8 @@ public record OrderDetailRes(
 		PaymentInfoRes payment,    // đã thanh toán / chưa (COD) / chờ thanh toán / hoàn tiền
 		OrderIssueRes issue,       // khách báo vấn đề với đơn (null = chưa báo)
 		boolean canReportIssue,    // còn trong 2 giờ sau khi nhận và chưa báo
-		long issueDeadlineMillis) { // hạn báo vấn đề (đếm ngược)
+		long issueDeadlineMillis,  // hạn báo vấn đề (đếm ngược)
+		String etaLabel) {         // "Dự kiến giao lúc 14:20 - 14:30" (null khi đã xong / huỷ)
 
 	/** 1 dòng món: "2× Cà phê muối · Size L · 70% đường · 50% đá + Kem cheese" */
 	public record Item(

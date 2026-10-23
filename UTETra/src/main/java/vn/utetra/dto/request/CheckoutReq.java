@@ -20,7 +20,6 @@ public class CheckoutReq {
 
 	// ----- Giao tận nơi -----
 	private Integer addressId;
-	private Integer carrierId;
 
 	// ----- Đến lấy: người nhận (trang Checkout điền sẵn từ hồ sơ) -----
 	@Size(max = 100, message = "Tên người nhận tối đa 100 ký tự")

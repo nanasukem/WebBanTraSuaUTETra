@@ -79,6 +79,14 @@ body {
 				Thêm sản phẩm </a>
 		</div>
 
+		<!-- 2 tab: Đồ uống (sản phẩm thường) | Topping (thêm vào ly + mua riêng) -->
+		<ul class="nav nav-pills gap-2 mb-4">
+			<li class="nav-item"><a class="nav-link active bg-success" th:href="@{/admin/products}">
+					<i class="bi bi-cup-straw me-1"></i> Đồ uống</a></li>
+			<li class="nav-item"><a class="nav-link text-success border border-success-subtle" th:href="@{/admin/toppings}">
+					<i class="bi bi-plus-circle-dotted me-1"></i> Topping</a></li>
+		</ul>
+
 		<!-- Thông báo -->
 		<div th:if="${successMessage}"
 			class="alert alert-success alert-dismissible fade show" role="alert">
@@ -193,10 +201,18 @@ body {
 							<td><span th:if="${product.isAvailable}"
 								class="badge text-bg-success"> Đang bán </span> <span
 								th:unless="${product.isAvailable}"
-								class="badge text-bg-secondary"> Ngừng bán </span></td>
+								class="badge text-bg-secondary"> Ngừng bán </span>
+								<!-- Chi nhánh đang báo hết món này -->
+								<div class="small text-danger mt-1" th:if="${product.isAvailable and outAt[product.id] != null}">
+									<i class="bi bi-shop"></i> Đang hết ở:
+									<span th:text="${#strings.listJoin(outAt[product.id], ', ')}">UTETra Quận 1</span>
+								</div></td>
 
 							<td>
-								<div class="actions">
+								<!-- Topping bán riêng: quản lý ở trang Topping -->
+								<a th:if="${product.toppingItem}" th:href="@{/admin/toppings(edit=${product.topping.id})}"
+									class="btn btn-sm btn-outline-success"><i class="bi bi-plus-circle-dotted me-1"></i> Quản lý ở trang Topping</a>
+								<div class="actions" th:unless="${product.toppingItem}">
 									<a th:href="@{/admin/products/{id}/edit(id=${product.id})}"
 										class="btn btn-sm btn-outline-primary"> Sửa </a>
 

@@ -11,9 +11,9 @@ import vn.utetra.entity.Product;
 import vn.utetra.entity.Topping;
 import vn.utetra.repository.CategoryRepository;
 import vn.utetra.repository.ProductRepository;
-import vn.utetra.repository.ToppingRepository;
 import vn.utetra.service.AdminProductService;
 import vn.utetra.service.CloudinaryService;
+import vn.utetra.service.ToppingService;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,7 +25,7 @@ public class AdminProductServiceImpl implements AdminProductService {
 
 	private final ProductRepository productRepository;
 	private final CategoryRepository categoryRepository;
-	private final ToppingRepository toppingRepository;
+	private final ToppingService toppingService;
 	private final CloudinaryService cloudinaryService;
 
 	// =========================================================
@@ -62,6 +62,10 @@ public class AdminProductServiceImpl implements AdminProductService {
 		if (dto == null) {
 			throw new IllegalArgumentException("Thong tin san pham khong hop le.");
 		}
+		if (toppingService.isToppingCategory(dto.getCategoryId())) {
+			throw new IllegalArgumentException(
+					"Danh mục Topping do trang Quản lý topping tự quản lý, hãy thêm topping ở trang đó.");
+		}
 
 		Product product = new Product();
 
@@ -95,6 +99,14 @@ public class AdminProductServiceImpl implements AdminProductService {
 		}
 
 		Product product = getProductById(id);
+		if (product.getTopping() != null) {
+			throw new IllegalArgumentException("\"" + product.getName()
+					+ "\" là topping bán riêng, hãy sửa / bật tắt ở trang Quản lý topping.");
+		}
+		if (toppingService.isToppingCategory(dto.getCategoryId())) {
+			throw new IllegalArgumentException(
+					"Danh mục Topping do trang Quản lý topping tự quản lý, hãy thêm topping ở trang đó.");
+		}
 
 		product.setName(dto.getName());
 		product.setDescription(dto.getDescription());
@@ -136,6 +148,10 @@ public class AdminProductServiceImpl implements AdminProductService {
 	@Override
 	public void deleteProduct(Integer id) {
 		Product product = getProductById(id);
+		if (product.getTopping() != null) {
+			throw new IllegalArgumentException("\"" + product.getName()
+					+ "\" là topping bán riêng, hãy sửa / bật tắt ở trang Quản lý topping.");
+		}
 
 		// Xoa san pham truoc hay anh truoc can phu thuoc rang buoc DB.
 		// O day xoa anh truoc, giu logic tuong thich voi code hien tai.
@@ -242,40 +258,5 @@ public class AdminProductServiceImpl implements AdminProductService {
 				System.err.println("Không thể xóa ảnh danh mục trên Cloudinary: " + e.getMessage());
 			}
 		}
-	}
-
-	// =========================================================
-	// 3. QUAN LY TOPPING
-	// =========================================================
-
-	@Override
-	@Transactional(readOnly = true)
-	public List<Topping> getAllToppings() {
-		return toppingRepository.findAll();
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public Topping getToppingById(Integer id) {
-		return toppingRepository.findById(id)
-				.orElseThrow(() -> new IllegalArgumentException("Khong tim thay topping co ID: " + id));
-	}
-
-	@Override
-	public Topping saveTopping(Topping topping) {
-		if (topping == null) {
-			throw new IllegalArgumentException("Thong tin topping khong hop le.");
-		}
-
-		return toppingRepository.save(topping);
-	}
-
-	@Override
-	public void deleteTopping(Integer id) {
-		if (!toppingRepository.existsById(id)) {
-			throw new IllegalArgumentException("Khong tim thay topping co ID: " + id);
-		}
-
-		toppingRepository.deleteById(id);
 	}
 }

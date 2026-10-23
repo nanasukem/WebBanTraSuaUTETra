@@ -38,7 +38,12 @@
 							Giờ mở cửa: <span th:text="${branch.hoursLabel}">7:00 - 22:00</span></p>
 
 						<div class="d-flex flex-wrap gap-2">
-							<a th:href="@{/menu}" class="btn btn-success"><i class="bi bi-cup-straw me-1"></i> Xem menu &amp; đặt món</a>
+							<!-- Chọn chi nhánh này rồi mở menu (menu báo món hết theo chi nhánh này) -->
+							<form th:action="@{/menu/branch}" method="post" class="d-inline m-0">
+								<input type="hidden" name="branchId" th:value="${branch.id}">
+								<input type="hidden" name="back" value="/menu">
+								<button type="submit" class="btn btn-success"><i class="bi bi-cup-straw me-1"></i> Đặt món tại chi nhánh này</button>
+							</form>
 							<a th:if="${branch.latitude != null and branch.longitude != null}" target="_blank" rel="noopener"
 								th:href="|https://www.google.com/maps/dir/?api=1&destination=${branch.latitude},${branch.longitude}|"
 								class="btn btn-outline-success"><i class="bi bi-sign-turn-right me-1"></i> Chỉ đường</a>

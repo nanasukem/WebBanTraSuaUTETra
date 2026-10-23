@@ -244,8 +244,9 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 	/** "2× Cà phê muối · L · 70% đường · 50% đá + Kem cheese" */
 	private String itemLine(OrderDetail d) {
 		String toppings = d.getToppings().stream().map(t -> t.getTopping().getName()).collect(Collectors.joining(", "));
-		return d.getQuantity() + "× " + d.getProduct().getName() + " · " + d.getSize() + " · "
-				+ d.getSugarLevel() + "% đường · " + d.getIceLevel() + "% đá"
+		String options = d.getProduct().isToppingItem() ? "topping mua riêng"
+				: d.getSize() + " · " + d.getSugarLevel() + "% đường · " + d.getIceLevel() + "% đá";
+		return d.getQuantity() + "× " + d.getProduct().getName() + " · " + options
 				+ (toppings.isEmpty() ? "" : " + " + toppings)
 				+ (d.getNote() == null ? "" : " · Ghi chú: " + d.getNote());
 	}

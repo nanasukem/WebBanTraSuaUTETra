@@ -184,8 +184,9 @@
 									</td>
 
 									<td>
-										<div th:text="${d.size != null ? 'Size ' + d.size : '—'}"></div>
-										<small class="text-muted"> <span
+										<div th:if="${d.product != null and d.product.toppingItem}">Topping mua riêng</div>
+										<div th:unless="${d.product != null and d.product.toppingItem}" th:text="${d.size != null ? 'Size ' + d.size : '—'}"></div>
+										<small class="text-muted" th:unless="${d.product != null and d.product.toppingItem}"> <span
 											th:if="${d.sugarLevel != null}"
 											th:text="${'Đường: ' + d.sugarLevel}"></span> <span
 											th:if="${d.iceLevel != null}"

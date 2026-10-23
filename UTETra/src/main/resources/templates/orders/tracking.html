@@ -95,6 +95,7 @@
 						<span class="text-muted" th:text="${order.deliveryAddress}"></span></div>
 					<div class="small mb-2" th:if="${order.pickup}"><i class="bi bi-bag me-1"></i> Đến lấy tại cửa hàng</div>
 					<div class="small mb-2" th:if="${order.carrierName}"><i class="bi bi-truck me-1"></i> <span th:text="${order.carrierName}"></span></div>
+					<div class="small mb-2 fw-semibold text-success" th:if="${order.etaLabel}"><i class="bi bi-clock me-1"></i> <span th:text="${order.etaLabel}">Dự kiến giao lúc 14:20 - 14:30</span></div>
 					<div class="border-top pt-2 mt-2 small">
 						<div class="d-flex justify-content-between" th:each="it : ${order.items}">
 							<span><span th:text="|${it.quantity}× ${it.productName} (${it.size})|"></span>

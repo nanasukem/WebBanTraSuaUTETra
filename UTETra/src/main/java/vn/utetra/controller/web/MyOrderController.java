@@ -58,7 +58,7 @@ public class MyOrderController {
 		model.addAttribute("tab", current);
 		model.addAttribute("counts", orderFlowService.myOrderCounts(userId));
 		model.addAttribute("orders", orderFlowService.myOrders(userId, current));
-		return "order/list";
+		return "orders/list";
 	}
 
 	/**
@@ -182,7 +182,7 @@ public class MyOrderController {
 			// Số ly chưa đánh giá và còn hạn 30 ngày (nút "Đánh giá ngay")
 			model.addAttribute("pendingReview", reviewService.pendingItems(userId, null).stream()
 					.filter(i -> i.orderId().equals(id)).count());
-			return "order/detail";
+			return "orders/detail";
 		} catch (ResourceNotFoundException e) {
 			ra.addFlashAttribute("error", e.getMessage());
 			return "redirect:/orders";

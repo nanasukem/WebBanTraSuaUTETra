@@ -34,24 +34,27 @@ public class CheckoutApiController {
 
 	private final OrderService orderService;
 	private final AddressService addressService;
-	private final CarrierService carrierService;
 	private final MemberService memberService;
+	private final vn.utetra.service.ShippingFeeService shippingFeeService;
 	private final CurrentUserService currentUserService;
 	private final VoucherRepository voucherRepository;
 	private final OrderRepository orderRepository;
 	private final CartService cartService;
 	private final OrderFlowService orderFlowService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.service.MenuBranchService menuBranchService;
 
 	public CheckoutApiController(OrderService orderService, AddressService addressService,
-			CarrierService carrierService, MemberService memberService, CurrentUserService currentUserService,
+			MemberService memberService, vn.utetra.service.ShippingFeeService shippingFeeService,
+			CurrentUserService currentUserService,
 			VoucherRepository voucherRepository, OrderRepository orderRepository, CartService cartService,
 			OrderFlowService orderFlowService) {
 		this.orderFlowService = orderFlowService;
 
 		this.orderService = orderService;
 		this.addressService = addressService;
-		this.carrierService = carrierService;
 		this.memberService = memberService;
+		this.shippingFeeService = shippingFeeService;
 		this.currentUserService = currentUserService;
 		this.voucherRepository = voucherRepository;
 		this.orderRepository = orderRepository;
@@ -64,11 +67,11 @@ public class CheckoutApiController {
 
 		User user = currentUserService.requireUser(principal, session);
 
-		List<CheckoutInitRes.CarrierOption> carriers = carrierService.findActive().stream()
-				.map(c -> new CheckoutInitRes.CarrierOption(c.getId(), c.getName(), c.getFee())).toList();
-
-		return new CheckoutInitRes(user.getFullName(), user.getPhone(), addressService.list(user.getId()), carriers,
-				memberService.getTierInfo(user.getId()), memberService.isNewCustomer(user.getId()));
+		return new CheckoutInitRes(user.getFullName(), user.getPhone(), addressService.list(user.getId()),
+				memberService.getTierInfo(user.getId()), memberService.isNewCustomer(user.getId()),
+				shippingFeeService.baseFee(), shippingFeeService.perKmFee(),
+				// Khách tự chọn chi nhánh -> chọn sẵn; hệ thống tự chọn gần nhất -> trang thanh toán tự tính lại theo địa chỉ giao
+				menuBranchService.auto(session) ? null : menuBranchService.currentId(session));
 	}
 
 	// Tính trước đơn hàng

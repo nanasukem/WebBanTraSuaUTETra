@@ -9,8 +9,8 @@
 
 	const state = {
 		deliveryType: 'DELIVERY',
-		addresses: [], carriers: [], branches: [],
-		addressId: null, carrierId: null, branchId: null,
+		addresses: [], branches: [],
+		addressId: null, branchId: null,
 		branchManual: false,   // khách đã tự chọn chi nhánh -> không tự đổi nữa
 		userLocation: null,    // vị trí của khách {lat, lng, approx}
 		askedGps: false,
@@ -43,7 +43,6 @@
 			branchId: state.branchId,
 			deliveryType: state.deliveryType,
 			addressId: state.deliveryType === 'DELIVERY' ? state.addressId : null,
-			carrierId: state.deliveryType === 'DELIVERY' ? state.carrierId : null,
 			receiverName: $('pickup-name').value.trim(),
 			receiverPhone: $('pickup-phone').value.trim(),
 			productVoucherCode: state.productCode,
@@ -57,16 +56,16 @@
 		try {
 			const data = await api('/api/checkout/init');
 			state.addresses = data.addresses || [];
-			state.carriers = data.carriers || [];
+			state.shipFee = { base: data.shippingBaseFee, perKm: data.shippingPerKmFee }; // Admin cài ở trang Phí giao hàng
+			// Đã chọn chi nhánh ở đầu menu -> chọn sẵn chi nhánh đó (vẫn đổi được)
+			if (data.preferredBranchId) { state.branchId = data.preferredBranchId; state.branchManual = true; }
 			$('pickup-name').value = data.receiverName || '';
 			$('pickup-phone').value = data.receiverPhone || '';
 			renderTier(data.tier);
 
 			const def = state.addresses.find((a) => a.isDefault) || state.addresses[0];
 			state.addressId = def ? def.id : null;
-			state.carrierId = state.carriers.length ? state.carriers[0].id : null;
 			renderAddresses();
-			renderCarriers();
 
 			$('co-loading').classList.add('d-none');
 			$('co-page').classList.remove('d-none');
@@ -169,27 +168,6 @@
 		refresh();
 	}
 
-	// Khách không chọn hãng: phí giao server tính theo khoảng cách (hiện ở renderDelivery)
-	function renderCarriers() {
-		const box = $('carrier-list');
-		if (!box) return;
-		if (!state.carriers.length) {
-			box.innerHTML = '<div class="small text-muted">Hiện chưa có nhà vận chuyển nào hoạt động</div>';
-			return;
-		}
-		box.innerHTML = state.carriers.map((c) => `
-			<label class="option-card ${c.id === state.carrierId ? 'active' : ''}">
-				<input type="radio" name="carrier" class="form-check-input mt-1" value="${c.id}" ${c.id === state.carrierId ? 'checked' : ''}>
-				<div class="flex-grow-1 fw-semibold">${esc(c.name)}</div>
-				<span class="fw-semibold">${fmt(c.fee)}</span>
-			</label>`).join('');
-		box.querySelectorAll('input[name=carrier]').forEach((r) => r.addEventListener('change', () => {
-			state.carrierId = Number(r.value);
-			renderCarriers();
-			refresh();
-		}));
-	}
-
 	// ================= CHI NHÁNH (gần nhất chọn sẵn) =================
 	function currentLocation() {
 		if (state.deliveryType === 'DELIVERY') {
@@ -247,6 +225,11 @@
 			state.branchManual = true;
 			renderBranches();
 			refresh();
+			// Menu cũng đổi theo chi nhánh vừa chọn
+			const token = document.querySelector('meta[name="_csrf"]')?.content;
+			const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+			fetch('/menu/branch/ajax?branchId=' + state.branchId, { method: 'POST',
+				headers: token && header ? { [header]: token } : {} }).catch(() => {});
 		}));
 	}
 
@@ -395,7 +378,7 @@
 					<span class="text-muted">· cách chi nhánh ${String(p.deliveryDistanceKm).replace('.', ',')} km</span></div>
 				<b class="text-nowrap">${fmt(p.shippingFee)}</b>
 			</div>
-			<div class="text-muted mt-1">Phí giao hàng cố định (Shipper UTETra): đồng giá 15.000đ từ 3 km trở xuống, trên 3 km cộng 10.000đ/km (tối đa 15 km).</div>`;
+			<div class="text-muted mt-1">Phí giao hàng (Shipper UTETra): đồng giá ${fmt(state.shipFee?.base ?? 15000)} từ 3 km trở xuống, trên 3 km cộng ${fmt(state.shipFee?.perKm ?? 10000)}/km (tối đa 15 km).</div>`;
 	}
 
 	function renderPreview(p) {
@@ -407,18 +390,29 @@
 		}
 		const unavailable = p.unavailableItems || [];
 		$('sum-qty').textContent = p.totalQty;
+		const stopped = p.stoppedItems || []; // Admin ngừng bán toàn chuỗi (khác "hết ở chi nhánh")
+		const coMonHet = p.items.some((i) => unavailable.includes(i.productName) || stopped.includes(i.productName)
+			|| (p.itemWarnings || {})[i.id]);
 		$('sum-items').innerHTML = p.items.map((i) => {
-			const het = unavailable.includes(i.productName);
+			const ngung = stopped.includes(i.productName);
+			const het = !ngung && unavailable.includes(i.productName);
+			const warn = (p.itemWarnings || {})[i.id]; // món còn nhưng topping thêm vào đã hết
 			const toppings = (i.toppings || []).map((t) => esc(t.name)).filter(Boolean).join(', ');
 			return `
-			<div class="d-flex justify-content-between small mb-2 ${het ? 'text-danger' : ''}">
+			<div class="d-flex justify-content-between small mb-2 ${ngung || het || warn ? 'text-danger' : ''}">
 				<div class="me-2"><b>${i.quantity}×</b> ${esc(i.productName)}
-					<span class="text-muted">(${esc(i.size)}${toppings ? ', ' + toppings : ''})</span>
+					<span class="text-muted">(${i.toppingItem ? 'topping mua riêng' : esc(i.size)}${toppings ? ', ' + toppings : ''})</span>
 					${i.note ? `<div class="text-muted"><i class="bi bi-pencil-square me-1"></i>${esc(i.note)}</div>` : ''}
-					${het ? '<div><i class="bi bi-x-circle"></i> Hết tại chi nhánh này</div>' : ''}</div>
+					${ngung ? '<div><i class="bi bi-slash-circle"></i> Đã ngừng bán</div>' : ''}
+					${het ? '<div><i class="bi bi-x-circle"></i> Hết tại chi nhánh này</div>' : ''}
+					${warn ? `<div><i class="bi bi-exclamation-circle"></i> ${esc(warn)}</div>` : ''}</div>
 				<div class="text-nowrap">${fmt(i.lineTotal)}</div>
 			</div>`;
-		}).join('');
+		}).join('') + (coMonHet
+			? `<div class="alert alert-danger small py-2 px-3 mt-2 mb-2 d-flex justify-content-between align-items-center gap-2">
+				<span><i class="bi bi-exclamation-triangle me-1"></i>Có món hoặc topping đã hết / ngừng bán</span>
+				<a href="/cart" class="btn btn-sm btn-danger text-nowrap">Sửa giỏ hàng ngay</a></div>`
+			: '');
 
 		$('sum-items-total').textContent = fmt(p.itemsTotal);
 		setDiscountRow('row-product-discount', 'sum-product-discount', p.productDiscount);
@@ -428,6 +422,15 @@
 		$('sum-shipping-fee').textContent = fmt(p.shippingFee);
 		
 		$('sum-total').textContent = fmt(p.totalAmount);
+		// Thời gian dự kiến (ước lượng theo số ly, đơn đang chờ ở quán, quãng đường)
+		let eta = $('eta-line');
+		if (!eta) {
+			$('sum-errors').insertAdjacentHTML('beforebegin', '<div id="eta-line" class="small text-success fw-semibold mt-2"></div>');
+			eta = $('eta-line');
+		}
+		eta.innerHTML = p.etaMinutes
+			? `<i class="bi bi-clock me-1"></i>${state.deliveryType === 'PICKUP' ? 'Món sẵn sàng sau khoảng' : 'Giao trong khoảng'} ${p.etaMinutes}–${p.etaMinutes + 10} phút`
+			: '';
 
 		const saved = Number(p.productDiscount) + Number(p.memberDiscount);
 		$('sum-saved').textContent = saved > 0 ? `Bạn tiết kiệm được ${fmt(saved)}` : '';

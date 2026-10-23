@@ -21,6 +21,9 @@
                đánh giá như app Katinat / Highlands (chấm sao từng món, chữ/ảnh/video tuỳ ý + đánh giá quán: OrderReviews),
                chuông thông báo (Notifications.type / link / ref_key)
          + Bổ sung Quản lý & Phản hồi đánh giá (ReviewReplies) cho Admin và Manager
+         + v13: thời gian dự kiến giao / lấy món (Orders.eta_minutes)
+         + v12: topping như Katinat - Admin quản lý ở /admin/toppings, mỗi topping có 1 món MUA RIÊNG trong
+                danh mục Topping (Products.topping_id); Manager báo hết topping theo chi nhánh (BranchToppings)
    CHỈ CẦN CHẠY FILE NÀY (không chạy thêm file v2, v3 nữa).
    LƯU Ý: nếu máy đã có database UTETra, file này sẽ XOÁ và tạo lại từ đầu (mất dữ liệu đang có).
    ========================================================= */
@@ -55,7 +58,7 @@ CREATE TABLE Roles (
 CREATE TABLE Carriers (
     id          INT IDENTITY(1,1) PRIMARY KEY,
     name        NVARCHAR(100) NOT NULL UNIQUE,
-    fee         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (fee >= 0),         -- phí 5 km đầu
+    fee         DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (fee >= 0),         -- phí đồng giá 3 km đầu (Admin chỉnh ở trang Phí giao hàng)
     per_km_fee  DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (per_km_fee >= 0), -- mỗi km thêm
     is_active   BIT           NOT NULL DEFAULT 1
 );
@@ -171,6 +174,7 @@ CREATE TABLE Products (
     sold_count           INT           NOT NULL DEFAULT 0 CHECK (sold_count >= 0), -- tăng khi đơn DELIVERED
     is_available         BIT           NOT NULL DEFAULT 1,
     created_at           DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
+    topping_id           INT           NULL,  -- != NULL: topping MUA RIÊNG (danh mục Topping), tự tạo khi Admin thêm topping
     CONSTRAINT FK_Products_Categories FOREIGN KEY (category_id) REFERENCES Categories(id)
 );
 
@@ -199,7 +203,22 @@ CREATE TABLE Toppings (
     id            INT IDENTITY(1,1) PRIMARY KEY,
     name          NVARCHAR(100) NOT NULL UNIQUE,
     price         DECIMAL(12,0) NOT NULL CHECK (price >= 0),
-    is_available  BIT           NOT NULL DEFAULT 1
+    is_available  BIT           NOT NULL DEFAULT 1              -- 0 = Admin ngưng bán toàn chuỗi
+);
+
+-- Topping mua riêng: mỗi topping có đúng 1 món trong danh mục Topping
+ALTER TABLE Products ADD CONSTRAINT FK_Products_Toppings FOREIGN KEY (topping_id) REFERENCES Toppings(id);
+CREATE UNIQUE INDEX UQ_Products_Topping ON Products(topping_id) WHERE topping_id IS NOT NULL;
+
+-- Topping theo chi nhánh (Manager báo hết topping). Không có dòng = topping đang bán ở chi nhánh đó
+CREATE TABLE BranchToppings (
+    id            INT IDENTITY(1,1) PRIMARY KEY,
+    branch_id     INT NOT NULL,
+    topping_id    INT NOT NULL,
+    is_available  BIT NOT NULL DEFAULT 1,
+    CONSTRAINT FK_BranchToppings_Branches FOREIGN KEY (branch_id)  REFERENCES Branches(id) ON DELETE CASCADE,
+    CONSTRAINT FK_BranchToppings_Toppings FOREIGN KEY (topping_id) REFERENCES Toppings(id),
+    CONSTRAINT UQ_BranchToppings UNIQUE (branch_id, topping_id)
 );
 
 /* =========================================================
@@ -323,6 +342,7 @@ CREATE TABLE Orders (
     payment_status       VARCHAR(20)   NOT NULL DEFAULT 'UNPAID' CHECK (payment_status IN ('UNPAID','PAID','REFUND_PENDING','REFUNDED')),
     cancel_reason        NVARCHAR(255) NULL,
     refund_amount        DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (refund_amount >= 0), -- tiền đã hoàn khi khách báo vấn đề (trừ doanh thu)
+    eta_minutes          INT           NULL,  -- thời gian dự kiến (phút) từ lúc đặt tới lúc giao / lấy được món, chốt lúc đặt
     cancelled_by         VARCHAR(10)   NULL CHECK (cancelled_by IN ('CUSTOMER','STORE','SYSTEM')), -- ai huỷ đơn
     created_at           DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
     updated_at           DATETIME2     NULL,
@@ -559,7 +579,7 @@ INSERT INTO Branches (owner_id, name, address, latitude, longitude, phone, descr
  (3, N'UTETra Võ Văn Ngân', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM', 10.850700, 106.771900, '0281234567', N'Chi nhánh gần ĐH Sư phạm Kỹ thuật', 'APPROVED'),
  (4, N'UTETra Quận 1',      N'12 Nguyễn Huệ, Quận 1, TP.HCM',       10.774600, 106.703900, '0287654321', N'Chi nhánh trung tâm', 'APPROVED');
 
-INSERT INTO Categories (name) VALUES (N'Trà sữa'), (N'Trà trái cây'), (N'Cà phê'), (N'Đá xay');
+INSERT INTO Categories (name) VALUES (N'Trà sữa'), (N'Trà trái cây'), (N'Cà phê'), (N'Đá xay'), (N'Topping');
 
 -- Menu chung: cả 2 chi nhánh đều bán chung menu (8 món đầu + 32 món thêm bên dưới = 40 món)
 INSERT INTO Products (category_id, name, base_price, description, sold_count) VALUES
@@ -620,6 +640,12 @@ CROSS JOIN (VALUES ('S', 0), ('M', 5000), ('L', 10000)) AS s(size, extra);
 
 INSERT INTO Toppings (name, price) VALUES
  (N'Trân châu đen', 5000), (N'Thạch phô mai', 8000), (N'Pudding trứng', 7000), (N'Kem cheese', 10000);
+
+-- Topping mua riêng (danh mục Topping): cùng tên, giá; chỉ 1 cỡ M (+0đ), không chọn đường / đá
+INSERT INTO Products (category_id, name, base_price, description, topping_id, created_at)
+SELECT (SELECT id FROM Categories WHERE name = N'Topping'), t.name, t.price, N'Topping ' + t.name + N' mua riêng', t.id, '2026-05-01'
+FROM Toppings t ORDER BY t.id;
+INSERT INTO ProductSizes (product_id, size, extra_price) SELECT id, 'M', 0 FROM Products WHERE topping_id IS NOT NULL;
 
 -- Voucher (chỉ áp dụng giảm tiền món PRODUCT): id 1 UTETRA20, 2 VVN15, 3 CHAOBANMOI, 4 VANG30K, 5 MOMO15K
 INSERT INTO Vouchers (code, name, branch_id, apply_to, discount_type, discount_value, max_discount, min_order_value,
