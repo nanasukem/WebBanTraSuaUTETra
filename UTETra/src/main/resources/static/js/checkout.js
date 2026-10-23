@@ -14,7 +14,7 @@
 		branchManual: false,   // khách đã tự chọn chi nhánh -> không tự đổi nữa
 		userLocation: null,    // vị trí của khách {lat, lng, approx}
 		askedGps: false,
-		productCode: null, shippingCode: null,
+		productCode: null,   // mỗi đơn 1 mã giảm tiền món
 		paymentMethod: 'COD',
 		canOrder: false,
 	};
@@ -47,7 +47,6 @@
 			receiverName: $('pickup-name').value.trim(),
 			receiverPhone: $('pickup-phone').value.trim(),
 			productVoucherCode: state.productCode,
-			shippingVoucherCode: state.shippingCode,
 			paymentMethod: state.paymentMethod,
 			note: $('order-note').value.trim(),
 		};
@@ -289,7 +288,7 @@
 	function discountText(v) {
 		if (v.discountType === 'PERCENT')
 			return `Giảm ${Number(v.discountValue)}%` + (v.maxDiscount ? ` tối đa ${fmt(v.maxDiscount)}` : '');
-		return v.applyTo === 'SHIPPING' ? `Giảm ${fmt(v.discountValue)} phí ship` : `Giảm ${fmt(v.discountValue)}`;
+		return `Giảm ${fmt(v.discountValue)}`;
 	}
 
 	function renderVouchers(list) {
@@ -299,11 +298,10 @@
 			return;
 		}
 		box.innerHTML = list.map((v) => {
-			const selected = (v.applyTo === 'PRODUCT' ? state.productCode : state.shippingCode) === v.code;
-			const isShip = v.applyTo === 'SHIPPING';
+			const selected = state.productCode === v.code;
 			return `
 			<div class="voucher ${v.usable ? '' : 'disabled'} ${selected ? 'selected' : ''}">
-				<div class="voucher-icon ${isShip ? 'ship' : ''}"><i class="bi ${isShip ? 'bi-truck' : 'bi-ticket-perforated'}"></i></div>
+				<div class="voucher-icon"><i class="bi bi-ticket-perforated"></i></div>
 				<div class="flex-grow-1 min-w-0">
 					<div class="fw-semibold">${esc(v.code)} <span class="fw-normal">· ${discountText(v)}</span></div>
 					<div class="small text-muted">${Number(v.minOrderValue) > 0 ? 'Đơn từ ' + fmt(v.minOrderValue) + ' · ' : ''}HSD ${esc(v.endDate)}</div>
@@ -311,44 +309,38 @@
 					${v.usable ? '' : `<div class="small text-danger mt-1"><i class="bi bi-exclamation-circle"></i> ${esc(v.reason)}</div>`}
 				</div>
 				<button type="button" class="btn btn-sm ${selected ? 'btn-outline-danger' : 'btn-success'}"
-					data-code="${esc(v.code)}" data-apply="${v.applyTo}" ${v.usable || selected ? '' : 'disabled'}>
+					data-code="${esc(v.code)}" ${v.usable || selected ? '' : 'disabled'}>
 					${selected ? 'Bỏ' : 'Dùng'}</button>
 			</div>`;
 		}).join('');
 		box.querySelectorAll('button[data-code]').forEach((btn) =>
-			btn.addEventListener('click', () => toggleVoucher(btn.dataset.code, btn.dataset.apply)));
+			btn.addEventListener('click', () => toggleVoucher(btn.dataset.code)));
 	}
 
-	// Mỗi đơn chỉ 1 mã: chọn mã này thì bỏ mã kia
-	function toggleVoucher(code, applyTo) {
-		const current = applyTo === 'PRODUCT' ? state.productCode : state.shippingCode;
-		state.productCode = null;
-		state.shippingCode = null;
-		if (current !== code) {
-			if (applyTo === 'PRODUCT') state.productCode = code; else state.shippingCode = code;
-		}
+	// Mỗi đơn chỉ 1 mã: bấm mã khác thì thay mã cũ, bấm lại mã đang chọn thì bỏ
+	function toggleVoucher(code) {
+		state.productCode = state.productCode === code ? null : code;
 		refresh();
 	}
 
 	function renderSelectedVouchers(p) {
 		const chips = [];
-		if (state.productCode) chips.push(chip(state.productCode, 'PRODUCT', p.productVoucherError, p.productDiscount));
-		if (state.shippingCode) chips.push(chip(state.shippingCode, 'SHIPPING', p.shippingVoucherError, p.shippingDiscount));
+		if (state.productCode) chips.push(chip(state.productCode, p.productVoucherError, p.productDiscount));
 		$('selected-vouchers').innerHTML = chips.join('');
 		$('selected-vouchers').querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
-			if (b.dataset.remove === 'PRODUCT') state.productCode = null; else state.shippingCode = null;
+			state.productCode = null;
 			refresh();
 		}));
 	}
 
-	function chip(code, applyTo, error, discount) {
+	function chip(code, error, discount) {
 		return `
 		<div class="selected-chip ${error ? 'error' : ''}">
-			<i class="bi ${applyTo === 'SHIPPING' ? 'bi-truck' : 'bi-ticket-perforated'}"></i>
+			<i class="bi bi-ticket-perforated"></i>
 			<div class="flex-grow-1 min-w-0"><b>${esc(code)}</b>
 				${error ? `<div class="small text-danger">${esc(error)}</div>` : `<span class="small text-success">−${fmt(discount)}</span>`}
 			</div>
-			<button type="button" class="btn-close" style="font-size:.7rem" data-remove="${applyTo}" aria-label="Bỏ mã"></button>
+			<button type="button" class="btn-close" style="font-size:.7rem" data-remove="1" aria-label="Bỏ mã"></button>
 		</div>`;
 	}
 
@@ -361,9 +353,7 @@
 		if (!code) return;
 		try {
 			const v = await api('/api/checkout/voucher-type?code=' + encodeURIComponent(code));
-			state.productCode = null; // mỗi đơn chỉ 1 mã
-			state.shippingCode = null;
-			if (v.applyTo === 'SHIPPING') state.shippingCode = v.code; else state.productCode = v.code;
+			state.productCode = v.code; // mỗi đơn chỉ 1 mã: thay mã đang chọn
 			$('voucher-input').value = '';
 			refresh();
 		} catch (e) {
@@ -439,7 +429,7 @@
 		
 		$('sum-total').textContent = fmt(p.totalAmount);
 
-		const saved = Number(p.productDiscount) + Number(p.memberDiscount) + Number(p.shippingDiscount);
+		const saved = Number(p.productDiscount) + Number(p.memberDiscount);
 		$('sum-saved').textContent = saved > 0 ? `Bạn tiết kiệm được ${fmt(saved)}` : '';
 
 		showErrors(p.errors || []);
@@ -465,7 +455,6 @@
 		$('sec-pickup').classList.toggle('d-none', !pickup);
 		$('btn-locate').classList.toggle('d-none', !pickup);
 		$('branch-title').textContent = pickup ? 'Chọn chi nhánh đến lấy' : 'Chi nhánh làm & giao món';
-		if (pickup) state.shippingCode = null; // đến lấy không có phí ship
 		await loadBranches();
 		refresh();
 		if (pickup && !state.userLocation && !state.askedGps) {

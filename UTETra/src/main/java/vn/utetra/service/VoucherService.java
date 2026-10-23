@@ -45,11 +45,10 @@ public interface VoucherService {
 	 * Kiểm tra voucher và tính số tiền được giảm (kiểm tra chung, không xét người dùng).
 	 *
 	 * @param itemsTotal  tổng tiền món của đơn
-	 * @param shippingFee phí ship của đơn
-	 * @return số tiền giảm (không vượt quá tiền món/phí ship)
+	 * @return số tiền giảm (không vượt quá tiền món)
 	 * @throws vn.utetra.exception.BusinessException nếu voucher không dùng được
 	 */
-	BigDecimal calculateDiscount(String code, Integer branchId, BigDecimal itemsTotal, BigDecimal shippingFee);
+	BigDecimal calculateDiscount(String code, Integer branchId, BigDecimal itemsTotal);
 
 	/** Gọi khi đặt hàng thành công: tăng used_count (bản cũ, không ghi lịch sử) */
 	void markUsed(Integer voucherId);
@@ -61,7 +60,7 @@ public interface VoucherService {
 	 * lượt mỗi người, tài khoản mới, hạng tối thiểu.
 	 */
 	BigDecimal calculateDiscount(String code, Integer branchId, Integer userId, PaymentMethod paymentMethod,
-			BigDecimal itemsTotal, BigDecimal shippingFee);
+			BigDecimal itemsTotal);
 
 	/** Đặt hàng thành công: kiểm tra lượt mỗi người + ghi lịch sử dùng mã + tăng used_count */
 	void markUsed(Integer voucherId, Integer userId, Integer orderId);

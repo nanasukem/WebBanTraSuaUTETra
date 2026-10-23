@@ -28,7 +28,6 @@ public class Promotion {
 	private String code;
 
 	// PERCENT: giảm theo phần trăm; AMOUNT: giảm số tiền cố định
-	// SHIPPING: giảm phí vận chuyển
 	@Builder.Default
 	@Column(name = "discount_type", nullable = false, length = 20)
 	private String discountType = "PERCENT";

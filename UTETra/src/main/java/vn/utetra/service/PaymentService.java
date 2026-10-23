@@ -139,11 +139,10 @@ public class PaymentService {
 
 	private void changeMethod(Order o, PaymentMethod to) {
 		if (to == o.getPaymentMethod()) return;
-		for (Voucher v : new Voucher[] { o.getProductVoucher(), o.getShippingVoucher() }) {
-			if (v != null && v.getPaymentMethod() != null && v.getPaymentMethod() != to) {
-				throw new BusinessException("Mã " + v.getCode() + " chỉ áp dụng khi thanh toán bằng "
-						+ label(v.getPaymentMethod()) + ", không đổi phương thức được");
-			}
+		Voucher v = o.getProductVoucher();
+		if (v != null && v.getPaymentMethod() != null && v.getPaymentMethod() != to) {
+			throw new BusinessException("Mã " + v.getCode() + " chỉ áp dụng khi thanh toán bằng "
+					+ label(v.getPaymentMethod()) + ", không đổi phương thức được");
 		}
 		o.setPaymentMethod(to);
 	}

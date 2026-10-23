@@ -13,6 +13,11 @@ import vn.utetra.repository.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Quản lý đánh giá:
+ * - Manager: xem + phản hồi đánh giá của chi nhánh mình (khách nhận thông báo "quán đã phản hồi")
+ * - Admin: chỉ xem toàn hệ thống + xoá đánh giá vi phạm (quá khích, xúc phạm, spam); KHÔNG phản hồi
+ */
 @Service
 public class BranchReviewManagementService {
 
@@ -26,7 +31,16 @@ public class BranchReviewManagementService {
 	private ReviewReplyRepository replyRepo;
 
 	@Autowired
+	private ReviewMediaRepository mediaRepo;
+
+	@Autowired
 	private BranchRepository branchRepo;
+
+	@Autowired
+	private CloudinaryService cloudinaryService;
+
+	@Autowired
+	private NotificationService notificationService;
 
 	public Branch getManagedBranch(User manager) {
 		if (manager == null)
@@ -108,12 +122,12 @@ public class BranchReviewManagementService {
 		double avgRating = storeReviews.stream().mapToInt(BranchReviewRes::getRating).average().orElse(0.0);
 
 		Map<String, Object> summary = new HashMap<>();
-		summary.put("avgRating", Math.round(avgRating * 10.0) / 10.0); // Đã fix cú pháp * 10.0
+		summary.put("avgRating", Math.round(avgRating * 10.0) / 10.0);
 		summary.put("totalReviews", storeReviews.size());
 		return summary;
 	}
 
-	// 5. Phản hồi đánh giá
+	// 5. Phản hồi đánh giá - CHỈ quản lý chi nhánh (admin chỉ xem / xoá)
 	@Transactional
 	public void replyToReview(ReplyReviewReq req, User currentUser) {
 		if (req.getContent() == null || req.getContent().trim().isEmpty()) {
@@ -122,17 +136,24 @@ public class BranchReviewManagementService {
 
 		String roleName = currentUser.getRole().getName();
 		boolean isAdmin = "ADMIN".equalsIgnoreCase(roleName) || "ROLE_ADMIN".equalsIgnoreCase(roleName);
+		if (isAdmin) {
+			throw new BusinessException("Admin chỉ xem và xoá đánh giá vi phạm, việc phản hồi do quản lý chi nhánh đảm nhận!");
+		}
 
 		if (req.getOrderReviewId() != null) {
 			OrderReview or = orderReviewRepo.findById(req.getOrderReviewId())
 					.orElseThrow(() -> new BusinessException("Không tìm thấy đánh giá quán!"));
 
 			Branch reviewBranch = (or.getOrder() != null) ? or.getOrder().getBranch() : null;
-			validateManagerPermission(isAdmin, currentUser, reviewBranch);
+			validateManagerPermission(currentUser, reviewBranch);
 
 			ReviewReply reply = ReviewReply.builder().orderReviewId(or.getId()).repliedBy(currentUser)
 					.replyContent(req.getContent().trim()).build();
 			replyRepo.save(reply);
+
+			// Báo cho khách: bấm vào mở trang đánh giá của quán để xem phản hồi
+			notifyCustomer(or.getUser(), or.getOrder(), reviewBranch, "đánh giá quán", reply.getReplyContent(),
+					reviewBranch != null ? "/branches/" + reviewBranch.getId() : "/branches");
 
 		} else if (req.getReviewId() != null) {
 			Review r = reviewRepo.findById(req.getReviewId())
@@ -140,22 +161,64 @@ public class BranchReviewManagementService {
 
 			Order o = (r.getOrderDetail() != null) ? r.getOrderDetail().getOrder() : null;
 			Branch reviewBranch = (o != null) ? o.getBranch() : null;
-			validateManagerPermission(isAdmin, currentUser, reviewBranch);
+			validateManagerPermission(currentUser, reviewBranch);
 
 			ReviewReply reply = ReviewReply.builder().reviewId(r.getId()).repliedBy(currentUser)
 					.replyContent(req.getContent().trim()).build();
 			replyRepo.save(reply);
+
+			// Báo cho khách: nội dung phản hồi nằm luôn trong thông báo
+			String what = "đánh giá món " + (r.getProduct() != null ? r.getProduct().getName() : "");
+			notifyCustomer(r.getUser(), o, reviewBranch, what.trim(), reply.getReplyContent(),
+					o != null ? "/orders/" + o.getId() + "/review" : "/orders");
 		} else {
 			throw new BusinessException("Thiếu thông tin đánh giá cần phản hồi!");
 		}
 	}
 
-	private void validateManagerPermission(boolean isAdmin, User currentUser, Branch reviewBranch) {
-		if (!isAdmin) {
-			Branch managerBranch = getManagedBranch(currentUser);
-			if (managerBranch == null || reviewBranch == null || !managerBranch.getId().equals(reviewBranch.getId())) {
-				throw new BusinessException("Bạn chỉ được phép phản hồi đánh giá thuộc chi nhánh do mình quản lý!");
-			}
+	// 6. Admin xoá đánh giá vi phạm (kèm phản hồi + ảnh/video của đánh giá đó)
+	@Transactional
+	public void deleteReview(String type, Integer id) {
+		if ("STORE".equalsIgnoreCase(type)) {
+			OrderReview or = orderReviewRepo.findById(id)
+					.orElseThrow(() -> new BusinessException("Không tìm thấy đánh giá quán #" + id));
+			replyRepo.deleteAll(replyRepo.findByOrderReviewIdOrderByCreatedAtAsc(id));
+			orderReviewRepo.delete(or);
+		} else if ("PRODUCT".equalsIgnoreCase(type)) {
+			Review r = reviewRepo.findById(id)
+					.orElseThrow(() -> new BusinessException("Không tìm thấy đánh giá món #" + id));
+			replyRepo.deleteAll(replyRepo.findByReviewIdOrderByCreatedAtAsc(id));
+			List<ReviewMedia> media = mediaRepo.findByReviewIdInOrderByIdAsc(List.of(id));
+			media.forEach(m -> {
+				try {
+					cloudinaryService.deleteImage(m.getCloudinaryId());
+				} catch (RuntimeException ignored) {
+					// file trên Cloudinary không xoá được thì vẫn xoá đánh giá
+				}
+			});
+			mediaRepo.deleteAll(media);
+			reviewRepo.delete(r);
+		} else {
+			throw new BusinessException("Loại đánh giá không hợp lệ");
+		}
+	}
+
+	/** Thông báo cho khách: "UTETra ... đã phản hồi đánh giá của bạn" + trích nội dung phản hồi */
+	private void notifyCustomer(User customer, Order order, Branch branch, String what, String replyContent,
+			String link) {
+		if (customer == null) {
+			return;
+		}
+		String shop = branch != null ? branch.getName() : "UTETra";
+		String quote = replyContent.length() > 150 ? replyContent.substring(0, 150) + "..." : replyContent;
+		notificationService.create(customer, order, "REVIEW", shop + " đã phản hồi " + what + " của bạn",
+				"\u201C" + quote + "\u201D", link);
+	}
+
+	private void validateManagerPermission(User currentUser, Branch reviewBranch) {
+		Branch managerBranch = getManagedBranch(currentUser);
+		if (managerBranch == null || reviewBranch == null || !managerBranch.getId().equals(reviewBranch.getId())) {
+			throw new BusinessException("Bạn chỉ được phép phản hồi đánh giá thuộc chi nhánh do mình quản lý!");
 		}
 	}
 

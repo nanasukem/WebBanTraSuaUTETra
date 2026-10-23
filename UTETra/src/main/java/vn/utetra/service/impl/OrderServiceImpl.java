@@ -106,7 +106,6 @@ public class OrderServiceImpl implements OrderService {
         String receiverPhone;
 
         Voucher productVoucher;
-        Voucher shippingVoucher;
 
         BigDecimal itemsTotal = BigDecimal.ZERO;
         BigDecimal productDiscount = BigDecimal.ZERO;
@@ -114,13 +113,11 @@ public class OrderServiceImpl implements OrderService {
         String memberTierName;
 
         BigDecimal shippingFee = BigDecimal.ZERO;
-        BigDecimal shippingDiscount = BigDecimal.ZERO;
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         List<String> unavailable = new ArrayList<>();
 
         String productVoucherError;
-        String shippingVoucherError;
 
         List<String> errors = new ArrayList<>();
     }
@@ -133,8 +130,7 @@ public class OrderServiceImpl implements OrderService {
         Calc c = calculate(userId, req, false);
 
         boolean canOrder = c.errors.isEmpty()
-                && c.productVoucherError == null
-                && c.shippingVoucherError == null;
+                && c.productVoucherError == null;
 
         String carrierLabel = c.deliveryType == DeliveryType.DELIVERY
                 ? (c.carrier != null ? c.carrier.getName() : DEFAULT_CARRIER_NAME)
@@ -148,11 +144,9 @@ public class OrderServiceImpl implements OrderService {
                 c.memberDiscount,
                 c.memberTierName,
                 c.shippingFee,
-                c.shippingDiscount,
                 c.totalAmount,
                 c.unavailable,
                 c.productVoucherError,
-                c.shippingVoucherError,
                 c.errors,
                 canOrder,
                 c.distanceKm,
@@ -175,11 +169,6 @@ public class OrderServiceImpl implements OrderService {
 
         for (Voucher v : voucherService.findUsable(branchId)) {
 
-            // Hệ thống chỉ áp dụng voucher giảm giá đồ uống (PRODUCT), bỏ voucher freeship
-            if (v.getApplyTo() != VoucherApplyTo.PRODUCT) {
-                continue;
-            }
-
             if (v.getAudience() == VoucherAudience.NEW_USER && !newCustomer) {
                 continue;
             }
@@ -200,9 +189,7 @@ public class OrderServiceImpl implements OrderService {
                             branchId,
                             userId,
                             req.getPaymentMethod(),
-                            c.itemsTotal,
-                            c.shippingFee
-                    );
+                            c.itemsTotal);
                 } catch (BusinessException e) {
                     reason = e.getMessage();
                 }
@@ -327,7 +314,6 @@ public class OrderServiceImpl implements OrderService {
         o.setDeliveryType(c.deliveryType);
         o.setCarrier(c.carrier);
         o.setProductVoucher(c.productVoucher);
-        o.setShippingVoucher(null);
 
         o.setReceiverName(c.receiverName);
         o.setReceiverPhone(c.receiverPhone);
@@ -351,7 +337,6 @@ public class OrderServiceImpl implements OrderService {
         o.setMemberDiscount(c.memberDiscount);
         o.setMemberTierName(c.memberTierName);
         o.setShippingFee(c.shippingFee);
-        o.setShippingDiscount(BigDecimal.ZERO);
         o.setTotalAmount(c.totalAmount);
 
         // COD: vào quán ngay (Chờ xác nhận). VNPAY/MoMo: Chờ thanh toán, trả xong quán mới thấy đơn
@@ -593,18 +578,10 @@ public class OrderServiceImpl implements OrderService {
             fail(c, strict, "Phương thức thanh toán không hợp lệ");
         }
 
-        // 5. Voucher giảm tiền món (không sử dụng voucher freeship)
+        // 5. Voucher giảm tiền món (mỗi đơn 1 mã)
         Integer branchId = c.branch == null
                 ? null
                 : c.branch.getId();
-
-        if (notBlank(req.getShippingVoucherCode())) {
-            String msg = "Hệ thống chỉ áp dụng mã giảm giá đồ uống, không áp dụng mã giảm phí vận chuyển";
-            if (strict) {
-                throw new BusinessException(msg);
-            }
-            c.shippingVoucherError = msg;
-        }
 
         if (notBlank(req.getProductVoucherCode())) {
 
@@ -621,9 +598,7 @@ public class OrderServiceImpl implements OrderService {
                         branchId,
                         userId,
                         req.getPaymentMethod(),
-                        c.itemsTotal,
-                        c.shippingFee
-                );
+                        c.itemsTotal);
 
             } catch (BusinessException e) {
 

@@ -31,7 +31,6 @@ public class CheckoutReq {
 
 	// ----- Mã giảm giá -----
 	private String productVoucherCode;
-	private String shippingVoucherCode;
 
 	private PaymentMethod paymentMethod = PaymentMethod.COD;
 

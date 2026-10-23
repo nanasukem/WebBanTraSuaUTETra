@@ -138,12 +138,11 @@ class Week2ServiceTest {
 		em.createNativeQuery("UPDATE Orders SET carrier_id = 1 WHERE delivery_type = 'DELIVERY'").executeUpdate();
 		em.createNativeQuery("DELETE FROM Carriers WHERE id <> 1 AND name = N'Ahamove'").executeUpdate();
 		em.createNativeQuery("UPDATE Carriers SET name = N'Shipper UTETra', fee = 15000, per_km_fee = 10000, is_active = 1 WHERE id = 1").executeUpdate();
-		em.createNativeQuery("UPDATE Orders SET shipping_voucher_id = NULL, shipping_discount = 0").executeUpdate();
 		em.createNativeQuery("DELETE FROM VoucherUsages WHERE voucher_id IN (SELECT id FROM Vouchers WHERE apply_to = 'SHIPPING')").executeUpdate();
 		em.createNativeQuery("DELETE FROM Vouchers WHERE apply_to = 'SHIPPING'").executeUpdate();
 		em.createNativeQuery("UPDATE Vouchers SET per_user_limit = 2, used_count = 1 WHERE code = 'VVN15'").executeUpdate();
 		em.createNativeQuery("UPDATE Orders SET product_voucher_id = (SELECT id FROM Vouchers WHERE code = 'VVN15'), "
-				+ "items_total = 148000, product_discount = 15000, shipping_fee = 15000, shipping_discount = 0, total_amount = 148000 WHERE id = 1").executeUpdate();
+				+ "items_total = 148000, product_discount = 15000, shipping_fee = 15000, total_amount = 148000 WHERE id = 1").executeUpdate();
 		em.createNativeQuery("INSERT INTO VoucherUsages (voucher_id, user_id, order_id) "
 				+ "SELECT v.id, 6, 1 FROM Vouchers v WHERE v.code = 'VVN15' "
 				+ "AND NOT EXISTS (SELECT 1 FROM VoucherUsages u WHERE u.voucher_id = v.id AND u.order_id = 1)").executeUpdate();
@@ -156,13 +155,12 @@ class Week2ServiceTest {
 	}
 
 	/** Giao tận nơi, COD, có ghi chú cho quán */
-	private CheckoutReq checkoutReq(int branchId, int addressId, int carrierId, String productCode, String shipCode) {
+	private CheckoutReq checkoutReq(int branchId, int addressId, int carrierId, String productCode) {
 		CheckoutReq r = new CheckoutReq();
 		r.setBranchId(branchId);
 		r.setAddressId(addressId);
 		r.setCarrierId(carrierId);
 		r.setProductVoucherCode(productCode);
-		r.setShippingVoucherCode(shipCode);
 		r.setPaymentMethod(PaymentMethod.COD);
 		r.setNote("Ít ngọt giúp em");
 		return r;
@@ -191,20 +189,19 @@ class Week2ServiceTest {
 	}
 
 	/** Đến chi nhánh lấy */
-	private CheckoutReq denLay(int branchId, String name, String phone, String shipCode) {
+	private CheckoutReq denLay(int branchId, String name, String phone) {
 		CheckoutReq r = new CheckoutReq();
 		r.setDeliveryType(DeliveryType.PICKUP);
 		r.setBranchId(branchId);
 		r.setReceiverName(name);
 		r.setReceiverPhone(phone);
-		r.setShippingVoucherCode(shipCode);
 		r.setPaymentMethod(PaymentMethod.COD);
 		return r;
 	}
 
 	/** user2 đến lấy ở chi nhánh branchId */
 	private CheckoutReq denLay(int branchId) {
-		return denLay(branchId, "Phạm Văn Mua", "0900000007", null);
+		return denLay(branchId, "Phạm Văn Mua", "0900000007");
 	}
 
 	/** user2 đến lấy ở chi nhánh 2 */
@@ -402,7 +399,7 @@ class Week2ServiceTest {
 		cartService.addItem(USER1, cartReq(1, "L", 70, 50, 1, 1, 2)); // giỏ: 34.000 + 58.000 = 92.000
 		int maTruoc = voucherRepository.findByCodeIgnoreCase("UTETRA20").orElseThrow().getUsedCount();
 
-		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20", null));
+		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20"));
 		em.flush();
 		em.clear();
 		Order saved = orderRepository.findById(o.getId()).orElseThrow();
@@ -413,7 +410,6 @@ class Week2ServiceTest {
 		assertEquals("Thành viên", saved.getMemberTierName());
 		assertMoney(25000, saved.getShippingFee());       // 3,7 km (> 3 km vượt 0,7 km -> +1 km): 15.000 + 10.000 = 25.000
 		assertEquals("Shipper UTETra", saved.getCarrier().getName());
-		assertMoney(0, saved.getShippingDiscount());
 		assertMoney(98600, saved.getTotalAmount());       // 92.000 - 18.400 + 25.000
 		assertMoney(98600, saved.getSalesAmount());       // doanh thu tính tổng đơn gồm cả phí ship của Shipper UTETra
 		assertEquals(OrderStatus.PENDING, saved.getStatus());
@@ -436,10 +432,10 @@ class Week2ServiceTest {
 				.setParameter("o", now.plusHours(1).withSecond(0).withNano(0).toString())
 				.setParameter("c", now.plusHours(2).withSecond(0).withNano(0).toString()).executeUpdate();
 		em.clear();
-		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, null, null));
+		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, null));
 		assertFalse(p.canOrder());
 		assertTrue(p.errors().stream().anyMatch(x -> x.contains("đã đóng cửa")), String.valueOf(p.errors()));
-		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null, null)));
+		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null)));
 	}
 
 	@Test
@@ -462,27 +458,20 @@ class Week2ServiceTest {
 	@Test
 	void moiDonChiMotMaGiamGia() {
 		cartService.addItem(USER1, cartReq(1, "L", 70, 50, 1, 1, 2)); // 92.000
-		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "UTETRA20", "FREESHIP10K"));
-		assertFalse(p.canOrder());
-		assertNotNull(p.shippingVoucherError());
-		assertThrows(BusinessException.class,
-				() -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20", "FREESHIP10K")));
-
 		// Chỉ dùng 1 mã giảm tiền món (PRODUCT) thì đặt được
-		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20", null));
+		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20"));
 		assertMoney(18400, o.getProductDiscount());
-		assertMoney(0, o.getShippingDiscount());
 		assertMoney(98600, o.getTotalAmount()); // 92.000 - 18.400 + 25.000 ship (3,7 km)
 	}
 
 	@Test
 	void phiGiao_theoKhoangCach_tuChonDoiTacReNhat() {
-		CheckoutPreviewRes gan = orderService.preview(USER2, checkoutReq(2, 3, 1, null, null)); // 0 km <= 3 km
+		CheckoutPreviewRes gan = orderService.preview(USER2, checkoutReq(2, 3, 1, null)); // 0 km <= 3 km
 		assertEquals(0, BigDecimal.ZERO.compareTo(gan.deliveryDistanceKm()));
 		assertEquals("Shipper UTETra", gan.carrierName());
 		assertMoney(15000, gan.shippingFee());
 
-		CheckoutPreviewRes xa = orderService.preview(USER2, checkoutReq(1, 3, 1, null, null)); // 11,3 km (> 3 km vượt 8,3 km -> +9 km)
+		CheckoutPreviewRes xa = orderService.preview(USER2, checkoutReq(1, 3, 1, null)); // 11,3 km (> 3 km vượt 8,3 km -> +9 km)
 		assertEquals(0, new BigDecimal("11.3").compareTo(xa.deliveryDistanceKm()));
 		assertEquals("Shipper UTETra", xa.carrierName());
 		assertMoney(105000, xa.shippingFee()); // 15.000 + 9 km x 10.000
@@ -494,7 +483,7 @@ class Week2ServiceTest {
 		vungTau.setLatitude(new BigDecimal("10.346000"));
 		vungTau.setLongitude(new BigDecimal("107.084000"));
 		AddressRes a = addressService.add(USER2, vungTau);
-		CheckoutPreviewRes p = orderService.preview(USER2, checkoutReq(2, a.id(), 1, null, null));
+		CheckoutPreviewRes p = orderService.preview(USER2, checkoutReq(2, a.id(), 1, null));
 		assertFalse(p.canOrder());
 		assertTrue(p.errors().stream().anyMatch(x -> x.contains("15 km")), String.valueOf(p.errors()));
 
@@ -502,7 +491,7 @@ class Week2ServiceTest {
 		chuaGhim.setLatitude(null);
 		chuaGhim.setLongitude(null);
 		AddressRes b = addressService.add(USER2, chuaGhim);
-		CheckoutPreviewRes q = orderService.preview(USER2, checkoutReq(2, b.id(), 1, null, null));
+		CheckoutPreviewRes q = orderService.preview(USER2, checkoutReq(2, b.id(), 1, null));
 		assertFalse(q.canOrder());
 		assertTrue(q.errors().stream().anyMatch(x -> x.contains("ghim vị trí")), String.valueOf(q.errors()));
 	}
@@ -510,28 +499,27 @@ class Week2ServiceTest {
 	@Test
 	void order_monHetOChiNhanh_baoLoi_vaPreviewBaoTruoc() {
 		cartService.addItem(USER1, cartReq(4, "M", 100, 100, 1)); // Matcha đá xay: chi nhánh 2 đang hết
-		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(2, 1, 1, null, null));
+		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(2, 1, 1, null));
 		assertFalse(p.canOrder());
 		assertTrue(p.unavailableItems().contains("Matcha đá xay"));
-		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(2, 1, 1, null, null)));
+		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(2, 1, 1, null)));
 		assertEquals(2, cartService.getCart(USER1).items().size(), "Lỗi thì giỏ phải còn nguyên");
 		// Cùng giỏ đó, đặt ở chi nhánh 1 (còn Matcha) thì được
-		assertNotNull(orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null, null)).getId());
+		assertNotNull(orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null)).getId());
 	}
 
 	@Test
 	void order_maSaiO_vaDiaChiNguoiKhac_baoLoi() {
-		// Không áp dụng mã giảm phí vận chuyển hoặc mã không tồn tại
-		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null, "FREESHIP10K")));
-		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "KHONGTONTAI", null)));
+		// Mã không tồn tại
+		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "KHONGTONTAI")));
 		// Địa chỉ #3 là của user2
-		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 3, 1, null, null)));
+		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 3, 1, null)));
 	}
 
 	@Test
 	void order_preview_maChuaDuDieuKien_khongLuuDon() {
 		long soDonTruoc = orderRepository.count();
-		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "UTETRA20", null)); // giỏ 34.000 < 80.000
+		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "UTETRA20")); // giỏ 34.000 < 80.000
 		assertNotNull(p.productVoucherError(), "Phải báo mã chưa đủ đơn tối thiểu");
 		assertFalse(p.canOrder());
 		assertMoney(34000, p.itemsTotal());
@@ -543,22 +531,22 @@ class Week2ServiceTest {
 	@Test
 	void order_chiNhanhTamNgung_vaGioTrong_baoLoi() {
 		branchService.changeStatus(2, BranchStatus.SUSPENDED);
-		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(2, 1, 1, null, null)));
+		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(2, 1, 1, null)));
 		cartService.clear(USER1);
-		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null, null)));
+		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null)));
 	}
 
 	@Test
 	void order_voucherCuaChiNhanh_chiDungDungChiNhanh() {
 		cartService.addItem(USER1, cartReq(2, "M", 100, 100, 1)); // + Trà đào 45.000 -> giỏ 79.000 (>= 60.000)
-		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(2, 1, 1, "VVN15", null)));
-		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "VVN15", null)); // VVN15 chỉ của chi nhánh 1
+		assertThrows(BusinessException.class, () -> orderService.placeOrder(USER1, checkoutReq(2, 1, 1, "VVN15")));
+		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "VVN15")); // VVN15 chỉ của chi nhánh 1
 		assertMoney(15000, o.getProductDiscount());
 	}
 
 	@Test
 	void order_ghiChuDiaChi_chepVaoDon_vaBaoChoQuan() {
-		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null, null)); // địa chỉ #1 có ghi chú
+		Order o = orderService.placeOrder(USER1, checkoutReq(1, 1, 1, null)); // địa chỉ #1 có ghi chú
 		em.flush();
 		em.clear();
 		Order saved = orderRepository.findById(o.getId()).orElseThrow();
@@ -596,11 +584,11 @@ class Week2ServiceTest {
 	void hang_datHang_coGiamTheoHang() {
 		taoDonDaGiao(USER2, 1_200_000, LocalDateTime.now().minusDays(1)); // -> Vàng: 5%, tối đa 20.000
 
-		CheckoutPreviewRes p = orderService.preview(USER2, checkoutReq(1, 3, 1, null, null));
+		CheckoutPreviewRes p = orderService.preview(USER2, checkoutReq(1, 3, 1, null));
 		assertEquals("Vàng", p.memberTierName());
 		assertMoney(5200, p.memberDiscount()); // 5% x 104.000
 
-		Order o = orderService.placeOrder(USER2, checkoutReq(1, 3, 1, null, null));
+		Order o = orderService.placeOrder(USER2, checkoutReq(1, 3, 1, null));
 		em.flush();
 		em.clear();
 		Order saved = orderRepository.findById(o.getId()).orElseThrow();
@@ -616,9 +604,8 @@ class Week2ServiceTest {
 		Integer chaoId = chao.getId();
 		int luotTruoc = chao.getUsedCount();
 
-		Order o = orderService.placeOrder(USER2, checkoutReq(1, 3, 1, "CHAOBANMOI", null));
+		Order o = orderService.placeOrder(USER2, checkoutReq(1, 3, 1, "CHAOBANMOI"));
 		assertMoney(25000, o.getProductDiscount());  // 30% x 104.000 = 31.200 -> trần 25.000
-		assertMoney(0, o.getShippingDiscount());
 		assertMoney(0, o.getMemberDiscount());       // hạng Thành viên: 0%
 		assertMoney(184000, o.getTotalAmount());     // 104.000 - 25.000 + 105.000 ship (11,3 km)
 
@@ -629,47 +616,47 @@ class Week2ServiceTest {
 
 		// Đơn thứ 2: không dùng lại được nữa
 		cartService.addItem(USER2, cartReq(7, "L", 70, 50, 2, 4));
-		CheckoutPreviewRes p = orderService.preview(USER2, checkoutReq(1, 3, 1, "CHAOBANMOI", null));
+		CheckoutPreviewRes p = orderService.preview(USER2, checkoutReq(1, 3, 1, "CHAOBANMOI"));
 		assertNotNull(p.productVoucherError());
 		assertFalse(p.canOrder());
 		assertThrows(BusinessException.class,
-				() -> orderService.placeOrder(USER2, checkoutReq(1, 3, 1, "CHAOBANMOI", null)));
+				() -> orderService.placeOrder(USER2, checkoutReq(1, 3, 1, "CHAOBANMOI")));
 	}
 
 	@Test
 	void voucher_banMoi_taiKhoanCu_khongDung() {
-		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "CHAOBANMOI", null));
+		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "CHAOBANMOI"));
 		assertNotNull(p.productVoucherError());
 		assertTrue(p.productVoucherError().contains("đơn hàng đầu tiên"), p.productVoucherError());
 		assertFalse(p.canOrder());
 		assertThrows(BusinessException.class,
-				() -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "CHAOBANMOI", null)));
+				() -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "CHAOBANMOI")));
 	}
 
 	@Test
 	void voucher_moiNguoiChiDung1Lan() {
 		cartService.addItem(USER1, cartReq(1, "L", 70, 50, 1, 1, 2)); // giỏ 92.000 (>= 80.000)
-		orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20", null)); // lần 1: được
+		orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20")); // lần 1: được
 
 		cartService.addItem(USER1, cartReq(3, "M", 50, 70, 1));
 		cartService.addItem(USER1, cartReq(1, "L", 70, 50, 1, 1, 2)); // giỏ lại 92.000
-		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "UTETRA20", null));
+		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "UTETRA20"));
 		assertNotNull(p.productVoucherError());
 		assertTrue(p.productVoucherError().contains("đã dùng"), p.productVoucherError());
 		assertThrows(BusinessException.class,
-				() -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20", null)));
+				() -> orderService.placeOrder(USER1, checkoutReq(1, 1, 1, "UTETRA20")));
 	}
 
 	@Test
 	void voucher_theoHang_chuaDuHangThiBaoLoi() {
 		cartService.addItem(USER1, cartReq(8, "L", 100, 100, 2)); // + 2 Cookie L 59.000 -> giỏ 152.000
 
-		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "VANG30K", null));
+		CheckoutPreviewRes p = orderService.preview(USER1, checkoutReq(1, 1, 1, "VANG30K"));
 		assertNotNull(p.productVoucherError());
 		assertTrue(p.productVoucherError().contains("hạng Vàng"), p.productVoucherError());
 
 		taoDonDaGiao(USER1, 1_000_000, LocalDateTime.now().minusDays(1)); // 148.000 + 1.000.000 -> Vàng
-		p = orderService.preview(USER1, checkoutReq(1, 1, 1, "VANG30K", null));
+		p = orderService.preview(USER1, checkoutReq(1, 1, 1, "VANG30K"));
 		assertNull(p.productVoucherError());
 		assertTrue(p.canOrder());
 		assertMoney(30000, p.productDiscount());
@@ -692,7 +679,7 @@ class Week2ServiceTest {
 
 	@Test
 	void denLay_khongPhiShip_khongCanDiaChi() {
-		Order o = orderService.placeOrder(USER2, denLay(1, "Phạm Văn Mua", "0900000007", null));
+		Order o = orderService.placeOrder(USER2, denLay(1, "Phạm Văn Mua", "0900000007"));
 		em.flush();
 		em.clear();
 		Order saved = orderRepository.findById(o.getId()).orElseThrow();
@@ -708,21 +695,13 @@ class Week2ServiceTest {
 
 	@Test
 	void denLay_thieuSdtHoacTen_baoLoi() {
-		CheckoutPreviewRes p = orderService.preview(USER2, denLay(1, "Phạm Văn Mua", "", null));
+		CheckoutPreviewRes p = orderService.preview(USER2, denLay(1, "Phạm Văn Mua", ""));
 		assertFalse(p.canOrder());
 		assertMoney(0, p.shippingFee());
 		assertThrows(BusinessException.class,
-				() -> orderService.placeOrder(USER2, denLay(1, "Phạm Văn Mua", "123", null))); // SĐT sai
+				() -> orderService.placeOrder(USER2, denLay(1, "Phạm Văn Mua", "123"))); // SĐT sai
 		assertThrows(BusinessException.class,
-				() -> orderService.placeOrder(USER2, denLay(1, "  ", "0900000007", null)));    // thiếu tên
-	}
-
-	@Test
-	void denLay_khongDungDuocMaShip() {
-		CheckoutPreviewRes p = orderService.preview(USER2, denLay(1, "Phạm Văn Mua", "0900000007", "FREESHIPMOI"));
-		assertNotNull(p.shippingVoucherError());
-		assertMoney(0, p.shippingDiscount());
-		assertFalse(p.canOrder());
+				() -> orderService.placeOrder(USER2, denLay(1, "  ", "0900000007")));    // thiếu tên
 	}
 
 	@Test
@@ -1020,7 +999,6 @@ class Week2ServiceTest {
 		assertEquals("VVN15", d.productVoucherCode());
 		assertEquals(0, d.shippingFee().compareTo(java.math.BigDecimal.valueOf(15000)));
 		assertEquals(0, d.totalAmount().compareTo(java.math.BigDecimal.valueOf(148000)));
-		assertNull(d.shippingVoucherCode());
 		assertEquals("Shipper UTETra", d.carrierName());
 		assertTrue(d.items().stream().anyMatch(i -> i.toppings().contains("Trân châu đen")));
 		assertEquals(6, d.steps().size(), "Đơn mới, Đang pha chế, Pha xong, Shipper lấy hàng, Đang giao, Đã giao");

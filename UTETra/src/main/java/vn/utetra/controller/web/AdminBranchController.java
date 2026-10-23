@@ -141,12 +141,28 @@ public class AdminBranchController {
 	 * /admin/branches/{id}/status?value=SUSPENDED
 	 */
 	@PostMapping("/{id}/status")
-	public String changeStatus(@PathVariable Integer id, @RequestParam BranchStatus value, RedirectAttributes ra) {
+	public String changeStatus(@PathVariable Integer id,
+			@RequestParam(name = "value", required = false) BranchStatus value,
+			@RequestParam(name = "status", required = false) String statusParam,
+			RedirectAttributes ra) {
 
 		try {
-			branchService.changeStatus(id, value);
+			BranchStatus target = value;
+			if (target == null && statusParam != null) {
+				if ("ACTIVE".equalsIgnoreCase(statusParam) || "APPROVED".equalsIgnoreCase(statusParam)) {
+					target = BranchStatus.APPROVED;
+				} else if ("INACTIVE".equalsIgnoreCase(statusParam) || "SUSPENDED".equalsIgnoreCase(statusParam)) {
+					target = BranchStatus.SUSPENDED;
+				}
+			}
+			if (target == null) {
+				BranchStatus current = branchService.findById(id).getStatus();
+				target = (current == BranchStatus.APPROVED) ? BranchStatus.SUSPENDED : BranchStatus.APPROVED;
+			}
 
-			ra.addFlashAttribute("success", "Đã chuyển chi nhánh #" + id + " sang " + value.getLabel());
+			branchService.changeStatus(id, target);
+
+			ra.addFlashAttribute("success", "Đã chuyển chi nhánh #" + id + " sang " + target.getLabel());
 
 		} catch (BusinessException e) {
 			ra.addFlashAttribute("error", e.getMessage());
@@ -158,8 +174,9 @@ public class AdminBranchController {
 	/**
 	 * Chuẩn bị dữ liệu dùng chung cho form thêm và sửa.
 	 */
-	private String formView(Model model, Integer id) {
-		model.addAttribute("branchId", id);
+	private String formView(Model model, Integer branchId) {
+
+		model.addAttribute("branchId", branchId);
 		model.addAttribute("managers", branchService.findManagers());
 
 		return "admin/branches/form";
