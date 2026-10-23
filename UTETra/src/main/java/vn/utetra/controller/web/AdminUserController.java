@@ -23,9 +23,17 @@ public class AdminUserController {
 	private final UserRepository userRepository;
 	private final RoleRepository roleRepository;
 	private final BranchRepository branchRepository;
+	private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+	private final vn.utetra.service.ShippingFeeService shippingFeeService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.service.NotificationService notificationService;
 
 	public AdminUserController(UserRepository userRepository, RoleRepository roleRepository,
-			BranchRepository branchRepository) {
+			BranchRepository branchRepository,
+			org.springframework.security.crypto.password.PasswordEncoder passwordEncoder,
+			vn.utetra.service.ShippingFeeService shippingFeeService) {
+		this.passwordEncoder = passwordEncoder;
+		this.shippingFeeService = shippingFeeService;
 		this.userRepository = userRepository;
 		this.roleRepository = roleRepository;
 		this.branchRepository = branchRepository;
@@ -106,6 +114,146 @@ public class AdminUserController {
 	/**
 	 * Đổi vai trò tài khoản. Chỉ ADMIN được thực hiện.
 	 */
+	// ================= ADMIN TẠO TÀI KHOẢN (Manager, Shipper, Admin, khách) =================
+
+	/** Form tạo tài khoản; ?role=MANAGER để chọn sẵn vai trò */
+	@GetMapping("/new")
+	public String createForm(@RequestParam(defaultValue = "MANAGER") String role, Model model) {
+		if (!model.containsAttribute("form")) {
+			model.addAttribute("form", java.util.Map.of("role", role.toUpperCase(Locale.ROOT)));
+		}
+		model.addAttribute("branches", branchRepository.findAll().stream()
+				.sorted(java.util.Comparator.comparing(vn.utetra.entity.Branch::getId)).toList());
+		return "admin/users/form";
+	}
+
+	@PostMapping("/new")
+	public String create(@RequestParam String username, @RequestParam String fullName, @RequestParam String email,
+			@RequestParam(required = false) String phone, @RequestParam String role,
+			@RequestParam(required = false) Integer branchId, @RequestParam String password,
+			@RequestParam String confirmPassword, Authentication authentication, RedirectAttributes ra) {
+
+		java.util.Map<String, String> form = new java.util.HashMap<>();
+		form.put("username", username);
+		form.put("fullName", fullName);
+		form.put("email", email);
+		form.put("phone", phone == null ? "" : phone);
+		form.put("role", role);
+		form.put("branchId", branchId == null ? "" : String.valueOf(branchId));
+
+		if (!isAdmin(authentication)) {
+			ra.addFlashAttribute("errorMessage", "Bạn không có quyền tạo tài khoản.");
+			return "redirect:/admin/users";
+		}
+
+		String u = username == null ? "" : username.trim();
+		String name = fullName == null ? "" : fullName.trim().replaceAll("\\s+", " ");
+		String mail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+		String tel = phone == null ? "" : phone.trim();
+		String r = role == null ? "" : role.trim().toUpperCase(Locale.ROOT);
+
+		String error = null;
+		if (!u.matches("[A-Za-z0-9_.]{3,50}")) {
+			error = "Tên đăng nhập 3–50 ký tự, chỉ gồm chữ không dấu, số, dấu _ hoặc dấu chấm.";
+		} else if (userRepository.existsByUsername(u)) {
+			error = "Tên đăng nhập \"" + u + "\" đã có người dùng.";
+		} else if (name.isEmpty() || name.length() > 100) {
+			error = "Vui lòng nhập họ tên (tối đa 100 ký tự).";
+		} else if (!mail.matches("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$")) {
+			error = "Email không hợp lệ.";
+		} else if (userRepository.existsByEmail(mail)) {
+			error = "Email " + mail + " đã được dùng cho tài khoản khác.";
+		} else if (!tel.isEmpty() && !tel.matches("0\\d{9}")) {
+			error = "Số điện thoại gồm 10 số, bắt đầu bằng 0.";
+		} else if (!List.of("ADMIN", "MANAGER", "SHIPPER").contains(r)) {
+			error = "Chỉ tạo được tài khoản nhân viên (Manager, Shipper, Admin). Khách hàng tự đăng ký trên web.";
+		} else if (password == null || password.length() < 6) {
+			error = "Mật khẩu tối thiểu 6 ký tự.";
+		} else if (!password.equals(confirmPassword)) {
+			error = "Mật khẩu nhập lại không khớp.";
+		}
+		Role targetRole = error == null ? roleRepository.findByName(r).orElse(null) : null;
+		if (error == null && targetRole == null) {
+			error = "Vai trò " + r + " chưa có trong cơ sở dữ liệu.";
+		}
+		if (error != null) {
+			ra.addFlashAttribute("errorMessage", error);
+			ra.addFlashAttribute("form", form);
+			return "redirect:/admin/users/new";
+		}
+
+		User user = new User();
+		user.setUsername(u);
+		user.setFullName(name);
+		user.setEmail(mail);
+		user.setPhone(tel.isEmpty() ? null : tel);
+		user.setPassword(passwordEncoder.encode(password));
+		user.setRole(targetRole);
+		user.setIsVerified(true); // Admin tạo nên không cần xác minh email
+		user.setIsActive(true);
+		if ("SHIPPER".equals(r)) {
+			user.setCarrier(shippingFeeService.shipper()); // shipper của quán (Shipper UTETra)
+		}
+		userRepository.save(user);
+
+		// Manager: giao chi nhánh luôn (chi nhánh đang có Manager khác thì chuyển sang Manager mới)
+		String giao = null;
+		if ("MANAGER".equals(r) && branchId != null) {
+			vn.utetra.entity.Branch b = branchRepository.findById(branchId).orElse(null);
+			if (b != null) {
+				String cu = b.getOwner() == null ? null : b.getOwner().getFullName();
+				b.setOwner(user);
+				branchRepository.save(b);
+				giao = " Đã giao chi nhánh " + b.getName() + (cu == null ? "" : " (thay cho " + cu + ")") + ".";
+			}
+		}
+
+		String next = giao != null ? giao : switch (r) {
+		case "MANAGER" -> " Chưa giao chi nhánh: vào Quản lý → Chi nhánh → Sửa để giao chi nhánh cho Manager này.";
+		case "SHIPPER" -> " Shipper đăng nhập là thấy đơn chờ giao.";
+		default -> "";
+		};
+		ra.addFlashAttribute("successMessage", "Đã tạo tài khoản " + r + " \"" + u + "\" (" + name + ")." + next);
+		return "redirect:/admin/users";
+	}
+
+	/**
+	 * Admin ĐẶT LẠI MẬT KHẨU cho 1 tài khoản (nhân viên quên mật khẩu, hoặc Admin cần lấy lại quyền vào tài khoản).
+	 * Mật khẩu cũ mất tác dụng ngay; người dùng được báo trên chuông. Admin không xem được mật khẩu đang dùng của ai.
+	 */
+	@PostMapping("/{id}/reset-password")
+	public String resetPassword(@PathVariable Integer id, @RequestParam String newPassword,
+			@RequestParam String confirmPassword, Authentication authentication, RedirectAttributes ra) {
+		if (!isAdmin(authentication)) {
+			ra.addFlashAttribute("errorMessage", "Bạn không có quyền đặt lại mật khẩu.");
+			return "redirect:/admin/users";
+		}
+		User user = userRepository.findById(id).orElse(null);
+		if (user == null) {
+			ra.addFlashAttribute("errorMessage", "Không tìm thấy tài khoản.");
+			return "redirect:/admin/users";
+		}
+		if (isCurrentUser(authentication, user)) {
+			ra.addFlashAttribute("errorMessage", "Đổi mật khẩu của chính bạn ở trang Hồ sơ.");
+			return "redirect:/admin/users/" + id;
+		}
+		if (newPassword == null || newPassword.length() < 6) {
+			ra.addFlashAttribute("errorMessage", "Mật khẩu mới tối thiểu 6 ký tự.");
+			return "redirect:/admin/users/" + id;
+		}
+		if (!newPassword.equals(confirmPassword)) {
+			ra.addFlashAttribute("errorMessage", "Mật khẩu nhập lại không khớp.");
+			return "redirect:/admin/users/" + id;
+		}
+		user.setPassword(passwordEncoder.encode(newPassword));
+		userRepository.save(user);
+		notificationService.create(user, null, "USER", "Mật khẩu của bạn đã được Admin đặt lại",
+				"Hãy đăng nhập bằng mật khẩu mới Admin cung cấp rồi đổi mật khẩu ở trang Hồ sơ.", null);
+		ra.addFlashAttribute("successMessage", "Đã đặt lại mật khẩu cho " + user.getUsername()
+				+ ". Mật khẩu cũ không dùng được nữa; hãy gửi mật khẩu mới cho người dùng và nhắc họ đổi lại.");
+		return "redirect:/admin/users/" + id;
+	}
+
 	@PostMapping("/{id}/role")
 	public String changeRole(@PathVariable Integer id, @RequestParam String roleName, Authentication authentication,
 			RedirectAttributes redirectAttributes) {
