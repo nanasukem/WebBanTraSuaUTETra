@@ -40,6 +40,8 @@
 						<span th:if="${t.count > 0}" class="badge rounded-pill ms-1"
 							th:classappend="${t.status == data.status} ? 'text-bg-light' : 'text-bg-success'"
 							th:text="${t.count}">0</span>
+						<span th:if="${t.pending > 0}" class="badge rounded-pill text-bg-danger ms-1"
+							th:text="${t.pending} + ' chờ xử lý'">1 chờ xử lý</span>
 					</a>
 				</li>
 			</ul>

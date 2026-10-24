@@ -10,25 +10,23 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import vn.utetra.entity.Branch;
-import vn.utetra.entity.enums.BranchStatus;
-import vn.utetra.repository.BranchRepository;
 import vn.utetra.service.BranchReviewManagementService;
 
 @Controller
 public class BranchPageController {
 
-	private final BranchRepository branchRepository;
+	private final vn.utetra.service.BranchService branchService;
 	private final BranchReviewManagementService branchReviewManagementService;
 
-	public BranchPageController(BranchRepository branchRepository,
+	public BranchPageController(vn.utetra.service.BranchService branchService,
 			BranchReviewManagementService branchReviewManagementService) {
-		this.branchRepository = branchRepository;
+		this.branchService = branchService;
 		this.branchReviewManagementService = branchReviewManagementService;
 	}
 
 	@GetMapping("/branches")
 	public String branches(Model model) {
-		List<Branch> branches = branchRepository.findByStatus(BranchStatus.APPROVED).stream()
+		List<Branch> branches = branchService.findApproved().stream()
 				.sorted(Comparator.comparing(Branch::getId)).toList();
 
 		Map<Integer, Map<String, Object>> branchReviewSummaries = new HashMap<>();

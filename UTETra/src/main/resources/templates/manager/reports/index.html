@@ -86,11 +86,12 @@
 				<div class="card report-card h-100">
 					<div class="card-body">
 
-						<div class="text-muted">Doanh thu hôm nay</div>
+						<div class="text-muted">Tổng thu hôm nay</div>
 
 						<h4 class="stat-value text-success mt-2"
 							th:text="${#numbers.formatDecimal(todayRevenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
 							0 đ</h4>
+<div class="small mt-1"><div class="d-flex justify-content-between"><span class="text-muted">Bán hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(todayStat.sales(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div><div class="d-flex justify-content-between"><span class="text-muted">Phí giao hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(todayStat.shipping(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div></div>
 
 						<small class="text-muted"> Đơn đã giao hôm nay </small>
 
@@ -102,11 +103,12 @@
 				<div class="card report-card h-100">
 					<div class="card-body">
 
-						<div class="text-muted">Doanh thu tháng này</div>
+						<div class="text-muted">Tổng thu tháng này</div>
 
 						<h4 class="stat-value text-primary mt-2"
 							th:text="${#numbers.formatDecimal(monthRevenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
 							0 đ</h4>
+<div class="small mt-1"><div class="d-flex justify-content-between"><span class="text-muted">Bán hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(monthStat.sales(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div><div class="d-flex justify-content-between"><span class="text-muted">Phí giao hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(monthStat.shipping(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div></div>
 
 						<small class="text-muted"> Tính theo ngày giao hàng </small>
 
@@ -118,11 +120,12 @@
 				<div class="card report-card h-100">
 					<div class="card-body">
 
-						<div class="text-muted">Doanh thu kỳ đã chọn</div>
+						<div class="text-muted">Tổng thu kỳ đã chọn</div>
 
 						<h4 class="stat-value text-success mt-2"
 							th:text="${#numbers.formatDecimal(selectedRevenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
 							0 đ</h4>
+<div class="small mt-1"><div class="d-flex justify-content-between"><span class="text-muted">Bán hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(selectedStat.sales(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div><div class="d-flex justify-content-between"><span class="text-muted">Phí giao hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(selectedStat.shipping(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div></div>
 
 						<small class="text-muted"
 							th:text="${#temporals.format(startDate, 'dd/MM/yyyy') + ' - ' + #temporals.format(endDate, 'dd/MM/yyyy')}">
@@ -142,7 +145,7 @@
 							th:text="${#numbers.formatDecimal(selectedAverage, 0, 'POINT', 0, 'COMMA') + ' đ'}">
 							0 đ</h4>
 
-						<small class="text-muted"> Doanh thu kỳ đã chọn / số đơn đã giao </small>
+						<small class="text-muted"> Tổng thu kỳ đã chọn / số đơn đã giao </small>
 
 					</div>
 				</div>
@@ -271,6 +274,8 @@
 				const values = /*[[${chartValues}]]*/[];
 				const monthLabels = /*[[${monthLabels}]]*/[];
 				const monthValues = /*[[${monthValues}]]*/[];
+			const monthSales = /*[[${monthSales}]]*/[];
+			const monthShipping = /*[[${monthShipping}]]*/[];
 				const monthCounts = /*[[${monthCounts}]]*/[];
 				const canvas = document.getElementById('revenueChart');
 				if (!canvas) return;
@@ -284,7 +289,7 @@
 					data: {
 						labels: labels,
 						datasets: [{
-							label: 'Doanh thu (VNĐ)',
+							label: 'Tổng thu (VNĐ)',
 							data: values,
 							backgroundColor: 'rgba(25, 135, 84, 0.75)',
 							borderRadius: 4,
@@ -308,8 +313,8 @@
 						data: {
 							labels: monthLabels,
 							datasets: [
-								{ type: 'bar', label: 'Doanh thu', data: monthValues, backgroundColor: 'rgba(25, 135, 84, 0.75)',
-									borderRadius: 4, yAxisID: 'y' },
+								{ type: 'bar', label: 'Bán hàng', data: monthSales, backgroundColor: 'rgba(25, 135, 84, 0.8)', stack: 'thu', yAxisID: 'y' },
+							{ type: 'bar', label: 'Phí giao hàng', data: monthShipping, backgroundColor: 'rgba(13, 110, 253, 0.6)', stack: 'thu', yAxisID: 'y' },
 								{ type: 'line', label: 'Số đơn', data: monthCounts, borderColor: '#fd7e14',
 									backgroundColor: '#fd7e14', tension: 0.3, yAxisID: 'y1' }
 							]
@@ -317,9 +322,9 @@
 						options: {
 							responsive: true, maintainAspectRatio: false,
 							plugins: { tooltip: { callbacks: { label: (x) => x.dataset.yAxisID === 'y'
-								? 'Doanh thu: ' + vnd(x.parsed.y || 0) : 'Số đơn: ' + (x.parsed.y || 0) } } },
+								? x.dataset.label + ': ' + vnd(x.parsed.y || 0) : 'Số đơn: ' + (x.parsed.y || 0) } } },
 							scales: {
-								y: { beginAtZero: true, ticks: { callback: (v) => vnd(v) } },
+								x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: (v) => vnd(v) } },
 								y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { precision: 0 } }
 							}
 						}

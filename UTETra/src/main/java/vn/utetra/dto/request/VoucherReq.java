@@ -51,6 +51,18 @@ public class VoucherReq {
 	@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
 	private LocalDateTime endDate;
 
+	@Min(value = 1, message = "Lượt mỗi khách ít nhất là 1")
+	private Integer perUserLimit;
+
+	private vn.utetra.entity.enums.VoucherAudience audience = vn.utetra.entity.enums.VoucherAudience.ALL;
+
+	private Integer minTierId;
+
+	private vn.utetra.entity.enums.PaymentMethod paymentMethod;
+
+	@Size(max = 2000, message = "Danh sách khách tối đa 2000 ký tự")
+	private String assignedUsers;
+
 	@AssertTrue(message = "Ngày kết thúc phải sau ngày bắt đầu")
 	public boolean isDateRangeValid() {
 		return startDate == null || endDate == null || endDate.isAfter(startDate);

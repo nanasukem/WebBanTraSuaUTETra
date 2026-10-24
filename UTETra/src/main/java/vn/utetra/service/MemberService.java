@@ -14,4 +14,6 @@ public interface MemberService {
 	BigDecimal calculateDiscount(MemberTier tier, BigDecimal base);
 
 	boolean isNewCustomer(Integer userId);
+
+	java.util.List<vn.utetra.entity.MemberTier> allTiers();
 }

@@ -24,7 +24,7 @@ public class AdminBranchController {
 
 	private final BranchService branchService;
 	@org.springframework.beans.factory.annotation.Autowired
-	private vn.utetra.repository.UserRepository userRepository;
+	private vn.utetra.service.UserService userService;
 
 	public AdminBranchController(BranchService branchService) {
 		this.branchService = branchService;
@@ -46,7 +46,7 @@ public class AdminBranchController {
 	public String detail(@PathVariable Integer id, Model model) {
 
 		model.addAttribute("branch", branchService.findById(id));
-		model.addAttribute("branchShippers", userRepository.findShippersOfBranch(id));
+		model.addAttribute("branchShippers", userService.shippersOfBranch(id));
 
 		return "admin/branches/detail";
 	}

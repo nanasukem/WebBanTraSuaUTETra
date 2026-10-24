@@ -293,10 +293,17 @@ class PaymentServiceTest {
 				() -> orderIssueService.resolve(o.getId(), "REFUND", new BigDecimal("999999999"), null), "quá số tiền khách trả");
 		assertTrue(managerOrderService.history(MANAGER1, 1, "ISSUE", 0).orders().stream()
 				.anyMatch(x -> x.id().equals(o.getId())), "tab Khách báo vấn đề của quán");
+		vn.utetra.dto.response.ManagerTabRes truoc = managerOrderService.history(MANAGER1, 1, "ISSUE", 0).tabs().stream()
+				.filter(t -> t.status().equals("ISSUE")).findFirst().orElseThrow();
+		assertTrue(truoc.pending() >= 1 && truoc.count() >= truoc.pending());
 		orderIssueService.resolve(o.getId(), "REMAKE", null, null);
 		em.flush();
 		em.clear();
 		assertEquals("REMADE", orderFlowService.myOrder(USER1, o.getId()).issue().status());
+		vn.utetra.dto.response.ManagerTabRes sau = managerOrderService.history(MANAGER1, 1, "ISSUE", 0).tabs().stream()
+				.filter(t -> t.status().equals("ISSUE")).findFirst().orElseThrow();
+		assertEquals(truoc.count(), sau.count(), "đã xử lý xong vẫn đếm trong tab");
+		assertEquals(truoc.pending() - 1, sau.pending());
 	}
 
 	@Test

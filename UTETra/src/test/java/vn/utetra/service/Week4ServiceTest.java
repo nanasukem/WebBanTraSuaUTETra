@@ -45,6 +45,8 @@ class Week4ServiceTest {
 	@Autowired UserRepository userRepository;
 	@Autowired jakarta.persistence.EntityManager em;
 	@Autowired OrderIssueService orderIssueService;
+	@org.springframework.test.context.bean.override.mockito.MockitoBean CloudinaryService cloudinaryService;
+	@Autowired vn.utetra.repository.OrderReviewRepository orderReviewRepository;
 
 	@BeforeEach
 	void chuanHoaDuLieuMau() {
@@ -227,6 +229,35 @@ class Week4ServiceTest {
 	}
 
 	@Test
+	void baoVanDe_goDanhGiaCuaDon_baoAdminVaManager_khongDanhGiaLaiDuoc() {
+		org.mockito.Mockito.when(cloudinaryService.uploadImage(org.mockito.ArgumentMatchers.any(),
+				org.mockito.ArgumentMatchers.anyString())).thenReturn("https://res.cloudinary.com/x/image/upload/a.jpg");
+		em.createNativeQuery("DELETE FROM OrderIssues WHERE order_id = 1").executeUpdate();
+		em.createNativeQuery("UPDATE Orders SET status = 'DELIVERED', delivered_at = SYSDATETIME() WHERE id = 1").executeUpdate();
+		em.clear();
+		assertFalse(reviewRepository.findByOrderDetailIdIn(List.of(1, 2)).isEmpty());
+		assertTrue(orderReviewRepository.findByOrderId(1).isPresent());
+		long admin = notificationService.unreadCount(ADMIN);
+		long manager = notificationService.unreadCount(MANAGER1);
+
+		orderIssueService.submit(USER1, 1, vn.utetra.entity.enums.IssueReason.SPILLED, "Ly bị đổ",
+				List.of(file("a.jpg", "image/jpeg")));
+		em.flush();
+		em.clear();
+
+		assertTrue(reviewRepository.findByOrderDetailIdIn(List.of(1, 2)).isEmpty(), "gỡ đánh giá món của đơn");
+		assertTrue(orderReviewRepository.findByOrderId(1).isEmpty(), "gỡ đánh giá quán của đơn");
+		assertEquals(admin + 2, notificationService.unreadCount(ADMIN), "Admin nhận báo vấn đề + báo đã gỡ đánh giá");
+		assertEquals(manager + 2, notificationService.unreadCount(MANAGER1), "Manager nhận báo vấn đề + báo đã gỡ đánh giá");
+		assertTrue(orderIssueService.forOrder(1).removedReviews() >= 2, "ghi lại số đánh giá đã gỡ");
+
+		orderIssueService.resolve(1, "REFUND", BigDecimal.valueOf(30000), "Đã chuyển khoản");
+		em.flush();
+		assertEquals(admin + 3, notificationService.unreadCount(ADMIN), "chuông Admin reo khi quán hoàn tiền");
+		assertEquals(0, orderRepository.findById(1).orElseThrow().getRefundAmount().compareTo(BigDecimal.valueOf(30000)));
+	}
+
+	@Test
 	void taiKhoan_tabNhanVien_khongCoKhach_tabKhach_chiCoKhach() {
 		AdminUserService.SearchResult staff = adminUserService.search("", "STAFF", "ALL", "ALL", "");
 		assertTrue(staff.users().stream().noneMatch(u -> "USER".equals(u.getRole().getName())));
@@ -375,5 +406,60 @@ class Week4ServiceTest {
 		BigDecimal jpql = orderRepository.sumRevenueOfBranch(OrderStatus.DELIVERED, dau.atStartOfDay(),
 				LocalDate.now().plusDays(1).atStartOfDay(), null);
 		assertEquals(0, jpql.compareTo(tongThang), "12 tháng cộng lại = tổng cùng kỳ");
+	}
+
+	@Autowired VoucherService voucherService;
+
+	private vn.utetra.dto.request.VoucherReq tangRieng(String code, String khach) {
+		vn.utetra.dto.request.VoucherReq r = new vn.utetra.dto.request.VoucherReq();
+		r.setCode(code);
+		r.setName("Tặng riêng JUnit");
+		r.setApplyTo(vn.utetra.entity.enums.VoucherApplyTo.PRODUCT);
+		r.setDiscountType(vn.utetra.entity.enums.DiscountType.AMOUNT);
+		r.setDiscountValue(new BigDecimal("10000"));
+		r.setMinOrderValue(BigDecimal.ZERO);
+		r.setQuantity(5);
+		r.setStartDate(java.time.LocalDateTime.now().minusDays(1));
+		r.setEndDate(java.time.LocalDateTime.now().plusDays(7));
+		r.setAudience(vn.utetra.entity.enums.VoucherAudience.SPECIFIC);
+		r.setAssignedUsers(khach);
+		return r;
+	}
+
+	@Test
+	void voucherTangRieng_chiKhachDuocChiDinhDungDuoc() {
+		User u1 = userRepository.findByUsername("user1").orElseThrow();
+		User u2 = userRepository.findByUsername("user2").orElseThrow();
+		voucherService.create(tangRieng("JUNITVIP1", "user1"));
+		BigDecimal giam = voucherService.calculateDiscount("JUNITVIP1", 1, u1.getId(),
+				vn.utetra.entity.enums.PaymentMethod.COD, new BigDecimal("50000"));
+		assertEquals(0, new BigDecimal("10000").compareTo(giam));
+		assertThrows(BusinessException.class, () -> voucherService.calculateDiscount("JUNITVIP1", 1, u2.getId(),
+				vn.utetra.entity.enums.PaymentMethod.COD, new BigDecimal("50000")));
+		assertThrows(BusinessException.class, () -> voucherService.create(tangRieng("JUNITVIP2", "")));
+		assertThrows(BusinessException.class, () -> voucherService.create(tangRieng("JUNITVIP3", "khongcoainay")));
+		assertThrows(BusinessException.class, () -> voucherService.create(tangRieng("JUNITVIP4", "admin")));
+	}
+
+	@Test
+	void baoCao_tachBanHangVaPhiGiao_khopTungDon() {
+		LocalDate from = LocalDate.of(2026, 1, 1);
+		LocalDate to = LocalDate.now();
+		List<vn.utetra.entity.Order> don = orderRepository.findDeliveredOfBranch(OrderStatus.DELIVERED,
+				from.atStartOfDay(), to.plusDays(1).atStartOfDay(), null);
+		BigDecimal ship = don.stream().map(vn.utetra.entity.Order::getShippingFee).reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal ban = don.stream().map(vn.utetra.entity.Order::getGoodsRevenue).reduce(BigDecimal.ZERO, BigDecimal::add);
+		ReportService.Point tong = reportService.summary(from.atStartOfDay(), to.plusDays(1).atStartOfDay(), null);
+		ReportService.Point theoNgay = ReportService.total(reportService.byDay(from, to, null));
+		assertEquals(0, ship.compareTo(tong.shipping()), "phí giao");
+		assertEquals(0, ban.compareTo(tong.sales()), "bán hàng");
+		assertEquals(0, tong.revenue().compareTo(tong.sales().add(tong.shipping())), "tổng thu = bán hàng + phí giao");
+		assertEquals(0, tong.shipping().compareTo(theoNgay.shipping()));
+		BigDecimal shipChiNhanh = reportService.byBranch(from, to).stream().map(ReportService.BranchRevenue::shipping)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		assertEquals(0, ship.compareTo(shipChiNhanh));
+		List<vn.utetra.entity.Order> moiNhat = reportService.latestShipped(null, 10);
+		assertTrue(moiNhat.size() <= 10);
+		moiNhat.forEach(o -> assertTrue(o.getShippingFee().signum() > 0));
 	}
 }

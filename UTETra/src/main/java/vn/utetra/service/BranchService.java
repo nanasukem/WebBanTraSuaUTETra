@@ -16,6 +16,12 @@ public interface BranchService {
 
 	List<Branch> findApproved();
 
+	List<Branch> findAll();
+
+	java.util.Optional<Branch> findOptional(Integer id);
+
+	List<Branch> findByOwner(Integer ownerId);
+
 	Branch findById(Integer id);
 
 	Branch create(BranchReq req);

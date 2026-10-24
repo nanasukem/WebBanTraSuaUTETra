@@ -15,5 +15,6 @@ public record OrderIssueRes(
 		BigDecimal refundAmount,
 		String storeNote,
 		String createdAt,
-		String resolvedAt) {
+		String resolvedAt,
+		int removedReviews) {
 }

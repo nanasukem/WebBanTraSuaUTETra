@@ -430,7 +430,7 @@
 				</div>
 
 				<div class="card od-card mb-3" id="danh-gia"
-					th:if="${reviewItems != null and !#lists.isEmpty(reviewItems)}">
+					th:if="${reviewItems != null and !#lists.isEmpty(reviewItems) and (canReview or #lists.contains(reviewItems.![reviewed], true))}">
 					<div class="card-body">
 						<div class="od-title">
 							<i class="bi bi-star me-1"></i>Đánh giá món đã mua
@@ -448,7 +448,7 @@
 								<div class="fw-semibold" th:text="${it.productName}">Món</div>
 								<div class="text-muted" th:text="${it.info}">Size M</div>
 							</div>
-							<a th:unless="${it.reviewed}"
+							<a th:if="${!it.reviewed and canReview}"
 								class="btn btn-sm btn-outline-success text-nowrap"
 								th:href="@{/orders/{id}/review(id=${order.id})}"> <i
 								class="bi bi-pencil me-1"></i>Đánh giá

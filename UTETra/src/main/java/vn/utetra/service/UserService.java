@@ -1,5 +1,7 @@
 package vn.utetra.service;
 
+import java.util.List;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,32 @@ public class UserService {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.cloudinaryService = cloudinaryService;
+	}
+
+	public java.util.Optional<User> findByUsername(String username) {
+		return username == null ? java.util.Optional.empty() : userRepository.findByUsername(username);
+	}
+
+	public java.util.Optional<User> findById(Integer id) {
+		return id == null ? java.util.Optional.empty() : userRepository.findById(id);
+	}
+
+	public List<User> shippersOfBranch(Integer branchId) {
+		return userRepository.findShippersOfBranch(branchId);
+	}
+
+	public List<User> customers() {
+		return userRepository.findByRole_Name("USER").stream()
+				.sorted(java.util.Comparator.comparing(User::getUsername)).toList();
+	}
+
+	@Transactional
+	public User clearTemporaryPassword(Integer userId) {
+		User u = userRepository.findById(userId)
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
+		u.setMustChangePassword(false);
+		u.setTempPasswordExpiresAt(null);
+		return userRepository.save(u);
 	}
 
 	public User getProfile(Integer userId) {

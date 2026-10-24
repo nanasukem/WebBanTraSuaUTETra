@@ -67,6 +67,11 @@ public class MemberServiceImpl implements MemberService {
 	}
 
 	@Override
+	public List<MemberTier> allTiers() {
+		return memberTierRepository.findAllByOrderByMinSpentAsc();
+	}
+
+	@Override
 	public boolean isNewCustomer(Integer userId) {
 		return !orderRepository.existsByUserIdAndStatusNot(userId, OrderStatus.CANCELLED);
 	}

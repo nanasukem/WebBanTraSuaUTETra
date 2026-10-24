@@ -146,6 +146,57 @@
 								<div class="text-danger small" th:errors="*{endDate}"></div>
 							</div>
 
+							<div class="col-md-6">
+								<label for="perUserLimit" class="form-label">Lượt mỗi khách</label>
+								<input id="perUserLimit" type="number" th:field="*{perUserLimit}" class="form-control"
+									min="1" step="1" placeholder="Để trống nếu không giới hạn">
+								<div class="text-danger small" th:errors="*{perUserLimit}"></div>
+							</div>
+
+							<div class="col-md-6">
+								<label for="paymentMethod" class="form-label">Phương thức thanh toán</label>
+								<select id="paymentMethod" th:field="*{paymentMethod}" class="form-select">
+									<option value="">Mọi phương thức</option>
+									<option th:each="m : ${paymentMethods}" th:value="${m}"
+										th:text="${m.name() == 'COD'} ? 'Chỉ tiền mặt khi nhận (COD)' : 'Chỉ ' + ${m.name() == 'MOMO' ? 'MoMo' : m.name()}">COD</option>
+								</select>
+							</div>
+
+							<div class="col-md-6">
+								<label for="audience" class="form-label">Đối tượng khách</label>
+								<select id="audience" th:field="*{audience}" class="form-select">
+									<option value="ALL">Tất cả khách</option>
+									<option value="NEW_USER">Khách mới (đơn đầu tiên)</option>
+									<option value="MIN_TIER">Từ hạng thành viên</option>
+									<option value="SPECIFIC">Khách được chỉ định (tặng riêng)</option>
+								</select>
+							</div>
+
+							<div class="col-md-6" id="tierBox">
+								<label for="minTierId" class="form-label">Hạng tối thiểu</label>
+								<select id="minTierId" th:field="*{minTierId}" class="form-select">
+									<option value="">-- Chọn hạng --</option>
+									<option th:each="t : ${tiers}" th:value="${t.id}" th:text="${t.name}">Bạc</option>
+								</select>
+							</div>
+
+							<div class="col-12" id="usersBox">
+								<label for="assignedUsers" class="form-label">Khách được tặng mã <span class="text-danger">*</span></label>
+								<textarea id="assignedUsers" th:field="*{assignedUsers}" class="form-control" rows="2"
+									list="customerList" placeholder="Nhập tên đăng nhập, email hoặc số điện thoại, cách nhau bởi dấu phẩy. VD: user1, user2@gmail.com, 0900000007"></textarea>
+								<div class="input-group input-group-sm mt-2" style="max-width: 460px;">
+									<input type="text" class="form-control" id="customerPick" list="customerList"
+										placeholder="Tìm khách để thêm vào danh sách...">
+									<button type="button" class="btn btn-outline-success" id="customerAdd">Thêm</button>
+								</div>
+								<datalist id="customerList">
+									<option th:each="c : ${customers}" th:value="${c.username}"
+										th:text="${c.fullName} + (${c.phone} != null ? ' · ' + ${c.phone} : '')"></option>
+								</datalist>
+								<div class="form-text">Chỉ những khách này thấy và dùng được mã; họ được báo qua chuông khi được tặng.</div>
+								<div class="text-danger small" th:errors="*{assignedUsers}"></div>
+							</div>
+
 							<div class="col-12">
 								<div class="alert alert-info mb-0">
 									<i class="bi bi-info-circle me-1"></i> Chọn <b>Toàn chuỗi</b>
@@ -217,6 +268,27 @@
 								if (start.value) {
 									end.min = start.value;
 								}
+
+								const audience = document.getElementById('audience');
+								const tierBox = document.getElementById('tierBox');
+								const usersBox = document.getElementById('usersBox');
+								function updateAudience() {
+									tierBox.classList.toggle('d-none', audience.value !== 'MIN_TIER');
+									usersBox.classList.toggle('d-none', audience.value !== 'SPECIFIC');
+								}
+								audience.addEventListener('change', updateAudience);
+								updateAudience();
+
+								const pick = document.getElementById('customerPick');
+								const list = document.getElementById('assignedUsers');
+								document.getElementById('customerAdd').addEventListener('click', function() {
+									const name = pick.value.trim();
+									if (!name) return;
+									const items = list.value.split(/[,;\s]+/).filter(Boolean);
+									if (!items.includes(name)) items.push(name);
+									list.value = items.join(', ');
+									pick.value = '';
+								});
 							});
 		</script>
 

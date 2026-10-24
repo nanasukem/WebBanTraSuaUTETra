@@ -173,6 +173,11 @@ public class OrderServiceImpl implements OrderService {
                 continue;
             }
 
+            if (v.getAudience() == VoucherAudience.SPECIFIC
+                    && v.getAssignedUsers().stream().noneMatch(u -> u.getId().equals(userId))) {
+                continue;
+            }
+
             String reason = null;
             BigDecimal discount = BigDecimal.ZERO;
 
@@ -233,6 +238,10 @@ public class OrderServiceImpl implements OrderService {
 
         if (v.getAudience() == VoucherAudience.NEW_USER) {
             tags.add("Bạn mới");
+        }
+
+        if (v.getAudience() == VoucherAudience.SPECIFIC) {
+            tags.add("Tặng riêng bạn");
         }
 
         if (v.getAudience() == VoucherAudience.MIN_TIER

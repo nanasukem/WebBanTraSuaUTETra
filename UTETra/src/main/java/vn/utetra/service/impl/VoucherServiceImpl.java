@@ -2,6 +2,7 @@ package vn.utetra.service.impl;
 
 import vn.utetra.dto.request.VoucherReq;
 import vn.utetra.dto.response.ManagerVoucherRes;
+import vn.utetra.entity.User;
 import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.entity.Branch;
 import vn.utetra.entity.MemberTier;
@@ -44,6 +45,10 @@ public class VoucherServiceImpl implements VoucherService {
 	private final OrderRepository orderRepository;
 	private final MemberService memberService;
 	private final vn.utetra.service.VoucherAlertService voucherAlertService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.service.NotificationService notificationService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.MemberTierRepository memberTierRepository;
 
 	public VoucherServiceImpl(VoucherRepository voucherRepository, BranchRepository branchRepository,
 			VoucherUsageRepository voucherUsageRepository, UserRepository userRepository,
@@ -131,6 +136,7 @@ public class VoucherServiceImpl implements VoucherService {
 				: "Đơn từ " + money(v.getMinOrderValue()));
 		if (v.getPerUserLimit() != null) parts.add("Mỗi khách " + v.getPerUserLimit() + " lần");
 		if (v.getAudience() == VoucherAudience.NEW_USER) parts.add("Chỉ khách mới");
+		if (v.getAudience() == VoucherAudience.SPECIFIC) parts.add("Tặng riêng " + v.getAssignedUsers().size() + " khách");
 		if (v.getAudience() == VoucherAudience.MIN_TIER && v.getMinTier() != null)
 			parts.add("Hạng " + v.getMinTier().getName() + " trở lên");
 		if (v.getPaymentMethod() != null) parts.add("Chỉ " + (v.getPaymentMethod() == PaymentMethod.COD ? "COD" : v.getPaymentMethod().name()));
@@ -155,8 +161,10 @@ public class VoucherServiceImpl implements VoucherService {
 			throw new BusinessException("Mã voucher " + code + " đã tồn tại");
 		}
 		Voucher v = new Voucher();
-		copy(req, v);
-		return voucherRepository.save(v);
+		java.util.Set<User> added = copy(req, v);
+		v = voucherRepository.save(v);
+		notifyAssigned(v, added);
+		return v;
 	}
 
 	@Override
@@ -170,8 +178,19 @@ public class VoucherServiceImpl implements VoucherService {
 		if (req.getQuantity() < v.getUsedCount()) {
 			throw new BusinessException("Số lượng không được nhỏ hơn số lượt đã dùng (" + v.getUsedCount() + ")");
 		}
-		copy(req, v);
-		return voucherRepository.save(v);
+		java.util.Set<User> added = copy(req, v);
+		v = voucherRepository.save(v);
+		notifyAssigned(v, added);
+		return v;
+	}
+
+	private void notifyAssigned(Voucher v, java.util.Set<User> users) {
+		for (User u : users) {
+			notificationService.create(u, null, "VOUCHER", "Bạn được tặng mã " + v.getCode(),
+					v.getName() + " · giảm " + discountText(v) + " · hạn tới "
+							+ v.getEndDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+					"/menu");
+		}
 	}
 
 	@Override
@@ -206,6 +225,12 @@ public class VoucherServiceImpl implements VoucherService {
 		req.setQuantity(v.getQuantity());
 		req.setStartDate(v.getStartDate());
 		req.setEndDate(v.getEndDate());
+		req.setPerUserLimit(v.getPerUserLimit());
+		req.setAudience(v.getAudience() == null ? VoucherAudience.ALL : v.getAudience());
+		req.setMinTierId(v.getMinTier() == null ? null : v.getMinTier().getId());
+		req.setPaymentMethod(v.getPaymentMethod());
+		req.setAssignedUsers(v.getAssignedUsers().stream().map(User::getUsername).sorted()
+				.collect(java.util.stream.Collectors.joining(", ")));
 		return req;
 	}
 
@@ -276,6 +301,9 @@ public class VoucherServiceImpl implements VoucherService {
 			}
 		}
 		VoucherAudience audience = v.getAudience() == null ? VoucherAudience.ALL : v.getAudience();
+		if (audience == VoucherAudience.SPECIFIC && v.getAssignedUsers().stream().noneMatch(u -> u.getId().equals(userId))) {
+			throw new BusinessException("Mã " + v.getCode() + " chỉ dành cho khách được tặng");
+		}
 		if (audience == VoucherAudience.NEW_USER && !memberService.isNewCustomer(userId)) {
 			throw new BusinessException("Mã " + v.getCode() + " chỉ dành cho đơn hàng đầu tiên của tài khoản mới");
 		}
@@ -325,7 +353,7 @@ public class VoucherServiceImpl implements VoucherService {
 		voucherAlertService.checkRemaining(voucherId);
 	}
 
-	private void copy(VoucherReq req, Voucher v) {
+	private java.util.Set<User> copy(VoucherReq req, Voucher v) {
 		Branch branch = null;
 		if (req.getBranchId() != null) {
 			branch = branchRepository.findById(req.getBranchId())
@@ -342,5 +370,48 @@ public class VoucherServiceImpl implements VoucherService {
 		v.setQuantity(req.getQuantity());
 		v.setStartDate(req.getStartDate());
 		v.setEndDate(req.getEndDate());
+		v.setPerUserLimit(req.getPerUserLimit());
+		VoucherAudience audience = req.getAudience() == null ? VoucherAudience.ALL : req.getAudience();
+		v.setAudience(audience);
+		v.setPaymentMethod(req.getPaymentMethod());
+		v.setMinTier(null);
+		if (audience == VoucherAudience.MIN_TIER) {
+			if (req.getMinTierId() == null) throw new BusinessException("Chọn hạng thành viên tối thiểu");
+			v.setMinTier(memberTierRepository.findById(req.getMinTierId())
+					.orElseThrow(() -> new BusinessException("Hạng thành viên không tồn tại")));
+		}
+		java.util.Set<User> before = new java.util.HashSet<>(v.getAssignedUsers());
+		java.util.Set<User> chosen = audience == VoucherAudience.SPECIFIC ? resolveCustomers(req.getAssignedUsers())
+				: new java.util.HashSet<>();
+		if (audience == VoucherAudience.SPECIFIC && chosen.isEmpty()) {
+			throw new BusinessException("Nhập ít nhất 1 khách được tặng mã");
+		}
+		v.getAssignedUsers().clear();
+		v.getAssignedUsers().addAll(chosen);
+		java.util.Set<Integer> beforeIds = before.stream().map(User::getId).collect(java.util.stream.Collectors.toSet());
+		return chosen.stream().filter(u -> !beforeIds.contains(u.getId()))
+				.collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new));
+	}
+
+	private java.util.Set<User> resolveCustomers(String text) {
+		java.util.Set<User> users = new java.util.LinkedHashSet<>();
+		java.util.List<String> missing = new ArrayList<>();
+		if (text == null) return users;
+		for (String raw : text.split("[,;\\s]+")) {
+			String key = raw.trim();
+			if (key.isEmpty()) continue;
+			java.util.Optional<User> u = userRepository.findByUsernameOrEmail(key, key.toLowerCase());
+			if (u.isEmpty()) u = userRepository.findAll().stream().filter(x -> key.equals(x.getPhone())).findFirst();
+			if (u.isEmpty() || u.get().getRole() == null || !"USER".equals(u.get().getRole().getName())) {
+				missing.add(key);
+			} else {
+				users.add(u.get());
+			}
+		}
+		if (!missing.isEmpty()) {
+			throw new BusinessException("Không tìm thấy khách hàng: " + String.join(", ", missing)
+					+ " (nhập tên đăng nhập, email hoặc số điện thoại của tài khoản khách)");
+		}
+		return users;
 	}
 }

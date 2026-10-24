@@ -14,7 +14,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import vn.utetra.entity.User;
 import vn.utetra.exception.BusinessException;
-import vn.utetra.repository.RoleRepository;
 import vn.utetra.service.AdminUserService;
 
 @Controller
@@ -22,11 +21,8 @@ import vn.utetra.service.AdminUserService;
 public class AdminUserController {
 
 	private final AdminUserService adminUserService;
-	private final RoleRepository roleRepository;
-
-	public AdminUserController(AdminUserService adminUserService, RoleRepository roleRepository) {
+	public AdminUserController(AdminUserService adminUserService) {
 		this.adminUserService = adminUserService;
-		this.roleRepository = roleRepository;
 	}
 
 	@GetMapping
@@ -48,7 +44,7 @@ public class AdminUserController {
 		model.addAttribute("inactiveUsers", r.totalUsers() - r.activeUsers());
 		model.addAttribute("keyword", keyword);
 		model.addAttribute("branches", adminUserService.branches());
-		model.addAttribute("roles", roleRepository.findAll());
+		model.addAttribute("roles", adminUserService.roles());
 		return "admin/users/index";
 	}
 
@@ -60,7 +56,7 @@ public class AdminUserController {
 			model.addAttribute("managedBranches", adminUserService.managedBranches(id));
 			model.addAttribute("branches", adminUserService.branches());
 			model.addAttribute("shipperCounts", adminUserService.shipperCounts());
-			model.addAttribute("roles", roleRepository.findAll());
+			model.addAttribute("roles", adminUserService.roles());
 			model.addAttribute("tempExpired", AdminUserService.tempExpired(user));
 			return "admin/users/detail";
 		} catch (BusinessException e) {

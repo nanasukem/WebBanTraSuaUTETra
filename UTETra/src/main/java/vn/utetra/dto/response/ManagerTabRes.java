@@ -1,4 +1,4 @@
 package vn.utetra.dto.response;
 
-public record ManagerTabRes(String status, String label, long count) {
+public record ManagerTabRes(String status, String label, long count, long pending) {
 }

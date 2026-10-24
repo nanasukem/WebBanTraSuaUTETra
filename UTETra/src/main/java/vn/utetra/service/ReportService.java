@@ -33,7 +33,11 @@ public class ReportService {
 		this.orderDetailRepository = orderDetailRepository;
 	}
 
-	public record Point(String label, BigDecimal revenue, long orders) {
+	public record Point(String label, BigDecimal revenue, BigDecimal shipping, long orders) {
+		public BigDecimal sales() {
+			return revenue.subtract(shipping);
+		}
+
 		public BigDecimal average() {
 			return ReportService.average(revenue, orders);
 		}
@@ -42,7 +46,12 @@ public class ReportService {
 	public record TopProduct(Integer productId, String name, long quantity, BigDecimal amount, long orders) {
 	}
 
-	public record BranchRevenue(Integer branchId, String branchName, BigDecimal revenue, long orders) {
+	public record BranchRevenue(Integer branchId, String branchName, BigDecimal revenue, BigDecimal shipping,
+			long orders) {
+		public BigDecimal sales() {
+			return revenue.subtract(shipping);
+		}
+
 		public BigDecimal average() {
 			return ReportService.average(revenue, orders);
 		}
@@ -51,13 +60,13 @@ public class ReportService {
 	public List<Point> byDay(LocalDate from, LocalDate to, Integer branchId) {
 		Map<LocalDate, Point> map = new LinkedHashMap<>();
 		for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
-			map.put(d, new Point(d.format(DAY), BigDecimal.ZERO, 0));
+			map.put(d, new Point(d.format(DAY), BigDecimal.ZERO, BigDecimal.ZERO, 0));
 		}
 		for (Object[] r : orderRepository.revenueByDay(from.atStartOfDay(), to.plusDays(1).atStartOfDay(),
 				branchId == null ? 0 : branchId)) {
 			LocalDate d = toLocalDate(r[0]);
 			if (d != null && map.containsKey(d)) {
-				map.put(d, new Point(d.format(DAY), money(r[1]), ((Number) r[2]).longValue()));
+				map.put(d, new Point(d.format(DAY), money(r[1]), money(r[2]), ((Number) r[3]).longValue()));
 			}
 		}
 		return new ArrayList<>(map.values());
@@ -68,12 +77,12 @@ public class ReportService {
 		YearMonth first = last.minusMonths(months - 1L);
 		Map<YearMonth, Point> map = new LinkedHashMap<>();
 		for (YearMonth m = first; !m.isAfter(last); m = m.plusMonths(1)) {
-			map.put(m, new Point(label(m), BigDecimal.ZERO, 0));
+			map.put(m, new Point(label(m), BigDecimal.ZERO, BigDecimal.ZERO, 0));
 		}
 		for (Object[] r : orderRepository.revenueByMonth(OrderStatus.DELIVERED, first.atDay(1).atStartOfDay(),
 				last.plusMonths(1).atDay(1).atStartOfDay(), branchId)) {
 			YearMonth m = YearMonth.of(((Number) r[0]).intValue(), ((Number) r[1]).intValue());
-			map.put(m, new Point(label(m), money(r[2]), ((Number) r[3]).longValue()));
+			map.put(m, new Point(label(m), money(r[2]), money(r[3]), ((Number) r[4]).longValue()));
 		}
 		return new ArrayList<>(map.values());
 	}
@@ -92,19 +101,39 @@ public class ReportService {
 		List<BranchRevenue> list = new ArrayList<>();
 		for (Object[] r : orderRepository.revenueByBranch(OrderStatus.DELIVERED, from.atStartOfDay(),
 				to.plusDays(1).atStartOfDay())) {
-			list.add(new BranchRevenue((Integer) r[0], (String) r[1], money(r[2]), ((Number) r[3]).longValue()));
+			list.add(new BranchRevenue((Integer) r[0], (String) r[1], money(r[2]), money(r[3]),
+					((Number) r[4]).longValue()));
 		}
 		return list;
 	}
 
+	public Point summary(LocalDateTime start, LocalDateTime end, Integer branchId) {
+		List<Object[]> rows = orderRepository.summaryOfBranch(OrderStatus.DELIVERED, start, end, branchId);
+		if (rows.isEmpty()) return new Point("Tổng", BigDecimal.ZERO, BigDecimal.ZERO, 0);
+		Object[] r = rows.get(0);
+		return new Point("Tổng", money(r[0]), money(r[1]), r[2] == null ? 0 : ((Number) r[2]).longValue());
+	}
+
+	public org.springframework.data.domain.Page<vn.utetra.entity.Order> shippedBetween(LocalDateTime start,
+			LocalDateTime end, Integer branchId, int page, int size) {
+		return orderRepository.findShippedBetween(OrderStatus.DELIVERED, start, end, branchId,
+				PageRequest.of(Math.max(page, 0), size));
+	}
+
+	public List<vn.utetra.entity.Order> latestShipped(Integer branchId, int limit) {
+		return orderRepository.findLatestShipped(OrderStatus.DELIVERED, branchId, PageRequest.of(0, limit));
+	}
+
 	public static Point total(List<Point> points) {
 		BigDecimal sum = BigDecimal.ZERO;
+		BigDecimal ship = BigDecimal.ZERO;
 		long n = 0;
 		for (Point p : points) {
 			sum = sum.add(p.revenue());
+			ship = ship.add(p.shipping());
 			n += p.orders();
 		}
-		return new Point("Tổng", sum, n);
+		return new Point("Tổng", sum, ship, n);
 	}
 
 	public static BigDecimal average(BigDecimal revenue, long orders) {

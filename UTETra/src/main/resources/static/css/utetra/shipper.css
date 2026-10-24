@@ -1,0 +1,30 @@
+body {
+	background: var(--ut-bg);
+	color: var(--ut-text);
+}
+
+.shipper-header {
+	background: var(--ut-green);
+	color: #fff;
+	padding: 14px 24px;
+}
+
+.shipper-card {
+	border: 0;
+	border-radius: var(--ut-radius);
+	box-shadow: var(--ut-shadow);
+}
+
+.nav-pills .nav-link {
+	color: var(--ut-text);
+	background: #fff;
+	border: 1px solid #dee2e6;
+	border-radius: 999px;
+	font-weight: 600;
+}
+
+.nav-pills .nav-link.active {
+	background: var(--ut-green);
+	color: #fff;
+	border-color: var(--ut-green);
+}

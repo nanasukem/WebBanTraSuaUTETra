@@ -119,6 +119,11 @@ public class Order {
 	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OrderDetail> details = new ArrayList<>();
 
+	public BigDecimal getGoodsRevenue() {
+		BigDecimal ship = shippingFee == null ? BigDecimal.ZERO : shippingFee;
+		return getSalesAmount().subtract(ship);
+	}
+
 	public BigDecimal getSalesAmount() {
 		BigDecimal total = totalAmount == null ? BigDecimal.ZERO : totalAmount;
 		BigDecimal rf = refundAmount == null ? BigDecimal.ZERO : refundAmount;

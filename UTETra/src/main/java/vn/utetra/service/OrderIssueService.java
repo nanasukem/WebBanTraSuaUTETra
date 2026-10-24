@@ -36,6 +36,16 @@ public class OrderIssueService {
 	private final CloudinaryService cloudinaryService;
 	private final NotificationService notificationService;
 	private final RefundService refundService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.ReviewRepository reviewRepository;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.ReviewMediaRepository reviewMediaRepository;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.ReviewReplyRepository reviewReplyRepository;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.OrderReviewRepository orderReviewRepository;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.OrderReviewMediaRepository orderReviewMediaRepository;
 
 	public OrderIssueService(OrderIssueRepository issueRepository, OrderRepository orderRepository,
 			CloudinaryService cloudinaryService, NotificationService notificationService, RefundService refundService) {
@@ -105,9 +115,51 @@ public class OrderIssueService {
 		i.setImages(String.join("|", urls));
 		issueRepository.save(i);
 
+		int go = removeReviews(o);
+		i.setRemovedReviews(go);
+		issueRepository.save(i);
 		notificationService.create(o.getBranch().getOwner(), o, "ORDER", "Khách báo vấn đề với đơn #" + orderId,
 				reason.getLabel() + (desc == null ? "" : ": " + desc), "/manager/orders/" + orderId);
+		notificationService.notifyAdmins("ORDER", "Khách báo vấn đề với đơn #" + orderId + " - " + o.getBranch().getName(),
+				reason.getLabel() + (desc == null ? "" : ": " + desc), "/admin/orders/" + orderId, null);
+		if (go > 0) {
+			String title = "Đã gỡ " + go + " đánh giá của đơn #" + orderId;
+			String content = "Khách báo vấn đề nên đánh giá món, đánh giá quán và phản hồi của quán cho đơn này đã được gỡ";
+			notificationService.create(o.getBranch().getOwner(), o, "REVIEW", title, content, "/manager/orders/" + orderId);
+			notificationService.notifyAdmins("REVIEW", title + " - " + o.getBranch().getName(), content,
+					"/admin/orders/" + orderId, null);
+		}
 		return i;
+	}
+
+	private int removeReviews(Order o) {
+		List<String> files = new ArrayList<>();
+		int count = 0;
+		List<Integer> detailIds = o.getDetails().stream().map(d -> d.getId()).toList();
+		for (vn.utetra.entity.Review r : reviewRepository.findByOrderDetailIdIn(detailIds)) {
+			reviewReplyRepository.deleteAll(reviewReplyRepository.findByReviewIdOrderByCreatedAtAsc(r.getId()));
+			List<vn.utetra.entity.ReviewMedia> media = reviewMediaRepository.findByReviewIdInOrderByIdAsc(List.of(r.getId()));
+			media.forEach(m -> files.add(m.getCloudinaryId()));
+			reviewMediaRepository.deleteAll(media);
+			reviewRepository.delete(r);
+			count++;
+		}
+		vn.utetra.entity.OrderReview or = orderReviewRepository.findByOrderId(o.getId()).orElse(null);
+		if (or != null) {
+			reviewReplyRepository.deleteAll(reviewReplyRepository.findByOrderReviewIdOrderByCreatedAtAsc(or.getId()));
+			List<vn.utetra.entity.OrderReviewMedia> media = orderReviewMediaRepository.findByOrderReviewIdOrderByIdAsc(or.getId());
+			media.forEach(m -> files.add(m.getCloudinaryId()));
+			orderReviewMediaRepository.deleteAll(media);
+			orderReviewRepository.delete(or);
+			count++;
+		}
+		for (String f : files) {
+			try {
+				cloudinaryService.deleteImage(f);
+			} catch (RuntimeException ignored) {
+			}
+		}
+		return count;
 	}
 
 	@Transactional
@@ -162,6 +214,10 @@ public class OrderIssueService {
 		issueRepository.save(i);
 		orderRepository.save(o);
 		notificationService.create(o.getUser(), o, "REFUND", title, message, "/orders/" + orderId);
+		String branch = o.getBranch() == null ? "Chi nhánh" : o.getBranch().getName();
+		notificationService.notifyAdmins("REFUND", branch + ": " + i.getStatus().getLabel().toLowerCase()
+				+ (i.getStatus() == IssueStatus.REFUNDED ? " " + money(i.getRefundAmount()) + "đ" : "") + " đơn #" + orderId,
+				i.getReason().getLabel() + (cleanNote == null ? "" : " · " + cleanNote), "/admin/orders/" + orderId, null);
 	}
 
 	public OrderIssueRes forOrder(Integer orderId) {
@@ -193,7 +249,8 @@ public class OrderIssueService {
 		return new OrderIssueRes(i.getId(), i.getReason().name(), i.getReason().getLabel(), i.getDescription(), imgs,
 				i.getStatus().name(), statusLabel, badge, i.getRefundAmount(), storeNote,
 				i.getCreatedAt() == null ? null : i.getCreatedAt().format(TIME),
-				i.getResolvedAt() == null ? null : i.getResolvedAt().format(TIME));
+				i.getResolvedAt() == null ? null : i.getResolvedAt().format(TIME),
+				i.getRemovedReviews() == null ? 0 : i.getRemovedReviews());
 	}
 
 	private static String money(BigDecimal v) {

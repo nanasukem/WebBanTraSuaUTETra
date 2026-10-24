@@ -54,4 +54,7 @@ public class OrderIssue {
 
 	@Column(name = "resolved_at")
 	private LocalDateTime resolvedAt;
+
+	@Column(name = "removed_reviews", nullable = false)
+	private Integer removedReviews = 0;
 }

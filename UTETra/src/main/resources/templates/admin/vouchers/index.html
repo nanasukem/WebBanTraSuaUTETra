@@ -103,6 +103,8 @@
 									<td>
 										<div class="fw-semibold" th:text="${v.name}"></div> <small
 										class="text-muted" th:text="${v.applyTo}"></small>
+										<span th:if="${v.audience != null and v.audience.name() == 'SPECIFIC'}" class="badge text-bg-info ms-1"
+											th:text="'Tặng riêng ' + ${#sets.size(v.assignedUsers)} + ' khách'"></span>
 									</td>
 
 									<td><span th:if="${v.discountType.name() == 'PERCENT'}">

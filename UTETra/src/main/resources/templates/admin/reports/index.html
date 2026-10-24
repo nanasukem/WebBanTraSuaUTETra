@@ -59,10 +59,11 @@
 				<div class="col-12 col-sm-6 col-xl-3">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
-							<div class="text-muted mb-2">Doanh thu hôm nay</div>
+							<div class="text-muted mb-2">Tổng thu hôm nay</div>
 							<h4 class="fw-bold text-success"
 								th:text="${#numbers.formatDecimal(todayRevenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
 								0 đ</h4>
+<div class="small mt-1"><div class="d-flex justify-content-between"><span class="text-muted">Bán hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(todayStat.sales(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div><div class="d-flex justify-content-between"><span class="text-muted">Phí giao hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(todayStat.shipping(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div></div>
 							<small class="text-muted"> <span th:text="${todayOrders}">0</span>
 								đơn đã giao
 							</small>
@@ -73,10 +74,11 @@
 				<div class="col-12 col-sm-6 col-xl-3">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
-							<div class="text-muted mb-2">Doanh thu tháng này</div>
+							<div class="text-muted mb-2">Tổng thu tháng này</div>
 							<h4 class="fw-bold text-primary"
 								th:text="${#numbers.formatDecimal(monthRevenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
 								0 đ</h4>
+<div class="small mt-1"><div class="d-flex justify-content-between"><span class="text-muted">Bán hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(monthStat.sales(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div><div class="d-flex justify-content-between"><span class="text-muted">Phí giao hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(monthStat.shipping(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div></div>
 							<small class="text-muted"> <span th:text="${monthOrders}">0</span>
 								đơn đã giao
 							</small>
@@ -87,10 +89,11 @@
 				<div class="col-12 col-sm-6 col-xl-3">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
-							<div class="text-muted mb-2">Doanh thu khoảng đã chọn</div>
+							<div class="text-muted mb-2">Tổng thu khoảng đã chọn</div>
 							<h4 class="fw-bold text-info"
 								th:text="${#numbers.formatDecimal(selectedRevenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
 								0 đ</h4>
+<div class="small mt-1"><div class="d-flex justify-content-between"><span class="text-muted">Bán hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(selectedStat.sales(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div><div class="d-flex justify-content-between"><span class="text-muted">Phí giao hàng</span><span class="fw-semibold" th:text="${#numbers.formatDecimal(selectedStat.shipping(), 0, 'POINT', 0, 'COMMA')} + ' đ'">0</span></div></div>
 							<small class="text-muted"> <span
 								th:text="${selectedOrders}">0</span> đơn đã giao
 							</small>
@@ -105,7 +108,7 @@
 							<h4 class="fw-bold text-warning"
 								th:text="${#numbers.formatDecimal(selectedAverage, 0, 'POINT', 0, 'COMMA') + ' đ'}">
 								0 đ</h4>
-							<small class="text-muted">Doanh thu khoảng đã chọn / số đơn</small>
+							<small class="text-muted">Tổng thu khoảng đã chọn / số đơn</small>
 						</div>
 					</div>
 				</div>
@@ -202,7 +205,9 @@
 									<th class="ps-3">STT</th>
 									<th>Chi nhánh</th>
 									<th class="text-end">Số đơn</th>
-									<th class="text-end">Doanh thu</th>
+									<th class="text-end">Bán hàng</th>
+									<th class="text-end">Phí giao hàng</th>
+									<th class="text-end">Tổng thu</th>
 									<th class="text-end">TB / đơn</th>
 									<th class="text-end pe-3">Đơn hàng</th>
 								</tr>
@@ -221,6 +226,10 @@
 
 									<td class="text-end" th:text="${branch.orders}">0</td>
 
+									<td class="text-end"
+										th:text="${#numbers.formatDecimal(branch.sales(), 0, 'POINT', 0, 'COMMA') + ' đ'}">0 đ</td>
+									<td class="text-end"
+										th:text="${#numbers.formatDecimal(branch.shipping(), 0, 'POINT', 0, 'COMMA') + ' đ'}">0 đ</td>
 									<td class="text-end fw-semibold text-success"
 										th:text="${#numbers.formatDecimal(branch.revenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
 										0 đ</td>
@@ -237,7 +246,7 @@
 								</tr>
 
 								<tr th:if="${#lists.isEmpty(branchReports)}">
-									<td colspan="6" class="text-center text-muted py-5">Chưa
+									<td colspan="8" class="text-center text-muted py-5">Chưa
 										có đơn giao thành công trong khoảng thời gian này.</td>
 								</tr>
 							</tbody>
@@ -257,6 +266,8 @@
 			const chartValues = /*[[${chartValues}]]*/[];
 			const monthLabels = /*[[${monthLabels}]]*/[];
 			const monthValues = /*[[${monthValues}]]*/[];
+			const monthSales = /*[[${monthSales}]]*/[];
+			const monthShipping = /*[[${monthShipping}]]*/[];
 			const monthCounts = /*[[${monthCounts}]]*/[];
 
 			document.addEventListener('DOMContentLoaded', function () {
@@ -267,8 +278,8 @@
 					data: {
 						labels: monthLabels,
 						datasets: [
-							{ type: 'bar', label: 'Doanh thu', data: monthValues, backgroundColor: 'rgba(25, 135, 84, 0.75)',
-								borderRadius: 4, yAxisID: 'y' },
+							{ type: 'bar', label: 'Bán hàng', data: monthSales, backgroundColor: 'rgba(25, 135, 84, 0.8)', stack: 'thu', yAxisID: 'y' },
+							{ type: 'bar', label: 'Phí giao hàng', data: monthShipping, backgroundColor: 'rgba(13, 110, 253, 0.6)', stack: 'thu', yAxisID: 'y' },
 							{ type: 'line', label: 'Số đơn', data: monthCounts, borderColor: '#fd7e14', backgroundColor: '#fd7e14',
 								tension: 0.3, yAxisID: 'y1' }
 						]
@@ -276,9 +287,9 @@
 					options: {
 						responsive: true, maintainAspectRatio: false,
 						plugins: { tooltip: { callbacks: { label: (x) => x.dataset.yAxisID === 'y'
-							? 'Doanh thu: ' + vnd(x.parsed.y || 0) : 'Số đơn: ' + (x.parsed.y || 0) } } },
+							? x.dataset.label + ': ' + vnd(x.parsed.y || 0) : 'Số đơn: ' + (x.parsed.y || 0) } } },
 						scales: {
-							y: { beginAtZero: true, ticks: { callback: (v) => vnd(v) } },
+							x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: (v) => vnd(v) } },
 							y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { precision: 0 } }
 						}
 					}

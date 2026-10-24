@@ -5,7 +5,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import vn.utetra.repository.BranchRepository;
 import vn.utetra.service.BranchReviewManagementService;
 
 @Controller
@@ -16,12 +15,12 @@ public class AdminReviewController {
 	private BranchReviewManagementService reviewService;
 
 	@Autowired
-	private BranchRepository branchRepository;
+	private vn.utetra.service.BranchService branchService;
 
 	@GetMapping
 	public String listAllReviews(@RequestParam(required = false) Integer branchId,
 			@RequestParam(required = false) String type, @RequestParam(required = false) Integer rating, Model model) {
-		model.addAttribute("branches", branchRepository.findAll());
+		model.addAttribute("branches", branchService.findAll());
 		model.addAttribute("selectedBranchId", branchId);
 		model.addAttribute("selectedType", type);
 		model.addAttribute("selectedRating", rating);

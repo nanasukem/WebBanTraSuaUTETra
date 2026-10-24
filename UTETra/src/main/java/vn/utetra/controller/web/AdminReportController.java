@@ -7,34 +7,26 @@ import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import vn.utetra.entity.Branch;
-import vn.utetra.entity.enums.OrderStatus;
-import vn.utetra.repository.BranchRepository;
-import vn.utetra.repository.OrderRepository;
 import vn.utetra.service.ReportService;
 
 @Controller
 @RequestMapping("/admin/reports")
-@Transactional(readOnly = true)
 public class AdminReportController {
 
 	private static final int MONTHS = 12;
 	private static final int TOP = 10;
 
-	private final OrderRepository orderRepository;
-	private final BranchRepository branchRepository;
+	private final vn.utetra.service.BranchService branchService;
 	private final ReportService reportService;
 
-	public AdminReportController(OrderRepository orderRepository, BranchRepository branchRepository,
-			ReportService reportService) {
-		this.orderRepository = orderRepository;
-		this.branchRepository = branchRepository;
+	public AdminReportController(vn.utetra.service.BranchService branchService, ReportService reportService) {
+		this.branchService = branchService;
 		this.reportService = reportService;
 	}
 
@@ -54,19 +46,23 @@ public class AdminReportController {
 			endDate = t;
 		}
 
-		OrderStatus delivered = OrderStatus.DELIVERED;
 		LocalDateTime todayStart = today.atStartOfDay();
 		LocalDateTime tomorrowStart = today.plusDays(1).atStartOfDay();
 		LocalDateTime monthStart = firstDayOfMonth.atStartOfDay();
 		LocalDateTime nextMonthStart = firstDayOfMonth.plusMonths(1).atStartOfDay();
 
-		model.addAttribute("todayRevenue", orderRepository.sumRevenueOfBranch(delivered, todayStart, tomorrowStart, branchId));
-		model.addAttribute("todayOrders", orderRepository.countDeliveredOfBranch(delivered, todayStart, tomorrowStart, branchId));
-		model.addAttribute("monthRevenue", orderRepository.sumRevenueOfBranch(delivered, monthStart, nextMonthStart, branchId));
-		model.addAttribute("monthOrders", orderRepository.countDeliveredOfBranch(delivered, monthStart, nextMonthStart, branchId));
+		ReportService.Point todayStat = reportService.summary(todayStart, tomorrowStart, branchId);
+		ReportService.Point monthStat = reportService.summary(monthStart, nextMonthStart, branchId);
+		model.addAttribute("todayStat", todayStat);
+		model.addAttribute("monthStat", monthStat);
+		model.addAttribute("todayRevenue", todayStat.revenue());
+		model.addAttribute("todayOrders", todayStat.orders());
+		model.addAttribute("monthRevenue", monthStat.revenue());
+		model.addAttribute("monthOrders", monthStat.orders());
 
 		List<ReportService.Point> days = reportService.byDay(startDate, endDate, branchId);
 		ReportService.Point sum = ReportService.total(days);
+		model.addAttribute("selectedStat", sum);
 		model.addAttribute("selectedRevenue", sum.revenue());
 		model.addAttribute("selectedOrders", sum.orders());
 		model.addAttribute("selectedAverage", sum.average());
@@ -78,6 +74,8 @@ public class AdminReportController {
 		model.addAttribute("monthLabels", months.stream().map(ReportService.Point::label).toList());
 		model.addAttribute("monthValues", months.stream().map(ReportService.Point::revenue).toList());
 		model.addAttribute("monthCounts", months.stream().map(ReportService.Point::orders).toList());
+		model.addAttribute("monthSales", months.stream().map(ReportService.Point::sales).toList());
+		model.addAttribute("monthShipping", months.stream().map(ReportService.Point::shipping).toList());
 
 		model.addAttribute("topProducts", reportService.topProducts(startDate, endDate, branchId, TOP));
 
@@ -87,10 +85,10 @@ public class AdminReportController {
 
 		model.addAttribute("startDate", startDate);
 		model.addAttribute("endDate", endDate);
-		model.addAttribute("branches", branchRepository.findAll().stream()
+		model.addAttribute("branches", branchService.findAll().stream()
 				.sorted(Comparator.comparing(Branch::getId)).toList());
 		model.addAttribute("selectedBranchId", branchId);
-		model.addAttribute("selectedBranch", branchId == null ? null : branchRepository.findById(branchId).orElse(null));
+		model.addAttribute("selectedBranch", branchId == null ? null : branchService.findOptional(branchId).orElse(null));
 		return "admin/reports/index";
 	}
 }
