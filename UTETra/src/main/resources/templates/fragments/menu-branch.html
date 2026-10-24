@@ -1,22 +1,14 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<!--
-	Ô "ĐANG ĐẶT TẠI" ở đầu menu (như Katinat / Phúc Long: chọn cửa hàng trước, món hết báo ngay trên menu).
-	- Khách / Admin: chọn chi nhánh (lưu trong phiên); chưa chọn = menu chung, thanh toán mới chọn chi nhánh
-	- Manager: cố định chi nhánh mình quản lý
-	Dùng: <div th:replace="~{fragments/menu-branch :: bar}"></div>
--->
 <div th:fragment="bar" class="menu-branch-bar d-flex flex-wrap align-items-center gap-2 bg-white border rounded-4 shadow-sm px-3 py-2 mb-3">
 	<i class="bi bi-shop text-success fs-5"></i>
 
-	<!-- Manager: menu của chi nhánh mình -->
 	<th:block th:if="${menuBranchLocked}">
 		<span class="small text-muted">Menu tại</span>
 		<b th:text="${menuBranch != null} ? ${menuBranch.name} : 'chi nhánh của bạn'">UTETra Võ Văn Ngân</b>
 		<span class="small text-muted ms-auto">Món hết ở chi nhánh bạn có nhãn <span class="badge text-bg-warning">Hết ở chi nhánh</span></span>
 	</th:block>
 
-	<!-- Khách / Admin: chọn chi nhánh -->
 	<form th:unless="${menuBranchLocked}" th:action="@{/menu/branch}" method="post"
 		class="d-flex flex-wrap align-items-center gap-2 flex-grow-1 m-0">
 		<label for="menuBranchSelect" class="small text-muted mb-0">Đang đặt tại</label>
@@ -33,8 +25,6 @@
 			th:text="${menuBranch.hoursLabel} + ' · ' + ${menuBranch.address}">7:00 - 22:00 · 1 Võ Văn Ngân</span>
 	</form>
 
-	<!-- Chưa chọn chi nhánh: hỏi vị trí trình duyệt 1 lần -> tự chọn chi nhánh gần nhất rồi tải lại trang.
-	     Khách từ chối / trình duyệt chặn thì để nguyên (chọn tay hoặc chọn khi thanh toán). -->
 	<script th:if="${menuBranchAsk}">
 		(function () {
 			try { if (sessionStorage.getItem('utetraAskedLocation')) return; sessionStorage.setItem('utetraAskedLocation', '1'); } catch (e) { }

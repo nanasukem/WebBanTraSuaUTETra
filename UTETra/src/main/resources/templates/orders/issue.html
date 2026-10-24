@@ -2,18 +2,13 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/user-layout :: main('Báo vấn đề với đơn - UTETra', ~{::#issue-content})}">
 
-<!--
-	BÁO VẤN ĐỀ VỚI ĐƠN /orders/{id}/issue - thay cho Trả hàng (đồ uống không trả lại được), giống app chuỗi thật:
-	- Chỉ trong 2 giờ sau khi nhận món, mỗi đơn báo 1 lần
-	- Chọn vấn đề, mô tả, chụp 1-3 ảnh; quán xem rồi hoàn tiền / làm lại món / phản hồi
--->
 <body>
 	<div id="issue-content" style="max-width: 760px; margin: 0 auto">
 		<style>
 .is-card { border: 0; border-radius: 1rem; box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06); }
 .is-reason { border: 1px solid #dee2e6; border-radius: .75rem; padding: .65rem .85rem; cursor: pointer; display: flex; gap: .6rem; align-items: center; }
 .btn-check:checked + .is-reason { border-color: #198754; background: #f1faf4; }
-.is-preview img { width: 84px; height: 84px; object-fit: cover; border-radius: .5rem; }
+.is-preview img, .is-preview video { width: 84px; height: 84px; object-fit: cover; border-radius: .5rem; background: #000; }
 		</style>
 
 		<a th:href="@{/orders/{id}(id=${order.id})}" class="text-decoration-none text-success small">
@@ -58,9 +53,11 @@
 
 			<div class="card is-card mb-3">
 				<div class="card-body">
-					<div class="fw-bold mb-1">Ảnh món nhận được <span class="text-danger">*</span></div>
-					<div class="small text-muted mb-2">Chụp 1-3 ảnh (tối đa 5MB/ảnh) để quán kiểm tra nhanh.</div>
-					<input type="file" class="form-control" name="images" id="is-images" accept="image/*" multiple required>
+					<div class="fw-bold mb-1">Ảnh / video món nhận được <span class="text-danger">*</span></div>
+					<div class="small text-muted mb-2">Gửi ít nhất 1 ảnh hoặc video (chọn được nhiều, tối đa 5 file · ảnh ≤ 5MB · video ≤ 30MB)
+						để quán kiểm tra nhanh.</div>
+					<input type="file" class="form-control" name="images" id="is-images" accept="image/*,video/*" multiple required>
+					<div class="small text-danger mt-1" id="is-error"></div>
 					<div class="is-preview d-flex gap-2 mt-2 flex-wrap" id="is-preview"></div>
 				</div>
 			</div>
@@ -82,16 +79,24 @@
 				};
 				tick(); setInterval(tick, 1000);
 				const input = document.getElementById('is-images');
+				const err = document.getElementById('is-error');
 				input.addEventListener('change', () => {
 					const box = document.getElementById('is-preview');
 					box.innerHTML = '';
+					err.textContent = '';
 					const files = [...input.files];
-					if (files.length > 3) { alert('Tối đa 3 ảnh'); input.value = ''; return; }
+					let msg = files.length > 5 ? 'Chỉ chọn tối đa 5 ảnh / video' : '';
 					files.forEach((f) => {
-						if (f.size > 5 * 1024 * 1024) { alert('Ảnh ' + f.name + ' quá 5MB'); input.value = ''; box.innerHTML = ''; return; }
-						const img = document.createElement('img');
-						img.src = URL.createObjectURL(f);
-						box.appendChild(img);
+						const v = f.type.startsWith('video/'), img = f.type.startsWith('image/');
+						if (!v && !img) msg = msg || ('"' + f.name + '" không phải ảnh hoặc video');
+						else if (f.size > (v ? 30 : 5) * 1024 * 1024) msg = msg || ('"' + f.name + '" quá ' + (v ? 30 : 5) + 'MB');
+					});
+					if (msg) { err.textContent = msg; input.value = ''; return; }
+					files.forEach((f) => {
+						const el = document.createElement(f.type.startsWith('video/') ? 'video' : 'img');
+						el.src = URL.createObjectURL(f);
+						if (el.tagName === 'VIDEO') el.muted = true;
+						box.appendChild(el);
 					});
 				});
 			})();

@@ -2,19 +2,18 @@
 <html lang="vi"
       xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
-      th:replace="~{layout/admin-layout :: main('Quản lý người dùng', 'users', ~{::#admin-content})}">
+      th:replace="~{layout/admin-layout :: main('Quản lý tài khoản', 'users', ~{::#admin-content})}">
 
 <section id="admin-content">
     <div class="container-fluid py-3">
 
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
             <div>
-                <h2 class="fw-bold mb-1">Quản lý người dùng</h2>
+                <h2 class="fw-bold mb-1">Quản lý tài khoản</h2>
                 <p class="text-muted mb-0">
                     Quản lý tài khoản và phân quyền người dùng UTETra.
                 </p>
             </div>
-            <!-- Admin tạo tài khoản Manager / Shipper / Admin (khách tự đăng ký) -->
             <div class="d-flex gap-2">
                 <a th:href="@{/admin/users/new(role='MANAGER')}" class="btn btn-success">
                     <i class="bi bi-person-plus me-1"></i> Thêm tài khoản
@@ -22,7 +21,6 @@
             </div>
         </div>
 
-        <!-- Thông báo -->
         <div th:if="${successMessage}"
              class="alert alert-success alert-dismissible fade show">
             <span th:text="${successMessage}"></span>
@@ -35,7 +33,6 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
 
-        <!-- Thống kê -->
         <div class="row g-3 mb-4">
             <div class="col-12 col-md-4">
                 <div class="card border-0 shadow-sm h-100">
@@ -67,13 +64,32 @@
             </div>
         </div>
 
-        <!-- Tìm kiếm và lọc -->
+        <ul class="nav nav-pills gap-2 mb-3">
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${tab == 'STAFF'} ? 'active' : 'bg-white border'"
+                   th:href="@{/admin/users(tab='STAFF', keyword=${keyword})}">
+                    <i class="bi bi-person-badge me-1"></i>Nhân viên
+                    <span class="badge rounded-pill ms-1" th:classappend="${tab == 'STAFF'} ? 'text-bg-light' : 'text-bg-secondary'"
+                          th:text="${staffCount}">0</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:classappend="${tab == 'USER'} ? 'active' : 'bg-white border'"
+                   th:href="@{/admin/users(tab='USER', keyword=${keyword})}">
+                    <i class="bi bi-people me-1"></i>Khách hàng
+                    <span class="badge rounded-pill ms-1" th:classappend="${tab == 'USER'} ? 'text-bg-light' : 'text-bg-secondary'"
+                          th:text="${customerCount}">0</span>
+                </a>
+            </li>
+        </ul>
+
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
                 <form method="get" th:action="@{/admin/users}">
+                    <input type="hidden" name="tab" th:value="${tab}">
                     <div class="row g-3 align-items-end">
 
-                        <div class="col-12 col-lg-5">
+                        <div class="col-12" th:classappend="${tab == 'STAFF'} ? 'col-lg-3' : 'col-lg-6'">
                             <label for="keyword" class="form-label">Tìm kiếm</label>
                             <input id="keyword"
                                    name="keyword"
@@ -83,7 +99,7 @@
                                    th:value="${keyword}">
                         </div>
 
-                        <div class="col-12 col-md-4 col-lg-3">
+                        <div class="col-12 col-md-4 col-lg-2" th:if="${tab == 'STAFF'}">
                             <label for="role" class="form-label">Vai trò</label>
                             <select id="role" name="role" class="form-select">
                                 <option value="ALL"
@@ -96,8 +112,16 @@
                                         th:selected="${selectedRole == 'MANAGER'}">Manager</option>
                                 <option value="SHIPPER"
                                         th:selected="${selectedRole == 'SHIPPER'}">Shipper</option>
-                                <option value="USER"
-                                        th:selected="${selectedRole == 'USER'}">Khách hàng</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-4 col-lg-3" th:if="${tab == 'STAFF'}">
+                            <label for="branch" class="form-label">Chi nhánh</label>
+                            <select id="branch" name="branch" class="form-select">
+                                <option value="" th:selected="${selectedBranch == ''}">Tất cả chi nhánh</option>
+                                <option th:each="b : ${branches}" th:value="${b.id}"
+                                        th:selected="${selectedBranch == '' + b.id}" th:text="${b.name}">UTETra</option>
+                                <option value="NONE" th:selected="${selectedBranch == 'NONE'}">-- Chưa có chi nhánh --</option>
                             </select>
                         </div>
 
@@ -122,7 +146,7 @@
                                     class="btn btn-primary flex-grow-1">
                                 <i class="bi bi-search"></i> Lọc
                             </button>
-                            <a th:href="@{/admin/users}"
+                            <a th:href="@{/admin/users(tab=${tab})}"
                                class="btn btn-outline-secondary"
                                title="Xóa bộ lọc">
                                 <i class="bi bi-arrow-counterclockwise"></i>
@@ -134,11 +158,10 @@
             </div>
         </div>
 
-        <!-- Danh sách tài khoản -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3">
                 <div class="fw-semibold">
-                    Danh sách tài khoản
+                    <span th:text="${tab == 'STAFF'} ? 'Danh sách nhân viên' : 'Danh sách khách hàng'">Danh sách tài khoản</span>
                     <span class="badge bg-secondary ms-1"
                           th:text="${#lists.size(users)}">0</span>
                 </div>
@@ -152,6 +175,7 @@
                             <th>Tài khoản</th>
                             <th>Thông tin liên hệ</th>
                             <th>Vai trò</th>
+                            <th th:if="${tab == 'STAFF'}">Chi nhánh</th>
                             <th>Xác minh</th>
                             <th>Trạng thái</th>
                             <th>Ngày tạo</th>
@@ -188,6 +212,11 @@
                                 </span>
                             </td>
 
+                            <td th:if="${tab == 'STAFF'}" class="small">
+                                <span th:if="${branchLabels[u.id] != null}" th:text="${branchLabels[u.id]}">UTETra Võ Văn Ngân</span>
+                                <span th:if="${branchLabels[u.id] == null}" class="text-danger">Chưa có chi nhánh</span>
+                            </td>
+
                             <td>
                                 <span th:if="${u.isVerified}"
                                       class="badge bg-success">Đã xác minh</span>
@@ -213,14 +242,12 @@
                             <td class="text-center">
                                 <div class="d-inline-flex flex-wrap justify-content-center gap-1">
 
-                                    <!-- Xem chi tiết -->
                                     <a th:href="@{/admin/users/{id}(id=${u.id})}"
                                        class="btn btn-sm btn-outline-primary"
                                        title="Xem chi tiết">
                                         <i class="bi bi-eye"></i>
                                     </a>
 
-                                    <!-- Đổi vai trò: chỉ ADMIN -->
                                     <button type="button"
                                             class="btn btn-sm btn-outline-primary"
                                             title="Đổi vai trò"
@@ -230,7 +257,6 @@
                                         <i class="bi bi-person-gear"></i>
                                     </button>
 
-                                    <!-- Đặt lại mật khẩu: chỉ ADMIN (mở trang chi tiết, hiện sẵn hộp đặt lại) -->
                                     <a th:href="@{/admin/users/{id}(id=${u.id})} + '#reset'"
                                        class="btn btn-sm btn-outline-warning"
                                        title="Đặt lại mật khẩu"
@@ -238,7 +264,6 @@
                                         <i class="bi bi-key"></i>
                                     </a>
 
-                                    <!-- Khóa/mở khóa: chỉ ADMIN -->
                                     <form th:action="@{/admin/users/{id}/toggle(id=${u.id})}"
                                           method="post"
                                           class="d-inline"
@@ -254,7 +279,6 @@
                                     </form>
                                 </div>
 
-                                <!-- Modal phân quyền -->
                                 <div class="modal fade"
                                      th:id="'roleModal-' + ${u.id}"
                                      tabindex="-1"
@@ -320,7 +344,7 @@
                         </tr>
 
                         <tr th:if="${#lists.isEmpty(users)}">
-                            <td colspan="8" class="text-center py-5 text-muted">
+                            <td th:colspan="${tab == 'STAFF'} ? 9 : 8" class="text-center py-5 text-muted">
                                 <i class="bi bi-people fs-2 d-block mb-2"></i>
                                 Không tìm thấy tài khoản phù hợp.
                             </td>

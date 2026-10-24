@@ -1,10 +1,3 @@
-/* ============================================================
-   notifications.js - Chuông thông báo (User, Manager, Admin)
-   - Mở trang: GET /api/notifications -> số chưa đọc + 20 thông báo mới nhất
-   - Thông báo mới tới qua WebSocket /user/queue/notifications -> hiện lên ĐẦU danh sách, chuông rung, popup
-   - Bấm 1 thông báo: đánh dấu đã đọc rồi mở trang liên quan; "Đánh dấu đã đọc hết"
-   Cần: Bootstrap JS, live-socket.js nạp trước.
-   ============================================================ */
 (() => {
 	const toggle = document.getElementById('nb-toggle');
 	if (!toggle) return;
@@ -14,7 +7,7 @@
 		ORDER: 'bi-receipt text-success', REVIEW: 'bi-star-fill text-warning',
 		VOUCHER: 'bi-ticket-perforated text-danger', USER: 'bi-person-plus text-primary',
 		PAYMENT: 'bi-credit-card-2-front text-primary', REFUND: 'bi-arrow-counterclockwise text-info',
-		STOCK: 'bi-box-seam text-secondary', // chi nhánh báo hết / mở bán lại món, topping
+		STOCK: 'bi-box-seam text-secondary',
 	};
 	const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
 		(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -48,10 +41,9 @@
 			setCount(data.unread);
 			list.innerHTML = (data.items || []).map((n) => itemHtml(n, false)).join('');
 			emptyIfNone();
-		} catch (e) { /* mạng lỗi: thử lại khi mở chuông */ }
+		} catch (e) {  }
 	}
 
-	// Bấm 1 thông báo: đánh dấu đã đọc rồi mới mở trang
 	list.addEventListener('click', async (e) => {
 		const a = e.target.closest('.nb-item');
 		if (!a) return;
@@ -60,7 +52,7 @@
 		try {
 			const res = await fetch('/api/notifications/' + a.dataset.id + '/read', { method: 'POST' });
 			if (res.ok) setCount((await res.json()).unread);
-		} catch (err) { /* vẫn mở trang */ }
+		} catch (err) {  }
 		a.classList.remove('unread');
 		if (href && href !== '#') location.href = href;
 	});
@@ -70,10 +62,9 @@
 			await fetch('/api/notifications/read-all', { method: 'POST' });
 			setCount(0);
 			list.querySelectorAll('.nb-item.unread').forEach((a) => a.classList.remove('unread'));
-		} catch (e) { /* bỏ qua */ }
+		} catch (e) {  }
 	});
 
-	// Mở chuông thì tải lại cho mới
 	toggle.addEventListener('show.bs.dropdown', load);
 
 	function popup(n) {
@@ -102,7 +93,7 @@
 	function ring() {
 		const bell = toggle.querySelector('.bi-bell');
 		bell.classList.remove('ring');
-		void bell.offsetWidth; // chạy lại hiệu ứng
+		void bell.offsetWidth;
 		bell.classList.add('ring');
 	}
 
@@ -111,7 +102,7 @@
 		LiveSocket.subscribe('/user/queue/notifications', (ev) => {
 			if (!ev || !ev.notification) return;
 			list.querySelector('.text-center')?.remove();
-			list.insertAdjacentHTML('afterbegin', itemHtml(ev.notification, true)); // mới nhất lên đầu
+			list.insertAdjacentHTML('afterbegin', itemHtml(ev.notification, true));
 			setCount(ev.unread);
 			ring();
 			popup(ev.notification);

@@ -14,14 +14,6 @@ import vn.utetra.repository.UserRepository;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Sổ địa chỉ nhận hàng.
- * - Hàm mới (list, add, update, setDefault, delete): trả DTO, dùng cho trang Checkout và /api/addresses.
- *   Địa chỉ kiểu Shopee: Tỉnh/Thành phố + Phường/Xã (sau sáp nhập 2025) + Tên đường/Toà nhà/Số nhà,
- *   server tự ghép thành address_line (đơn hàng chép dòng này lúc đặt).
- * - Hàm cũ (getUserAddresses, addAddress, setDefaultAddress, deleteAddress): giữ nguyên tên và kiểu lỗi
- *   để các trang đang gọi không bị ảnh hưởng.
- */
 @Service
 @Transactional(readOnly = true)
 public class AddressService {
@@ -37,20 +29,16 @@ public class AddressService {
 		this.userRepository = userRepository;
 	}
 
-	// ================= HÀM MỚI (trả DTO) =================
-
-	/** Địa chỉ của user, mặc định lên đầu */
 	public List<AddressRes> list(Integer userId) {
 		return addressRepository.findByUserIdOrderByIsDefaultDesc(userId).stream().map(this::toRes).toList();
 	}
 
-	/** Thêm địa chỉ. Địa chỉ đầu tiên tự thành mặc định */
 	@Transactional
 	public AddressRes add(Integer userId, AddressReq req) {
 		validate(req);
 		List<Address> existing = addressRepository.findByUserIdOrderByIsDefaultDesc(userId);
 		boolean makeDefault = existing.isEmpty() || Boolean.TRUE.equals(req.getIsDefault());
-		if (makeDefault) existing.forEach(a -> a.setIsDefault(false)); // chỉ 1 địa chỉ mặc định
+		if (makeDefault) existing.forEach(a -> a.setIsDefault(false));
 
 		Address a = new Address();
 		a.setUser(userRepository.getReferenceById(userId));
@@ -59,7 +47,6 @@ public class AddressService {
 		return toRes(addressRepository.save(a));
 	}
 
-	/** Sửa địa chỉ của chính mình. Tick mặc định thì bỏ mặc định các địa chỉ khác */
 	@Transactional
 	public AddressRes update(Integer userId, Integer addressId, AddressReq req) {
 		validate(req);
@@ -69,11 +56,9 @@ public class AddressService {
 			addressRepository.findByUserIdOrderByIsDefaultDesc(userId).forEach(x -> x.setIsDefault(false));
 			a.setIsDefault(true);
 		}
-		// Địa chỉ đang mặc định thì giữ nguyên mặc định (luôn phải có 1 địa chỉ mặc định)
 		return toRes(a);
 	}
 
-	/** Đặt làm mặc định (bỏ mặc định các địa chỉ khác) */
 	@Transactional
 	public void setDefault(Integer userId, Integer addressId) {
 		Address target = findOwned(userId, addressId);
@@ -81,13 +66,10 @@ public class AddressService {
 		target.setIsDefault(true);
 	}
 
-	/** Xoá. Xoá địa chỉ mặc định thì địa chỉ còn lại đầu tiên thành mặc định */
 	@Transactional
 	public void delete(Integer userId, Integer addressId) {
 		removeAndKeepDefault(findOwned(userId, addressId), userId);
 	}
-
-	// ================= HÀM CŨ (giữ tên + kiểu lỗi cũ) =================
 
 	public List<Address> getUserAddresses(Integer userId) {
 		return addressRepository.findByUserIdOrderByIsDefaultDesc(userId);
@@ -109,7 +91,7 @@ public class AddressService {
 	public void setDefaultAddress(Integer userId, Integer addressId) {
 		Address target = addressRepository.findById(addressId)
 				.orElseThrow(() -> new IllegalArgumentException("Địa chỉ không tồn tại"));
-		if (!target.getUser().getId().equals(userId)) { // kiểm tra quyền TRƯỚC khi sửa gì
+		if (!target.getUser().getId().equals(userId)) {
 			throw new SecurityException("Không có quyền chỉnh sửa địa chỉ này");
 		}
 		addressRepository.findByUserIdOrderByIsDefaultDesc(userId).forEach(a -> a.setIsDefault(false));
@@ -126,9 +108,6 @@ public class AddressService {
 		removeAndKeepDefault(address, userId);
 	}
 
-	// ================= HÀM PHỤ =================
-
-	/** Chép dữ liệu form vào entity. Kiểu mới (đủ 3 ô) thì tự ghép address_line */
 	private void apply(Address a, AddressReq req) {
 		String street = trimToNull(req.getStreet());
 		String ward = trimToNull(req.getWard());
@@ -145,12 +124,11 @@ public class AddressService {
 		a.setNote(trimToNull(req.getNote()));
 	}
 
-	/** "76 Đường số 1B" + "Phường An Lạc" + "Thành phố Hồ Chí Minh" -> "76 Đường số 1B, Phường An Lạc, Thành phố Hồ Chí Minh" */
 	private String composeLine(AddressReq req) {
 		if (hasParts(req)) {
 			return req.getStreet().trim() + ", " + req.getWard().trim() + ", " + req.getProvince().trim();
 		}
-		return req.getAddressLine().trim(); // kiểu cũ: 1 dòng địa chỉ
+		return req.getAddressLine().trim();
 	}
 
 	private boolean hasParts(AddressReq req) {
@@ -160,7 +138,7 @@ public class AddressService {
 	private void removeAndKeepDefault(Address target, Integer userId) {
 		boolean wasDefault = Boolean.TRUE.equals(target.getIsDefault());
 		Integer removedId = target.getId();
-		addressRepository.delete(target); // đơn hàng đã chép địa chỉ dạng chữ nên xoá không ảnh hưởng đơn cũ
+		addressRepository.delete(target);
 		if (wasDefault) {
 			addressRepository.findByUserIdOrderByIsDefaultDesc(userId).stream()
 					.filter(a -> !a.getId().equals(removedId)).findFirst()
@@ -179,7 +157,7 @@ public class AddressService {
 		if (req.getReceiverPhone() == null || !req.getReceiverPhone().trim().matches(PHONE_REGEX))
 			throw new BusinessException("Số điện thoại phải có 10 số, bắt đầu bằng 0");
 
-		if (hasParts(req)) { // kiểu mới: phải đủ cả 3 phần
+		if (hasParts(req)) {
 			if (isBlank(req.getProvince())) throw new BusinessException("Vui lòng chọn Tỉnh/Thành phố");
 			if (isBlank(req.getWard())) throw new BusinessException("Vui lòng chọn Phường/Xã");
 			if (isBlank(req.getStreet())) throw new BusinessException("Vui lòng nhập Tên đường, Toà nhà, Số nhà");

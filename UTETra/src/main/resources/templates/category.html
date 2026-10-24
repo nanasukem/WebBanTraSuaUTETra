@@ -2,15 +2,10 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/user-layout :: main(${category.name} + ' - UTETra', ~{::#category-content})}">
 
-<!--
-	TRANG SẢN PHẨM THEO DANH MỤC (đề - User): /category/{id}?sortBy=sold&page=0
-	Ai cũng xem được; chỉ USER bấm "+" để chọn món (cardMode giống trang Thực đơn).
--->
 <body>
 	<div id="category-content">
 		<div th:replace="~{fragments/menu-branch :: bar}"></div>
 
-		<!-- Đường dẫn -->
 		<nav aria-label="breadcrumb" class="mb-3">
 			<ol class="breadcrumb mb-0">
 				<li class="breadcrumb-item"><a th:href="@{/}" class="link-success">Trang chủ</a></li>
@@ -19,7 +14,6 @@
 			</ol>
 		</nav>
 
-		<!-- Các danh mục -->
 		<div class="d-flex flex-wrap gap-2 mb-4">
 			<a th:each="c : ${categories}" th:href="@{/category/{id}(id=${c.id})}"
 				class="btn rounded-pill"
@@ -31,7 +25,6 @@
 			</a>
 		</div>
 
-		<!-- Tiêu đề + sắp xếp -->
 		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4">
 			<div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
 				<div>
@@ -50,7 +43,6 @@
 			</div>
 		</section>
 
-		<!-- Danh sách món -->
 		<div class="row g-3 g-md-4" th:if="${!#lists.isEmpty(products)}">
 			<div class="col-6 col-md-4 col-lg-3" th:each="p : ${products}">
 				<div th:replace="~{fragments/product-card :: card(${p}, ${cardMode})}"></div>
@@ -65,7 +57,6 @@
 			</div>
 		</div>
 
-		<!-- Phân trang -->
 		<nav class="mt-4" aria-label="Phân trang" th:if="${totalPages > 1}">
 			<ul class="pagination justify-content-center flex-wrap">
 				<li class="page-item" th:classappend="${currentPage <= 0} ? 'disabled'">
@@ -84,7 +75,6 @@
 			</ul>
 		</nav>
 
-		<!-- MODAL CHỌN MÓN (chỉ nút "+" của USER mới mở) -->
 		<div th:replace="~{fragments/product-modal :: productModal}"></div>
 
 	</div>

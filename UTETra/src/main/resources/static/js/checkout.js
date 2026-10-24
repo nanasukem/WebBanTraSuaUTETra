@@ -1,8 +1,3 @@
-/* ============================================================
-   checkout.js - Trang thanh toán UTETra
-   Mọi tiền đều do server tính (POST /api/checkout/preview), JS chỉ hiển thị.
-   Thêm/sửa địa chỉ: dùng AddressBook (static/js/address-book.js)
-   ============================================================ */
 (() => {
 	const $ = (id) => document.getElementById(id);
 	if (!$('checkout-content')) return;
@@ -11,15 +6,14 @@
 		deliveryType: 'DELIVERY',
 		addresses: [], branches: [],
 		addressId: null, branchId: null,
-		branchManual: false,   // khách đã tự chọn chi nhánh -> không tự đổi nữa
-		userLocation: null,    // vị trí của khách {lat, lng, approx}
+		branchManual: false,
+		userLocation: null,
 		askedGps: false,
-		productCode: null,   // mỗi đơn 1 mã giảm tiền món
+		productCode: null,
 		paymentMethod: 'COD',
 		canOrder: false,
 	};
 
-	// ================= TIỆN ÍCH =================
 	const fmt = (n) => (Number(n) || 0).toLocaleString('vi-VN') + 'đ';
 	const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
 		(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -33,7 +27,7 @@
 			throw new Error('Vui lòng đăng nhập');
 		}
 		let data = null;
-		try { data = await res.json(); } catch (e) { /* không phải JSON */ }
+		try { data = await res.json(); } catch (e) {  }
 		if (!res.ok) throw new Error((data && data.message) || 'Có lỗi xảy ra, vui lòng thử lại');
 		return data;
 	}
@@ -51,13 +45,11 @@
 		};
 	}
 
-	// ================= KHỞI TẠO =================
 	async function init() {
 		try {
 			const data = await api('/api/checkout/init');
 			state.addresses = data.addresses || [];
-			state.shipFee = { base: data.shippingBaseFee, perKm: data.shippingPerKmFee }; // Admin cài ở trang Phí giao hàng
-			// Đã chọn chi nhánh ở đầu menu -> chọn sẵn chi nhánh đó (vẫn đổi được)
+			state.shipFee = { base: data.shippingBaseFee, perKm: data.shippingPerKmFee };
 			if (data.preferredBranchId) { state.branchId = data.preferredBranchId; state.branchManual = true; }
 			$('pickup-name').value = data.receiverName || '';
 			$('pickup-phone').value = data.receiverPhone || '';
@@ -76,7 +68,6 @@
 		}
 	}
 
-	// ================= HẠNG THÀNH VIÊN =================
 	function renderTier(t) {
 		if (!t) return;
 		const colors = { 'Thành viên': '#6c757d', 'Bạc': '#8a8f98', 'Vàng': '#c9a227', 'Kim cương': '#2b9fd9' };
@@ -99,7 +90,6 @@
 		$('tier-box').innerHTML = html;
 	}
 
-	// ================= ĐỊA CHỈ (thêm/sửa bằng AddressBook) =================
 	const TYPE_LABEL = { HOME: 'Nhà riêng', OFFICE: 'Văn phòng' };
 
 	function renderAddresses() {
@@ -127,11 +117,11 @@
 		box.querySelectorAll('input[name=address]').forEach((r) => r.addEventListener('change', async () => {
 			state.addressId = Number(r.value);
 			renderAddresses();
-			await loadBranches(); // giao tận nơi: chi nhánh gần địa chỉ giao nhất
+			await loadBranches();
 			refresh();
 		}));
 		box.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', (e) => {
-			e.preventDefault();  // không để click "Sửa" chọn luôn địa chỉ đó
+			e.preventDefault();
 			e.stopPropagation();
 			AddressBook.open({
 				address: state.addresses.find((x) => x.id === Number(b.dataset.edit)),
@@ -142,7 +132,7 @@
 	}
 
 	$('btn-add-address').addEventListener('click', () => AddressBook.open({
-		defaults: { name: $('pickup-name').value, phone: $('pickup-phone').value }, // điền sẵn từ hồ sơ
+		defaults: { name: $('pickup-name').value, phone: $('pickup-phone').value },
 		isFirst: state.addresses.length === 0,
 		onSaved: afterAddressSaved,
 	}));
@@ -150,7 +140,7 @@
 	async function afterAddressSaved(saved) {
 		state.addresses = await api('/api/addresses');
 		state.addressId = saved.id;
-		state.branchManual = false; // toạ độ có thể đã đổi -> chọn lại chi nhánh gần nhất
+		state.branchManual = false;
 		renderAddresses();
 		await loadBranches();
 		refresh();
@@ -168,7 +158,6 @@
 		refresh();
 	}
 
-	// ================= CHI NHÁNH (gần nhất chọn sẵn) =================
 	function currentLocation() {
 		if (state.deliveryType === 'DELIVERY') {
 			const a = state.addresses.find((x) => x.id === state.addressId);
@@ -225,7 +214,6 @@
 			state.branchManual = true;
 			renderBranches();
 			refresh();
-			// Menu cũng đổi theo chi nhánh vừa chọn
 			const token = document.querySelector('meta[name="_csrf"]')?.content;
 			const header = document.querySelector('meta[name="_csrf_header"]')?.content;
 			fetch('/menu/branch/ajax?branchId=' + state.branchId, { method: 'POST',
@@ -233,10 +221,6 @@
 		}));
 	}
 
-	/**
-	 * Nút "Dùng vị trí hiện tại" (đến lấy):
-	 * sắp xếp ngay theo vị trí gần đúng của mạng, GPS có kết quả thì sắp lại cho chính xác.
-	 */
 	async function locate(showError) {
 		const btn = $('btn-locate');
 		btn.disabled = true;
@@ -256,7 +240,7 @@
 			const pos = await AddressBook.getPosition();
 			gotGps = true;
 			state.userLocation = { lat: pos.lat, lng: pos.lng, approx: false };
-			state.branchManual = false; // vừa có vị trí -> chọn lại chi nhánh gần nhất
+			state.branchManual = false;
 			if (state.deliveryType === 'PICKUP') { await loadBranches(); refresh(); }
 		} catch (e) {
 			const p = await approxTask;
@@ -267,7 +251,6 @@
 		}
 	}
 
-	// ================= MÃ GIẢM GIÁ =================
 	function discountText(v) {
 		if (v.discountType === 'PERCENT')
 			return `Giảm ${Number(v.discountValue)}%` + (v.maxDiscount ? ` tối đa ${fmt(v.maxDiscount)}` : '');
@@ -300,7 +283,6 @@
 			btn.addEventListener('click', () => toggleVoucher(btn.dataset.code)));
 	}
 
-	// Mỗi đơn chỉ 1 mã: bấm mã khác thì thay mã cũ, bấm lại mã đang chọn thì bỏ
 	function toggleVoucher(code) {
 		state.productCode = state.productCode === code ? null : code;
 		refresh();
@@ -336,7 +318,7 @@
 		if (!code) return;
 		try {
 			const v = await api('/api/checkout/voucher-type?code=' + encodeURIComponent(code));
-			state.productCode = v.code; // mỗi đơn chỉ 1 mã: thay mã đang chọn
+			state.productCode = v.code;
 			$('voucher-input').value = '';
 			refresh();
 		} catch (e) {
@@ -344,19 +326,18 @@
 		}
 	}
 
-	// ================= TÍNH LẠI TIỀN (gọi server) =================
 	let timer = null;
 	let seq = 0;
 	function refresh() {
 		clearTimeout(timer);
-		timer = setTimeout(doRefresh, 200); // gom nhiều thay đổi liên tiếp thành 1 lần gọi
+		timer = setTimeout(doRefresh, 200);
 	}
 
 	async function doRefresh() {
 		const my = ++seq;
 		try {
 			const data = await api('/api/checkout/preview', { method: 'POST', body: JSON.stringify(buildReq()) });
-			if (my !== seq) return; // đã có lần gọi mới hơn
+			if (my !== seq) return;
 			renderPreview(data.preview);
 			renderSelectedVouchers(data.preview);
 			renderVouchers(data.vouchers);
@@ -390,13 +371,13 @@
 		}
 		const unavailable = p.unavailableItems || [];
 		$('sum-qty').textContent = p.totalQty;
-		const stopped = p.stoppedItems || []; // Admin ngừng bán toàn chuỗi (khác "hết ở chi nhánh")
+		const stopped = p.stoppedItems || [];
 		const coMonHet = p.items.some((i) => unavailable.includes(i.productName) || stopped.includes(i.productName)
 			|| (p.itemWarnings || {})[i.id]);
 		$('sum-items').innerHTML = p.items.map((i) => {
 			const ngung = stopped.includes(i.productName);
 			const het = !ngung && unavailable.includes(i.productName);
-			const warn = (p.itemWarnings || {})[i.id]; // món còn nhưng topping thêm vào đã hết
+			const warn = (p.itemWarnings || {})[i.id];
 			const toppings = (i.toppings || []).map((t) => esc(t.name)).filter(Boolean).join(', ');
 			return `
 			<div class="d-flex justify-content-between small mb-2 ${ngung || het || warn ? 'text-danger' : ''}">
@@ -422,7 +403,6 @@
 		$('sum-shipping-fee').textContent = fmt(p.shippingFee);
 		
 		$('sum-total').textContent = fmt(p.totalAmount);
-		// Thời gian dự kiến (ước lượng theo số ly, đơn đang chờ ở quán, quãng đường)
 		let eta = $('eta-line');
 		if (!eta) {
 			$('sum-errors').insertAdjacentHTML('beforebegin', '<div id="eta-line" class="small text-success fw-semibold mt-2"></div>');
@@ -450,7 +430,6 @@
 			`<div class="alert alert-warning small py-2 mb-2"><i class="bi bi-exclamation-triangle me-1"></i>${esc(m)}</div>`).join('');
 	}
 
-	// ================= ĐỔI HÌNH THỨC NHẬN / THANH TOÁN / NGƯỜI LẤY =================
 	document.querySelectorAll('input[name=deliveryType]').forEach((r) => r.addEventListener('change', async () => {
 		state.deliveryType = r.value;
 		const pickup = state.deliveryType === 'PICKUP';
@@ -462,7 +441,7 @@
 		refresh();
 		if (pickup && !state.userLocation && !state.askedGps) {
 			state.askedGps = true;
-			locate(false); // hỏi vị trí 1 lần, không được thì dùng địa chỉ mặc định
+			locate(false);
 		}
 	}));
 
@@ -477,7 +456,6 @@
 	$('pickup-name').addEventListener('input', refresh);
 	$('pickup-phone').addEventListener('input', refresh);
 
-	// ================= ĐẶT HÀNG =================
 	$('btn-place-order').addEventListener('click', async () => {
 		if (!state.canOrder) return;
 		const btn = $('btn-place-order');
@@ -500,11 +478,9 @@
 
 	init();
 
-	// Tự kiểm tra lại giỏ (món / topping vừa hết, giá, quán đóng cửa...) mỗi 30 giây và khi khách quay lại tab,
-	// để món quán vừa báo hết chuyển đỏ ngay mà không cần bấm Đặt hàng mới biết
 	function recheck() {
 		const btn = $('btn-place-order');
-		if (document.hidden || $('co-page')?.classList.contains('d-none') || (btn && btn.querySelector('.spinner-border'))) return; // đang đặt hàng thì thôi
+		if (document.hidden || $('co-page')?.classList.contains('d-none') || (btn && btn.querySelector('.spinner-border'))) return;
 		refresh();
 	}
 	setInterval(recheck, 30000);

@@ -1,9 +1,5 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<!--
-	Nội dung trang TÀI KHOẢN CỦA TÔI dùng chung cho Admin / Manager / Shipper (mỗi vai trò bọc trong layout riêng).
-	Tự sửa: họ tên, số điện thoại, ảnh đại diện, mật khẩu. Chỉ xem: email, tên đăng nhập, vai trò, chi nhánh (Admin quản lý).
--->
 <div th:fragment="body" class="container-fluid px-0" style="max-width: 900px;">
 	<h2 class="fw-bold mb-1"><i class="bi bi-person-circle text-success me-2"></i>Tài khoản của tôi</h2>
 	<p class="text-muted mb-3">Thông tin cá nhân và mật khẩu đăng nhập.</p>
@@ -24,7 +20,6 @@
 				th:href="@{/account(tab='password')}"><i class="bi bi-key me-1"></i> Mật khẩu</a></li>
 	</ul>
 
-	<!-- ===== TAB THÔNG TIN ===== -->
 	<div class="row g-4" th:if="${tab == 'info'}">
 		<div class="col-lg-7">
 			<div class="card border-0 shadow-sm rounded-4">
@@ -68,6 +63,10 @@
 						<b th:text="${account.email}">a@utetra.vn</b></li>
 					<li class="list-group-item d-flex justify-content-between"><span class="text-muted">Vai trò</span>
 						<b th:text="${roleLabel}">Manager</b></li>
+					<li class="list-group-item d-flex justify-content-between" th:if="${roleName == 'SHIPPER'}">
+						<span class="text-muted">Chi nhánh làm việc</span>
+						<b th:if="${account.branch != null}"><i class="bi bi-shop text-success me-1"></i><span th:text="${account.branch.name}">UTETra</span></b>
+						<span th:if="${account.branch == null}" class="text-danger">Chưa được phân công</span></li>
 					<li class="list-group-item" th:if="${roleName == 'MANAGER'}">
 						<div class="text-muted mb-1">Chi nhánh đang quản lý</div>
 						<div th:if="${#lists.isEmpty(myBranches)}" class="text-danger">Chưa được giao chi nhánh</div>
@@ -82,7 +81,6 @@
 		</div>
 	</div>
 
-	<!-- ===== TAB MẬT KHẨU ===== -->
 	<div class="card border-0 shadow-sm rounded-4" style="max-width: 520px;" th:if="${tab == 'password'}">
 		<div class="card-body p-4">
 			<form method="post" th:action="@{/account/change-password}" autocomplete="off">

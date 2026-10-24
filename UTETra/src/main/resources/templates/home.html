@@ -2,12 +2,8 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/main :: main('Trang chủ UTETra', ~{::#home-content})}">
 
-<!--
-	TRANG CHỦ GUEST (chưa đăng nhập)
--->
 <section id="home-content">
 
-	<!-- ==================== BANNER ==================== -->
 	<div class="p-4 p-md-5 mb-4 rounded-4 text-white"
 		style="background: linear-gradient(135deg, #198754, #20c997);">
 
@@ -41,7 +37,6 @@
 		</div>
 	</div>
 
-	<!-- ==================== SẢN PHẨM BÁN TRÊN 10 ==================== -->
 	<div id="ban-chay" style="scroll-margin-top: 90px;"
 		class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
 
@@ -60,7 +55,6 @@
 		</a>
 	</div>
 
-	<!-- Danh sách: đánh số hạng #1, #2... theo số đã bán -->
 	<div class="row g-3 g-md-4"
 		th:if="${products != null and !#lists.isEmpty(products)}">
 		<div class="col-6 col-md-4 col-lg-3" th:each="p, st : ${products}">
@@ -76,7 +70,6 @@
 		</div>
 	</div>
 
-	<!-- Chưa có món nào bán trên 10 -->
 	<div class="alert alert-light border text-center py-4"
 		th:if="${products == null or #lists.isEmpty(products)}">
 		<i class="bi bi-inbox fs-1 text-secondary"></i>
@@ -85,7 +78,6 @@
 			mua.</p>
 	</div>
 
-	<!-- PHÂN TRANG -->
 	<nav class="mt-4" aria-label="Phân trang" th:if="${totalPages > 1}">
 		<ul class="pagination justify-content-center flex-wrap">
 			<li class="page-item"
@@ -109,7 +101,6 @@
 		</ul>
 	</nav>
 
-	<!-- MỜI ĐĂNG NHẬP -->
 	<div class="card border-0 shadow-sm rounded-4 mt-5">
 		<div
 			class="card-body p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">

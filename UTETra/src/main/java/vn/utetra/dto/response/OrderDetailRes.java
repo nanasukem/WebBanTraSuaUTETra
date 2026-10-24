@@ -3,23 +3,24 @@ package vn.utetra.dto.response;
 import java.math.BigDecimal;
 import java.util.List;
 
-/** Chi tiết 1 đơn của khách (giá, mã giảm, địa chỉ đều là bản đã chốt lúc đặt) */
 public record OrderDetailRes(
 		Integer id,
 		String status,
 		String statusLabel,
 		String badgeClass,
 		boolean pickup,
-		List<Step> steps,          // thanh tiến trình; rỗng khi đã huỷ / trả hàng
+		List<Step> steps,
 		String branchName,
 		String branchAddress,
 		String branchPhone,
 		String receiverName,
 		String receiverPhone,
 		String deliveryAddress,
-		String deliveryNote,       // ghi chú địa chỉ
+		String deliveryNote,
 		String carrierName,
-		String note,               // ghi chú cho quán
+		String shipperName,
+		String shipperPhone,
+		String note,
 		List<Item> items,
 		int totalQty,
 		BigDecimal itemsTotal,
@@ -35,14 +36,13 @@ public record OrderDetailRes(
 		String createdAt,
 		String deliveredAt,
 		boolean canCancel,
-		String cancelledBy,        // CUSTOMER / STORE / SYSTEM (null = chưa huỷ)
-		PaymentInfoRes payment,    // đã thanh toán / chưa (COD) / chờ thanh toán / hoàn tiền
-		OrderIssueRes issue,       // khách báo vấn đề với đơn (null = chưa báo)
-		boolean canReportIssue,    // còn trong 2 giờ sau khi nhận và chưa báo
-		long issueDeadlineMillis,  // hạn báo vấn đề (đếm ngược)
-		String etaLabel) {         // "Dự kiến giao lúc 14:20 - 14:30" (null khi đã xong / huỷ)
+		String cancelledBy,
+		PaymentInfoRes payment,
+		OrderIssueRes issue,
+		boolean canReportIssue,
+		long issueDeadlineMillis,
+		String etaLabel) {
 
-	/** 1 dòng món: "2× Cà phê muối · Size L · 70% đường · 50% đá + Kem cheese" */
 	public record Item(
 			String productName,
 			String size,
@@ -51,10 +51,9 @@ public record OrderDetailRes(
 			int quantity,
 			BigDecimal unitPrice,
 			BigDecimal subtotal,
-			String note) {         // ghi chú món
+			String note) {
 	}
 
-	/** 1 bước trên thanh tiến trình */
 	public record Step(String label, boolean done, boolean current) {
 	}
 }

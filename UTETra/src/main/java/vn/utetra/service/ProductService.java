@@ -22,12 +22,6 @@ import vn.utetra.repository.ProductRepository;
 import vn.utetra.repository.ProductSizeRepository;
 import vn.utetra.repository.ReviewRepository;
 
-/**
- * Sản phẩm phía khách:
- * - Lọc / tìm kiếm (giữ hàm cũ)
- * - 20 sản phẩm mới nhất / bán chạy nhất / đánh giá cao nhất / yêu thích nhất, có phân trang
- * - Chi tiết 1 món (giá theo size, điểm đánh giá, số sao từng mức) + món cùng danh mục
- */
 @Service
 @Transactional(readOnly = true)
 public class ProductService {
@@ -59,24 +53,14 @@ public class ProductService {
 		return productRepository.filterProducts(searchKeyword, categoryId, sortBy);
 	}
 
-	// ================= 20 SẢN PHẨM NHẤT =================
-
-	/**
-	 * 1 trang trong 20 món nhất. type: newest | sold | rating | favorite (sai -> newest).
-	 * Vd topProducts("sold", 1, 8) = món bán chạy hạng 9..16.
-	 */
 	public HighlightPageRes topProducts(String type, int page, int size) {
 		return productHighlightService.page(type, page, size <= 0 ? 8 : size);
 	}
 
-	/** Đủ 20 món nhất của 1 loại (không phân trang) */
 	public List<ProductCardRes> top20(String type) {
 		return productHighlightService.top(type, ProductHighlightService.TOP_SIZE);
 	}
 
-	// ================= CHI TIẾT MÓN =================
-
-	/** Chi tiết 1 món (kể cả món đang tạm ngưng bán - trang hiện thông báo riêng) */
 	public ProductDetailRes getDetail(Integer productId) {
 		Product p = productRepository.findById(productId)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món #" + productId));
@@ -103,7 +87,6 @@ public class ProductService {
 				card.favoriteCount(), sizes, stars);
 	}
 
-	/** Món cùng danh mục (bán chạy trước), bỏ món đang xem */
 	public List<ProductCardRes> related(Integer productId, int limit) {
 		Product p = productRepository.findById(productId).orElse(null);
 		if (p == null || p.getCategory() == null) {

@@ -14,13 +14,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Bảng Orders. Mỗi đơn thuộc 1 chi nhánh (khách chọn khi Checkout).
- * Hệ thống dùng đội ngũ giao hàng nội bộ Shipper UTETra (<= 3km đồng giá 15.000đ, > 3km +10.000đ/km).
- * totalAmount = itemsTotal - productDiscount - memberDiscount + shippingFee
- */
 @Entity
-@Table(name = "Orders") // "Order" là từ khoá SQL nên bảng tên Orders
+@Table(name = "Orders")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -32,7 +27,7 @@ public class Order {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id", nullable = false)
-	private User user; // khách đặt
+	private User user;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "branch_id", nullable = false)
@@ -40,11 +35,11 @@ public class Order {
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "delivery_type", nullable = false, length = 10)
-	private DeliveryType deliveryType = DeliveryType.DELIVERY; // giao tận nơi / đến lấy
+	private DeliveryType deliveryType = DeliveryType.DELIVERY;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "carrier_id")
-	private Carrier carrier; // Shipper UTETra (null khi đến lấy)
+	private Carrier carrier;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "shipper_id")
@@ -54,7 +49,6 @@ public class Order {
 	@JoinColumn(name = "product_voucher_id")
 	private Voucher productVoucher;
 
-
 	@Column(name = "receiver_name", nullable = false, length = 100)
 	private String receiverName;
 
@@ -62,10 +56,10 @@ public class Order {
 	private String receiverPhone;
 
 	@Column(name = "delivery_address", length = 255)
-	private String deliveryAddress; // null khi đến lấy
+	private String deliveryAddress;
 	
 	@Column(name = "delivery_note", length = 200)
-	private String deliveryNote; // ghi chú địa chỉ, chép từ sổ địa chỉ lúc đặt
+	private String deliveryNote;
 	
 	@Column(name = "note", length = 500)
 	private String note;
@@ -77,18 +71,16 @@ public class Order {
 	private BigDecimal productDiscount = BigDecimal.ZERO;
 
 	@Column(name = "member_discount", nullable = false, precision = 12, scale = 0)
-	private BigDecimal memberDiscount = BigDecimal.ZERO; // giảm theo hạng thành viên
+	private BigDecimal memberDiscount = BigDecimal.ZERO;
 
 	@Column(name = "member_tier_name", length = 50)
-	private String memberTierName; // hạng lúc đặt (chốt lại, sau này lên/xuống hạng không đổi)
+	private String memberTierName;
 
 	@Column(name = "shipping_fee", nullable = false, precision = 12, scale = 0)
 	private BigDecimal shippingFee = BigDecimal.ZERO;
 
-
 	@Column(name = "total_amount", nullable = false, precision = 12, scale = 0)
 	private BigDecimal totalAmount = BigDecimal.ZERO;
-
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false, length = 20)
@@ -105,7 +97,6 @@ public class Order {
 	@Column(name = "cancel_reason", length = 255)
 	private String cancelReason;
 
-	/** Ai huỷ đơn (null = chưa huỷ) */
 	@Enumerated(EnumType.STRING)
 	@Column(name = "cancelled_by", length = 10)
 	private vn.utetra.entity.enums.CancelledBy cancelledBy;
@@ -119,28 +110,21 @@ public class Order {
 	@Column(name = "delivered_at")
 	private LocalDateTime deliveredAt;
 
-	/** Tiền quán đã hoàn cho khách sau khi giao (khách báo vấn đề với đơn) - trừ khỏi doanh thu */
 	@Column(name = "refund_amount", nullable = false, precision = 12, scale = 0)
 	private BigDecimal refundAmount = BigDecimal.ZERO;
 
-	/** Thời gian dự kiến (phút) từ lúc đặt tới lúc giao xong / món sẵn sàng để lấy - chốt lúc đặt */
 	@Column(name = "eta_minutes")
 	private Integer etaMinutes;
 
 	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OrderDetail> details = new ArrayList<>();
 
-	/**
-	 * Doanh thu của đơn = Tổng tiền đơn (tiền món sau giảm + phí ship của Shipper UTETra) - tiền đã hoàn (khi khách báo vấn đề).
-	 * Dùng thống nhất cho báo cáo doanh thu, chi tiêu của khách và xét hạng thành viên, khớp 100% với tổng tiền đơn hàng.
-	 */
 	public BigDecimal getSalesAmount() {
 		BigDecimal total = totalAmount == null ? BigDecimal.ZERO : totalAmount;
-		BigDecimal rf = refundAmount == null ? BigDecimal.ZERO : refundAmount; // tiền đã hoàn khi khách báo vấn đề
+		BigDecimal rf = refundAmount == null ? BigDecimal.ZERO : refundAmount;
 		return total.subtract(rf).max(BigDecimal.ZERO);
 	}
 
-	/** Thêm 1 dòng chi tiết và gắn 2 chiều */
 	public void addDetail(OrderDetail detail) {
 		detail.setOrder(this);
 		details.add(detail);

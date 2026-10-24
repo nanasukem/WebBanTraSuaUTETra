@@ -21,8 +21,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
 	boolean existsByEmail(String email);
 
-	/** Lấy user theo tên role, ví dụ "MANAGER" */
 	List<User> findByRole_Name(String roleName);
+
+	@Query("SELECT u FROM User u WHERE u.role.name = 'SHIPPER' AND u.branch.id = :branchId ORDER BY u.fullName")
+	List<User> findShippersOfBranch(@Param("branchId") Integer branchId);
 
 	@Query("""
 			    SELECT u FROM User u

@@ -17,7 +17,6 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
-/** API cho trang Quầy đơn hàng (SecurityConfig: /api/manager/** chỉ ROLE_MANAGER) */
 @RestController
 @RequestMapping("/api/manager/orders")
 public class ManagerOrderApiController {
@@ -48,11 +47,9 @@ public class ManagerOrderApiController {
 		managerOrderService.changeStatus(currentUserService.requireUserId(principal, session), orderId, req.status(),
 				req.reason());
 		String text = vn.utetra.entity.enums.OrderStatus.actionText(req.status(), orderId, req.reason());
-		request.setAttribute("activityLog", text); // ghi nhật ký hoạt động bằng câu dễ đọc
+		request.setAttribute("activityLog", text);
 		return Map.of("message", text);
 	}
-
-	// ================= LỖI -> {"message": "..."} =================
 
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<Map<String, String>> business(BusinessException e) {

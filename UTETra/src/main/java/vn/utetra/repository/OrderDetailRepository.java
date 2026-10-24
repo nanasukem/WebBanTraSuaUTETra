@@ -13,12 +13,17 @@ import vn.utetra.entity.enums.OrderStatus;
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, Integer> {
 	List<OrderDetail> findByOrderId(Integer orderId);
 
-	/**
-	 * Các ly user đã mua và ĐÃ NHẬN (đơn DELIVERED) - dùng cho đánh giá.
-	 * productId = null: mọi món. Mới nhất lên đầu.
-	 */
 	@Query("SELECT d FROM OrderDetail d WHERE d.order.user.id = :userId AND d.order.status = :status "
 			+ "AND (:productId IS NULL OR d.product.id = :productId) ORDER BY d.order.deliveredAt DESC, d.id DESC")
 	List<OrderDetail> findPurchased(@Param("userId") Integer userId, @Param("productId") Integer productId,
 			@Param("status") OrderStatus status);
+
+	@Query("SELECT d.product.id, d.product.name, SUM(d.quantity), COALESCE(SUM(d.subtotal), 0), COUNT(DISTINCT d.order.id) "
+			+ "FROM OrderDetail d WHERE d.order.status = :status "
+			+ "AND d.order.deliveredAt >= :start AND d.order.deliveredAt < :end "
+			+ "AND (:branchId IS NULL OR d.order.branch.id = :branchId) "
+			+ "GROUP BY d.product.id, d.product.name ORDER BY SUM(d.quantity) DESC, COALESCE(SUM(d.subtotal), 0) DESC")
+	List<Object[]> topProducts(@Param("status") OrderStatus status, @Param("start") java.time.LocalDateTime start,
+			@Param("end") java.time.LocalDateTime end, @Param("branchId") Integer branchId,
+			org.springframework.data.domain.Pageable pageable);
 }

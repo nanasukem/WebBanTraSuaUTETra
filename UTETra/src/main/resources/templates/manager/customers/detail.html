@@ -2,10 +2,8 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/manager-layout :: main('Chi tiết khách hàng', 'customers', ~{::#admin-content})}">
 
-<!-- (Chức năng mở rộng) Chi tiết 1 khách: thông tin + lịch sử đơn ở chi nhánh của Manager -->
 <section id="admin-content">
 
-	<!-- Tiêu đề + nút quay lại -->
 	<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
 		<div>
 			<h2 class="fw-bold mb-1">
@@ -21,7 +19,6 @@
 		</a>
 	</div>
 
-	<!-- Thông tin khách -->
 	<div class="row g-3 mb-4">
 		<div class="col-md-6 col-xl-3">
 			<div class="card border-0 shadow-sm h-100">
@@ -65,7 +62,6 @@
 		</div>
 	</div>
 
-	<!-- Lịch sử đơn tại chi nhánh -->
 	<div class="card border-0 shadow-sm rounded-4">
 		<div class="card-header bg-white py-3">
 			<h5 class="fw-bold mb-0">

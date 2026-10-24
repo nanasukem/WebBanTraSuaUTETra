@@ -7,7 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Nhật ký hoạt động: ai (Admin / Manager / Shipper) làm gì, lúc nào */
 @Entity
 @Table(name = "ActivityLogs")
 @Getter
@@ -32,6 +31,9 @@ public class ActivityLog {
 
 	@Column(length = 255)
 	private String path;
+
+	@Column(length = 255)
+	private String link;
 
 	@Column(name = "created_at", nullable = false)
 	private LocalDateTime createdAt = LocalDateTime.now();

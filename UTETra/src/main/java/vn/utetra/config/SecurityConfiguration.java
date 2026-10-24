@@ -38,61 +38,45 @@ public class SecurityConfiguration {
 
 		http.cors(Customizer.withDefaults())
 
-				// Giữ nguyên cách cấu hình hiện tại của dự án.
 				.csrf(csrf -> csrf.disable())
 
 				.authorizeHttpRequests(auth -> auth
 
-						// Trang Guest, đăng nhập, đăng ký và tài nguyên tĩnh.
 						.requestMatchers("/", "/auth/**", "/api/auth/**", "/css/**", "/js/**", "/images/**",
 								"/webjars/**", "/favicon.ico", "/error")
 						.permitAll()
 
-						// Thực đơn, trang danh mục, chi tiết sản phẩm, trang Chi nhánh & Xem đánh giá công khai: ai cũng xem được.
 						.requestMatchers("/menu", "/menu/**", "/category/**", "/branches", "/branches/**", "/products/**", "/api/reviews/**").permitAll()
 
-						// Cổng thanh toán gọi về: VNPAY / MoMo đưa khách quay lại (returnUrl) và máy chủ cổng báo kết quả (IPN).
-						// Không cần đăng nhập vì dữ liệu được kiểm bằng chữ ký HMAC của cổng.
 						.requestMatchers("/payment/vnpay/return", "/payment/vnpay/ipn", "/payment/momo/return",
 								"/payment/momo/ipn")
 						.permitAll()
 
-						// Thanh toán đơn (tạo giao dịch, trang kết quả): khách hàng.
 						.requestMatchers("/payment/**").hasRole("USER")
 
-						// Chức năng quản trị.
 						.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
 
-						// Chức năng quản lý.
 						.requestMatchers("/manager/**", "/api/manager/**").hasRole("MANAGER")
 
-						// Giỏ hàng, thanh toán, đơn hàng, địa chỉ, trang cá nhân (profile, yêu thích, đã xem, đánh giá) của USER.
 						.requestMatchers("/cart/**", "/api/cart/**", "/checkout/**", "/api/checkout/**", "/orders/**",
 								"/api/addresses/**", "/user/**", "/api/favorites/**")
 						.hasRole("USER")
 
-						// Chức năng giao hàng.
 						.requestMatchers("/shipper/**", "/api/shipper/**").hasRole("SHIPPER")
 
-						// Những đường dẫn còn lại cần đăng nhập.
 						.anyRequest().authenticated())
 
-				// Đăng nhập bằng form. Xong -> /login-success (HomeController): Admin/Manager vào trang quản lý, USER về trang chủ.
 				.formLogin(form -> form.loginPage("/auth/login").loginProcessingUrl("/auth/login")
 						.defaultSuccessUrl("/login-success", true).failureUrl("/auth/login?error=true").permitAll())
 
-				// Sử dụng session cho giao diện Thymeleaf.
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
-				// Đăng xuất.
 				.logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessUrl("/auth/login?logout")
 						.invalidateHttpSession(true).clearAuthentication(true).deleteCookies("JWT_TOKEN", "JSESSIONID")
 						.permitAll())
 
-				// Authentication provider hiện tại.
 				.authenticationProvider(authenticationProvider)
 
-				// Giữ JWT filter hiện tại.
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();

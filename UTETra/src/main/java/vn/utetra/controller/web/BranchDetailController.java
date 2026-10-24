@@ -23,17 +23,11 @@ public class BranchDetailController {
 	@Autowired
 	private BranchRepository branchRepository;
 
-	/** Link cũ /branches/{id}/reviews-public -> chuyển về trang chủ chi nhánh */
 	@GetMapping("/branches/{id:\\d+}/reviews-public")
 	public String oldReviewsLink(@PathVariable Integer id) {
 		return "redirect:/branches/" + id;
 	}
 
-	/**
-	 * TRANG CHỦ CHI NHÁNH phía khách: /branches/{id}
-	 * Ảnh bìa, mô tả (Manager cập nhật), địa chỉ, SĐT, giờ mở cửa (Admin quản lý), chỉ đường + đánh giá quán.
-	 * Chi nhánh không tồn tại hoặc đang tạm ngưng -> về danh sách chi nhánh.
-	 */
 	@GetMapping("/branches/{id:\\d+}")
 	public String branchDetail(@PathVariable Integer id, Model model) {
 		Branch branch = branchRepository.findById(id).orElse(null);
@@ -41,7 +35,6 @@ public class BranchDetailController {
 			return "redirect:/branches";
 		}
 
-		// CHỈ LẤY ĐÁNH GIÁ QUÁN CHO CHI NHÁNH NÀY
 		List<BranchReviewRes> reviews = reviewService.getPublicReviewsByBranch(id);
 		Map<String, Object> summary = reviewService.getBranchReviewSummary(id);
 
@@ -49,7 +42,7 @@ public class BranchDetailController {
 		model.addAttribute("reviews", reviews);
 		model.addAttribute("avgRating", summary.get("avgRating"));
 		model.addAttribute("totalReviews", summary.get("totalReviews"));
-		model.addAttribute("now", LocalTime.now()); // Đang mở cửa / Đã đóng cửa
+		model.addAttribute("now", LocalTime.now());
 
 		return "branches/detail";
 	}

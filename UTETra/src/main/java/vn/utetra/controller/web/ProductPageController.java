@@ -19,11 +19,6 @@ import vn.utetra.service.ProductService;
 import vn.utetra.service.ReviewService;
 import vn.utetra.service.ViewedProductService;
 
-/**
- * Trang chi tiết sản phẩm /products/{id} - ai cũng xem được.
- * USER: có nút thích, đặt món, form đánh giá (nếu đã mua + đơn đã giao), và được ghi vào "Đã xem".
- * ?od=12 : mở sẵn form đánh giá cho ly #12 (link "Đánh giá" từ trang chi tiết đơn).
- */
 @Controller
 public class ProductPageController {
 
@@ -62,7 +57,7 @@ public class ProductPageController {
 		if (isBuyer) {
 			viewedProductService.record(userId, id);
 			List<ReviewableItemRes> purchased = reviewService.purchasedItems(userId, id);
-			List<ReviewableItemRes> pending = reviewService.pendingItems(userId, id); // chưa đánh giá + còn hạn
+			List<ReviewableItemRes> pending = reviewService.pendingItems(userId, id);
 			model.addAttribute("isFavorite", favoriteService.isFavorite(userId, id));
 			model.addAttribute("purchased", purchased);
 			model.addAttribute("pendingItems", pending);

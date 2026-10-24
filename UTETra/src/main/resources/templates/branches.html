@@ -2,10 +2,6 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/user-layout :: main('Chi nhánh - UTETra', ~{::#branches-content})}">
 
-<!--
-	TRANG CHI NHÁNH (header): các chi nhánh đang hoạt động của chuỗi UTETra. Ai cũng xem được.
-	Nút "Gần tôi nhất": lấy vị trí trình duyệt, tính khoảng cách tới từng chi nhánh (có tọa độ) rồi xếp gần -> xa.
--->
 <body>
 	<div id="branches-content">
 
@@ -34,7 +30,6 @@
 			<div class="col-12 col-md-6 col-lg-4 branch-item"
 				th:each="b : ${branches}"
 				th:attr="data-lat=${b.latitude}, data-lng=${b.longitude}">
-				<!-- Bấm vào bất kỳ chỗ nào trên khung -> trang chủ chi nhánh /branches/{id} (giống thẻ món) -->
 				<div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden branch-card">
 
 					<div class="bg-success-subtle position-relative branch-cover" style="height: 160px;">
@@ -86,7 +81,6 @@
 							th:if="${b.description != null and !#strings.isEmpty(b.description)}"
 							th:text="${b.description}">Mô tả</p>
 
-						<!-- Các nút bên trong vẫn bấm riêng được (nằm trên lớp bấm của cả khung) -->
 						<div class="mt-auto d-flex flex-wrap gap-2 branch-inner-link">
 							<a th:href="@{/menu}" class="btn btn-success btn-sm"> <i
 								class="bi bi-house-door me-1"></i> Xem thực đơn
@@ -115,7 +109,6 @@
 			</div>
 		</div>
 
-		<!-- GẦN TÔI NHẤT: tính khoảng cách đường chim bay (Haversine) rồi xếp lại thẻ chi nhánh -->
 		<style>
 	.branch-card { transition: transform .2s, box-shadow .2s; cursor: pointer; }
 	.branch-card:hover { transform: translateY(-4px); box-shadow: 0 .75rem 1.5rem rgba(0,0,0,.12) !important; }

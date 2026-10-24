@@ -2,7 +2,6 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/admin-layout :: main('Thêm tài khoản', 'users', ~{::#admin-content})}">
 
-<!-- Admin tạo tài khoản: Manager (quản lý chi nhánh), Shipper (giao hàng), Admin, hoặc khách. Khách thường tự đăng ký -->
 <section id="admin-content">
 	<div class="container-fluid py-3" style="max-width: 760px;">
 		<a th:href="@{/admin/users}" class="text-decoration-none text-success small"><i class="bi bi-arrow-left"></i> Quản lý người dùng</a>
@@ -28,15 +27,18 @@
 						</div>
 						<div class="form-text">Chỉ tạo tài khoản nhân viên; khách hàng tự đăng ký trên web. Shipper: giao đơn của quán.</div>
 					</div>
-					<!-- Manager: giao chi nhánh luôn khi tạo -->
 					<div class="mb-3" id="branchBox">
-						<label for="fBranch" class="form-label fw-semibold">Giao chi nhánh</label>
+						<label for="fBranch" class="form-label fw-semibold"><span id="branchLabel">Giao chi nhánh</span>
+							<span class="text-danger d-none" id="branchReq">*</span></label>
 						<select id="fBranch" name="branchId" class="form-select">
-							<option value="">Chưa giao (giao sau ở trang Chi nhánh)</option>
+							<option value="" id="branchNone">Chưa giao (giao sau ở trang Chi nhánh)</option>
 							<option th:each="b : ${branches}" th:value="${b.id}"
 								th:selected="${form['branchId'] != null and form['branchId'] == '' + b.id}"
-								th:text="${b.name} + (${b.owner != null} ? ' · đang do ' + ${b.owner.fullName} + ' quản lý (sẽ chuyển sang người mới)' : ' · chưa có quản lý')">UTETra</option>
+								th:data-manager="${b.name} + (${b.owner != null} ? ' · đang do ' + ${b.owner.fullName} + ' quản lý (sẽ chuyển sang người mới)' : ' · chưa có quản lý')"
+								th:data-shipper="${b.name} + ' · đang có ' + ${shipperCounts.getOrDefault(b.id, 0L)} + ' shipper'"
+								th:text="${b.name}">UTETra</option>
 						</select>
+						<div class="form-text" id="branchHint"></div>
 					</div>
 					<div class="row g-3">
 						<div class="col-md-6">
@@ -79,13 +81,27 @@
 		</div>
 	</div>
 	<script>
-		// Chỉ hiện ô "Giao chi nhánh" khi chọn vai trò Manager
 		(function () {
 			const box = document.getElementById('branchBox');
+			const sel = document.getElementById('fBranch');
+			const none = document.getElementById('branchNone');
 			function sync() {
 				const r = document.querySelector('input[name="role"]:checked');
-				box.classList.toggle('d-none', !r || r.value !== 'MANAGER');
-				if (!r || r.value !== 'MANAGER') document.getElementById('fBranch').value = '';
+				const role = r ? r.value : '';
+				const show = role === 'MANAGER' || role === 'SHIPPER';
+				box.classList.toggle('d-none', !show);
+				if (!show) { sel.value = ''; sel.required = false; return; }
+				const shipper = role === 'SHIPPER';
+				document.getElementById('branchLabel').textContent = shipper ? 'Chi nhánh làm việc' : 'Giao chi nhánh';
+				document.getElementById('branchReq').classList.toggle('d-none', !shipper);
+				document.getElementById('branchHint').textContent = shipper
+					? 'Shipper chỉ thấy và nhận đơn giao của chi nhánh này. Một chi nhánh có thể có nhiều shipper.'
+					: 'Mỗi chi nhánh có 1 Manager.';
+				none.textContent = shipper ? '-- Chọn chi nhánh --' : 'Chưa giao (giao sau ở trang Chi nhánh)';
+				sel.required = shipper;
+				sel.querySelectorAll('option[data-manager]').forEach((o) => {
+					o.textContent = shipper ? o.dataset.shipper : o.dataset.manager;
+				});
 			}
 			document.querySelectorAll('input[name="role"]').forEach((x) => x.addEventListener('change', sync));
 			sync();

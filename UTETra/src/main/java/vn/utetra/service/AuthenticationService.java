@@ -47,25 +47,22 @@ public class AuthenticationService {
 		this.emailService = emailService;
 	}
 
-	/** Sinh mã OTP 6 chữ số (000000 - 999999) */
 	private String generateOtp() {
 		return String.format("%06d", RANDOM.nextInt(1_000_000));
 	}
 
-	/** Tạo, lưu và gửi OTP qua email */
 	private void createAndSendOtp(String email, String purpose) {
 		String otp = generateOtp();
 		OtpCode otpCode = new OtpCode();
 		otpCode.setEmail(email);
 		otpCode.setCode(otp);
-		otpCode.setPurpose(purpose); // 'REGISTER' hoặc 'RESET_PASSWORD' theo CHECK constraint CSDL
+		otpCode.setPurpose(purpose);
 		otpCode.setExpiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRE_MINUTES));
 		otpCodeRepository.save(otpCode);
 
 		emailService.sendOtpEmail(email, otp);
 	}
 
-	// 1. Đăng ký -> Mục đích: 'REGISTER'
 	public User signup(RegisterRequest input) {
 		if (userRepository.existsByUsername(input.getUsername())) {
 			throw new RuntimeException("Tên đăng nhập đã tồn tại!");
@@ -94,7 +91,6 @@ public class AuthenticationService {
 		return savedUser;
 	}
 
-	// 2. Kích hoạt OTP Đăng ký -> Tìm theo: 'REGISTER'
 	public boolean verifyOtp(String email, String code) {
 		OtpCode otpCode = otpCodeRepository.findTopByEmailAndPurposeAndUsedFalseOrderByCreatedAtDesc(email, "REGISTER")
 				.orElseThrow(() -> new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn!"));
@@ -115,7 +111,6 @@ public class AuthenticationService {
 		user.setIsVerified(true);
 		userRepository.save(user);
 
-		// Báo Admin có khách mới (chuông)
 		if (user.getRole() != null && "USER".equalsIgnoreCase(user.getRole().getName())) {
 			notificationService.notifyAdmins("USER", "Khách mới đăng ký: " + user.getUsername(),
 					(user.getFullName() == null ? "" : user.getFullName() + " · ") + user.getEmail(), "/admin/users",
@@ -125,14 +120,12 @@ public class AuthenticationService {
 		return true;
 	}
 
-	// 3. Đăng nhập bằng username HOẶC email
 	public User authenticate(LoginRequest input) {
 		String login = input.getUsername() == null ? "" : input.getUsername().trim();
 
 		User user = userRepository.findByUsernameOrEmail(login, login)
 				.orElseThrow(() -> new RuntimeException("Tài khoản hoặc mật khẩu không chính xác!"));
 
-		// Kiểm tra mật khẩu TRƯỚC, sai mật khẩu thì không tiết lộ trạng thái tài khoản
 		try {
 			authenticationManager.authenticate(
 					new UsernamePasswordAuthenticationToken(user.getUsername(), input.getPassword()));
@@ -142,7 +135,6 @@ public class AuthenticationService {
 			throw new RuntimeException("Tài khoản hoặc mật khẩu không chính xác!");
 		}
 
-		// Đúng mật khẩu nhưng chưa kích hoạt -> báo riêng kèm email
 		if (!Boolean.TRUE.equals(user.getIsVerified())) {
 			throw new AccountNotVerifiedException(user.getEmail());
 		}
@@ -150,7 +142,6 @@ public class AuthenticationService {
 		return user;
 	}
 
-	// 4. Quên mật khẩu -> Mục đích: 'RESET_PASSWORD'
 	public void processForgotPassword(String email) {
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new RuntimeException("Email chưa được đăng ký trong hệ thống!"));
@@ -162,7 +153,6 @@ public class AuthenticationService {
 		createAndSendOtp(email, "RESET_PASSWORD");
 	}
 
-	// 5. Đặt lại mật khẩu mới -> Tìm theo: 'RESET_PASSWORD'
 	public boolean resetPassword(String email, String code, String newPassword) {
 		OtpCode otpCode = otpCodeRepository
 				.findTopByEmailAndPurposeAndUsedFalseOrderByCreatedAtDesc(email, "RESET_PASSWORD")
@@ -187,8 +177,6 @@ public class AuthenticationService {
 		return true;
 	}
 
-	// 6. Gửi lại OTP kích hoạt tài khoản
-	// Trả về true nếu đã gửi mã mới, false nếu mã cũ vừa gửi chưa quá 60 giây (vẫn dùng được)
 	public boolean resendRegisterOtp(String email) {
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new RuntimeException("Email chưa được đăng ký trong hệ thống!"));

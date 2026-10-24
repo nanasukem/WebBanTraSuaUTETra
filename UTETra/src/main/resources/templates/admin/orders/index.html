@@ -71,6 +71,17 @@
 		<div class="card border-0 shadow-sm mb-4">
 			<div class="card-body">
 				<form method="get" th:action="@{/admin/orders}">
+					<input type="hidden" name="from" th:if="${from != null}" th:value="${from}">
+					<input type="hidden" name="to" th:if="${to != null}" th:value="${to}">
+					<div class="alert alert-info py-2 d-flex justify-content-between align-items-center flex-wrap gap-2"
+						th:if="${from != null or to != null}">
+						<span><i class="bi bi-calendar-range me-1"></i>Đơn từ
+							<b th:text="${from != null} ? ${#temporals.format(from, 'dd/MM/yyyy')} : '...'"></b> đến
+							<b th:text="${to != null} ? ${#temporals.format(to, 'dd/MM/yyyy')} : '...'"></b>
+							<span class="small text-muted">(đơn đã giao tính theo ngày giao xong)</span></span>
+						<a class="btn btn-sm btn-outline-secondary"
+							th:href="@{/admin/orders(keyword=${keyword}, branchId=${selectedBranch}, status=${selectedStatus}, paymentStatus=${selectedPaymentStatus}, paymentMethod=${selectedPaymentMethod})}">Bỏ lọc ngày</a>
+					</div>
 					<div class="row g-3">
 
 						<div class="col-12 col-md-6 col-xl-4">
@@ -96,7 +107,9 @@
 								name="status" class="form-select">
 								<option value="">Tất cả trạng thái</option>
 								<option th:each="s : ${orderStatuses}" th:value="${s.name()}"
-									th:text="${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(s, false)}"
+									th:with="giao=${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(s, false)},
+										lay=${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(s, true)}"
+									th:text="${s.name() == 'READY'} ? 'Pha xong, chờ shipper / khách lấy' : (${giao == lay} ? ${giao} : ${giao} + ' / ' + ${lay})"
 									th:selected="${selectedStatus == s.name()}"></option>
 							</select>
 						</div>
@@ -179,7 +192,12 @@
 							<td><span class="badge"
 								th:with="pk=${o.deliveryType != null and o.deliveryType.name() == 'PICKUP'}"
 								th:classappend="${T(vn.utetra.service.impl.OrderFlowServiceImpl).badgeClass(o.status)}"
-								th:text="${o.status.name() == 'CANCELLED'} ? ${T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(o.cancelledBy, false)} : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, pk)}"></span></td>
+								th:text="${o.status.name() == 'CANCELLED'} ? ${T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(o.cancelledBy, false)} : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, pk)}"></span>
+								<div th:if="${issueLabels[o.id] != null}" class="mt-1">
+									<span class="badge" th:classappend="${issuePending.contains(o.id)} ? 'text-bg-danger' : 'text-bg-light border text-dark'">
+										<i class="bi bi-exclamation-triangle me-1"></i><span th:text="${issueLabels[o.id]}"></span></span></div>
+								<div th:if="${o.refundAmount != null and o.refundAmount.signum() > 0}" class="small text-danger mt-1"
+									th:text="'Đã hoàn ' + ${#numbers.formatDecimal(o.refundAmount, 0, 'POINT', 0, 'COMMA')} + ' đ'"></div></td>
 
 							<td>
 								<div th:text="${o.paymentMethod}">COD</div> <small

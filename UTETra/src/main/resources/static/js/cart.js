@@ -1,11 +1,3 @@
-/**
- * cart.js - Giỏ hàng UTETra (tuần 2: lưu DATABASE qua API /api/cart)
- * - Modal chọn món (fragments/product-modal.html): mở bằng nút có class .js-open-product
- *     data-id, data-name, data-price, data-image
- * - Trang giỏ hàng (cart/index.html)
- * - Badge số ly: phần tử #cart-count hoặc .cart-count
- * Giá trong modal chỉ để xem trước - giá thật do server tính lại từ database.
- */
 (function() {
     'use strict';
 
@@ -13,28 +5,20 @@
     const LOGIN_URL = '/auth/login';
     const MAX_QTY = 50;
 
-    // Ảnh mặc định khi món chưa có ảnh (vẽ sẵn bằng SVG, không cần tải từ trang khác)
     const NO_IMAGE = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">' +
         '<rect width="100%" height="100%" fill="#e8f5ee"/>' +
         '<text x="50%" y="54%" font-family="Arial, sans-serif" font-size="40" font-weight="bold" ' +
         'fill="#198754" text-anchor="middle">UTETra</text></svg>');
 
-    // ================== Tiện ích ==================
     const formatVnd = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ';
 
-    // Chống XSS: escape chữ trước khi chèn vào HTML
     const escapeHtml = (s) => String(s ?? '')
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
     const clampQty = (q) => Math.min(MAX_QTY, Math.max(1, parseInt(q, 10) || 1));
 
-    // ================== Gọi API ==================
-    /**
-     * goLogin = true: chưa đăng nhập thì chuyển sang trang đăng nhập
-     * goLogin = false: im lặng (dùng cho badge ở trang khách cũng xem được)
-     */
     async function api(method, url, body, { goLogin = true } = {}) {
         const hasBody = body !== undefined;
         const res = await fetch(url, {
@@ -47,13 +31,11 @@
         });
         const type = res.headers.get('content-type') || '';
 
-        // Chưa đăng nhập: Spring Security chuyển hướng sang trang login (trả về HTML)
         if (res.status === 401 || res.redirected || (res.ok && !type.includes('application/json'))) {
             if (goLogin) window.location.href = LOGIN_URL;
             throw new Error('Vui lòng đăng nhập để dùng giỏ hàng');
         }
 
-        // Đã đăng nhập nhưng không phải khách hàng (Admin/Manager/Shipper): không được mua hàng
         if (res.status === 403) {
             throw new Error('Tài khoản này không dùng để mua hàng. Vui lòng đăng nhập bằng tài khoản khách hàng.');
         }
@@ -63,7 +45,6 @@
         return data;
     }
 
-    // ================== Giỏ hàng (dữ liệu từ server) ==================
     const Cart = {
         data: { items: [], totalQty: 0, subtotal: 0 },
 
@@ -86,9 +67,8 @@
         }
     };
 
-    window.UtetraCart = Cart; // trang checkout dùng lại
+    window.UtetraCart = Cart;
 
-    // ================== Toast thông báo ==================
     function toast(message, type = 'success') {
         let box = document.getElementById('utetra-toast-box');
         if (!box) {
@@ -109,13 +89,12 @@
         t.show();
     }
 
-    // ================== Modal chọn món ==================
     function initProductModal() {
         const modalEl = document.getElementById('productModal');
         if (!modalEl) return;
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         const $ = (id) => document.getElementById(id);
-        let current = null; // món đang mở
+        let current = null;
 
         function renderSizes(sizes) {
             const box = $('pmSizes');
@@ -136,7 +115,6 @@
 
         function renderToppings(toppings, stopped, outHere) {
             const box = $('pmToppings');
-            // Topping Admin đã ngừng bán: vẫn hiện nhưng mờ, không chọn được
             const stoppedHtml = (stopped || []).map(t => `
                 <div class="form-check d-flex justify-content-between opacity-50">
                     <div>
@@ -176,15 +154,14 @@
         }
 
         function readSelection() {
-            const size = modalEl.querySelector('input[name="pmSize"]:checked')?.value || 'S'; // mặc định size S (đúng giá trên thẻ món)
+            const size = modalEl.querySelector('input[name="pmSize"]:checked')?.value || 'S';
             const sugarLevel = parseInt(modalEl.querySelector('input[name="pmSugar"]:checked')?.value ?? 100, 10);
             const iceLevel = parseInt(modalEl.querySelector('input[name="pmIce"]:checked')?.value ?? 100, 10);
             const checked = [...modalEl.querySelectorAll('.pm-topping:checked')];
             const toppingIds = checked.map(c => parseInt(c.value, 10));
             const toppingSum = checked.reduce((s, c) => s + Number(c.dataset.price), 0);
             const quantity = clampQty($('pmQty').value);
-            const unitPrice = current.basePrice + Number(current.sizes[size] || 0) + toppingSum; // chỉ để xem trước
-            // Ghi chú = các gợi ý đã chọn + phần khách tự gõ, vd "Đá để riêng, Ít sữa · cho thêm đá"
+            const unitPrice = current.basePrice + Number(current.sizes[size] || 0) + toppingSum;
             const tags = [...modalEl.querySelectorAll('.pm-note-tag:checked')].map(c => c.value);
             const extra = ($('pmNote')?.value || '').trim();
             const note = [tags.join(', '), extra].filter(Boolean).join(' · ').slice(0, 200);
@@ -197,7 +174,6 @@
             $('pmTotal').textContent = formatVnd(sel.unitPrice * sel.quantity);
         }
 
-        // Mở modal cho 1 món. preset != null: SỬA 1 dòng trong giỏ (điền sẵn size, đường, đá, topping, ghi chú, số lượng)
         async function openProduct(info, preset) {
             const opt = await api('GET', `${API}/options/${info.id}`);
             const sizes = {};
@@ -208,7 +184,7 @@
                 image: info.image || NO_IMAGE,
                 basePrice: Number(info.price),
                 sizes,
-                toppingItem: !!opt.toppingItem, // topping mua riêng: không chọn size / đường / đá
+                toppingItem: !!opt.toppingItem,
                 editId: preset ? preset.id : null
             };
             $('pmDrinkOptions')?.classList.toggle('d-none', current.toppingItem);
@@ -221,7 +197,6 @@
             renderToppings(opt.toppings, opt.stoppedToppings, opt.outToppings);
             resetOptions();
             if (preset) {
-                // giá gốc = giá 1 ly - size - topping (giỏ chỉ có giá 1 ly)
                 const toppingSum = (preset.toppings || []).reduce((s, t) => s + Number(t.price), 0);
                 current.basePrice = Number(preset.unitPrice) - Number(sizes[preset.size] || 0) - toppingSum;
                 const pick = (sel) => { const el = modalEl.querySelector(sel); if (el) el.checked = true; };
@@ -229,7 +204,6 @@
                 pick(`input[name="pmSugar"][value="${preset.sugarLevel}"]`);
                 pick(`input[name="pmIce"][value="${preset.iceLevel}"]`);
                 (preset.toppings || []).forEach(t => pick(`.pm-topping[value="${t.id}"]`));
-                // Ghi chú "gợi ý, gợi ý · phần tự gõ" -> tô lại gợi ý + điền phần còn lại
                 let rest = preset.note || '';
                 modalEl.querySelectorAll('.pm-note-tag').forEach(c => {
                     if (rest.includes(c.value)) { c.checked = true; rest = rest.replace(c.value, ''); }
@@ -245,9 +219,8 @@
             refreshTotal();
             modal.show();
         }
-        window.UtetraOpenProduct = openProduct; // trang giỏ hàng dùng để sửa món
+        window.UtetraOpenProduct = openProduct;
 
-        // Bấm nút "+" (class js-open-product) -> tải size/topping từ server -> mở modal
         document.addEventListener('click', async (e) => {
             const btn = e.target.closest('.js-open-product');
             if (!btn) return;
@@ -275,7 +248,6 @@
             const addBtn = $('pmAddToCart');
             addBtn.disabled = true;
             try {
-                // Chỉ gửi lựa chọn, KHÔNG gửi giá
                 const req = {
                     productId: current.productId,
                     size: sel.size,
@@ -286,7 +258,6 @@
                     note: sel.note || null
                 };
                 if (current.editId) {
-                    // Sửa 1 dòng trong giỏ: đổi size / đường / đá / topping / ghi chú / số lượng
                     Cart.set(await api('PUT', `${API}/${current.editId}/options`, req));
                     modal.hide();
                     toast(`Đã cập nhật ${current.name}`);
@@ -303,7 +274,6 @@
         });
     }
 
-    // ================== Trang giỏ hàng ==================
     function initCartPage() {
         const page = document.getElementById('cart-page');
         if (!page) return false;
@@ -369,7 +339,6 @@
 
             document.getElementById('cart-total-qty').textContent = totalQty;
             document.getElementById('cart-subtotal').textContent = formatVnd(subtotal);
-            // Còn món ngừng bán / hết ở mọi chi nhánh -> phải xoá mới thanh toán được
             const blocked = items.filter(i => i.blocked).length;
             if (checkoutBtn) checkoutBtn.classList.toggle('disabled', items.length === 0 || blocked > 0);
             let note = document.getElementById('cart-blocked-note');
@@ -383,12 +352,10 @@
             }
         }
 
-        // Chạy 1 thao tác; lỗi thì báo và vẽ lại theo dữ liệu cũ
         async function run(action) {
             try { await action(); } catch (err) { toast(err.message, 'danger'); render(); }
         }
 
-        // Bấm nút trong từng dòng: xoá / giảm / tăng
         list.addEventListener('click', (e) => {
             const li = e.target.closest('li[data-id]');
             if (!li) return;
@@ -396,7 +363,6 @@
             const qty = +li.querySelector('.js-qty').value;
 
             if (e.target.closest('.js-edit')) {
-                // Mở modal chọn món với lựa chọn hiện tại để điều chỉnh
                 const item = Cart.data.items.find(x => String(x.id) === String(id));
                 if (item && window.UtetraOpenProduct) {
                     window.UtetraOpenProduct({ id: item.productId, name: item.productName, image: item.image,
@@ -410,20 +376,18 @@
                 if (qty > 1) {
                     run(() => Cart.updateQty(id, qty - 1));
                 } else if (confirm(CONFIRM_REMOVE)) {
-                    run(() => Cart.remove(id)); // còn 1 ly mà bấm "−" thì hỏi xoá món
+                    run(() => Cart.remove(id));
                 }
             } else if (e.target.closest('.js-plus')) {
                 if (qty < MAX_QTY) run(() => Cart.updateQty(id, qty + 1));
             }
         });
 
-        // Gõ tay số lượng
         list.addEventListener('change', (e) => {
             if (!e.target.classList.contains('js-qty')) return;
             const id = e.target.closest('li[data-id]').dataset.id;
             const qty = parseInt(e.target.value, 10) || 0;
             if (qty < 1) {
-                // Gõ 0 (hoặc xoá trống) -> hỏi xoá món; bấm Huỷ thì trả lại số lượng cũ
                 if (confirm(CONFIRM_REMOVE)) run(() => Cart.remove(id));
                 else render();
                 return;
@@ -436,15 +400,13 @@
         });
 
         document.addEventListener('cart:changed', render);
-        Cart.load().catch(err => toast(err.message, 'danger')); // trang giỏ bắt buộc đăng nhập
+        Cart.load().catch(err => toast(err.message, 'danger'));
         return true;
     }
 
-    // ================== Khởi động ==================
     document.addEventListener('DOMContentLoaded', () => {
         initProductModal();
         const isCartPage = initCartPage();
-        // Trang khác: chỉ cập nhật badge, chưa đăng nhập thì im lặng (không chuyển trang)
         if (!isCartPage && document.querySelector('#cart-count, .cart-count')) {
             Cart.load({ goLogin: false }).catch(() => {});
         }

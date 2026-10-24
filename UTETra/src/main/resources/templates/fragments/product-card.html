@@ -1,20 +1,10 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 
-<!--
-	Thẻ 1 món (trang chủ, Thực đơn, trang danh mục) + khối "20 món nhất" có phân trang (trang chủ).
-	p    : ProductCardRes (id, name, categoryName, basePrice, imageCloudinaryId, description,
-	       soldCount, avgRating, reviewCount, favoriteCount)
-	mode : 'buy'   = USER, nút "+" mở modal chọn món
-	       'guest' = chưa đăng nhập, nút "+" dẫn tới trang đăng nhập
-	       'view'  = Manager / Admin, chỉ xem
--->
-
 <div th:fragment="card(p, mode)" class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden"
 	th:classappend="${!p.available} ? 'product-stopped' : ''"
 	th:with="outHere=${p.available and menuOutIds != null and menuOutIds.contains(p.id)}">
 
-	<!-- Ảnh (bấm -> trang chi tiết món) -->
 	<a th:href="@{/products/{id}(id=${p.id})}" class="d-block bg-light position-relative" style="height: 170px; overflow: hidden;"
 		th:aria-label="'Xem chi tiết ' + ${p.name}">
 		<img th:if="${p.imageCloudinaryId != null and !#strings.isEmpty(p.imageCloudinaryId)}"
@@ -26,19 +16,16 @@
 		</div>
 		<span class="badge bg-dark bg-opacity-75 position-absolute bottom-0 start-0 m-2 fw-normal"
 			th:text="|Đã bán ${p.soldCount}|">Đã bán 0</span>
-		<!-- Admin ngừng bán: vẫn hiện trên menu nhưng mờ đi, không đặt được (xoá món mới biến mất) -->
 		<span th:if="${!p.available}" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
 			style="background: rgba(255,255,255,.55);">
 			<span class="badge bg-secondary fs-6 px-3 py-2"><i class="bi bi-slash-circle me-1"></i>Ngừng bán</span>
 		</span>
-		<!-- Hết ở chi nhánh đang chọn (khách đổi chi nhánh khác thì đặt được) -->
 		<span th:if="${outHere}" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
 			style="background: rgba(255,255,255,.55);">
 			<span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="bi bi-exclamation-circle me-1"></i>Hết ở chi nhánh</span>
 		</span>
 	</a>
 
-	<!-- Nội dung -->
 	<div class="card-body d-flex flex-column p-3">
 		<div class="small text-muted mb-1" th:text="${p.categoryName}">Trà sữa</div>
 		<h3 class="h6 fw-bold mb-1"><a th:href="@{/products/{id}(id=${p.id})}" class="text-dark text-decoration-none"
@@ -60,8 +47,6 @@
 			<span class="fw-bold text-success"
 				th:text="${#numbers.formatDecimal(p.basePrice, 0, 'POINT', 0, 'COMMA')} + ' đ'">35.000 đ</span>
 
-			<!-- USER: chọn size, đường, đá, topping -->
-			<!-- Ngừng bán: thay nút "+" bằng nhãn -->
 			<span th:if="${!p.available}" class="badge text-bg-light border text-secondary">Ngừng bán</span>
 			<span th:if="${outHere}" class="badge text-bg-warning">Hết ở chi nhánh</span>
 
@@ -74,7 +59,6 @@
 				<i class="bi bi-plus-lg"></i>
 			</button>
 
-			<!-- Chưa đăng nhập: phải đăng nhập mới đặt được -->
 			<a th:if="${mode == 'guest' and p.available and !outHere}" th:href="@{/auth/login}"
 				class="btn btn-outline-success btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
 				style="width: 36px; height: 36px; flex-shrink: 0;" title="Đăng nhập để đặt món">
@@ -84,12 +68,6 @@
 	</div>
 </div>
 
-
-<!--
-	Khối "20 món nhất" có PHÂN TRANG THẬT (trang chủ User): mỗi trang 8 món, bấm số trang thì
-	JS gọi /menu/highlight/{type}?page=n lấy đoạn HTML trang đó (hlBody) rồi thay vào khối.
-	pg: HighlightPageRes (type, items, page, totalPages, total, offset)
--->
 <section th:fragment="hlAjax(blockId, type, icon, title, subtitle, pg, mode)" th:id="${blockId}"
 	class="hl-ajax bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" style="scroll-margin-top: 90px;"
 	th:attr="data-url=@{/menu/highlight/{t}(t=${type})}">
@@ -105,7 +83,6 @@
 	<div th:replace="~{fragments/product-card :: hlBody(pg=${pg}, mode=${mode})}"></div>
 </section>
 
-<!-- 1 trang trong khối (cũng là đoạn HTML mà /menu/highlight/{type} trả về). Biến: pg, mode -->
 <div th:fragment="hlBody" class="hl-body">
 
 	<div class="row g-3" th:unless="${#lists.isEmpty(pg.items)}">
@@ -120,7 +97,6 @@
 
 	<p class="text-muted mb-0" th:if="${#lists.isEmpty(pg.items)}">Chưa có món nào.</p>
 
-	<!-- Phân trang: ‹ 1 2 3 › -->
 	<div class="d-flex flex-wrap justify-content-center align-items-center gap-1 mt-3" th:if="${pg.totalPages > 1}">
 		<button type="button" class="btn btn-sm btn-outline-success hl-go" aria-label="Trang trước"
 			th:attr="data-page=${pg.page - 1}" th:disabled="${pg.page == 0}"><i class="bi bi-chevron-left"></i></button>

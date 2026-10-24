@@ -2,15 +2,14 @@ package vn.utetra.dto.response;
 
 import java.util.List;
 
-/** Trang "Đơn hàng của chi nhánh" theo tab trạng thái, có phân trang */
 public record ManagerHistoryRes(
 		Integer branchId,
 		String branchName,
-		String status,               // tab đang mở
+		String status,
 		String statusLabel,
-		List<ManagerTabRes> tabs,     // đủ 7 tab + số đơn
-		List<ManagerOrderRes> orders, // đơn của trang hiện tại
-		int page,                    // bắt đầu từ 0
+		List<ManagerTabRes> tabs,
+		List<ManagerOrderRes> orders,
+		int page,
 		int totalPages,
 		long totalElements) {
 }

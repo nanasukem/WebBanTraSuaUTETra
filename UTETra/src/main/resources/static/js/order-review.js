@@ -1,9 +1,3 @@
-/* ============================================================
-   order-review.js - Trang "Đánh giá đơn hàng" (orders/review.html), như app Katinat / Highlands
-   - Chọn sao (mặc định 5) cho từng món và cho quán; "Để sau" để bỏ qua 1 món
-   - Gợi ý nhanh: bấm để tô sáng / bỏ chọn (checkbox kiểu nút, gửi lên thành nhãn); xem trước ảnh/video
-   (Server - ReviewService - kiểm tra lại toàn bộ)
-   ============================================================ */
 (() => {
 	const form = document.getElementById('orderReviewForm');
 	if (!form) return;
@@ -11,10 +5,8 @@
 	const MAX_FILES = 5, MAX_IMG = 5 * 1024 * 1024, MAX_VIDEO = 30 * 1024 * 1024;
 	const TEXTS = ['', 'Tệ', 'Không hài lòng', 'Bình thường', 'Hài lòng', 'Tuyệt vời'];
 
-	// ===== Sao (dùng chung cho món và quán) =====
 	form.querySelectorAll('.rv-stars').forEach((box) => {
 		const wrap = box.parentElement;
-		// ô lưu số sao + chữ mô tả nằm cùng hàng với các ngôi sao
 		const input = wrap.querySelector('.rv-rating') || box.closest('.rv-form')?.querySelector('.rv-rating');
 		const text = wrap.querySelector('.rv-star-text');
 		if (!input) return;
@@ -35,12 +27,11 @@
 		paint(Number(input.value) || 5);
 	});
 
-	// ===== Từng món =====
 	const items = Array.from(form.querySelectorAll('.rv-item')).filter((it) => it.querySelector('.rv-form'));
 
 	function setSkipped(item, skip) {
 		item.dataset.skip = skip ? '1' : '';
-		item.querySelector('.rv-rating').disabled = skip; // ô bị tắt thì không gửi lên -> server bỏ qua món này
+		item.querySelector('.rv-rating').disabled = skip;
 		item.querySelector('.rv-body').classList.toggle('d-none', skip);
 		item.querySelector('.rv-stars').classList.toggle('opacity-50', skip);
 		item.querySelector('.rv-skip').textContent = skip ? 'Đánh giá món này' : 'Để sau';
@@ -60,9 +51,9 @@
 		return !msg;
 	}
 
-	items.forEach((item) => {
-		item.querySelector('.rv-skip').addEventListener('click', () => setSkipped(item, !item.dataset.skip));
+	function bindMedia(item) {
 		const media = item.querySelector('.rv-media');
+		if (!media) return;
 		media.addEventListener('change', () => {
 			const preview = item.querySelector('.rv-preview');
 			preview.innerHTML = '';
@@ -77,11 +68,19 @@
 			});
 			filesOk(item);
 		});
+	}
+
+	items.forEach((item) => {
+		item.querySelector('.rv-skip').addEventListener('click', () => setSkipped(item, !item.dataset.skip));
+		bindMedia(item);
 	});
 
-	// ===== Gửi =====
+	const store = form.querySelector('.rv-store-media');
+	if (store) bindMedia(store);
+
 	form.addEventListener('submit', (e) => {
 		const bad = items.filter((item) => !item.dataset.skip && !filesOk(item));
+		if (store && !filesOk(store)) bad.push(store);
 		if (bad.length) {
 			e.preventDefault();
 			bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' });

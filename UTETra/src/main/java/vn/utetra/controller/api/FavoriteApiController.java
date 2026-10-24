@@ -18,7 +18,6 @@ import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.service.CurrentUserService;
 import vn.utetra.service.FavoriteService;
 
-/** Nút tim: POST /api/favorites/{productId}/toggle -> {favorite: true/false, count: số người thích} */
 @RestController
 @RequestMapping("/api/favorites")
 public class FavoriteApiController {

@@ -15,7 +15,7 @@ public class Category {
 	private Integer id;
 
 	@Column(nullable = false, length = 100, unique = true)
-	private String name; // Trà sữa, Trà trái cây, Cà phê, Đá xay...
+	private String name;
 
 	@Column(name = "image_cloudinary_id")
 	private String imageCloudinaryId;

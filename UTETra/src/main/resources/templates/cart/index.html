@@ -3,7 +3,6 @@
 	th:replace="~{layout/user-layout :: main('Giỏ hàng - UTETra', ~{::#cart-content})}">
 
 <body>
-	<!-- Dùng chung layout với trang menu: header, footer, Bootstrap JS, cart.js đã có sẵn trong layout -->
 	<div id="cart-content">
 
 		<a th:href="@{/menu#thuc-don}"
@@ -14,7 +13,6 @@
 			<i class="bi bi-cart3 me-2"></i>Giỏ hàng của bạn
 		</h1>
 
-		<!-- Thông báo sau khi bấm "Mua lại" ở đơn cũ -->
 		<div th:if="${success}" class="alert alert-success alert-dismissible fade show">
 			<i class="bi bi-check-circle me-1"></i><span th:text="${success}"></span>
 			<ul th:if="${reorderNotes}" class="small mb-0 mt-1">
@@ -30,7 +28,6 @@
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
 
-		<!-- Giỏ trống -->
 		<div id="cart-empty" class="text-center py-5 d-none">
 			<i class="bi bi-cup-straw display-1 text-success opacity-50"></i>
 			<p class="mt-3 text-muted">Giỏ hàng đang trống</p>
@@ -40,12 +37,10 @@
 		</div>
 
 		<div id="cart-page" class="row g-4">
-			<!-- Danh sách món: cart.js vẽ vào đây (dữ liệu lấy từ /api/cart) -->
 			<div class="col-lg-8" id="cart-items">
 				<div class="text-center text-muted py-5">Đang tải giỏ hàng...</div>
 			</div>
 
-			<!-- Tóm tắt -->
 			<div class="col-lg-4">
 				<div class="card border-0 shadow-sm rounded-4 position-sticky"
 					style="top: 90px">
@@ -75,7 +70,6 @@
 			</div>
 		</div>
 
-		<!-- Modal chọn món: bấm tên / tuỳ chọn của 1 món trong giỏ để điều chỉnh -->
 		<div th:replace="~{fragments/product-modal :: productModal}"></div>
 	</div>
 </body>

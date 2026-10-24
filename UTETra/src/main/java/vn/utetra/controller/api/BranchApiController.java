@@ -23,27 +23,17 @@ public class BranchApiController {
 		this.managerBranchService = managerBranchService;
 	}
 
-	/**
-	 * GET /api/branches/approved - danh sách chi nhánh đang hoạt động.
-	 * Trả DTO (id, tên, địa chỉ, SĐT, tọa độ), KHÔNG trả entity Branch để không lộ thông tin người quản lý chi nhánh
-	 * và không bị lỗi JSON với owner LAZY.
-	 */
 	@GetMapping("/approved")
 	public List<NearbyBranchRes> getApprovedBranches() {
 		return branchService.findNearby(null, null);
 	}
 
-	/** GET /api/branches/nearby?lat=10.85&lng=106.77 -> chi nhánh từ gần đến xa (không gửi lat/lng thì không sắp) */
 	@GetMapping("/nearby")
 	public List<NearbyBranchRes> nearby(@RequestParam(required = false) Double lat,
 			@RequestParam(required = false) Double lng) {
 		return branchService.findNearby(lat, lng);
 	}
 
-	/**
-	 * POST /api/branches/{branchId}/toggle-product - bật/tắt món tại chi nhánh.
-	 * Chỉ Manager quản lý chi nhánh đó hoặc ADMIN được gọi.
-	 */
 	@PostMapping("/{branchId}/toggle-product")
 	public ResponseEntity<Map<String, Object>> toggleProduct(@PathVariable Integer branchId,
 			@RequestParam Integer productId, @RequestParam boolean isAvailable, Authentication auth) {
@@ -56,7 +46,6 @@ public class BranchApiController {
 				result ? "Món ăn đã được bật bán" : "Món ăn đã chuyển sang tạm hết hàng"));
 	}
 
-	/** ADMIN: mọi chi nhánh. MANAGER: chỉ chi nhánh mình làm chủ. Còn lại: không */
 	private boolean canManageBranch(Authentication auth, Integer branchId) {
 		if (auth == null || !auth.isAuthenticated()) return false;
 		if (hasRole(auth, "ROLE_ADMIN")) return true;

@@ -18,10 +18,6 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Sổ địa chỉ của user ĐANG ĐĂNG NHẬP. Không bao giờ tin userId do trình duyệt
- * gửi lên. Trả DTO (AddressRes), không trả entity Address.
- */
 @RestController
 @RequestMapping("/api/addresses")
 public class AddressApiController {
@@ -34,28 +30,22 @@ public class AddressApiController {
 		this.currentUserService = currentUserService;
 	}
 
-	// ================= ĐƯỜNG DẪN MỚI (Checkout dùng) =================
-
-	/** GET /api/addresses - sổ địa chỉ của tôi */
 	@GetMapping
 	public List<AddressRes> list(Principal principal, HttpSession session) {
 		return addressService.list(me(principal, session));
 	}
 
-	/** POST /api/addresses - thêm địa chỉ */
 	@PostMapping
 	public AddressRes add(@Valid @RequestBody AddressReq req, Principal principal, HttpSession session) {
 		return addressService.add(me(principal, session), req);
 	}
 
-	/** PUT /api/addresses/{id} - sửa địa chỉ */
 	@PutMapping("/{id}")
 	public AddressRes update(@PathVariable Integer id, @Valid @RequestBody AddressReq req, Principal principal,
 			HttpSession session) {
 		return addressService.update(me(principal, session), id, req);
 	}
 
-	/** PUT /api/addresses/{id}/default - đặt mặc định */
 	@PutMapping("/{id}/default")
 	public List<AddressRes> setDefault(@PathVariable Integer id, Principal principal, HttpSession session) {
 		Integer userId = me(principal, session);
@@ -63,16 +53,12 @@ public class AddressApiController {
 		return addressService.list(userId);
 	}
 
-	/** DELETE /api/addresses/{id} - xoá */
 	@DeleteMapping("/{id}")
 	public List<AddressRes> delete(@PathVariable Integer id, Principal principal, HttpSession session) {
 		Integer userId = me(principal, session);
 		addressService.delete(userId, id);
 		return addressService.list(userId);
 	}
-
-	// ================= ĐƯỜNG DẪN CŨ (giữ cho trang đang gọi, nhưng đã chặn xem/sửa
-	// của người khác) =================
 
 	@GetMapping("/user/{userId}")
 	public List<AddressRes> getUserAddresses(@PathVariable Integer userId, Principal principal, HttpSession session) {
@@ -99,13 +85,10 @@ public class AddressApiController {
 		return Map.of("message", "Đã xóa địa chỉ thành công");
 	}
 
-	// ================= HÀM PHỤ =================
-
 	private Integer me(Principal principal, HttpSession session) {
 		return currentUserService.requireUserId(principal, session);
 	}
 
-	/** userId trên đường dẫn phải đúng là người đang đăng nhập, không thì 403 */
 	private Integer requireSelf(Integer userId, Principal principal, HttpSession session) {
 		Integer current = me(principal, session);
 		if (!current.equals(userId)) {
@@ -115,7 +98,6 @@ public class AddressApiController {
 		return current;
 	}
 
-	// ===== Lỗi -> JSON {"message": "..."} =====
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<Map<String, String>> handleBusiness(BusinessException e) {
 		return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));

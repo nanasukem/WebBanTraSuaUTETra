@@ -4,7 +4,6 @@
 
 <section id="admin-content">
 
-	<!-- Tiêu đề -->
 	<div
 		class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
 		<div>
@@ -18,7 +17,6 @@
 		</a>
 	</div>
 
-	<!-- Thông báo -->
 	<div th:if="${success != null}"
 		class="alert alert-success alert-dismissible fade show" role="alert">
 		<i class="bi bi-check-circle me-2"></i> <span th:text="${success}">Thao
@@ -35,7 +33,6 @@
 			aria-label="Đóng"></button>
 	</div>
 
-	<!-- Tìm kiếm và lọc -->
 	<div class="card border-0 shadow-sm mb-4">
 		<div class="card-body">
 			<form th:action="@{/admin/branches}" method="get"
@@ -76,7 +73,6 @@
 		</div>
 	</div>
 
-	<!-- Bảng danh sách -->
 	<div class="card border-0 shadow-sm">
 		<div class="card-header bg-white py-3">
 			<div class="d-flex justify-content-between align-items-center">
@@ -109,7 +105,6 @@
 
 					<tbody>
 
-						<!-- Có dữ liệu -->
 						<tr th:each="branch : ${branches}">
 
 							<td class="ps-3"><span class="fw-semibold"
@@ -146,28 +141,26 @@
 									<i class="bi bi-pause-circle me-1"></i> Tạm ngưng
 							</span></td>
 
-							<!-- Các thao tác -->
 							<td class="text-end pe-3 text-nowrap">
-								<!-- Xem ảnh bìa và mô tả do Manager cập nhật --> <a
+								 <a
 								th:href="@{/admin/branches/{id}(id=${branch.id})}"
 								class="btn btn-sm btn-outline-info"
 								title="Xem chi tiết chi nhánh" aria-label="Xem chi tiết"> <i
 									class="bi bi-eye"></i>
-							</a> <!-- Món còn / hết của chi nhánh (Admin bật / tắt được) --> <a
+							</a>  <a
 								th:href="@{/admin/branches/{id}/stock(id=${branch.id})}"
 								class="btn btn-sm btn-outline-success" title="Món còn / hết ở chi nhánh"
 								aria-label="Món còn / hết"> <i class="bi bi-box-seam"></i>
-							</a> <!-- Sửa thông tin quản lý chi nhánh --> <a
+							</a>  <a
 								th:href="@{/admin/branches/{id}/edit(id=${branch.id})}"
 								class="btn btn-sm btn-outline-primary"
 								title="Sửa thông tin chi nhánh" aria-label="Sửa chi nhánh">
 									<i class="bi bi-pencil-square"></i>
-							</a> <!-- Khóa hoặc mở khóa -->
+							</a>
 								<form
 									th:action="@{/admin/branches/{id}/status(id=${branch.id})}"
 									method="post" class="d-inline">
 
-									<!-- Giữ CSRF nếu Spring Security bật -->
 									<input type="hidden" th:if="${_csrf != null}"
 										th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
 
@@ -187,7 +180,6 @@
 							</td>
 						</tr>
 
-						<!-- Không có dữ liệu -->
 						<tr th:if="${branches == null or branches.isEmpty()}">
 							<td colspan="7" class="text-center py-5">
 								<div class="mb-3">
@@ -212,7 +204,6 @@
 		</div>
 	</div>
 
-	<!-- Xác nhận thao tác trạng thái -->
 	<script>
         document.addEventListener('DOMContentLoaded', function () {
             const statusForms = document.querySelectorAll(
@@ -240,4 +231,3 @@
 
 </section>
 </html>
-

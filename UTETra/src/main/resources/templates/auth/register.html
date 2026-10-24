@@ -7,23 +7,19 @@
 
 		<div class="card auth-card shadow-sm mx-auto p-4">
 
-			<!-- TIÊU ĐỀ -->
 			<div class="text-center mb-3">
 				<h4 class="fw-bold text-success mb-1">Tạo tài khoản mới</h4>
 				<p class="text-muted small mb-0">Mã OTP kích hoạt sẽ được gửi
 					qua email</p>
 			</div>
 
-			<!-- THÔNG BÁO LỖI -->
 			<div th:if="${error != null}"
 				class="alert alert-danger py-2 small text-center" th:text="${error}">
 			</div>
 
-			<!-- FORM ĐĂNG KÝ -->
 			<form th:action="@{/auth/register}" method="post"
 				th:object="${registerRequest}">
 
-				<!-- TÊN ĐĂNG NHẬP -->
 				<div class="mb-3">
 					<label for="username" class="form-label small fw-bold"> Tên
 						đăng nhập (*) </label> <input type="text" id="username"
@@ -32,7 +28,6 @@
 						autofocus>
 				</div>
 
-				<!-- MẬT KHẨU -->
 				<div class="mb-3">
 					<label for="password" class="form-label small fw-bold"> Mật
 						khẩu (*) </label> <input type="password" id="password"
@@ -40,7 +35,6 @@
 						autocomplete="new-password" required placeholder="Nhập mật khẩu">
 				</div>
 
-				<!-- HỌ VÀ TÊN -->
 				<div class="mb-3">
 					<label for="fullName" class="form-label small fw-bold"> Họ
 						và tên </label> <input type="text" id="fullName" class="form-control"
@@ -48,7 +42,6 @@
 						placeholder="Nguyễn Văn A">
 				</div>
 
-				<!-- EMAIL -->
 				<div class="mb-3">
 					<label for="email" class="form-label small fw-bold"> Email
 						(*) </label> <input type="email" id="email" class="form-control"
@@ -56,14 +49,12 @@
 						placeholder="name@example.com">
 				</div>
 
-				<!-- SỐ ĐIỆN THOẠI -->
 				<div class="mb-3">
 					<label for="phone" class="form-label small fw-bold"> Số
 						điện thoại </label> <input type="tel" id="phone" class="form-control"
 						th:field="*{phone}" autocomplete="tel" placeholder="0901234567">
 				</div>
 
-				<!-- NÚT ĐĂNG KÝ -->
 				<button type="submit"
 					class="btn btn-success w-100 rounded-pill py-2 fw-bold mt-2">
 					<i class="bi bi-person-plus-fill me-1"></i> Đăng ký tài khoản
@@ -71,7 +62,6 @@
 
 			</form>
 
-			<!-- CHUYỂN SANG ĐĂNG NHẬP -->
 			<div class="text-center mt-4">
 				<p class="small text-muted mb-0">
 					Đã có tài khoản? <a th:href="@{/auth/login}"

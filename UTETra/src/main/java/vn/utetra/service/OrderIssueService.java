@@ -22,24 +22,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * "Báo vấn đề với đơn" - thay cho Trả hàng (đồ uống không trả lại được), giống app chuỗi trà sữa thật:
- * - Khách báo trong {@value #WINDOW_HOURS} giờ sau khi nhận món, chọn lý do, mô tả, kèm 1-3 ảnh. Mỗi đơn báo 1 lần.
- * - Manager của chi nhánh xử lý:
- *   + Hoàn tiền (một phần hoặc toàn bộ): đơn trả trước hoàn qua VNPAY/MoMo, đơn COD quán tự hoàn tiền mặt / chuyển khoản.
- *     Tiền hoàn bị trừ khỏi doanh thu của đơn.
- *   + Làm lại món (giao lại / khách ghé lấy lại)
- *   + Từ chối (bắt buộc ghi lý do)
- * - Báo chuông cho quán khi khách gửi, báo chuông cho khách khi quán xử lý.
- */
 @Service
 @Transactional(readOnly = true)
 public class OrderIssueService {
 
 	public static final int WINDOW_HOURS = 2;
-	public static final int MAX_IMAGES = 3;
+	public static final int MAX_FILES = ReviewService.MAX_FILES;
 	public static final String ADMIN_HOTLINE = "1900 1234";
-	private static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 
 	private final OrderIssueRepository issueRepository;
@@ -57,14 +46,10 @@ public class OrderIssueService {
 		this.refundService = refundService;
 	}
 
-	// ================= KHÁCH =================
-
-	/** Hạn báo vấn đề của đơn (null = đơn chưa giao) */
 	public static LocalDateTime deadline(Order o) {
 		return o.getDeliveredAt() == null ? null : o.getDeliveredAt().plusHours(WINDOW_HOURS);
 	}
 
-	/** Đơn còn báo vấn đề được không: đã giao, còn trong hạn, chưa báo */
 	public boolean canReport(Order o) {
 		LocalDateTime dl = deadline(o);
 		return o.getStatus() == OrderStatus.DELIVERED && dl != null && LocalDateTime.now().isBefore(dl)
@@ -90,20 +75,27 @@ public class OrderIssueService {
 		if (desc != null && desc.length() > 500) throw new BusinessException("Mô tả tối đa 500 ký tự");
 		if (reason == IssueReason.OTHER && desc == null) throw new BusinessException("Vui lòng mô tả vấn đề bạn gặp");
 
-		List<MultipartFile> images = files == null ? List.of()
+		List<MultipartFile> media = files == null ? List.of()
 				: files.stream().filter(f -> f != null && !f.isEmpty()).toList();
-		if (images.isEmpty()) throw new BusinessException("Vui lòng chụp ít nhất 1 ảnh món để quán kiểm tra");
-		if (images.size() > MAX_IMAGES) throw new BusinessException("Tối đa " + MAX_IMAGES + " ảnh");
-		for (MultipartFile f : images) {
-			if (!"IMAGE".equals(ReviewService.mediaType(f))) {
-				throw new BusinessException("File \"" + f.getOriginalFilename() + "\" không phải ảnh");
+		if (media.isEmpty()) throw new BusinessException("Vui lòng gửi ít nhất 1 ảnh hoặc video món nhận được để quán kiểm tra");
+		if (media.size() > MAX_FILES) throw new BusinessException("Tối đa " + MAX_FILES + " ảnh / video");
+		for (MultipartFile f : media) {
+			String type = ReviewService.mediaType(f);
+			if (type == null) {
+				throw new BusinessException("File \"" + f.getOriginalFilename() + "\" không phải ảnh hoặc video");
 			}
-			if (f.getSize() > MAX_IMAGE_BYTES) {
-				throw new BusinessException("Ảnh \"" + f.getOriginalFilename() + "\" quá 5MB");
+			long max = "VIDEO".equals(type) ? ReviewService.MAX_VIDEO_BYTES : ReviewService.MAX_IMAGE_BYTES;
+			if (f.getSize() > max) {
+				throw new BusinessException("\"" + f.getOriginalFilename() + "\" quá " + max / 1024 / 1024 + "MB");
 			}
 		}
 		List<String> urls = new ArrayList<>();
-		for (MultipartFile f : images) urls.add(cloudinaryService.uploadImage(f, "order-issues"));
+		try {
+			for (MultipartFile f : media) urls.add(cloudinaryService.uploadImage(f, "order-issues"));
+		} catch (RuntimeException e) {
+			urls.forEach(cloudinaryService::deleteImage);
+			throw new BusinessException("Không tải được ảnh/video lên, vui lòng thử lại");
+		}
 
 		OrderIssue i = new OrderIssue();
 		i.setOrder(o);
@@ -118,12 +110,6 @@ public class OrderIssueService {
 		return i;
 	}
 
-	// ================= QUÁN XỬ LÝ =================
-
-	/**
-	 * action: REFUND (amount bắt buộc, tối đa tiền món khách trả) / REMAKE / REJECT (note bắt buộc).
-	 * Không kiểm tra quyền (controller kiểm tra đơn thuộc chi nhánh của Manager).
-	 */
 	@Transactional
 	public void resolve(Integer orderId, String action, BigDecimal amount, String note) {
 		OrderIssue i = issueRepository.findByOrderId(orderId)
@@ -144,7 +130,7 @@ public class OrderIssueService {
 				}
 				i.setStatus(IssueStatus.REFUNDED);
 				i.setRefundAmount(amount);
-				o.setRefundAmount(amount); // trừ khỏi doanh thu
+				o.setRefundAmount(amount);
 				boolean online = o.getPaymentMethod() != PaymentMethod.COD && o.getPaymentStatus() == PaymentStatus.PAID;
 				if (online) {
 					refundService.refundDelivered(o, amount, "Khách báo vấn đề: " + i.getReason().getLabel());
@@ -177,8 +163,6 @@ public class OrderIssueService {
 		orderRepository.save(o);
 		notificationService.create(o.getUser(), o, "REFUND", title, message, "/orders/" + orderId);
 	}
-
-	// ================= ĐỌC =================
 
 	public OrderIssueRes forOrder(Integer orderId) {
 		return issueRepository.findByOrderId(orderId).map(OrderIssueService::toRes).orElse(null);

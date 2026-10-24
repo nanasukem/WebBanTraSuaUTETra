@@ -1,191 +1,334 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
-	th:replace="~{layout/manager-layout :: main('Quản lý đánh giá chi nhánh', 'reviews', ~{::#manager-content})}">
+	th:replace="~{layout/manager-layout :: main('Báo cáo chi nhánh', 'reports', ~{::#admin-content})}">
 
-<section id="manager-content">
-	<div class="container-fluid px-0">
-		<h2 class="fw-bold mb-1">
-			<i class="bi bi-star-fill text-warning me-2"></i>Quản lý Đánh giá Chi
-			nhánh
-		</h2>
-		<p class="text-muted mb-4">Xem và phản hồi các đánh giá dịch vụ
-			quán và món ăn thuộc chi nhánh của bạn.</p>
+<section id="admin-content">
 
-		<div th:if="${successMessage}"
-			class="alert alert-success alert-dismissible fade show" role="alert">
-			<i class="bi bi-check-circle-fill me-2"></i><span
-				th:text="${successMessage}"></span>
-			<button type="button" class="btn-close" data-bs-dismiss="alert"
-				aria-label="Close"></button>
+	<style>
+.report-card {
+	border: 0;
+	border-radius: 10px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.progress {
+	height: 22px;
+	background-color: #e9ecef;
+}
+
+.progress-bar {
+	background-color: #198754;
+	transition: width 0.3s ease;
+}
+
+.stat-value {
+	overflow-wrap: anywhere;
+}
+	</style>
+
+		<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+			<div>
+				<h2 class="fw-bold mb-1">
+					<i class="bi bi-bar-chart-line me-2"></i>Báo cáo doanh thu
+				</h2>
+				<p class="text-muted mb-0">
+					Chi nhánh: <strong th:text="${branch.name}">Tên chi nhánh</strong>
+				</p>
+			</div>
+
+			<a th:href="@{/manager/dashboard}" class="btn btn-outline-secondary">
+				<i class="bi bi-arrow-left me-1"></i>Tổng quan
+			</a>
 		</div>
-		<div th:if="${errorMessage}"
-			class="alert alert-danger alert-dismissible fade show" role="alert">
-			<i class="bi bi-exclamation-triangle-fill me-2"></i><span
-				th:text="${errorMessage}"></span>
-			<button type="button" class="btn-close" data-bs-dismiss="alert"
-				aria-label="Close"></button>
+
+		<div th:if="${error}" class="alert alert-danger" th:text="${error}">
 		</div>
 
-		<!-- Bộ lọc loại đánh giá và số sao -->
-		<div class="card border-0 shadow-sm mb-4">
+		<div th:if="${success}" class="alert alert-success"
+			th:text="${success}"></div>
+
+		<div class="card report-card mb-4">
 			<div class="card-body">
-				<form method="get" action="/manager/reviews"
-					class="row g-3 align-items-center">
-					<div class="col-md-5">
-						<label for="type" class="form-label fw-bold">Lọc theo loại
-							đánh giá</label> <select id="type" name="type" class="form-select"
-							onchange="this.form.submit()">
-							<option value="">-- Tất cả (Quán & Món) --</option>
-							<option value="STORE" th:selected="${selectedType == 'STORE'}">Đánh
-								giá quán</option>
-							<option value="PRODUCT"
-								th:selected="${selectedType == 'PRODUCT'}">Đánh giá món</option>
-						</select>
+
+				<form method="get"
+					th:action="@{/manager/branches/{id}/reports(id=${branch.id})}"
+					class="row g-3">
+
+					<div class="col-md-4">
+						<label for="startDate" class="form-label"> Từ ngày </label> <input
+							id="startDate" class="form-control" type="date" name="startDate"
+							th:value="${startDate}" required>
 					</div>
-					<div class="col-md-5">
-						<label for="rating" class="form-label fw-bold">Phân loại
-							theo số sao</label> <select id="rating" name="rating" class="form-select"
-							onchange="this.form.submit()">
-							<option value="">-- Tất cả số sao --</option>
-							<option value="5" th:selected="${selectedRating == 5}">⭐⭐⭐⭐⭐
-								(5 sao)</option>
-							<option value="4" th:selected="${selectedRating == 4}">⭐⭐⭐⭐
-								(4 sao)</option>
-							<option value="3" th:selected="${selectedRating == 3}">⭐⭐⭐
-								(3 sao)</option>
-							<option value="2" th:selected="${selectedRating == 2}">⭐⭐
-								(2 sao)</option>
-							<option value="1" th:selected="${selectedRating == 1}">⭐
-								(1 sao)</option>
-						</select>
+
+					<div class="col-md-4">
+						<label for="endDate" class="form-label"> Đến ngày </label> <input
+							id="endDate" class="form-control" type="date" name="endDate"
+							th:value="${endDate}" required>
 					</div>
-					<div class="col-md-2 mt-4">
-						<a href="/manager/reviews"
-							class="btn btn-outline-secondary w-100 mt-2">Đặt lại</a>
+
+					<div class="col-md-4 d-flex align-items-end gap-2">
+						<button class="btn btn-success" type="submit">Xem báo cáo
+						</button>
+
+						<a class="btn btn-outline-secondary"
+							th:href="@{/manager/branches/{id}/reports(id=${branch.id})}">
+							Tháng hiện tại </a>
 					</div>
+
 				</form>
+
 			</div>
 		</div>
 
-		<!-- Bảng danh sách -->
-		<div class="card border-0 shadow-sm mb-4">
-			<div
-				class="card-header bg-white py-3 fw-bold d-flex justify-content-between align-items-center">
-				<span><i class="bi bi-chat-square-text me-2"></i> Danh sách
-					đánh giá chi nhánh</span> <span class="badge bg-success"
-					th:text="'Tổng số: ' + ${reviews.size()}">0</span>
+		<div class="row g-3 mb-4">
+
+			<div class="col-md-6 col-xl-3">
+				<div class="card report-card h-100">
+					<div class="card-body">
+
+						<div class="text-muted">Doanh thu hôm nay</div>
+
+						<h4 class="stat-value text-success mt-2"
+							th:text="${#numbers.formatDecimal(todayRevenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
+							0 đ</h4>
+
+						<small class="text-muted"> Đơn đã giao hôm nay </small>
+
+					</div>
+				</div>
 			</div>
-			<div class="card-body p-0">
-				<div class="table-responsive">
-					<table class="table table-hover align-middle mb-0">
-						<thead class="table-light">
-							<tr>
-								<th>#ID</th>
-								<th>Khách hàng</th>
-								<th>Phân loại</th>
-								<th>Số sao</th>
-								<th>Nội dung & Thẻ Tags</th>
-								<th>Phản hồi của chi nhánh</th>
-								<th>Thời gian</th>
-								<th class="text-center">Thao tác</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr th:if="${#lists.isEmpty(reviews)}">
-								<td colspan="8" class="text-center text-muted py-5"><i
-									class="bi bi-inbox fs-2 d-block mb-2"></i> Không có đánh giá
-									nào phù hợp.</td>
-							</tr>
-							<tr th:each="r : ${reviews}">
-								<td th:text="${r.id}">1</td>
-								<td class="fw-bold" th:text="${r.customerName}">Khách</td>
-								<td><span th:if="${r.type == 'STORE'}"
-									class="badge bg-primary text-white"><i
-										class="bi bi-shop me-1"></i> Quán</span> <span
-									th:if="${r.type == 'PRODUCT'}"
-									class="badge bg-warning text-dark"><i
-										class="bi bi-cup-straw me-1"></i> Món: <strong
-										th:text="${r.productName}"></strong></span></td>
-								<td><span class="text-warning"><span
-										th:each="i : ${#numbers.sequence(1, r.rating)}">★</span></span> (<span
-									th:text="${r.rating}"></span>/5)</td>
-								<td>
-									<p class="mb-1"
-										th:text="${r.comment != null ? r.comment : '(Không có bình luận)'}"></p>
-									<small class="text-muted" th:if="${r.tags != null}"
-									th:text="'#' + ${r.tags.replace('|', ' #')}"></small>
-								</td>
-								<td>
-									<div th:if="${not #lists.isEmpty(r.replies)}">
-										<div th:each="rep : ${r.replies}"
-											class="border-start border-3 border-success ps-2 mb-1 bg-light p-1 rounded">
-											<small class="fw-bold text-success"
-												th:text="${rep.responderName} + ' (' + ${rep.responderRole} + '):'"></small>
-											<small class="d-block" th:text="${rep.content}"></small>
-										</div>
-									</div> <span th:if="${#lists.isEmpty(r.replies)}"
-									class="text-muted fst-italic">Chưa phản hồi</span>
-								</td>
-								<td
-									th:text="${r.createdAt != null ? #temporals.format(r.createdAt, 'dd-MM-yyyy HH:mm') : '—'}"></td>
-								<td class="text-center">
-									<button class="btn btn-sm btn-outline-success"
-										data-bs-toggle="modal" data-bs-target="#managerReplyModal"
-										th:data-review-id="${r.id}" th:data-review-type="${r.type}"
-										th:onclick="prepareManagerReply(this)">
-										<i class="bi bi-reply"></i> Phản hồi
-									</button>
-								</td>
-							</tr>
-						</tbody>
-					</table>
+
+			<div class="col-md-6 col-xl-3">
+				<div class="card report-card h-100">
+					<div class="card-body">
+
+						<div class="text-muted">Doanh thu tháng này</div>
+
+						<h4 class="stat-value text-primary mt-2"
+							th:text="${#numbers.formatDecimal(monthRevenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
+							0 đ</h4>
+
+						<small class="text-muted"> Tính theo ngày giao hàng </small>
+
+					</div>
+				</div>
+			</div>
+
+			<div class="col-md-6 col-xl-3">
+				<div class="card report-card h-100">
+					<div class="card-body">
+
+						<div class="text-muted">Doanh thu kỳ đã chọn</div>
+
+						<h4 class="stat-value text-success mt-2"
+							th:text="${#numbers.formatDecimal(selectedRevenue, 0, 'POINT', 0, 'COMMA') + ' đ'}">
+							0 đ</h4>
+
+						<small class="text-muted"
+							th:text="${#temporals.format(startDate, 'dd/MM/yyyy') + ' - ' + #temporals.format(endDate, 'dd/MM/yyyy')}">
+						</small>
+
+					</div>
+				</div>
+			</div>
+
+			<div class="col-md-6 col-xl-3">
+				<div class="card report-card h-100">
+					<div class="card-body">
+
+						<div class="text-muted">Trung bình mỗi đơn</div>
+
+						<h4 class="stat-value text-warning mt-2"
+							th:text="${#numbers.formatDecimal(selectedAverage, 0, 'POINT', 0, 'COMMA') + ' đ'}">
+							0 đ</h4>
+
+						<small class="text-muted"> Doanh thu kỳ đã chọn / số đơn đã giao </small>
+
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+		<div class="row g-3 mb-4">
+
+			<div class="col-md-4">
+				<div class="card report-card">
+					<div class="card-body">
+
+						<div class="text-muted">Đơn đã giao trong kỳ</div>
+
+						<h3 th:text="${selectedOrders}">0</h3>
+
+					</div>
+				</div>
+			</div>
+
+			<div class="col-md-4">
+				<div class="card report-card">
+					<div class="card-body">
+
+						<div class="text-muted">Tổng đơn của chi nhánh</div>
+
+						<h3 th:text="${allBranchOrders}">0</h3>
+
+						<small class="text-muted"> Tất cả trạng thái, không giới
+							hạn ngày </small>
+
+					</div>
+				</div>
+			</div>
+
+			<div class="col-md-4">
+				<div class="card report-card">
+					<div class="card-body">
+
+						<div class="text-muted">Đơn đã hủy</div>
+
+						<h3 th:text="${cancelledOrders}">0</h3>
+
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+		<div class="card report-card">
+			<div class="card-header bg-white">
+				<h5 class="mb-0">Doanh thu theo ngày</h5>
+				<small class="text-muted"
+					th:text="${#temporals.format(startDate, 'dd/MM/yyyy') + ' - ' + #temporals.format(endDate, 'dd/MM/yyyy')}"></small>
+			</div>
+			<div class="card-body">
+				<div style="height: 340px; position: relative;">
+					<canvas id="revenueChart"></canvas>
+				</div>
+				<p id="chartError" class="text-muted text-center mt-3" style="display: none;">
+					Không tải được biểu đồ. Hãy kiểm tra kết nối Internet.</p>
+			</div>
+		</div>
+
+		<div class="row g-4 mt-1">
+			<div class="col-xl-7">
+				<div class="card report-card h-100">
+					<div class="card-header bg-white">
+						<h5 class="mb-0">Doanh thu theo tháng</h5>
+						<small class="text-muted" th:text="'12 tháng gần nhất, tới tháng ' + ${#temporals.format(endDate, 'MM/yyyy')}"></small>
+					</div>
+					<div class="card-body">
+						<div style="height: 300px; position: relative;">
+							<canvas id="monthChart"></canvas>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-xl-5">
+				<div class="card report-card h-100">
+					<div class="card-header bg-white">
+						<h5 class="mb-0">Món bán chạy</h5>
+						<small class="text-muted">Top 10 theo số ly, trong kỳ đã chọn</small>
+					</div>
+					<div class="card-body p-0">
+						<table class="table table-sm align-middle mb-0">
+							<thead class="table-light">
+								<tr>
+									<th class="ps-3">#</th>
+									<th>Món</th>
+									<th class="text-end">Số ly</th>
+									<th class="text-end pe-3">Tiền món</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr th:each="p, it : ${topProducts}">
+									<td class="ps-3">
+										<span class="badge rounded-pill"
+											th:classappend="${it.index == 0} ? 'text-bg-warning' : (${it.index < 3} ? 'text-bg-success' : 'text-bg-light border')"
+											th:text="${it.count}">1</span></td>
+									<td>
+										<div class="fw-semibold" th:text="${p.name}">Trà sữa</div>
+										<small class="text-muted" th:text="${p.orders} + ' đơn'">3 đơn</small>
+									</td>
+									<td class="text-end fw-semibold" th:text="${p.quantity}">10</td>
+									<td class="text-end pe-3"
+										th:text="${#numbers.formatDecimal(p.amount, 0, 'POINT', 0, 'COMMA') + ' đ'}">0 đ</td>
+								</tr>
+								<tr th:if="${#lists.isEmpty(topProducts)}">
+									<td colspan="4" class="text-center text-muted py-4">Chưa có món nào bán trong kỳ này.</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
 
-	<!-- Modal Phản hồi Manager -->
-	<div class="modal fade" id="managerReplyModal" tabindex="-1"
-		aria-hidden="true">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<form th:action="@{/manager/reviews/reply}" method="post">
-					<div class="modal-header bg-success text-white">
-						<h5 class="modal-title">Phản hồi đánh giá chi nhánh</h5>
-						<button type="button" class="btn-close btn-close-white"
-							data-bs-dismiss="modal" aria-label="Close"></button>
-					</div>
-					<div class="modal-body">
-						<input type="hidden" id="mOrderReviewId" name="orderReviewId" />
-						<input type="hidden" id="mReviewId" name="reviewId" />
-						<div class="mb-3">
-							<label for="mContent" class="form-label fw-bold">Nội dung
-								phản hồi:</label>
-							<textarea class="form-control" id="mContent" name="content"
-								rows="4" placeholder="Cảm ơn quý khách..." required></textarea>
-						</div>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary"
-							data-bs-dismiss="modal">Đóng</button>
-						<button type="submit" class="btn btn-success">Gửi phản
-							hồi</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+		<script th:inline="javascript">
+			/*<![CDATA[*/
+			(function () {
+				const labels = /*[[${chartLabels}]]*/[];
+				const values = /*[[${chartValues}]]*/[];
+				const monthLabels = /*[[${monthLabels}]]*/[];
+				const monthValues = /*[[${monthValues}]]*/[];
+				const monthCounts = /*[[${monthCounts}]]*/[];
+				const canvas = document.getElementById('revenueChart');
+				if (!canvas) return;
+				if (typeof Chart === 'undefined') {
+					document.getElementById('chartError').style.display = 'block';
+					return;
+				}
+				const vnd = (v) => new Intl.NumberFormat('vi-VN').format(v) + ' đ';
+				new Chart(canvas, {
+					type: 'bar',
+					data: {
+						labels: labels,
+						datasets: [{
+							label: 'Doanh thu (VNĐ)',
+							data: values,
+							backgroundColor: 'rgba(25, 135, 84, 0.75)',
+							borderRadius: 4,
+							maxBarThickness: 36
+						}]
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						plugins: {
+							legend: { display: false },
+							tooltip: { callbacks: { label: (c) => 'Doanh thu: ' + vnd(c.parsed.y || 0) } }
+						},
+						scales: { y: { beginAtZero: true, ticks: { callback: (v) => vnd(v) } } }
+					}
+				});
 
-	<script>
-		function prepareManagerReply(button) {
-			let id = button.getAttribute("data-review-id");
-			let type = button.getAttribute("data-review-type");
-			document.getElementById("mOrderReviewId").value = (type === "STORE") ? id
-					: "";
-			document.getElementById("mReviewId").value = (type === "PRODUCT") ? id
-					: "";
-			document.getElementById("mContent").value = "";
-		}
-	</script>
+				const mc = document.getElementById('monthChart');
+				if (mc) {
+					new Chart(mc, {
+						data: {
+							labels: monthLabels,
+							datasets: [
+								{ type: 'bar', label: 'Doanh thu', data: monthValues, backgroundColor: 'rgba(25, 135, 84, 0.75)',
+									borderRadius: 4, yAxisID: 'y' },
+								{ type: 'line', label: 'Số đơn', data: monthCounts, borderColor: '#fd7e14',
+									backgroundColor: '#fd7e14', tension: 0.3, yAxisID: 'y1' }
+							]
+						},
+						options: {
+							responsive: true, maintainAspectRatio: false,
+							plugins: { tooltip: { callbacks: { label: (x) => x.dataset.yAxisID === 'y'
+								? 'Doanh thu: ' + vnd(x.parsed.y || 0) : 'Số đơn: ' + (x.parsed.y || 0) } } },
+							scales: {
+								y: { beginAtZero: true, ticks: { callback: (v) => vnd(v) } },
+								y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { precision: 0 } }
+							}
+						}
+					});
+				}
+			})();
+			/*]]>*/
+		</script>
+
 </section>
+
 </html>

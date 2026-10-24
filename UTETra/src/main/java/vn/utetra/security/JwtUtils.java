@@ -12,9 +12,8 @@ import java.util.Date;
 @Component
 public class JwtUtils {
 
-	// Chuỗi Secret Key tối thiểu 256-bit (32+ ký tự)
 	private final String JWT_SECRET = "UTETraBubbleTeaSecretKeyForJWTAuthentication2026";
-	private final long JWT_EXPIRATION_MS = 86400000L; // 24 giờ
+	private final long JWT_EXPIRATION_MS = 86400000L;
 
 	private SecretKey getSigningKey() {
 		return Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8));

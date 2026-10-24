@@ -22,8 +22,9 @@ public class BranchReviewRes {
 	private Integer rating;
 	private String comment;
 	private String tags;
-	private String type; // "STORE" (Đánh giá quán) hoặc "PRODUCT" (Đánh giá món)
+	private String type;
 	private String productName;
 	private LocalDateTime createdAt;
 	private List<ReplyDto> replies;
+	private List<ReviewRes.Media> media;
 }

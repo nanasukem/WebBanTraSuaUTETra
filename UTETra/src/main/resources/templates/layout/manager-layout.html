@@ -1,8 +1,4 @@
 <!DOCTYPE html>
-<!--
-	Layout riêng cho khu MANAGER (/manager/**): thanh menu của Manager + màu xanh lá.
-	Tách khỏi admin-layout để giao diện Admin và Manager đổi độc lập với nhau.
--->
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:fragment="main(title, activePage, content)">
 
@@ -33,9 +29,6 @@ body {
 	color: #26352d;
 }
 
-/* =========================
-           ADMIN HEADER
-           ========================= */
 .admin-header {
 	height: 76px;
 	background: #198754;
@@ -127,9 +120,6 @@ body {
 	background: rgba(255, 255, 255, 0.12);
 }
 
-/* =========================
-           MAIN
-           ========================= */
 .admin-main {
 	width: 100%;
 	flex: 1 1 auto;
@@ -144,9 +134,6 @@ body {
 	margin: 0 auto;
 }
 
-/* =========================
-           FOOTER
-           ========================= */
 .admin-footer {
 	background: #ffffff;
 	border-top: 1px solid #e5ebe7;
@@ -156,9 +143,6 @@ body {
 	padding: 14px 20px;
 }
 
-/* =========================
-           RESPONSIVE
-           ========================= */
 @media ( max-width : 768px) {
 	.admin-header {
 		padding: 0 18px;
@@ -205,10 +189,6 @@ body {
 	}
 }
 
-/* =========================
-   MANAGER: đổi màu xanh dương (primary, info) của Bootstrap sang xanh lá
-   (body luôn có class manager-theme)
-   ========================= */
 .manager-theme {
 	--bs-primary: #198754;
 	--bs-primary-rgb: 25, 135, 84;
@@ -298,42 +278,29 @@ body {
 </style>
 </head>
 
-
 <body class="d-flex flex-column min-vh-100 manager-theme">
 
-
-	<!-- =========================
-     HEADER MANAGER
-     ========================= -->
 	<header class="admin-header">
 
-		<!-- Logo: về Tổng quan chi nhánh -->
 		<a th:href="@{/manager/dashboard}" class="admin-brand"> <i
 			class="bi bi-cup-hot-fill admin-brand-icon"></i> <span>UTETra</span>
 
 		</a>
 
-
-		<!-- Menu: các mục dùng nhiều nhất.
-		     Món, Voucher, Khách hàng, Báo cáo vào từ các nút trên trang Tổng quan.
-		     Thực đơn = trang của khách; ở đó có nút vàng "Về trang quản lý" để quay lại -->
 		<nav class="admin-menu">
 			<a th:href="@{/manager/dashboard}"> <i class="bi bi-speedometer2"></i> <span>Tổng quan</span></a>
 			<a th:href="@{/manager/orders}"> <i class="bi bi-bell"></i> <span>Quầy đơn hàng</span></a>
 			<a th:href="@{/menu}"> <i class="bi bi-journal-text"></i> <span>Thực đơn</span></a>
 		</nav>
 
-		<!-- Tài khoản manager -->
 		<div class="admin-actions">
 
-			<!-- Chuông thông báo -->
 			<div th:replace="~{fragments/notification-bell :: bell('admin')}"></div>
 
 			<a th:href="@{/account}" class="admin-user" title="Tài khoản của tôi"> <i class="bi bi-person-gear"></i>
 				<span th:text="${session.user != null and session.user.fullName != null} ? ${session.user.fullName} : 'Quản lý chi nhánh'">Quản lý chi nhánh</span>
 			</a>
 
-			<!-- Đăng xuất -->
 			<form th:action="@{/auth/logout}" method="post" class="m-0">
 
 				<button type="submit" class="admin-logout">
@@ -346,10 +313,6 @@ body {
 
 	</header>
 
-
-	<!-- =========================
-     NỘI DUNG MANAGER
-     ========================= -->
 	<main class="admin-main">
 
 		<div class="admin-content">
@@ -361,19 +324,13 @@ body {
 
 	</main>
 
-
-	<!-- =========================
-     FOOTER
-     ========================= -->
 	<footer class="admin-footer"> © 2026 UTETra - Quản lý chi nhánh </footer>
-
 
 	<script
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
 		
 	</script>
 
-	<!-- Chuông thông báo (chỉ khi đã đăng nhập) -->
 	<th:block th:if="${session.user != null}"><th:block th:replace="~{fragments/notification-bell :: scripts}"></th:block></th:block>
 </body>
 </html>

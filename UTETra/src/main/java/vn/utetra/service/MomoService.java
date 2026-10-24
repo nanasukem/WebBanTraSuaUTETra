@@ -22,13 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Cổng MoMo (sandbox test-payment.momo.vn) - API v2:
- * - /v2/gateway/api/create: tạo giao dịch, MoMo trả payUrl -> chuyển khách sang trang MoMo
- * - redirectUrl / ipnUrl: kiểm chữ ký HMAC-SHA256 rồi mới tin kết quả
- * - /v2/gateway/api/query: hỏi lại giao dịch (localhost không nhận được IPN)
- * - /v2/gateway/api/refund: hoàn tiền khi đơn đã trả bị huỷ
- */
 @Service
 public class MomoService {
 
@@ -46,9 +39,6 @@ public class MomoService {
 		return props.momoConfigured();
 	}
 
-	// ================= TẠO GIAO DỊCH =================
-
-	/** Gọi MoMo tạo giao dịch, trả về payUrl. Lỗi -> BusinessException (kèm lời nhắn của MoMo) */
 	public String createPayUrl(Payment payment, String orderInfo) {
 		String requestId = payment.getTxnRef();
 		String amount = String.valueOf(payment.getAmount().longValue());
@@ -88,8 +78,6 @@ public class MomoService {
 		return payUrl;
 	}
 
-	// ================= NHẬN KẾT QUẢ (redirectUrl + IPN) =================
-
 	public GatewayResult readResult(Map<String, String> p) {
 		String received = p.get("signature");
 		if (received == null) return GatewayResult.invalid("Thiếu chữ ký MoMo");
@@ -106,8 +94,6 @@ public class MomoService {
 		return new GatewayResult(true, statusOf(code), p.get("orderId"), p.get("transId"), parseLong(p.get("amount")),
 				p.get("payType"), code, resultMessage(code));
 	}
-
-	// ================= TRUY VẤN LẠI =================
 
 	public GatewayResult query(Payment payment) {
 		String requestId = UUID.randomUUID().toString();
@@ -128,7 +114,6 @@ public class MomoService {
 				res.path("amount").asLong(0), text(res, "payType"), code, resultMessage(code));
 	}
 
-	/** Tra cứu tại MoMo (cho Admin xem bằng chứng): trạng thái giao dịch + các lần hoàn tiền */
 	public String lookup(Payment payment) {
 		String requestId = UUID.randomUUID().toString();
 		String raw = "accessKey=" + props.momoAccessKey() + "&orderId=" + payment.getTxnRef()
@@ -156,12 +141,10 @@ public class MomoService {
 		return sb.toString();
 	}
 
-	// ================= HOÀN TIỀN =================
-
 	public RefundResult refund(Payment payment) {
 		String refundOrderId = payment.getRefundRef();
 		String requestId = UUID.randomUUID().toString();
-		String amount = String.valueOf(payment.refundValue().longValue()); // có thể hoàn 1 phần
+		String amount = String.valueOf(payment.refundValue().longValue());
 		String description = "Hoan tien don UTETra " + payment.getOrder().getId();
 		String transId = payment.getTransactionCode() == null ? "" : payment.getTransactionCode();
 		String raw = "accessKey=" + props.momoAccessKey() + "&amount=" + amount + "&description=" + description
@@ -185,9 +168,6 @@ public class MomoService {
 				code == 0 ? "MoMo đã hoàn tiền" : "MoMo từ chối hoàn tiền: " + text(res, "message") + " (mã " + code + ")");
 	}
 
-	// ================= CHỮ HIỂN THỊ =================
-
-	/** 0 = thành công; 9000 = đã giữ tiền (autoCapture); 1000 / 7000 / 7002 = đang chờ / đang xử lý */
 	private static String statusOf(String code) {
 		return switch (code == null ? "" : code) {
 			case "0", "9000" -> "SUCCESS";
@@ -218,8 +198,6 @@ public class MomoService {
 			default -> "Giao dịch không thành công (mã " + code + ")";
 		};
 	}
-
-	// ================= HÀM PHỤ =================
 
 	private JsonNode post(String path, Map<String, Object> body) {
 		try {

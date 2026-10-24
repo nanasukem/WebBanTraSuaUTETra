@@ -1,7 +1,3 @@
-/* ============================================================
-   profile-address.js - Sổ địa chỉ trên trang Profile
-   Gọi /api/addresses (giống trang Checkout), thêm / sửa bằng modal AddressBook (address-book.js)
-   ============================================================ */
 (() => {
 	const section = document.getElementById('addressSection');
 	if (!section || !window.AddressBook) return;

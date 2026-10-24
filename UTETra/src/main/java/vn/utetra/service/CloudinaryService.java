@@ -17,18 +17,10 @@ public class CloudinaryService {
 		this.cloudinary = cloudinary;
 	}
 
-	/**
-	 * Upload ảnh lên Cloudinary với thư mục mặc định 'products'
-	 */
 	public String uploadImage(MultipartFile file) {
 		return uploadImage(file, "products");
 	}
 
-	/**
-	 * Upload ảnh lên Cloudinary với thư mục tùy chỉnh (branches, categories,
-	 * products,...) Tự động xử lý IOException thành RuntimeException để các Service
-	 * khác gọi gọn gàng.
-	 */
 	public String uploadImage(MultipartFile file, String folder) {
 		if (file == null || file.isEmpty()) {
 			return null;
@@ -43,9 +35,6 @@ public class CloudinaryService {
 		}
 	}
 
-	/**
-	 * Xóa ảnh trên Cloudinary từ URL
-	 */
 	public void deleteImage(String imageUrl) {
 		if (imageUrl == null || imageUrl.isBlank()) {
 			return;
@@ -60,9 +49,6 @@ public class CloudinaryService {
 		}
 	}
 
-	/**
-	 * Trích xuất Public ID từ URL Cloudinary
-	 */
 	private String extractPublicIdFromUrl(String imageUrl) {
 		try {
 			int uploadIndex = imageUrl.indexOf("/upload/");

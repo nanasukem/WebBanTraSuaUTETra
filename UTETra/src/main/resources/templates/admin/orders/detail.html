@@ -5,7 +5,6 @@
 <section id="admin-content">
 	<div class="container-fluid py-3">
 
-		<!-- Tiêu đề -->
 		<div
 			class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
 			<div>
@@ -21,14 +20,12 @@
 			</a>
 		</div>
 
-		<!-- Thông báo -->
 		<div th:if="${successMessage != null}" class="alert alert-success"
 			th:text="${successMessage}"></div>
 
 		<div th:if="${errorMessage != null}" class="alert alert-danger"
 			th:text="${errorMessage}"></div>
 
-		<!-- Kết quả "Tra cứu tại cổng thanh toán": câu trả lời trực tiếp của VNPAY / MoMo -->
 		<div th:if="${gatewayCheck}" class="alert alert-info">
 			<div class="fw-semibold mb-1">
 				<i class="bi bi-search me-1"></i>Kết quả tra cứu tại cổng thanh toán
@@ -36,19 +33,15 @@
 			<div th:each="l : ${gatewayCheck}" class="small mb-1" th:text="${l}"></div>
 		</div>
 
-		<!-- Không có đơn hàng -->
 		<div th:if="${order == null}" class="alert alert-warning">
 			Không tìm thấy thông tin đơn hàng. <a th:href="@{/admin/orders}"
 				class="alert-link"> Quay lại danh sách </a>
 		</div>
 
-		<!-- Nội dung chi tiết -->
 		<div th:if="${order != null}" class="row g-4">
 
-			<!-- Cột trái -->
 			<div class="col-12 col-xl-8">
 
-				<!-- Thông tin đơn hàng -->
 				<div class="card border-0 shadow-sm mb-4">
 					<div class="card-header bg-white py-3">
 						<h5 class="fw-bold mb-0">Thông tin đơn hàng</h5>
@@ -78,21 +71,43 @@
 							<div class="col-12 col-md-6">
 								<div class="text-muted small">Hình thức nhận</div>
 								<div
-									th:text="${order.deliveryType != null ? order.deliveryType : '—'}"></div>
+									th:text="${order.deliveryType == null} ? '—' : (${order.deliveryType.name() == 'PICKUP'} ? 'Đến lấy tại quán' : 'Giao tận nơi')"></div>
 							</div>
 
 							<div class="col-12 col-md-6">
 								<div class="text-muted small">Chi nhánh</div>
 								<div class="fw-semibold"
 									th:text="${order.branch != null ? order.branch.name : '—'}"></div>
-								<small class="text-muted" th:if="${order.branch != null}"
-									th:text="${order.branch.address != null ? order.branch.address : ''}"></small>
+								<th:block th:if="${order.branch != null}">
+									<small class="text-muted d-block">
+										<span th:text="${order.branch.address != null ? order.branch.address : ''}"></span>
+										<span th:if="${order.branch.phone}"> · <i class="bi bi-telephone"></i>
+											<span th:text="${order.branch.phone}"></span></span>
+									</small>
+									<small class="d-block mt-1">
+										<span class="text-muted">Quản lý:</span>
+										<th:block th:if="${order.branch.owner != null}">
+											<a th:href="@{/admin/users/{id}(id=${order.branch.owner.id})}" class="fw-semibold text-decoration-none"
+												th:text="${order.branch.owner.fullName}"></a>
+											<span class="text-muted" th:if="${order.branch.owner.phone}"
+												th:text="' · ' + ${order.branch.owner.phone}"></span>
+										</th:block>
+										<span th:if="${order.branch.owner == null}" class="text-danger">Chưa có quản lý</span>
+									</small>
+								</th:block>
 							</div>
 
 							<div class="col-12 col-md-6">
-								<div class="text-muted small">Đơn vị giao hàng</div>
-								<div
-									th:text="${order.deliveryType != null and order.deliveryType.name() == 'PICKUP' ? 'Khách tự đến lấy' : 'Shipper UTETra'}"></div>
+								<div class="text-muted small">Shipper</div>
+								<div th:if="${order.deliveryType != null and order.deliveryType.name() == 'PICKUP'}">Khách tự đến lấy</div>
+								<th:block th:unless="${order.deliveryType != null and order.deliveryType.name() == 'PICKUP'}">
+									<div th:if="${order.shipper != null}">
+										<a th:href="@{/admin/users/{id}(id=${order.shipper.id})}" class="fw-semibold text-decoration-none"
+											th:text="${order.shipper.fullName}"></a>
+										<span class="text-muted" th:if="${order.shipper.phone}" th:text="' · ' + ${order.shipper.phone}"></span>
+									</div>
+									<div th:if="${order.shipper == null}" class="text-muted">Chưa có shipper nhận</div>
+								</th:block>
 							</div>
 
 							<div class="col-12 col-md-6" th:if="${order.deliveredAt != null}">
@@ -105,7 +120,29 @@
 					</div>
 				</div>
 
-				<!-- Thông tin người nhận -->
+				<div class="card border-0 shadow-sm mb-4" th:if="${issue != null}">
+					<div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+						<h5 class="fw-bold mb-0"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Khiếu nại / hoàn tiền</h5>
+						<span class="badge" th:classappend="${issue.badgeClass}"
+							th:text="${T(vn.utetra.entity.enums.IssueStatus).valueOf(issue.status).label}">Đã hoàn tiền</span>
+					</div>
+					<div class="card-body">
+						<div class="small text-muted" th:text="'Khách báo lúc ' + ${issue.createdAt}"></div>
+						<div class="mt-1"><b th:text="${issue.reasonLabel}">Đổ vỡ</b>
+							<span th:if="${issue.description}" th:text="' - ' + ${issue.description}"></span></div>
+						<div class="mt-2" th:insert="~{fragments/media :: urls(${issue.images}, 84)}"></div>
+						<div th:if="${issue.status != 'PENDING'}" class="small mt-2 p-2 rounded" style="background: #f8f9fa">
+							<b>Quán xử lý:</b> <span th:text="${T(vn.utetra.entity.enums.IssueStatus).valueOf(issue.status).label}"></span>
+							<span th:if="${issue.status == 'REFUNDED'}"
+								th:text="' ' + ${#numbers.formatDecimal(issue.refundAmount, 0, 'POINT', 0, 'COMMA')} + ' đ'"></span>
+							<span th:if="${issue.storeNote}" th:text="' · ' + ${issue.storeNote}"></span>
+							<span class="text-muted" th:if="${issue.resolvedAt}" th:text="' (' + ${issue.resolvedAt} + ')'"></span>
+						</div>
+						<div th:if="${issue.status == 'PENDING'}" class="small mt-2 text-danger">
+							<i class="bi bi-hourglass-split me-1"></i>Đang chờ quản lý chi nhánh xử lý</div>
+					</div>
+				</div>
+
 				<div class="card border-0 shadow-sm mb-4">
 					<div class="card-header bg-white py-3">
 						<h5 class="fw-bold mb-0">Thông tin người nhận</h5>
@@ -158,7 +195,6 @@
 					</div>
 				</div>
 
-				<!-- Chi tiết sản phẩm -->
 				<div class="card border-0 shadow-sm mb-4">
 					<div class="card-header bg-white py-3">
 						<h5 class="fw-bold mb-0">Sản phẩm đã đặt</h5>
@@ -216,10 +252,8 @@
 
 			</div>
 
-			<!-- Cột phải -->
 			<div class="col-12 col-xl-4">
 
-				<!-- Tổng kết thanh toán -->
 				<div class="card border-0 shadow-sm mb-4">
 					<div class="card-header bg-white py-3">
 						<h5 class="fw-bold mb-0">Tổng kết thanh toán</h5>
@@ -258,6 +292,16 @@
 								class="fw-bold fs-5 text-primary text-nowrap"
 								th:text="${#numbers.formatDecimal(order.totalAmount != null ? order.totalAmount : 0, 0, 'POINT', 0, 'COMMA') + ' đ'}"></span>
 						</div>
+						<th:block th:if="${order.refundAmount != null and order.refundAmount.signum() > 0}">
+							<div class="d-flex justify-content-between gap-3 mt-2 text-danger">
+								<span>Đã hoàn khách</span> <span class="text-nowrap"
+									th:text="'− ' + ${#numbers.formatDecimal(order.refundAmount, 0, 'POINT', 0, 'COMMA')} + ' đ'"></span>
+							</div>
+							<div class="d-flex justify-content-between gap-3 mt-1">
+								<span class="fw-semibold">Doanh thu thực</span> <span class="fw-bold text-success text-nowrap"
+									th:text="${#numbers.formatDecimal(order.salesAmount, 0, 'POINT', 0, 'COMMA')} + ' đ'"></span>
+							</div>
+						</th:block>
 
 						<hr>
 
@@ -275,7 +319,6 @@
 								th:text="${pay.bankCode}"></span></span>
 						</div>
 
-						<!-- Hoàn tiền -->
 						<div th:if="${pay.refund}"
 							class="alert alert-info small mt-3 mb-0">
 							<div class="fw-semibold">
@@ -299,7 +342,6 @@
 							</form>
 						</div>
 
-						<!-- Các lần thanh toán online -->
 						<div th:unless="${#lists.isEmpty(payments)}" class="mt-3">
 							<div
 								class="d-flex justify-content-between align-items-center mb-1">
@@ -340,7 +382,6 @@
 					</div>
 				</div>
 
-				<!-- Cập nhật trạng thái -->
 				<div class="card border-0 shadow-sm">
 					<div class="card-header bg-white py-3">
 						<h5 class="fw-bold mb-0">Cập nhật trạng thái</h5>

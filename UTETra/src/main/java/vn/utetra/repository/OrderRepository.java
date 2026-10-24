@@ -18,22 +18,13 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Integer> {
 
-	// ==========================
-	// TRUY VẤN ĐƠN HÀNG
-	// ==========================
-
 	List<Order> findByUserIdOrderByCreatedAtDesc(Integer userId);
 
 	List<Order> findByBranchIdAndStatusOrderByCreatedAtDesc(Integer branchId, OrderStatus status);
 
 	List<Order> findByShipperIdAndStatusOrderByCreatedAtDesc(Integer shipperId, OrderStatus status);
 
-	/** Đơn chờ thanh toán đặt trước mốc thời gian (để huỷ đơn quá hạn thanh toán) */
 	List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime before);
-
-	// ==========================
-	// THANH TOÁN VNPAY / MOMO
-	// ==========================
 
 	List<Order> findByPaymentMethodAndPaymentStatusAndStatusNotAndCreatedAtAfter(PaymentMethod paymentMethod,
 			PaymentStatus paymentStatus, OrderStatus excludedStatus, LocalDateTime deadline);
@@ -41,13 +32,6 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	List<Order> findByPaymentMethodAndPaymentStatusAndStatusNotAndCreatedAtBefore(PaymentMethod paymentMethod,
 			PaymentStatus paymentStatus, OrderStatus excludedStatus, LocalDateTime deadline);
 
-	// ==========================
-	// TỔNG TIỀN ĐƠN CỦA KHÁCH
-	// ==========================
-
-	/**
-	 * Chi tiêu của khách để xét hạng: tổng tiền đơn thực nhận (đã gồm phí ship Shipper UTETra, trừ tiền hoàn).
-	 */
 	@Query("SELECT SUM(o.totalAmount - o.refundAmount) FROM Order o " + "WHERE o.user.id = :userId " + "AND o.status = :status "
 			+ "AND o.deliveredAt >= :since")
 	BigDecimal sumTotalByUserAndStatusSince(@Param("userId") Integer userId, @Param("status") OrderStatus status,
@@ -60,10 +44,6 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	@Query("select o.status, count(o) from Order o " + "where o.user.id = :userId group by o.status")
 	List<Object[]> countByStatusOfUser(@Param("userId") Integer userId);
 
-	// ==========================
-	// ĐƠN HÀNG CHI NHÁNH
-	// ==========================
-
 	List<Order> findByBranchIdAndStatusInOrderByCreatedAtAsc(Integer branchId, Collection<OrderStatus> statuses);
 
 	List<Order> findTop20ByBranchIdAndStatusInOrderByUpdatedAtDesc(Integer branchId, Collection<OrderStatus> statuses);
@@ -74,7 +54,6 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	Page<Order> findPageByBranchIdAndStatusInOrderByCreatedAtDesc(Integer branchId, Collection<OrderStatus> statuses,
 			Pageable pageable);
 
-	/** Đơn của chi nhánh theo trạng thái, BỎ các đơn khách báo vấn đề mà quán chưa xử lý (chưa tính Hoàn thành) */
 	@Query("select o from Order o where o.branch.id = :branchId and o.status in :statuses and not exists "
 			+ "(select i.id from OrderIssue i where i.order = o and i.status = vn.utetra.entity.enums.IssueStatus.PENDING) "
 			+ "order by o.createdAt desc")
@@ -84,46 +63,63 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	@Query("select o.status, count(o) from Order o " + "where o.branch.id = :branchId group by o.status")
 	List<Object[]> countByStatusOfBranch(@Param("branchId") Integer branchId);
 
-	// ==========================
-	// BÁO CÁO DOANH THU ADMIN
-	// ==========================
-
-	/**
-	 * Lấy các đơn theo trạng thái và thời gian giao hàng.
-	 */
 	List<Order> findByStatusAndDeliveredAtGreaterThanEqualAndDeliveredAtLessThanOrderByDeliveredAtAsc(
 			OrderStatus status, LocalDateTime start, LocalDateTime end);
 
-	/**
-	 * Tổng doanh thu của các đơn đã giao trong khoảng thời gian
-	 * = tổng tiền đơn (đã gồm tiền món sau giảm + phí ship của Shipper UTETra) - tiền đã hoàn.
-	 */
 	@Query("SELECT COALESCE(SUM(o.totalAmount - o.refundAmount), 0) FROM Order o " + "WHERE o.status = :status "
 			+ "AND o.deliveredAt >= :start " + "AND o.deliveredAt < :end")
 	BigDecimal sumRevenueByStatusAndDeliveredAt(@Param("status") OrderStatus status,
 			@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
-
-	/**
-	 * Đếm số đơn đã giao thành công trong khoảng thời gian.
-	 */
 	long countByStatusAndDeliveredAtGreaterThanEqualAndDeliveredAtLessThan(OrderStatus status, LocalDateTime start,
 			LocalDateTime end);
 
-	// ==========================
-	// THỐNG KÊ VOUCHER CHI NHÁNH
-	// ==========================
-
-	/**
-	 * Mã giảm tiền món dùng tại chi nhánh (đơn không hủy).
-	 */
 	@Query("SELECT o.productVoucher.id, COUNT(o), " + "COALESCE(SUM(o.productDiscount), 0) FROM Order o "
 			+ "WHERE o.branch.id = :branchId " + "AND o.productVoucher IS NOT NULL " + "AND o.status <> :cancelled "
 			+ "GROUP BY o.productVoucher.id")
 	List<Object[]> productVoucherStatsOfBranch(@Param("branchId") Integer branchId,
 			@Param("cancelled") OrderStatus cancelled);
 
-
-	/** Số đơn đang chờ / đang pha ở chi nhánh (tính thời gian dự kiến) */
 	long countByBranch_IdAndStatusIn(Integer branchId, Collection<OrderStatus> statuses);
+
+	@Query("SELECT o.id FROM Order o WHERE o.shipper.id = :shipperId AND o.status IN :statuses ORDER BY o.id")
+	List<Integer> findOpenOrderIdsOfShipper(@Param("shipperId") Integer shipperId,
+			@Param("statuses") Collection<OrderStatus> statuses);
+
+	@Query("SELECT COALESCE(SUM(o.totalAmount - o.refundAmount), 0) FROM Order o WHERE o.status = :status "
+			+ "AND o.deliveredAt >= :start AND o.deliveredAt < :end AND (:branchId IS NULL OR o.branch.id = :branchId)")
+	BigDecimal sumRevenueOfBranch(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
+
+	@Query("SELECT COUNT(o) FROM Order o WHERE o.status = :status "
+			+ "AND o.deliveredAt >= :start AND o.deliveredAt < :end AND (:branchId IS NULL OR o.branch.id = :branchId)")
+	long countDeliveredOfBranch(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
+
+	@Query("SELECT o FROM Order o WHERE o.status = :status AND o.deliveredAt >= :start AND o.deliveredAt < :end "
+			+ "AND (:branchId IS NULL OR o.branch.id = :branchId) ORDER BY o.deliveredAt")
+	List<Order> findDeliveredOfBranch(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
+
+	@Query(value = "SELECT CAST(o.delivered_at AS DATE) AS ngay, SUM(o.total_amount - o.refund_amount) AS doanh_thu, "
+			+ "COUNT(*) AS so_don FROM Orders o WHERE o.status = 'DELIVERED' "
+			+ "AND o.delivered_at >= :start AND o.delivered_at < :end AND (:branchId = 0 OR o.branch_id = :branchId) "
+			+ "GROUP BY CAST(o.delivered_at AS DATE) ORDER BY ngay", nativeQuery = true)
+	List<Object[]> revenueByDay(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
+			@Param("branchId") int branchId);
+
+	@Query("SELECT YEAR(o.deliveredAt), MONTH(o.deliveredAt), COALESCE(SUM(o.totalAmount - o.refundAmount), 0), COUNT(o) "
+			+ "FROM Order o WHERE o.status = :status AND o.deliveredAt >= :start AND o.deliveredAt < :end "
+			+ "AND (:branchId IS NULL OR o.branch.id = :branchId) "
+			+ "GROUP BY YEAR(o.deliveredAt), MONTH(o.deliveredAt) ORDER BY YEAR(o.deliveredAt), MONTH(o.deliveredAt)")
+	List<Object[]> revenueByMonth(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
+
+	@Query("SELECT o.branch.id, o.branch.name, COALESCE(SUM(o.totalAmount - o.refundAmount), 0), COUNT(o) "
+			+ "FROM Order o WHERE o.status = :status AND o.deliveredAt >= :start AND o.deliveredAt < :end "
+			+ "GROUP BY o.branch.id, o.branch.name ORDER BY COALESCE(SUM(o.totalAmount - o.refundAmount), 0) DESC")
+	List<Object[]> revenueByBranch(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end);
+
+	List<Order> findByShipper_IdAndStatusOrderByDeliveredAtDesc(Integer shipperId, OrderStatus status);
 }

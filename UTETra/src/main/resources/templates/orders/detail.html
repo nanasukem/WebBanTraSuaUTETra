@@ -17,7 +17,6 @@
 	color: #198754;
 	margin-bottom: .75rem;
 }
-/* Thanh tiến trình */
 .od-steps {
 	display: flex;
 }
@@ -154,10 +153,8 @@
 			th:text="${success}"></div>
 		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-		<!-- Trạng thái -->
 		<div class="card od-card mb-3">
 			<div class="card-body">
-				<!-- Chờ thanh toán (VNPAY / MoMo chưa trả xong): quán chưa nhận được đơn -->
 				<div th:if="${order.status == 'AWAITING_PAYMENT'}"
 					class="alert alert-warning mb-0 d-flex gap-3 align-items-center flex-wrap">
 					<i class="bi bi-hourglass-split fs-3"></i>
@@ -184,7 +181,6 @@
 						th:text="${order.cancelReason}"></b></span>
 				</div>
 
-				<!-- Hoàn tiền: đơn đã trả trước bị huỷ -->
 				<div th:if="${order.payment.refund}" class="od-refund mt-3">
 					<div class="d-flex align-items-start gap-3">
 						<i class="bi fs-3"
@@ -253,7 +249,6 @@
 			</div>
 		</div>
 
-		<!-- Khách đã báo vấn đề với đơn -->
 		<div th:if="${order.issue}"
 			class="card od-card mb-3 border border-warning-subtle">
 			<div class="card-body">
@@ -272,11 +267,7 @@
 						th:if="${order.issue.description}"
 						th:text="| - ${order.issue.description}|"></span>
 				</div>
-				<div class="d-flex gap-2 mt-2 flex-wrap">
-					<a th:each="img : ${order.issue.images}" th:href="${img}"
-						target="_blank" rel="noopener"> <img th:src="${img}" alt="Ảnh"
-						style="width: 72px; height: 72px; object-fit: cover; border-radius: .5rem"></a>
-				</div>
+				<div class="mt-2" th:insert="~{fragments/media :: urls(${order.issue.images}, 72)}"></div>
 				<div th:if="${order.issue.status != 'PENDING'}"
 					class="small mt-2 p-2 rounded" style="background: #f8f9fa">
 					<b>Quán phản hồi:</b> <span
@@ -289,7 +280,6 @@
 			</div>
 		</div>
 
-		<!-- Món có vấn đề? (trong 2 giờ sau khi nhận) -->
 		<div th:if="${order.canReportIssue}" class="card od-card mb-3">
 			<div class="card-body d-flex align-items-center gap-3 flex-wrap">
 				<i class="bi bi-chat-square-dots fs-3 text-success"></i>
@@ -308,7 +298,6 @@
 		</div>
 
 		<div class="row g-3">
-			<!-- ===== CỘT TRÁI: MÓN ===== -->
 			<div class="col-lg-7">
 				<div class="card od-card mb-3">
 					<div class="card-body">
@@ -349,7 +338,6 @@
 					</div>
 				</div>
 
-				<!-- Nhận hàng -->
 				<div class="card od-card mb-3">
 					<div class="card-body">
 						<th:block th:if="${order.pickup}">
@@ -381,16 +369,18 @@
 									th:text="${order.deliveryNote}"></span>
 							</div>
 							<div class="small mt-2">
-								Chi nhánh làm món: <b th:text="${order.branchName}"></b> <span
-									th:if="${order.carrierName}"> · Vận chuyển: <b
-									th:text="${order.carrierName}"></b></span>
+								Chi nhánh làm món: <b th:text="${order.branchName}"></b>
+							</div>
+							<div class="small mt-1" th:if="${order.shipperName != null and {'PICKED_UP','DELIVERING','DELIVERED'}.contains(order.status)}">
+								<i class="bi bi-scooter text-success me-1"></i>Shipper: <b th:text="${order.shipperName}"></b>
+								<a th:if="${order.shipperPhone}" th:href="'tel:' + ${order.shipperPhone}"
+									class="ms-1 text-decoration-none" th:text="'· ' + ${order.shipperPhone}"></a>
 							</div>
 						</th:block>
 					</div>
 				</div>
 			</div>
 
-			<!-- ===== CỘT PHẢI: TIỀN + HUỶ ===== -->
 			<div class="col-lg-5">
 				<div class="card od-card mb-3">
 					<div class="card-body">
@@ -439,7 +429,6 @@
 					</div>
 				</div>
 
-				<!-- Đánh giá: đơn đã giao, mỗi ly đánh giá 1 lần (form nằm ở trang chi tiết món) -->
 				<div class="card od-card mb-3" id="danh-gia"
 					th:if="${reviewItems != null and !#lists.isEmpty(reviewItems)}">
 					<div class="card-body">
@@ -471,7 +460,6 @@
 					</div>
 				</div>
 
-				<!-- Huỷ đơn: chỉ khi Chờ xác nhận -->
 				<div class="card od-card mb-3 border border-danger-subtle"
 					id="huy-don" th:if="${order.canCancel}">
 					<div class="card-body">
@@ -512,7 +500,6 @@
 			</div>
 		</div>
 
-		<!-- Bước 7: quán đổi trạng thái thì trang tự cập nhật -->
 		<div data-live-orders th:attr="data-order-id=${order.id}"></div>
 		<script th:src="@{/js/live-socket.js}"></script>
 		<script th:src="@{/js/order-live.js}"></script>

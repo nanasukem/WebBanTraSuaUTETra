@@ -1,10 +1,3 @@
-/* ============================================================
-   live-socket.js - Kết nối WebSocket (STOMP) dùng chung
-   - Tự nạp thư viện @stomp/stompjs, mạng lỗi thì trang vẫn chạy bình thường (chỉ mất cập nhật trực tiếp)
-   - Server gửi theo tài khoản: /user/queue/... (người khác không nghe được)
-   Cách dùng:
-     LiveSocket.subscribe('/user/queue/orders', (ev) => {...}, (online) => {...});
-   ============================================================ */
 window.LiveSocket = (() => {
 	const STOMP_URL = 'https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js';
 	let loading = null;
@@ -24,12 +17,11 @@ window.LiveSocket = (() => {
 		return loading;
 	}
 
-	/** onMessage(ev): ev là JSON server gửi; onStatus(true/false): đang kết nối hay mất kết nối */
 	function subscribe(destination, onMessage, onStatus = () => {}) {
 		loadStomp().then(() => {
 			const client = new StompJs.Client({
 				brokerURL: (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws',
-				reconnectDelay: 5000, // rớt mạng thì 5 giây thử lại
+				reconnectDelay: 5000,
 				onConnect: () => {
 					onStatus(true);
 					client.subscribe(destination, (msg) => {

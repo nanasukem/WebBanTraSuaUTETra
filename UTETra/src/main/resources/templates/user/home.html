@@ -2,22 +2,11 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/user-layout :: main('Trang chủ - UTETra', ~{::#user-home})}">
 
-<!--
-	TRANG CHỦ TRƯNG BÀY khi đã đăng nhập (toàn bộ món nằm ở trang Thực đơn /menu).
-	- USER: đầy đủ (đơn hàng, đặt món)  - MANAGER/ADMIN: chỉ xem (role, cardMode = 'view')
-	Theo đề (User):
-	1. Lịch sử mua hàng theo trạng thái: đơn mới, đã xác nhận, đang giao, đã giao, huỷ, trả hàng - hoàn tiền
-	2. Danh mục -> trang sản phẩm theo danh mục (/category/{id})
-	3. 20 sản phẩm mới / bán chạy / đánh giá / yêu thích nhất, mỗi khối PHÂN TRANG 8 món
-	   (trang sau tải bằng /menu/highlight/{type}?page=n - xem HomeController.highlightPage)
-	Bấm "+" trên món -> chọn size/đường/đá/topping -> thêm vào giỏ (lưu database)
--->
 <body>
 	<div id="user-home">
 
 		<div th:replace="~{fragments/menu-branch :: bar}"></div>
 
-		<!-- ==================== CHÀO ==================== -->
 		<section class="p-4 p-md-5 mb-4 rounded-4 text-white"
 			style="background: linear-gradient(135deg, #198754, #20c997);">
 			<div class="row align-items-center g-3">
@@ -51,7 +40,6 @@
 			</div>
 		</section>
 
-		<!-- ==================== NHẮC ĐÁNH GIÁ (chỉ USER) ==================== -->
 		<a th:if="${isBuyer and reviewReminder != null and reviewReminder > 0}" th:href="@{/orders(tab='delivered')}"
 			class="d-flex align-items-center gap-3 rounded-4 p-3 mb-4 bg-warning-subtle border border-warning-subtle text-dark text-decoration-none">
 			<i class="bi bi-star-half text-warning" style="font-size: 2rem;"></i>
@@ -62,7 +50,6 @@
 			<i class="bi bi-chevron-right"></i>
 		</a>
 
-		<!-- ==================== ĐƠN HÀNG THEO TRẠNG THÁI (chỉ USER) ==================== -->
 		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" th:if="${isBuyer}">
 			<div class="d-flex justify-content-between align-items-center mb-3">
 				<h2 class="h5 fw-bold mb-0"><i class="bi bi-receipt text-success me-1"></i> Đơn hàng của tôi</h2>
@@ -88,7 +75,6 @@
 			</div>
 		</section>
 
-		<!-- ==================== DANH MỤC ==================== -->
 		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4">
 			<h2 class="h5 fw-bold mb-3"><i class="bi bi-grid text-success me-1"></i> Danh mục</h2>
 			<div class="row g-2">
@@ -110,7 +96,6 @@
 			</div>
 		</section>
 
-		<!-- Lối tắt tới 4 khối -->
 		<div class="d-flex flex-wrap gap-2 mb-3">
 			<a href="#moi-nhat" class="btn btn-sm btn-outline-warning"><i class="bi bi-stars me-1"></i>Mới nhất</a>
 			<a href="#ban-chay" class="btn btn-sm btn-outline-danger"><i class="bi bi-fire me-1"></i>Bán chạy</a>
@@ -118,7 +103,6 @@
 			<a href="#yeu-thich" class="btn btn-sm btn-outline-danger"><i class="bi bi-heart me-1"></i>Yêu thích nhất</a>
 		</div>
 
-		<!-- ==================== 20 MÓN NHẤT (phân trang 8 món / trang) ==================== -->
 		<div th:replace="~{fragments/product-card :: hlAjax('moi-nhat', 'newest', 'bi bi-stars text-warning',
 			'20 sản phẩm mới nhất', 'Những món vừa có trong thực đơn', ${newestPage}, ${cardMode})}"></div>
 
@@ -131,7 +115,6 @@
 		<div th:replace="~{fragments/product-card :: hlAjax('yeu-thich', 'favorite', 'bi bi-heart-fill text-danger',
 			'20 sản phẩm yêu thích nhất', 'Những món được bấm thích nhiều nhất', ${favoritePage}, ${cardMode})}"></div>
 
-		<!-- ==================== ĐÃ XEM GẦN ĐÂY (chỉ USER) ==================== -->
 		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4"
 			th:if="${isBuyer and recentViewed != null and !#lists.isEmpty(recentViewed)}">
 			<div class="d-flex justify-content-between align-items-center mb-3">
@@ -145,7 +128,6 @@
 			</div>
 		</section>
 
-		<!-- MODAL CHỌN MÓN (nút "+") -->
 		<div th:replace="~{fragments/product-modal :: productModal}"></div>
 
 		<style>
@@ -153,7 +135,6 @@
 			.cat-tile:hover { border-color: #198754 !important; background-color: #f0faf4; }
 		</style>
 
-		<!-- PHÂN TRANG 4 KHỐI: bấm số trang -> tải trang đó từ server, thay vào khối -->
 		<script>
 			document.addEventListener('click', async function (e) {
 				const btn = e.target.closest('.hl-ajax .hl-go');

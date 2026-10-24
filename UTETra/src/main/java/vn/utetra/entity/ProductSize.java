@@ -7,7 +7,6 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
-/** Bảng ProductSizes - giá cộng thêm theo size S/M/L */
 @Entity
 @Table(name = "ProductSizes")
 @Getter
@@ -24,7 +23,7 @@ public class ProductSize {
 	private Product product;
 
 	@Column(name = "size", nullable = false, length = 1)
-	private String size; // S, M, L
+	private String size;
 
 	@Column(name = "extra_price", nullable = false, precision = 12, scale = 0)
 	private BigDecimal extraPrice = BigDecimal.ZERO;

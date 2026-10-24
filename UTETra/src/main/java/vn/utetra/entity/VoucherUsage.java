@@ -7,7 +7,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/** Bảng VoucherUsages - ai đã dùng mã nào cho đơn nào (đếm lượt mỗi người, hoàn lượt khi huỷ) */
 @Entity
 @Table(name = "VoucherUsages")
 @Getter

@@ -1,10 +1,5 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<!--
-	Cột trái các trang cá nhân của khách (Profile, Yêu thích, Đã xem).
-	active: 'info' | 'password' | 'address' | 'favorites' | 'viewed'
-	Dùng session.user (HomeController / UserPageController cập nhật khi đổi thông tin)
--->
 <div th:fragment="sidebar(active)" class="bg-white rounded-4 shadow-sm p-3 mb-4">
 	<div class="d-flex align-items-center gap-3 mb-3" th:with="u=${session.user}">
 		<img th:if="${u.avatarCloudinaryId != null}" th:src="${u.avatarCloudinaryId}" alt="" class="rounded-circle"

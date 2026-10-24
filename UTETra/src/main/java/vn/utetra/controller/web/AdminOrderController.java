@@ -31,6 +31,10 @@ import java.util.Locale;
 public class AdminOrderController {
 
 	private final OrderRepository orderRepository;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.service.OrderIssueService orderIssueService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.OrderIssueRepository orderIssueRepository;
 	private final BranchRepository branchRepository;
 	private final OrderFlowService orderFlowService;
 	private final vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder;
@@ -53,12 +57,14 @@ public class AdminOrderController {
 		this.orderFlowService = orderFlowService;
 	}
 
-	// Danh sách đơn hàng
 	@GetMapping
 	public String index(@RequestParam(defaultValue = "") String keyword,
 			@RequestParam(defaultValue = "") String branchId, @RequestParam(defaultValue = "") String status,
 			@RequestParam(defaultValue = "") String paymentStatus,
-			@RequestParam(defaultValue = "") String paymentMethod, Model model) {
+			@RequestParam(defaultValue = "") String paymentMethod,
+			@RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+			@RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to,
+			Model model) {
 
 		List<Order> allOrders = orderRepository.findAll();
 
@@ -97,6 +103,12 @@ public class AdminOrderController {
 						|| o.getPaymentStatus().name().equals(paymentStatus))
 				.filter(o -> paymentMethod == null || paymentMethod.isBlank()
 						|| o.getPaymentMethod().name().equals(paymentMethod))
+				.filter(o -> {
+					java.time.LocalDateTime t = o.getStatus() == OrderStatus.DELIVERED && o.getDeliveredAt() != null
+							? o.getDeliveredAt() : o.getCreatedAt();
+					if (t == null) return from == null && to == null;
+					return (from == null || !t.toLocalDate().isBefore(from)) && (to == null || !t.toLocalDate().isAfter(to));
+				})
 				.sorted((a, b) -> {
 					if (a.getCreatedAt() == null)
 						return 1;
@@ -106,6 +118,14 @@ public class AdminOrderController {
 				}).toList();
 
 		model.addAttribute("orders", orders);
+		java.util.Map<Integer, String> issueLabels = new java.util.HashMap<>();
+		java.util.Set<Integer> issuePending = new java.util.HashSet<>();
+		for (vn.utetra.entity.OrderIssue i : orderIssueRepository.findAll()) {
+			issueLabels.put(i.getOrder().getId(), i.getStatus().getLabel());
+			if (i.getStatus() == vn.utetra.entity.enums.IssueStatus.PENDING) issuePending.add(i.getOrder().getId());
+		}
+		model.addAttribute("issueLabels", issueLabels);
+		model.addAttribute("issuePending", issuePending);
 		model.addAttribute("branches", branchRepository.findAll());
 		model.addAttribute("orderStatuses", OrderStatus.values());
 		model.addAttribute("paymentStatuses", PaymentStatus.values());
@@ -116,6 +136,8 @@ public class AdminOrderController {
 		model.addAttribute("selectedStatus", status);
 		model.addAttribute("selectedPaymentStatus", paymentStatus);
 		model.addAttribute("selectedPaymentMethod", paymentMethod);
+		model.addAttribute("from", from);
+		model.addAttribute("to", to);
 
 		model.addAttribute("totalOrders", allOrders.size());
 		model.addAttribute("pendingOrders",
@@ -128,7 +150,6 @@ public class AdminOrderController {
 		return "admin/orders/index";
 	}
 
-	// Chi tiết đơn hàng
 	@GetMapping("/{id}")
 	public String detail(@PathVariable Integer id, Model model, RedirectAttributes redirectAttributes) {
 
@@ -142,12 +163,12 @@ public class AdminOrderController {
 		model.addAttribute("order", order);
 		model.addAttribute("nextStatuses", getNextStatuses(order));
 		model.addAttribute("pay", paymentInfoBuilder.build(order));
+		model.addAttribute("issue", orderIssueService.forOrder(id));
 		model.addAttribute("payments", paymentRepository.findByOrderIdOrderByCreatedAtDesc(id));
 
 		return "admin/orders/detail";
 	}
 
-	/** Tra cứu tại cổng: hỏi thẳng VNPAY / MoMo trạng thái các giao dịch của đơn (bằng chứng đã trả / đã hoàn) */
 	@PostMapping("/{id}/gateway-check")
 	public String gatewayCheck(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 		List<String> lines = new java.util.ArrayList<>();
@@ -161,7 +182,6 @@ public class AdminOrderController {
 		return "redirect:/admin/orders/" + id;
 	}
 
-	/** Hoàn tiền lại (lần trước cổng báo lỗi / mất mạng) */
 	@PostMapping("/{id}/refund")
 	@Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
 	public String retryRefund(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
@@ -174,8 +194,6 @@ public class AdminOrderController {
 		return "redirect:/admin/orders/" + id;
 	}
 
-	// Cập nhật trạng thái đơn hàng: đi qua luồng chung (OrderFlowService) để đúng thứ tự trạng thái,
-	// huỷ bắt buộc lý do, hoàn mã giảm giá + xu, tăng "đã bán" khi giao xong và báo cho khách / quán
 	@PostMapping("/{id}/status")
 	@Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
 	public String updateStatus(@PathVariable Integer id, @RequestParam OrderStatus status,
@@ -191,7 +209,6 @@ public class AdminOrderController {
 		return "redirect:/admin/orders/" + id;
 	}
 
-	/** Các trạng thái tiếp theo hợp lệ (cùng luồng với quán) */
 	private List<OrderStatus> getNextStatuses(Order order) {
 		return OrderFlowServiceImpl.nextStatuses(order.getStatus(), order.getDeliveryType() == DeliveryType.PICKUP);
 	}

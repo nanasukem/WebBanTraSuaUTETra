@@ -28,10 +28,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 	private final ToppingService toppingService;
 	private final CloudinaryService cloudinaryService;
 
-	// =========================================================
-	// 1. QUAN LY SAN PHAM
-	// =========================================================
-
 	@Override
 	@Transactional(readOnly = true)
 	public List<Product> getAllProducts() {
@@ -45,9 +41,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 				.orElseThrow(() -> new IllegalArgumentException("Khong tim thay san pham co ID: " + id));
 	}
 
-	/**
-	 * Tim danh muc hop le. Product.category bat buoc khong duoc null.
-	 */
 	private Category getRequiredCategory(Integer categoryId) {
 		if (categoryId == null) {
 			throw new IllegalArgumentException("Vui long chon danh muc san pham.");
@@ -73,13 +66,10 @@ public class AdminProductServiceImpl implements AdminProductService {
 		product.setDescription(dto.getDescription());
 		product.setBasePrice(dto.getBasePrice());
 
-		// Mac dinh san pham duoc phep ban tren toan chuoi
 		product.setIsAvailable(dto.getIsAvailable() != null ? dto.getIsAvailable() : true);
 
-		// Danh muc bat buoc phai ton tai
 		product.setCategory(getRequiredCategory(dto.getCategoryId()));
 
-		// Tai anh len Cloudinary neu co chon anh
 		if (dto.getImageFile() != null && !dto.getImageFile().isEmpty()) {
 
 			String imageUrl = cloudinaryService.uploadImage(dto.getImageFile(), "products");
@@ -87,7 +77,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 			product.setImageCloudinaryId(imageUrl);
 		}
 
-		// Gia tri mac dinh cua soldCount va createdAt duoc entity xu ly
 		return productRepository.save(product);
 	}
 
@@ -112,17 +101,14 @@ public class AdminProductServiceImpl implements AdminProductService {
 		product.setDescription(dto.getDescription());
 		product.setBasePrice(dto.getBasePrice());
 
-		// Chi cap nhat trang thai neu form co gui gia tri
 		if (dto.getIsAvailable() != null) {
 			product.setIsAvailable(dto.getIsAvailable());
 		}
 
-		// Neu form gui danh muc moi thi phai kiem tra danh muc
 		if (dto.getCategoryId() != null) {
 			product.setCategory(getRequiredCategory(dto.getCategoryId()));
 		}
 
-		// Thay anh neu nguoi dung chon anh moi
 		if (dto.getImageFile() != null && !dto.getImageFile().isEmpty()) {
 
 			String oldImage = product.getImageCloudinaryId();
@@ -131,12 +117,10 @@ public class AdminProductServiceImpl implements AdminProductService {
 
 			product.setImageCloudinaryId(newImage);
 
-			// Xoa anh cu sau khi upload anh moi thanh cong
 			if (oldImage != null && !oldImage.isBlank()) {
 				try {
 					cloudinaryService.deleteImage(oldImage);
 				} catch (Exception e) {
-					// Khong huy cap nhat san pham chi vi xoa anh cu that bai
 					System.err.println("Khong the xoa anh Cloudinary cu: " + e.getMessage());
 				}
 			}
@@ -153,8 +137,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 					+ "\" là topping bán riêng, hãy sửa / bật tắt ở trang Quản lý topping.");
 		}
 
-		// Xoa san pham truoc hay anh truoc can phu thuoc rang buoc DB.
-		// O day xoa anh truoc, giu logic tuong thich voi code hien tai.
 		String imageUrl = product.getImageCloudinaryId();
 
 		productRepository.delete(product);
@@ -167,10 +149,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 			}
 		}
 	}
-
-	// =========================================================
-	// 2. QUAN LY DANH MUC
-	// =========================================================
 
 	@Override
 	@Transactional(readOnly = true)
@@ -205,16 +183,13 @@ public class AdminProductServiceImpl implements AdminProductService {
 		Category category;
 
 		if (dto.getId() != null) {
-			// Cap nhat danh muc hien co
 			category = getCategoryById(dto.getId());
 		} else {
-			// Tao danh muc moi
 			category = new Category();
 		}
 
 		category.setName(categoryName);
 
-		// Chi upload khi nguoi dung chon anh moi
 		if (dto.getImageFile() != null && !dto.getImageFile().isEmpty()) {
 
 			String oldImage = category.getImageCloudinaryId();
@@ -232,7 +207,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 			}
 		}
 
-		// Neu khong chon anh moi, giu nguyen anh cu khi cap nhat
 		return categoryRepository.save(category);
 	}
 
@@ -240,7 +214,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 	public void deleteCategory(Integer id) {
 		Category category = getCategoryById(id);
 
-		// Không cho xóa danh mục nếu vẫn có sản phẩm tham chiếu.
 		if (!productRepository.findByCategoryId(id).isEmpty()) {
 			throw new IllegalArgumentException(
 					"Không thể xóa danh mục đang có sản phẩm. " + "Hãy chuyển sản phẩm sang danh mục khác trước.");
@@ -250,7 +223,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 
 		categoryRepository.delete(category);
 
-		// Chỉ xóa ảnh sau khi yêu cầu xóa danh mục đã được thực hiện.
 		if (imageUrl != null && !imageUrl.isBlank()) {
 			try {
 				cloudinaryService.deleteImage(imageUrl);

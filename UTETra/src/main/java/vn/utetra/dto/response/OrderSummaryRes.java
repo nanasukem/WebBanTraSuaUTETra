@@ -6,7 +6,6 @@ import vn.utetra.entity.enums.PaymentMethod;
 
 import java.math.BigDecimal;
 
-/** Tóm tắt đơn cho trang "Đặt hàng thành công" */
 public record OrderSummaryRes(
 		Integer id,
 		String branchName,

@@ -4,7 +4,6 @@
 
 <section id="admin-content">
 
-	<!-- Tiêu đề trang -->
 	<div
 		class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
 		<div>
@@ -23,7 +22,6 @@
 		</div>
 	</div>
 
-	<!-- Thông báo -->
 	<div th:if="${success != null}"
 		class="alert alert-success alert-dismissible fade show" role="alert">
 		<i class="bi bi-check-circle-fill me-2"></i> <span
@@ -39,7 +37,6 @@
 			aria-label="Đóng"></button>
 	</div>
 
-	<!-- Manager chưa được giao chi nhánh -->
 	<div th:if="${branch == null}" class="card border-0 shadow-sm">
 		<div class="card-body text-center py-5">
 			<i class="bi bi-shop-window display-4 text-secondary"></i>
@@ -52,7 +49,6 @@
 
 	<th:block th:if="${branch != null}">
 
-		<!-- Chi nhánh đang tạm ngưng -->
 		<div th:if="${branch.status.name() != 'APPROVED'}"
 			class="alert alert-warning">
 			<i class="bi bi-pause-circle me-2"></i> Chi nhánh đang <strong
@@ -60,8 +56,11 @@
 			thấy chi nhánh và không đặt được đơn mới. Liên hệ Admin để mở lại.
 		</div>
 
-		<!-- Lối tắt: đã bổ sung thêm nút "Quản lý đánh giá" vào đây -->
-		<div class="d-flex flex-wrap gap-2 mb-4">
+		<style>
+			.quick-nav { scrollbar-width: thin; }
+			.quick-nav .btn { white-space: nowrap; flex-shrink: 0; padding: .375rem .65rem; }
+		</style>
+		<div class="quick-nav d-flex flex-nowrap gap-2 mb-4 overflow-auto pb-1">
 			<a th:href="@{/manager/orders}" class="btn btn-warning fw-semibold"><i
 				class="bi bi-bell me-1"></i>Quầy đơn hàng</a> <a
 				th:href="@{/manager/orders/history}" class="btn btn-outline-primary"><i
@@ -72,6 +71,8 @@
 				class="bi bi-ticket-perforated me-1"></i>Khuyến mãi</a> <a
 				th:href="@{/manager/customers}" class="btn btn-outline-success"><i
 				class="bi bi-people me-1"></i>Khách hàng</a> <a
+				th:href="@{/manager/shippers}" class="btn btn-outline-success"><i
+				class="bi bi-scooter me-1"></i>Shipper</a> <a
 				th:href="@{/manager/reviews}" class="btn btn-outline-warning"><i
 				class="bi bi-star me-1"></i>Quản lý đánh giá</a> <a
 				th:href="@{/manager/reports}" class="btn btn-outline-dark"><i
@@ -80,7 +81,6 @@
 				class="bi bi-info-circle me-1"></i>Thông tin chi nhánh</a>
 		</div>
 
-		<!-- Đơn hàng: mỗi thẻ mở trang "Đơn hàng của chi nhánh" đúng tab trạng thái. -->
 		<h5 class="fw-bold mb-3">
 			<i class="bi bi-receipt me-2"></i>Đơn hàng
 		</h5>
@@ -149,7 +149,6 @@
 			</div>
 		</div>
 
-		<!-- Doanh thu, món, voucher và đánh giá -->
 		<h5 class="fw-bold mb-3">
 			<i class="bi bi-graph-up me-2"></i>Kinh doanh & Đánh giá
 		</h5>
@@ -204,6 +203,34 @@
 				</a>
 			</div>
 		</div>
+
+		<h5 class="fw-bold mb-3">
+			<i class="bi bi-graph-up me-2"></i>Doanh thu 7 ngày qua
+			<span class="fs-6 fw-normal text-muted"
+				th:text="'· ' + ${#numbers.formatDecimal(weekRevenue, 0, 'POINT', 0, 'COMMA')} + ' đ · ' + ${weekOrders} + ' đơn'"></span>
+		</h5>
+		<div class="card border-0 shadow-sm mb-4">
+			<div class="card-body">
+				<div style="height: 260px; position: relative;"><canvas id="weekChart"></canvas></div>
+			</div>
+		</div>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+		<script th:inline="javascript">
+			/*<![CDATA[*/
+			(function () {
+				if (typeof Chart === 'undefined') return;
+				const vnd = (v) => new Intl.NumberFormat('vi-VN').format(v) + ' đ';
+				new Chart(document.getElementById('weekChart'), {
+					type: 'bar',
+					data: { labels: /*[[${weekLabels}]]*/[], datasets: [{ data: /*[[${weekValues}]]*/[],
+						backgroundColor: 'rgba(25, 135, 84, 0.75)', borderRadius: 4, maxBarThickness: 40 }] },
+					options: { responsive: true, maintainAspectRatio: false,
+						plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => vnd(c.parsed.y || 0) } } },
+						scales: { y: { beginAtZero: true, ticks: { callback: (v) => vnd(v) } } } }
+				});
+			})();
+			/*]]>*/
+		</script>
 
 	</th:block>
 

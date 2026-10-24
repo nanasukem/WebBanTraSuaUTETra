@@ -3,18 +3,6 @@ package vn.utetra.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-/**
- * Cấu hình cổng thanh toán (đọc từ application.properties / .env).
- *
- * VNPAY sandbox: đăng ký miễn phí tại https://sandbox.vnpayment.vn/devreg/ -> email gửi vnp_TmnCode + vnp_HashSecret
- *   -> điền VNPAY_TMN_CODE, VNPAY_HASH_SECRET vào .env. Chưa điền thì VNPAY chạy chế độ DEMO (trang giả lập trong web).
- * MoMo sandbox: mặc định dùng bộ khoá TEST công khai trong code mẫu của MoMo; có tài khoản business.momo.vn
- *   thì thay bằng khoá của mình.
- *
- * Chạy localhost: trình duyệt quay về returnUrl (localhost) được, nhưng cổng KHÔNG gọi được IPN vào localhost.
- * Vì vậy web xác minh chữ ký ở returnUrl và tự hỏi lại cổng (querydr / query) cho các giao dịch còn treo.
- * Muốn nhận IPN thật: chạy ngrok rồi điền PAYMENT_IPN_BASE_URL=https://xxxx.ngrok-free.app
- */
 @Component
 public class PaymentProperties {
 
@@ -24,7 +12,6 @@ public class PaymentProperties {
 	@Value("${payment.ipn-base-url:}")
 	private String ipnBaseUrl;
 
-	/** Khách có bao nhiêu phút để trả tiền (quá hạn hệ thống tự huỷ đơn) */
 	@Value("${payment.timeout-minutes:15}")
 	private int timeoutMinutes;
 
@@ -52,13 +39,11 @@ public class PaymentProperties {
 	@Value("${momo.endpoint:https://test-payment.momo.vn}")
 	private String momoEndpoint;
 
-	/** payWithMethod: trang MoMo cho chọn QR ví MoMo, thẻ ATM, thẻ Visa; captureWallet: chỉ QR ví MoMo */
 	@Value("${momo.request-type:payWithMethod}")
 	private String momoRequestType;
 
 	public String baseUrl() { return trimSlash(baseUrl); }
 
-	/** Địa chỉ cổng gọi IPN vào: ngrok nếu có, không thì chính baseUrl (localhost: cổng không gọi tới được) */
 	public String ipnBaseUrl() { return ipnBaseUrl == null || ipnBaseUrl.isBlank() ? baseUrl() : trimSlash(ipnBaseUrl); }
 
 	public int timeoutMinutes() { return timeoutMinutes; }

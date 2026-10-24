@@ -29,7 +29,6 @@ public class AdminCategoryController {
 
 	private final AdminProductService adminProductService;
 
-	// DANH SÁCH DANH MỤC
 	@GetMapping
 	public String index(@RequestParam(required = false) String keyword, Model model) {
 
@@ -50,7 +49,6 @@ public class AdminCategoryController {
 		return "admin/categories/index";
 	}
 
-	// FORM THÊM DANH MỤC
 	@GetMapping("/create")
 	public String createForm(Model model) {
 
@@ -60,7 +58,6 @@ public class AdminCategoryController {
 		return "admin/categories/form";
 	}
 
-	// LƯU DANH MỤC MỚI
 	@PostMapping("/create")
 	public String create(@ModelAttribute("form") CategoryFormDto form, Model model,
 			RedirectAttributes redirectAttributes) {
@@ -91,7 +88,6 @@ public class AdminCategoryController {
 		}
 	}
 
-	// FORM CẬP NHẬT DANH MỤC
 	@GetMapping("/{id}/edit")
 	public String editForm(@PathVariable Integer id, Model model) {
 
@@ -108,7 +104,6 @@ public class AdminCategoryController {
 		return "admin/categories/form";
 	}
 
-	// CẬP NHẬT DANH MỤC
 	@PostMapping("/{id}/edit")
 	public String update(@PathVariable Integer id, @ModelAttribute("form") CategoryFormDto form, Model model,
 			RedirectAttributes redirectAttributes) {
@@ -141,7 +136,6 @@ public class AdminCategoryController {
 		}
 	}
 
-	// XÓA DANH MỤC
 	@PostMapping("/{id}/delete")
 	public String delete(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 
@@ -159,7 +153,6 @@ public class AdminCategoryController {
 		return "redirect:/admin/categories";
 	}
 
-	// KHÔI PHỤC ẢNH VÀO FORM KHI CẬP NHẬT BỊ LỖI
 	private void restoreExistingImage(CategoryFormDto form, Integer id) {
 
 		try {
@@ -168,7 +161,6 @@ public class AdminCategoryController {
 			form.setExistingImageUrl(category.getImageCloudinaryId());
 
 		} catch (Exception ignored) {
-			// Không làm gián đoạn việc hiển thị thông báo lỗi.
 		}
 	}
 }

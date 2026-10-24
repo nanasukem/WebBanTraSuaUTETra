@@ -25,17 +25,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * Thanh toán online VNPAY / MoMo cho đơn (giống app thật):
- *
- * 1. Đặt đơn chọn VNPAY/MoMo -> đơn "Chờ thanh toán" (quán chưa thấy), khách có {@code payment.timeout-minutes} phút để trả.
- * 2. {@link #startPayment}: tạo 1 giao dịch (Payment, mã txnRef riêng) -> chuyển khách sang trang VNPAY / MoMo.
- * 3. Cổng báo kết quả về returnUrl (trình duyệt) và IPN (máy chủ cổng gọi thẳng). Cả hai đều kiểm chữ ký + số tiền,
- *    xử lý 1 lần (idempotent). Thành công -> đơn "Chờ xác nhận" + đã thanh toán, báo quán có đơn mới.
- * 4. Chạy localhost cổng không gọi IPN vào được -> mỗi phút hỏi lại cổng (querydr / query) các giao dịch còn treo.
- * 5. Quá hạn chưa trả -> hệ thống tự huỷ đơn, trả lại lượt mã giảm giá.
- * 6. Trả trễ (đơn đã huỷ) hoặc trả 2 lần -> tự hoàn khoản thừa (RefundService).
- */
 @Service
 public class PaymentService {
 
@@ -69,16 +58,9 @@ public class PaymentService {
 		this.self = self;
 	}
 
-	/** Kết quả xử lý để trang kết quả hiển thị: SUCCESS / PENDING / FAILED / INVALID */
 	public record Outcome(Integer orderId, String status, String message) {
 	}
 
-	// ================= BẮT ĐẦU THANH TOÁN =================
-
-	/**
-	 * Tạo giao dịch mới và trả về địa chỉ chuyển khách tới (trang VNPAY / MoMo, hoặc trang demo khi chưa cấu hình VNPAY).
-	 * method: null = giữ phương thức đã chọn; "VNPAY"/"MOMO" = đổi cổng (khách đổi ý ở trang kết quả).
-	 */
 	@Transactional
 	public String startPayment(Integer userId, Integer orderId, String method, String clientIp) {
 		Order o = owned(userId, orderId);
@@ -95,7 +77,6 @@ public class PaymentService {
 		PaymentMethod m = o.getPaymentMethod();
 		if (m != PaymentMethod.VNPAY && m != PaymentMethod.MOMO) throw new BusinessException("Đơn này thanh toán khi nhận hàng");
 
-		// Giao dịch cũ còn treo -> bỏ (link cũ nếu khách vẫn trả thì sẽ được tự hoàn)
 		for (Payment old : paymentRepository.findByOrderIdAndStatus(orderId, "PENDING")) {
 			old.setStatus("CANCELLED");
 			old.setMessage("Khách đã tạo giao dịch mới");
@@ -119,7 +100,6 @@ public class PaymentService {
 		return momoService.createPayUrl(p, info);
 	}
 
-	/** Đổi sang thanh toán khi nhận hàng (khách không trả online được) -> đơn vào quán như đơn COD */
 	@Transactional
 	public void switchToCod(Integer userId, Integer orderId) {
 		Order o = owned(userId, orderId);
@@ -147,14 +127,11 @@ public class PaymentService {
 		o.setPaymentMethod(to);
 	}
 
-	// ================= NHẬN KẾT QUẢ =================
-
 	@Transactional
 	public Outcome vnpayReturn(Map<String, String> params) {
 		return apply(vnPayService.readResult(params), "return");
 	}
 
-	/** IPN VNPAY: trả đúng mã VNPAY yêu cầu (RspCode) */
 	@Transactional
 	public Map<String, String> vnpayIpn(Map<String, String> params) {
 		GatewayResult r = vnPayService.readResult(params);
@@ -180,7 +157,6 @@ public class PaymentService {
 		apply(momoService.readResult(params), "ipn");
 	}
 
-	/** Chế độ demo (chưa cấu hình VNPAY sandbox): khách bấm Thành công / Thất bại trên trang giả lập */
 	@Transactional
 	public Outcome demoResult(Integer userId, Integer orderId, boolean success) {
 		owned(userId, orderId);
@@ -193,7 +169,6 @@ public class PaymentService {
 		return apply(r, "demo");
 	}
 
-	/** Xử lý chung 1 kết quả cổng báo về (đã/không kiểm chữ ký). Gọi nhiều lần cũng chỉ ghi nhận 1 lần */
 	private Outcome apply(GatewayResult r, String source) {
 		if (!r.verified()) return new Outcome(null, "INVALID", r.message());
 		Payment p = paymentRepository.findByTxnRef(r.txnRef()).orElse(null);
@@ -242,10 +217,9 @@ public class PaymentService {
 			notificationService.create(o.getUser(), o, "PAYMENT", "Thanh toán thành công đơn #" + o.getId(),
 					"Đã trả " + money(p) + "đ qua " + label(o.getPaymentMethod()) + ". Quán sẽ xác nhận đơn trong ít phút",
 					"/orders/" + o.getId());
-			orderNotifier.onNewOrder(o); // giờ quán mới thấy đơn
+			orderNotifier.onNewOrder(o);
 			return;
 		}
-		// Đơn đã huỷ (trả trễ) hoặc đã trả bằng giao dịch khác (trả 2 lần) -> hoàn khoản này
 		String reason = o.getStatus() == OrderStatus.CANCELLED
 				? "Bạn trả tiền sau khi đơn đã huỷ - UTETra tự hoàn lại"
 				: "Đơn đã được thanh toán trước đó - UTETra tự hoàn khoản trả trùng";
@@ -256,11 +230,8 @@ public class PaymentService {
 		refundService.requestRefund(p, reason);
 	}
 
-	// ================= HỎI LẠI CỔNG + HUỶ ĐƠN QUÁ HẠN (mỗi phút) =================
-
 	@Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
 	public void syncAndExpire() {
-		// 1. Giao dịch còn treo hơn 1 phút: hỏi cổng xem khách trả chưa (localhost không nhận được IPN)
 		for (Payment p : paymentRepository.findByStatusAndCreatedAtBefore("PENDING", LocalDateTime.now().minusMinutes(1))) {
 			try {
 				self.syncPayment(p.getId());
@@ -268,7 +239,6 @@ public class PaymentService {
 				log.warn("Hỏi lại giao dịch #{} lỗi: {}", p.getId(), e.getMessage());
 			}
 		}
-		// 2. Đơn quá hạn thanh toán: hệ thống tự huỷ
 		LocalDateTime cutoff = LocalDateTime.now().minusMinutes(props.timeoutMinutes());
 		for (Order o : orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.AWAITING_PAYMENT, cutoff)) {
 			try {
@@ -300,7 +270,6 @@ public class PaymentService {
 		}
 	}
 
-	/** Giao dịch quá hạn trả mà cổng vẫn chưa ghi nhận -> hết hạn */
 	private void expireIfOld(Payment p) {
 		if (p.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(props.timeoutMinutes() + 5L))) {
 			p.setStatus("EXPIRED");
@@ -320,8 +289,6 @@ public class PaymentService {
 		orderFlowService.cancelBySystem(orderId, "Quá " + props.timeoutMinutes() + " phút chưa thanh toán");
 	}
 
-	// ================= ĐỌC TRẠNG THÁI (trang kết quả gọi mỗi vài giây) =================
-
 	@Transactional
 	public Map<String, Object> status(Integer userId, Integer orderId, boolean refresh) {
 		Order o = owned(userId, orderId);
@@ -335,8 +302,6 @@ public class PaymentService {
 				"transactionStatus", last == null ? "" : last.getStatus(),
 				"deadlineMillis", deadlineMillis(o));
 	}
-
-	// ================= HÀM PHỤ =================
 
 	public LocalDateTime deadline(Order o) {
 		return o.getCreatedAt().plusMinutes(props.timeoutMinutes());

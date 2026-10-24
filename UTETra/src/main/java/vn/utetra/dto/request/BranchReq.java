@@ -7,7 +7,6 @@ import vn.utetra.entity.enums.BranchStatus;
 
 import java.math.BigDecimal;
 
-/** Dữ liệu form Thêm/Sửa chi nhánh (Admin) */
 @Data
 public class BranchReq {
 
@@ -35,7 +34,6 @@ public class BranchReq {
 	@Size(max = 500, message = "Mô tả tối đa 500 ký tự")
 	private String description;
 
-	/** Giờ mở cửa (mặc định 7:00 - 22:00) */
 	@org.springframework.format.annotation.DateTimeFormat(pattern = "HH:mm")
 	private java.time.LocalTime openTime = java.time.LocalTime.of(7, 0);
 
@@ -44,7 +42,6 @@ public class BranchReq {
 
 	@NotNull(message = "Vui lòng chọn Manager quản lý chi nhánh")
 	private Integer ownerId;
-
 
 	private BranchStatus status;
 

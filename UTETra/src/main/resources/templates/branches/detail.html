@@ -5,7 +5,6 @@
 <section id="branch-detail-content">
 	<div class="container py-4">
 
-		<!-- ===== TRANG CHỦ CHI NHÁNH: ảnh bìa + mô tả do Manager cập nhật; tên, địa chỉ, giờ mở cửa do Admin quản lý ===== -->
 		<div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
 			<div class="position-relative bg-success-subtle" style="height: 240px;">
 				<img th:if="${branch.imageCloudinaryId != null and !#strings.isEmpty(branch.imageCloudinaryId)}"
@@ -14,7 +13,6 @@
 					class="w-100 h-100 d-flex align-items-center justify-content-center text-success">
 					<i class="bi bi-shop" style="font-size: 5rem;"></i>
 				</div>
-				<!-- Đang mở / đã đóng cửa -->
 				<span class="position-absolute top-0 start-0 m-3 badge rounded-pill px-3 py-2 shadow-sm"
 					th:with="mo=${branch.isOpenAt(now)}" th:classappend="${mo} ? 'text-bg-success' : 'text-bg-secondary'">
 					<i class="bi" th:classappend="${mo} ? 'bi-door-open' : 'bi-door-closed'"></i>
@@ -38,7 +36,6 @@
 							Giờ mở cửa: <span th:text="${branch.hoursLabel}">7:00 - 22:00</span></p>
 
 						<div class="d-flex flex-wrap gap-2">
-							<!-- Chọn chi nhánh này rồi mở menu (menu báo món hết theo chi nhánh này) -->
 							<form th:action="@{/menu/branch}" method="post" class="d-inline m-0">
 								<input type="hidden" name="branchId" th:value="${branch.id}">
 								<input type="hidden" name="back" value="/menu">
@@ -65,7 +62,6 @@
 			</div>
 		</div>
 
-		<!-- Tiêu đề danh sách đánh giá -->
 		<div class="d-flex justify-content-between align-items-center mb-3">
 			<h3 class="fw-bold mb-0">
 				<i class="bi bi-chat-square-heart me-2 text-success"></i> Đánh giá
@@ -75,7 +71,6 @@
 				class="bi bi-arrow-left"></i> Quay lại danh sách chi nhánh</a>
 		</div>
 
-		<!-- Danh sách đánh giá quán & món -->
 		<div class="row g-3">
 			<div th:if="${#lists.isEmpty(reviews)}" class="col-12">
 				<div class="card border-0 shadow-sm rounded-4 text-center py-5">
@@ -95,7 +90,6 @@
 							<h5 class="fw-bold mb-1" th:text="${r.customerName}">Tên
 								khách hàng</h5>
 							<div>
-								<!-- Phân loại Đánh giá Quán hay Món -->
 								<span th:if="${r.type == 'STORE'}"
 									class="badge bg-primary text-white"> <i
 									class="bi bi-shop me-1"></i> Đánh giá Quán
@@ -112,17 +106,15 @@
 							th:text="${r.createdAt != null ? #temporals.format(r.createdAt, 'dd-MM-yyyy HH:mm') : ''}"></small>
 					</div>
 
-					<!-- Nội dung bình luận -->
 					<p class="mb-2 text-dark"
 						th:text="${r.comment != null ? r.comment : '(Khách hàng không để lại bình luận văn bản)'}"></p>
+					<div th:replace="~{fragments/media :: list(${r.media}, 84)}"></div>
 
-					<!-- Tags: mỗi gợi ý là 1 nhãn tròn (giống phần đánh giá món) -->
 					<div class="d-flex flex-wrap gap-1 mb-2" th:if="${r.tags != null and !#strings.isEmpty(r.tags)}">
 						<span class="badge rounded-pill text-bg-light border fw-normal px-3 py-2"
 							th:each="tag : ${#strings.arraySplit(r.tags, '|')}" th:text="${tag}">Đóng gói cẩn thận</span>
 					</div>
 
-					<!-- Phần phản hồi từ quán (nếu có) -->
 					<div th:if="${not #lists.isEmpty(r.replies)}"
 						class="mt-3 bg-light p-3 rounded-3 border-start border-4 border-success">
 						<div th:each="rep : ${r.replies}">

@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 
 @Service
-@Transactional(readOnly = true) // user của đơn là LAZY: cần transaction để đọc
+@Transactional(readOnly = true)
 public class ManagerCustomerServiceImpl implements ManagerCustomerService {
 
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -54,9 +54,8 @@ public class ManagerCustomerServiceImpl implements ManagerCustomerService {
 
 	@Override
 	public List<ManagerCustomerRes> customers(Integer managerId, Integer branchId, String keyword) {
-		Integer id = managerOrderService.resolveBranchId(managerId, branchId); // chỉ chi nhánh của mình
+		Integer id = managerOrderService.resolveBranchId(managerId, branchId);
 
-		// Gom đơn của chi nhánh theo khách
 		Map<Integer, List<Order>> byUser = new LinkedHashMap<>();
 		for (Order o : branchOrders(id)) {
 			byUser.computeIfAbsent(o.getUser().getId(), k -> new ArrayList<>()).add(o);
@@ -90,13 +89,10 @@ public class ManagerCustomerServiceImpl implements ManagerCustomerService {
 		return new ManagerCustomerDetailRes(branch.getId(), branch.getName(), toRes(orders), rows);
 	}
 
-	// ================= HÀM PHỤ =================
-
 	private List<Order> branchOrders(Integer branchId) {
 		return orderRepository.findByBranchIdAndStatusInOrderByCreatedAtAsc(branchId, EnumSet.allOf(OrderStatus.class));
 	}
 
-	/** orders = các đơn của 1 khách ở chi nhánh */
 	private ManagerCustomerRes toRes(List<Order> orders) {
 		User u = orders.get(0).getUser();
 		Order last = orders.stream()

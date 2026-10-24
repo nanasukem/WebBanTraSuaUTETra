@@ -91,7 +91,6 @@ body {
 
 	<div th:fragment="content" class="container-fluid py-4">
 
-		<!-- Tiêu đề -->
 		<div
 			class="page-header d-flex justify-content-between align-items-start flex-wrap gap-3">
 
@@ -117,7 +116,6 @@ body {
 			</a>
 		</div>
 
-		<!-- Thông báo lỗi -->
 		<div th:if="${errorMessage}"
 			class="alert alert-danger alert-dismissible fade show" role="alert">
 			<i class="bi bi-exclamation-triangle-fill me-2"></i> <span
@@ -126,7 +124,6 @@ body {
 				aria-label="Đóng"></button>
 		</div>
 
-		<!-- Form danh mục -->
 		<form th:object="${form}"
 			th:action="${isEdit} ? @{/admin/categories/{id}/edit(id=${form.id})} : @{/admin/categories/create}"
 			method="post" enctype="multipart/form-data">
@@ -135,7 +132,6 @@ body {
 
 			<div class="row g-4">
 
-				<!-- Cột trái: thông tin danh mục -->
 				<div class="col-12 col-lg-8">
 
 					<div class="form-card p-4 mb-4">
@@ -176,7 +172,6 @@ body {
 
 				</div>
 
-				<!-- Cột phải: hình ảnh -->
 				<div class="col-12 col-lg-4">
 
 					<div class="form-card p-4 mb-4">
@@ -235,7 +230,6 @@ body {
 
 			</div>
 
-			<!-- Nút thao tác -->
 			<div class="form-card p-3 mt-4">
 				<div
 					class="d-flex justify-content-between align-items-center flex-wrap gap-2">

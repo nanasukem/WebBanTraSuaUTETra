@@ -48,7 +48,6 @@
 
 		<div class="row g-3">
 			<div class="col-lg-7">
-				<!-- Món -->
 				<div class="card vd-card mb-3">
 					<div class="card-body">
 						<div class="vd-title">
@@ -86,7 +85,6 @@
 					</div>
 				</div>
 
-				<!-- Khách / giao hàng -->
 				<div class="card vd-card mb-3">
 					<div class="card-body">
 						<div class="vd-title"
@@ -102,8 +100,10 @@
 								<i class="bi bi-sticky me-1"></i><span
 									th:text="${order.deliveryNote}"></span>
 							</div>
-							<div class="small mt-1" th:if="${order.carrierName}">
-								Vận chuyển: <b th:text="${order.carrierName}"></b>
+							<div class="small mt-1">
+								<i class="bi bi-scooter me-1"></i>Shipper:
+								<b th:if="${order.shipperName}" th:text="${order.shipperName} + (${order.shipperPhone} != null ? ' · ' + ${order.shipperPhone} : '')"></b>
+								<span th:unless="${order.shipperName}" class="text-muted">chưa có shipper nhận</span>
 							</div>
 						</th:block>
 						<div th:if="${order.deliveredAt}" class="small text-success mt-1">
@@ -116,7 +116,6 @@
 			</div>
 
 			<div class="col-lg-5">
-				<!-- Tiền -->
 				<div class="card vd-card mb-3">
 					<div class="card-body">
 						<div class="vd-title">Thanh toán</div>
@@ -147,6 +146,17 @@
 								class="fs-5 fw-bold text-danger"
 								th:text="|${#numbers.formatInteger(order.totalAmount, 1, 'POINT')}đ|"></span>
 						</div>
+						<th:block th:if="${order.issue != null and order.issue.status == 'REFUNDED'}">
+							<div class="d-flex justify-content-between mt-1 text-danger small">
+								<span>Đã hoàn khách</span>
+								<span th:text="|− ${#numbers.formatInteger(order.issue.refundAmount, 1, 'POINT')}đ|"></span>
+							</div>
+							<div class="d-flex justify-content-between mt-1">
+								<span class="fw-semibold">Doanh thu thực</span>
+								<span class="fw-bold text-success"
+									th:text="|${#numbers.formatInteger(order.totalAmount.subtract(order.issue.refundAmount).max(T(java.math.BigDecimal).ZERO), 1, 'POINT')}đ|"></span>
+							</div>
+						</th:block>
 						<div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
 							<span class="small" th:text="${order.payment.methodLabel}"></span>
 							<span class="badge rounded-pill"
@@ -165,7 +175,6 @@
 					</div>
 				</div>
 
-				<!-- Khách báo vấn đề với đơn: quán xử lý -->
 				<div th:if="${order.issue}"
 					class="card vd-card mb-3 border border-warning-subtle">
 					<div class="card-body">
@@ -184,12 +193,7 @@
 								th:if="${order.issue.description}"
 								th:text="| - ${order.issue.description}|"></span>
 						</div>
-						<div class="d-flex gap-2 mt-2 flex-wrap">
-							<a th:each="img : ${order.issue.images}" th:href="${img}"
-								target="_blank" rel="noopener"> <img th:src="${img}"
-								alt="Ảnh khách gửi"
-								style="width: 84px; height: 84px; object-fit: cover; border-radius: .5rem"></a>
-						</div>
+						<div class="mt-2" th:insert="~{fragments/media :: urls(${order.issue.images}, 84)}"></div>
 
 						<div th:if="${order.issue.status != 'PENDING'}"
 							class="small mt-2 text-muted">
@@ -240,7 +244,6 @@
 								nhận</button>
 						</form>
 						<script>
-							// Chỉ "Hoàn tiền" mới nhập số tiền; Làm lại món / Từ chối thì ẩn đi (không gửi số tiền)
 							(function () {
 								const row = document.getElementById('issue-amount-row');
 								if (!row) return;
@@ -259,7 +262,32 @@
 					</div>
 				</div>
 
-				<!-- Việc cần làm: đúng các nút quán được bấm -->
+				<div class="card vd-card mb-3" th:if="${shipperBox}">
+					<div class="card-body">
+						<div class="vd-title">Shipper</div>
+						<div th:if="${orderShipper != null}" class="mb-2">
+							<i class="bi bi-scooter text-success me-1"></i><strong th:text="${orderShipper.fullName}"></strong>
+							<span class="small text-muted" th:if="${orderShipper.phone}" th:text="' · ' + ${orderShipper.phone}"></span>
+						</div>
+						<div th:if="${orderShipper == null}" class="small text-muted mb-2">
+							Chưa có shipper: shipper nào của quán bấm "Lấy hàng" trước thì nhận.</div>
+						<form th:if="${canAssignShipper}" method="post"
+							th:action="@{/manager/orders/{id}/shipper(id=${order.id})}">
+							<div th:if="${#lists.isEmpty(branchShippers)}" class="small text-danger mb-2">
+								Chi nhánh chưa có shipper nào, liên hệ Admin để được phân công.</div>
+							<select name="shipperId" class="form-select form-select-sm mb-2"
+								th:unless="${#lists.isEmpty(branchShippers)}">
+								<option value="">Để shipper tự nhận</option>
+								<option th:each="s : ${branchShippers}" th:value="${s.id}"
+									th:selected="${orderShipper != null and orderShipper.id == s.id}"
+									th:text="${s.name} + (${s.busy > 0} ? ' · đang giao ' + ${s.busy} + ' đơn' : ' · đang rảnh')"></option>
+							</select>
+							<button type="submit" class="btn btn-sm btn-outline-success w-100"
+								th:unless="${#lists.isEmpty(branchShippers)}">Lưu shipper</button>
+						</form>
+					</div>
+				</div>
+
 				<div class="card vd-card mb-3"
 					th:if="${!#lists.isEmpty(card.actions) or card.canCancel or card.hint != null}">
 					<div class="card-body">

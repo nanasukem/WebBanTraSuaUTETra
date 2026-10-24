@@ -17,10 +17,6 @@ import vn.utetra.dto.response.ProductOptionsRes;
 import java.security.Principal;
 import java.util.Map;
 
-/**
- * API giỏ hàng cho cart.js. Phải đăng nhập (SecurityConfiguration:
- * anyRequest().authenticated())
- */
 @RestController
 @RequestMapping("/api/cart")
 public class CartApiController {
@@ -36,7 +32,6 @@ public class CartApiController {
 		this.currentUserService = currentUserService;
 	}
 
-	/** Body JSON khi sửa số lượng: {"quantity": 3} */
 	public record QuantityReq(Integer quantity) {
 	}
 
@@ -45,13 +40,8 @@ public class CartApiController {
 		return cartService.getCart(currentUserService.requireUserId(principal, session));
 	}
 
-	/**
-	 * Size + topping của 1 món để vẽ modal. Chưa đăng nhập sẽ bị chuyển sang trang
-	 * login
-	 */
 	@GetMapping("/options/{productId}")
 	public ProductOptionsRes options(@PathVariable Integer productId, HttpSession session) {
-		// Có chọn chi nhánh ở đầu menu -> báo luôn topping hết ở chi nhánh đó
 		return cartService.getOptions(productId, menuBranchService.currentId(session));
 	}
 
@@ -66,7 +56,6 @@ public class CartApiController {
 		return cartService.updateQuantity(currentUserService.requireUserId(principal, session), id, body.quantity());
 	}
 
-	/** Điều chỉnh 1 dòng trong giỏ (bấm tên món ở trang giỏ hàng) */
 	@PutMapping("/{id}/options")
 	public CartRes updateOptions(@PathVariable Integer id, @Valid @RequestBody CartAddReq req, Principal principal,
 			HttpSession session) {
@@ -85,7 +74,6 @@ public class CartApiController {
 		return cartService.getCart(userId);
 	}
 
-	// ===== Lỗi -> JSON {"message": "..."} để cart.js hiện thông báo =====
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<Map<String, String>> handleBusiness(BusinessException e) {
 		return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));

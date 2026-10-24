@@ -2,13 +2,6 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/admin-layout :: main('Quản lý topping', 'products', ~{::#admin-content})}">
 
-<!--
-	QUẢN LÝ TOPPING (Admin, toàn chuỗi) /admin/toppings
-	- Topping dùng 2 kiểu như Katinat: thêm vào ly khi chọn món, hoặc mua riêng ở danh mục "Topping" trên menu
-	- Thêm topping -> hệ thống tự tạo món bán riêng (cùng tên, giá, ảnh; 1 cỡ, không chọn đường / đá)
-	- Ngưng bán: tắt cả 2 kiểu. Đã có trong đơn hàng thì không xoá được, chỉ ngưng bán
-	- Hết topping ở 1 chi nhánh: Manager tự bật / tắt ở trang Sản phẩm của chi nhánh
--->
 <section id="admin-content">
 	<div class="container-fluid px-0">
 		<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
@@ -19,7 +12,6 @@
 			</div>
 		</div>
 
-		<!-- 2 tab: Đồ uống (sản phẩm thường) | Topping (thêm vào ly + mua riêng) -->
 		<ul class="nav nav-pills gap-2 mb-4">
 			<li class="nav-item"><a class="nav-link text-success border border-success-subtle" th:href="@{/admin/products}">
 					<i class="bi bi-cup-straw me-1"></i> Đồ uống</a></li>
@@ -37,7 +29,6 @@
 		</div>
 
 		<div class="row g-4">
-			<!-- ===== FORM THÊM / SỬA ===== -->
 			<div class="col-lg-4">
 				<div class="card border-0 shadow-sm rounded-4">
 					<div class="card-header bg-white py-3 fw-bold">
@@ -86,7 +77,6 @@
 				</div>
 			</div>
 
-			<!-- ===== DANH SÁCH ===== -->
 			<div class="col-lg-8">
 				<div class="card border-0 shadow-sm rounded-4">
 					<div class="card-header bg-white py-3 fw-bold d-flex justify-content-between align-items-center">
@@ -134,7 +124,6 @@
 									<td>
 										<span th:if="${r.topping().isAvailable}" class="badge rounded-pill text-bg-success">Đang bán</span>
 										<span th:unless="${r.topping().isAvailable}" class="badge rounded-pill text-bg-secondary">Ngưng bán</span>
-										<!-- Chi nhánh đang báo hết topping này (Manager bật / tắt) -->
 										<div class="small text-danger mt-1" th:if="${r.topping().isAvailable and !#lists.isEmpty(r.outAt())}">
 											<i class="bi bi-shop"></i> Đang hết ở:
 											<span th:text="${#strings.listJoin(r.outAt(), ', ')}">UTETra Quận 1</span>

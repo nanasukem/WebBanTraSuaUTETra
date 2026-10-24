@@ -23,11 +23,6 @@ public class EmailService {
 		mailSender.send(message);
 	}
 
-	/**
-	 * Gửi email thường (tài khoản nhân viên, mật khẩu tạm, xác nhận đổi mật khẩu).
-	 * Chưa cấu hình email (chạy local) thì in ra console; gửi lỗi thì bỏ qua để không làm hỏng thao tác chính.
-	 * @return true nếu đã gửi qua máy chủ email
-	 */
 	public boolean send(String toEmail, String subject, String text) {
 		if (toEmail == null || toEmail.isBlank()) return false;
 		if (mailSender == null) {

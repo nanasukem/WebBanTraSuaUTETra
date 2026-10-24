@@ -16,10 +16,6 @@ import vn.utetra.entity.Topping;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.service.ToppingService;
 
-/**
- * Admin quản lý topping toàn chuỗi: thêm, sửa tên / giá / mô tả / ảnh, đang bán / ngưng bán, xoá.
- * Mỗi topping tự có 1 món bán riêng trong danh mục "Topping" trên menu (xem ToppingService).
- */
 @Controller
 @RequestMapping("/admin/toppings")
 public class AdminToppingController {
@@ -30,7 +26,6 @@ public class AdminToppingController {
 		this.toppingService = toppingService;
 	}
 
-	/** Danh sách + form thêm; ?edit={id} thì form chuyển sang sửa topping đó */
 	@GetMapping
 	public String index(@RequestParam(required = false) Integer edit, Model model, RedirectAttributes ra) {
 		model.addAttribute("rows", toppingService.list());

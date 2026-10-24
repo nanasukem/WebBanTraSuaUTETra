@@ -10,11 +10,6 @@ import vn.utetra.entity.enums.IssueStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Bảng OrderIssues - khách "Báo vấn đề với đơn" (thay cho Trả hàng: đồ uống không trả lại được).
- * Khách báo trong 2 giờ sau khi nhận món, kèm ảnh; Manager của chi nhánh xử lý:
- * hoàn tiền (một phần / toàn bộ), làm lại món, hoặc từ chối (ghi lý do). Mỗi đơn báo 1 lần.
- */
 @Entity
 @Table(name = "OrderIssues")
 @Getter
@@ -41,7 +36,6 @@ public class OrderIssue {
 	@Column(length = 500)
 	private String description;
 
-	/** Link ảnh Cloudinary, cách nhau bởi | (tối đa 3 ảnh) */
 	@Column(length = 1000)
 	private String images;
 
@@ -49,11 +43,9 @@ public class OrderIssue {
 	@Column(nullable = false, length = 20)
 	private IssueStatus status = IssueStatus.PENDING;
 
-	/** Số tiền quán hoàn cho khách (khi status = REFUNDED) */
 	@Column(name = "refund_amount", nullable = false, precision = 12, scale = 0)
 	private BigDecimal refundAmount = BigDecimal.ZERO;
 
-	/** Quán ghi chú / lý do từ chối */
 	@Column(name = "store_note", length = 255)
 	private String storeNote;
 

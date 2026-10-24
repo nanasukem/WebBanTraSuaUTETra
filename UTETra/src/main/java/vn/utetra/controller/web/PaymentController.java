@@ -20,16 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Thanh toán VNPAY / MoMo (sandbox):
- * - GET  /payment/{id}/pay[?method=VNPAY|MOMO]: tạo giao dịch -> chuyển sang trang VNPAY / MoMo
- * - GET  /payment/vnpay/return, /payment/momo/return: cổng đưa khách quay lại (kiểm chữ ký) -> trang kết quả
- * - GET  /payment/vnpay/ipn, POST /payment/momo/ipn: máy chủ cổng báo kết quả (cần địa chỉ public, vd ngrok)
- * - GET  /payment/{id}/result: trang kết quả thanh toán (thành công / đang xử lý / thất bại + thanh toán lại)
- * - GET  /payment/{id}/status: trạng thái (JSON) để trang kết quả tự cập nhật
- * - POST /payment/{id}/cod: đổi sang thanh toán khi nhận hàng
- * - /payment/{id}/demo: trang giả lập VNPAY khi CHƯA điền VNPAY_TMN_CODE / VNPAY_HASH_SECRET
- */
 @Controller
 @RequestMapping("/payment")
 public class PaymentController {
@@ -44,8 +34,6 @@ public class PaymentController {
 		this.orderFlowService = orderFlowService;
 		this.currentUserService = currentUserService;
 	}
-
-	// ================= BẮT ĐẦU / THANH TOÁN LẠI =================
 
 	@GetMapping("/{orderId}/pay")
 	public String pay(@PathVariable Integer orderId, @RequestParam(required = false) String method,
@@ -75,8 +63,6 @@ public class PaymentController {
 		}
 	}
 
-	// ================= CỔNG BÁO KẾT QUẢ =================
-
 	@GetMapping("/vnpay/return")
 	public String vnpayReturn(@RequestParam Map<String, String> params, Model model) {
 		return afterReturn(paymentService.vnpayReturn(params), model);
@@ -97,7 +83,6 @@ public class PaymentController {
 		return afterReturn(paymentService.momoReturn(params), model);
 	}
 
-	/** MoMo gọi IPN bằng JSON; trả 204 là đã nhận */
 	@PostMapping("/momo/ipn")
 	public ResponseEntity<Void> momoIpn(@RequestBody Map<String, Object> body) {
 		Map<String, String> params = new HashMap<>();
@@ -113,8 +98,6 @@ public class PaymentController {
 		}
 		return "redirect:/payment/" + outcome.orderId() + "/result";
 	}
-
-	// ================= TRANG KẾT QUẢ =================
 
 	@GetMapping("/{orderId}/result")
 	public String result(@PathVariable Integer orderId, Principal principal, HttpSession session, Model model) {
@@ -151,8 +134,6 @@ public class PaymentController {
 		return paymentService.status(userId, orderId, refresh);
 	}
 
-	// ================= CHẾ ĐỘ DEMO (chưa cấu hình VNPAY sandbox) =================
-
 	@GetMapping("/{orderId}/demo")
 	public String demo(@PathVariable Integer orderId, Principal principal, HttpSession session, Model model) {
 		Integer userId = currentUserService.requireUserId(principal, session);
@@ -178,12 +159,11 @@ public class PaymentController {
 		return "redirect:/payment/" + orderId + "/result";
 	}
 
-	/** IP thật của khách (VNPAY bắt buộc vnp_IpAddr). Chạy localhost thì là 127.0.0.1 */
 	private static String clientIp(HttpServletRequest request) {
 		String ip = request.getHeader("X-Forwarded-For");
 		if (ip != null && !ip.isBlank()) ip = ip.split(",")[0].trim();
 		else ip = request.getRemoteAddr();
-		if (ip == null || ip.isBlank() || ip.contains(":")) return "127.0.0.1"; // IPv6 localhost -> IPv4
+		if (ip == null || ip.isBlank() || ip.contains(":")) return "127.0.0.1";
 		return ip;
 	}
 }

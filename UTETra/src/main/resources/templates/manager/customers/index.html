@@ -2,10 +2,8 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/manager-layout :: main('Khách hàng của chi nhánh', 'customers', ~{::#admin-content})}">
 
-<!-- (Chức năng mở rộng) Manager kiểm tra khách đã đặt đơn ở chi nhánh mình: chỉ xem, không sửa / khoá tài khoản -->
 <section id="admin-content">
 
-	<!-- Tiêu đề + nút quay lại -->
 	<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
 		<div>
 			<h2 class="fw-bold mb-1">
@@ -22,7 +20,6 @@
 		</a>
 	</div>
 
-	<!-- Thông báo -->
 	<div th:if="${success != null}" class="alert alert-success alert-dismissible fade show">
 		<span th:text="${success}"></span>
 		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -32,7 +29,6 @@
 		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 	</div>
 
-	<!-- Tìm khách -->
 	<div class="card border-0 shadow-sm rounded-4 mb-4">
 		<div class="card-body">
 			<form method="get" th:action="@{/manager/branches/{id}/customers(id=${branch.id})}" class="row g-2">
@@ -51,7 +47,6 @@
 		</div>
 	</div>
 
-	<!-- Danh sách khách -->
 	<div class="card border-0 shadow-sm rounded-4">
 		<div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
 			<h5 class="fw-bold mb-0">

@@ -21,10 +21,6 @@ import vn.utetra.repository.UserRepository;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * Tổng quan hệ thống của Admin: số đơn, người dùng, sản phẩm, chi nhánh, doanh thu, 8 đơn mới nhất.
- * Doanh thu = tiền món sau giảm giá của các đơn đã giao (tổng tiền đơn gồm cả phí ship Shipper UTETra, trừ tiền đã hoàn).
- */
 @Controller
 @Transactional(readOnly = true)
 public class AdminDashboardController {
@@ -33,6 +29,8 @@ public class AdminDashboardController {
 	private final UserRepository userRepository;
 	private final ProductRepository productRepository;
 	private final BranchRepository branchRepository;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.service.ReportService reportService;
 
 	public AdminDashboardController(OrderRepository orderRepository, UserRepository userRepository,
 			ProductRepository productRepository, BranchRepository branchRepository) {
@@ -47,7 +45,6 @@ public class AdminDashboardController {
 		model.addAttribute("pageTitle", "Tổng quan quản trị");
 
 		List<Order> orders = orderRepository.findAll();
-		// Đơn chờ thanh toán (VNPAY/MoMo chưa trả xong) chưa phải đơn thật -> không đếm
 		List<Order> real = orders.stream().filter(o -> o.getStatus() != OrderStatus.AWAITING_PAYMENT).toList();
 		List<Order> delivered = real.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED).toList();
 
@@ -70,6 +67,17 @@ public class AdminDashboardController {
 		model.addAttribute("branchCount", branches.size());
 		model.addAttribute("approvedBranches",
 				branches.stream().filter(b -> b.getStatus() == BranchStatus.APPROVED).count());
+
+		java.time.LocalDate today = java.time.LocalDate.now();
+		List<vn.utetra.service.ReportService.Point> week = reportService.byDay(today.minusDays(6), today, null);
+		vn.utetra.service.ReportService.Point weekSum = vn.utetra.service.ReportService.total(week);
+		model.addAttribute("weekLabels", week.stream().map(vn.utetra.service.ReportService.Point::label).toList());
+		model.addAttribute("weekValues", week.stream().map(vn.utetra.service.ReportService.Point::revenue).toList());
+		model.addAttribute("weekRevenue", weekSum.revenue());
+		model.addAttribute("weekOrders", weekSum.orders());
+		List<vn.utetra.service.ReportService.BranchRevenue> byBranch = reportService.byBranch(today.withDayOfMonth(1), today);
+		model.addAttribute("branchLabels", byBranch.stream().map(vn.utetra.service.ReportService.BranchRevenue::branchName).toList());
+		model.addAttribute("branchValues", byBranch.stream().map(vn.utetra.service.ReportService.BranchRevenue::revenue).toList());
 
 		model.addAttribute("recentOrders", orderRepository
 				.findAll(PageRequest.of(0, 8, Sort.by(Sort.Direction.DESC, "createdAt"))).getContent());

@@ -30,25 +30,25 @@ public class Address {
 	private String addressLine;
 
 	@Column(name = "latitude", precision = 9, scale = 6)
-	private BigDecimal latitude; // ghim trên bản đồ khi thêm địa chỉ (null = chưa có)
+	private BigDecimal latitude;
 
 	@Column(name = "longitude", precision = 9, scale = 6)
 	private BigDecimal longitude;
 
 	@Column(name = "province", length = 100)
-	private String province; // Tỉnh/Thành phố (sau sáp nhập 2025)
+	private String province;
 
 	@Column(name = "ward", length = 100)
-	private String ward; // Phường/Xã/Đặc khu
+	private String ward;
 
 	@Column(name = "street", length = 150)
-	private String street; // Tên đường, Toà nhà, Số nhà
+	private String street;
 
 	@Column(name = "address_type", length = 10)
-	private String addressType; // HOME = Nhà riêng, OFFICE = Văn phòng
+	private String addressType;
 	
 	@Column(name = "note", length = 200)
-	private String note; // Ghi chú địa chỉ: cổng sau, gửi bảo vệ...
+	private String note;
 	
 	@Column(name = "is_default", nullable = false)
 	private Boolean isDefault = false;

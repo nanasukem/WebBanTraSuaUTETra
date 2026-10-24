@@ -14,10 +14,6 @@ import vn.utetra.repository.FavoriteRepository;
 import vn.utetra.repository.ProductRepository;
 import vn.utetra.repository.UserRepository;
 
-/**
- * Thích sản phẩm (nút tim): bấm lần 1 = thích, bấm lần 2 = bỏ thích.
- * Mỗi khách chỉ thích 1 món 1 lần (bảng Favorites có UNIQUE user_id + product_id).
- */
 @Service
 @Transactional(readOnly = true)
 public class FavoriteService {
@@ -35,7 +31,6 @@ public class FavoriteService {
 		this.productHighlightService = productHighlightService;
 	}
 
-	/** Đổi trạng thái thích. Trả về true = đang thích sau khi bấm */
 	@Transactional
 	public boolean toggle(Integer userId, Integer productId) {
 		Optional<Favorite> existing = favoriteRepository.findByUserIdAndProductId(userId, productId);
@@ -57,12 +52,10 @@ public class FavoriteService {
 		return userId != null && favoriteRepository.existsByUserIdAndProductId(userId, productId);
 	}
 
-	/** Số người đã thích món này */
 	public long countOfProduct(Integer productId) {
 		return favoriteRepository.countByProductId(productId);
 	}
 
-	/** Trang "Sản phẩm yêu thích": món đã thích, thích sau cùng lên đầu */
 	public List<ProductCardRes> list(Integer userId) {
 		List<Product> products = favoriteRepository.findByUserIdOrderByCreatedAtDescIdDesc(userId).stream()
 				.map(Favorite::getProduct).toList();

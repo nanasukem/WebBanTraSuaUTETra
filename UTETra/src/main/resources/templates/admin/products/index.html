@@ -79,7 +79,6 @@ body {
 				Thêm sản phẩm </a>
 		</div>
 
-		<!-- 2 tab: Đồ uống (sản phẩm thường) | Topping (thêm vào ly + mua riêng) -->
 		<ul class="nav nav-pills gap-2 mb-4">
 			<li class="nav-item"><a class="nav-link active bg-success" th:href="@{/admin/products}">
 					<i class="bi bi-cup-straw me-1"></i> Đồ uống</a></li>
@@ -87,7 +86,6 @@ body {
 					<i class="bi bi-plus-circle-dotted me-1"></i> Topping</a></li>
 		</ul>
 
-		<!-- Thông báo -->
 		<div th:if="${successMessage}"
 			class="alert alert-success alert-dismissible fade show" role="alert">
 			<span th:text="${successMessage}"></span>
@@ -100,7 +98,6 @@ body {
 			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 		</div>
 
-		<!-- Bộ lọc: không dùng th:field -->
 		<div class="panel mb-4">
 			<form th:action="@{/admin/products}" method="get"
 				class="row g-3 align-items-end">
@@ -143,7 +140,6 @@ body {
 			</form>
 		</div>
 
-		<!-- Bảng sản phẩm -->
 		<div class="panel">
 			<div class="d-flex justify-content-between align-items-center mb-3">
 				<h5 class="mb-0">Danh sách sản phẩm</h5>
@@ -202,14 +198,12 @@ body {
 								class="badge text-bg-success"> Đang bán </span> <span
 								th:unless="${product.isAvailable}"
 								class="badge text-bg-secondary"> Ngừng bán </span>
-								<!-- Chi nhánh đang báo hết món này -->
 								<div class="small text-danger mt-1" th:if="${product.isAvailable and outAt[product.id] != null}">
 									<i class="bi bi-shop"></i> Đang hết ở:
 									<span th:text="${#strings.listJoin(outAt[product.id], ', ')}">UTETra Quận 1</span>
 								</div></td>
 
 							<td>
-								<!-- Topping bán riêng: quản lý ở trang Topping -->
 								<a th:if="${product.toppingItem}" th:href="@{/admin/toppings(edit=${product.topping.id})}"
 									class="btn btn-sm btn-outline-success"><i class="bi bi-plus-circle-dotted me-1"></i> Quản lý ở trang Topping</a>
 								<div class="actions" th:unless="${product.toppingItem}">

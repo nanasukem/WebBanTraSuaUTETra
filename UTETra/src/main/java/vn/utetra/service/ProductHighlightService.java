@@ -17,10 +17,6 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Các danh sách món nổi bật trên trang Thực đơn (theo đề: 20 sản phẩm mới, bán chạy, đánh giá, yêu thích nhất)
- * + đổi Product sang thẻ món (kèm điểm đánh giá, số lượt thích).
- */
 @Service
 @Transactional(readOnly = true)
 public class ProductHighlightService {
@@ -31,13 +27,10 @@ public class ProductHighlightService {
 		this.productRepository = productRepository;
 	}
 
-	/** Đề: "20 (sản phẩm mới, bán chạy, đánh giá, yêu thích) nhất" */
 	public static final int TOP_SIZE = 20;
 
-	/** Các loại khối hợp lệ: mới nhất, bán chạy, đánh giá cao, yêu thích nhất */
 	public static final List<String> TYPES = List.of("newest", "sold", "rating", "favorite");
 
-	/** Top limit món theo loại khối (loại sai -> mới nhất) */
 	public List<ProductCardRes> top(String type, int limit) {
 		return switch (normalizeType(type)) {
 		case "sold" -> bestSellers(limit);
@@ -47,10 +40,6 @@ public class ProductHighlightService {
 		};
 	}
 
-	/**
-	 * 1 trang (size món) trong 20 món nhất của loại khối.
-	 * Vd page(sold, 1, 8) = món bán chạy hạng 9..16. Trang vượt quá -> trang cuối.
-	 */
 	public HighlightPageRes page(String type, int page, int size) {
 		String t = normalizeType(type);
 		List<ProductCardRes> all = top(t, TOP_SIZE);
@@ -66,17 +55,14 @@ public class ProductHighlightService {
 		return type != null && TYPES.contains(type) ? type : "newest";
 	}
 
-	/** Bán chạy nhất (theo số ly đã bán) */
 	public List<ProductCardRes> bestSellers(int limit) {
 		return toCards(available(productRepository.filterProducts(null, null, "sold")).stream().limit(limit).toList());
 	}
 
-	/** Mới nhất (theo ngày thêm món) */
 	public List<ProductCardRes> newest(int limit) {
 		return toCards(available(productRepository.filterProducts(null, null, "newest")).stream().limit(limit).toList());
 	}
 
-	/** Đánh giá cao nhất: điểm trung bình cao trước, bằng điểm thì nhiều lượt đánh giá trước */
 	public List<ProductCardRes> topRated(int limit) {
 		List<ProductCardRes> all = toCards(available(productRepository.findAll()));
 		return all.stream().filter(c -> c.reviewCount() > 0)
@@ -85,7 +71,6 @@ public class ProductHighlightService {
 				.limit(limit).toList();
 	}
 
-	/** Yêu thích nhất: nhiều lượt thích trước */
 	public List<ProductCardRes> mostFavorite(int limit) {
 		List<ProductCardRes> all = toCards(available(productRepository.findAll()));
 		return all.stream().filter(c -> c.favoriteCount() > 0)
@@ -94,7 +79,6 @@ public class ProductHighlightService {
 				.limit(limit).toList();
 	}
 
-	/** Đổi danh sách món sang thẻ món, giữ nguyên thứ tự */
 	public List<ProductCardRes> toCards(List<Product> products) {
 		if (products == null || products.isEmpty()) return Collections.emptyList();
 
@@ -120,7 +104,6 @@ public class ProductHighlightService {
 
 	private static List<Product> available(List<Product> products) {
 		if (products == null) return Collections.emptyList();
-		// Bỏ topping mua riêng khỏi các khối nổi bật (mới / bán chạy / đánh giá / yêu thích): chỉ xếp hạng đồ uống
 		return products.stream().filter(p -> p != null && !Boolean.FALSE.equals(p.getIsAvailable()) && !p.isToppingItem())
 				.toList();
 	}

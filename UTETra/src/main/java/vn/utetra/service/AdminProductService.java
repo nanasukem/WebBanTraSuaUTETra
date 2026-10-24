@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.util.List;
 
 public interface AdminProductService {
-	// === QUẢN LÝ SẢN PHẨM (ADMIN) ===
 	List<Product> getAllProducts();
 
 	Product getProductById(Integer id);
@@ -21,14 +20,12 @@ public interface AdminProductService {
 
 	void deleteProduct(Integer id);
 
-	// === QUẢN LÝ DANH MỤC (ADMIN & MANAGER) ===
 	List<Category> getAllCategories();
 
 	Category getCategoryById(Integer id);
 
-	Category saveCategory(CategoryFormDto dto) throws IOException; // Hỗ trợ lưu ảnh Cloudinary
+	Category saveCategory(CategoryFormDto dto) throws IOException;
 
 	void deleteCategory(Integer id);
 
-	// Topping: quản lý ở ToppingService (/admin/toppings) - topping vừa thêm vào ly vừa bán riêng
 }

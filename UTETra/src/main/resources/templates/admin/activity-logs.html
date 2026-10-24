@@ -2,7 +2,6 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/admin-layout :: main('Nhật ký hoạt động', 'activity-logs', ~{::#admin-content})}">
 
-<!-- Nhật ký hoạt động: mọi thao tác thành công của Admin / Manager / Shipper (đổi giá, báo hết món, khoá tài khoản, xử lý đơn...) -->
 <section id="admin-content">
 	<div class="container-fluid px-0">
 		<h2 class="fw-bold mb-1"><i class="bi bi-journal-text text-success me-2"></i>Nhật ký hoạt động</h2>
@@ -52,7 +51,9 @@
 					<tbody>
 						<tr th:if="${logs.empty}"><td colspan="3" class="text-center text-muted py-5">
 							<i class="bi bi-inbox fs-2 d-block mb-2"></i>Chưa có hoạt động nào.</td></tr>
-						<tr th:each="l : ${logs.content}">
+						<tr th:each="l : ${logs.content}" th:classappend="${l.link != null} ? 'log-link'"
+							th:attr="data-href=${l.link != null} ? @{${l.link}} : null"
+							th:title="${l.link != null} ? 'Bấm để xem chi tiết' : null">
 							<td class="ps-3 small text-nowrap" th:text="${#temporals.format(l.createdAt, 'HH:mm dd/MM/yyyy')}">10:20 23/10/2026</td>
 							<td>
 								<span class="badge me-1" th:text="${l.actorRole}"
@@ -60,7 +61,8 @@
 								<span class="small fw-semibold" th:text="${l.actorName}">Quản trị viên (admin)</span>
 							</td>
 							<td>
-								<div th:text="${l.action}">Đã báo hết Bạc xỉu tại chi nhánh.</div>
+								<div><span th:text="${l.action}">Đã báo hết Bạc xỉu tại chi nhánh.</span>
+									<i th:if="${l.link != null}" class="bi bi-box-arrow-up-right small text-success ms-1"></i></div>
 								<small class="text-muted" th:text="${l.path}">/manager/branches/1/products/3/toggle</small>
 							</td>
 						</tr>
@@ -78,5 +80,13 @@
 			</div>
 		</div>
 	</div>
+	<style>
+		tr.log-link { cursor: pointer; }
+		tr.log-link:hover td { background: #f1f8f4; }
+	</style>
+	<script>
+		document.querySelectorAll('tr.log-link[data-href]').forEach((tr) =>
+			tr.addEventListener('click', () => { window.location.href = tr.dataset.href; }));
+	</script>
 </section>
 </html>

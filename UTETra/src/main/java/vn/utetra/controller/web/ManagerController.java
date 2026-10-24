@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.Principal;
 import java.time.LocalDate;
+import vn.utetra.service.ReportService;
+import vn.utetra.service.BranchStockService;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -61,6 +63,12 @@ public class ManagerController {
 	private final vn.utetra.repository.ToppingRepository toppingRepository;
 	private final vn.utetra.service.ToppingService toppingService;
 	private final vn.utetra.service.NotificationService notificationService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.service.ReportService reportService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.service.BranchStockService branchStockService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.UserRepository userRepository;
 
 	public ManagerController(BranchRepository branchRepository, BranchProductRepository branchProductRepository,
 			ProductRepository productRepository, OrderRepository orderRepository, VoucherService voucherService,
@@ -81,18 +89,6 @@ public class ManagerController {
 		this.toppingService = toppingService;
 		this.notificationService = notificationService;
 	}
-
-	/** Báo Admin: chi nhánh vừa báo hết / mở bán lại 1 món hoặc topping (bấm vào xem kho của chi nhánh) */
-	private void notifyAdminsStock(Branch branch, String what, String name, boolean dangBan) {
-		notificationService.notifyAdmins("STOCK",
-				branch.getName() + (dangBan ? " mở bán lại: " : " báo hết: ") + name,
-				(dangBan ? "Đã có lại " : "Tạm hết ") + what + " " + name + " tại " + branch.getName(),
-				"/admin/branches/" + branch.getId() + "/stock", null);
-	}
-
-	// =========================================================
-	// CHI NHÁNH CỦA MANAGER ĐANG ĐĂNG NHẬP
-	// =========================================================
 
 	private Branch myBranch(Principal principal, HttpSession session) {
 		Integer managerId = currentUserService.requireUserId(principal, session);
@@ -154,16 +150,17 @@ public class ManagerController {
 		return toMyBranch("/reports", principal, session, ra);
 	}
 
+	@GetMapping("/shippers")
+	public String myShippers(Principal principal, HttpSession session, RedirectAttributes ra) {
+
+		return toMyBranch("/shippers", principal, session, ra);
+	}
+
 	@GetMapping("/customers")
 	public String myCustomers(Principal principal, HttpSession session, RedirectAttributes ra) {
 
 		return toMyBranch("/customers", principal, session, ra);
 	}
-
-	// =========================================================
-	// DASHBOARD
-	// Template: templates/manager/dashboard.html
-	// =========================================================
 
 	@GetMapping({ "", "/", "/dashboard" })
 	public String dashboard(Principal principal, HttpSession session, Model model) {
@@ -193,7 +190,7 @@ public class ManagerController {
 
 		model.addAttribute(
 				"processingOrders", orders
-						.stream().filter(o -> o.getStatus() == OrderStatus.CONFIRMED
+						.stream().filter(o -> o.getStatus() == OrderStatus.CONFIRMED || o.getStatus() == OrderStatus.READY
 								|| o.getStatus() == OrderStatus.PICKED_UP || o.getStatus() == OrderStatus.DELIVERING)
 						.count());
 
@@ -211,16 +208,15 @@ public class ManagerController {
 		model.addAttribute("activeVouchers",
 				voucherService.branchView(branch.getId()).stream().filter(v -> "RUNNING".equals(v.status())).count());
 
+		List<ReportService.Point> week = reportService.byDay(today.minusDays(6), today, branch.getId());
+		ReportService.Point weekSum = ReportService.total(week);
+		model.addAttribute("weekLabels", week.stream().map(ReportService.Point::label).toList());
+		model.addAttribute("weekValues", week.stream().map(ReportService.Point::revenue).toList());
+		model.addAttribute("weekRevenue", weekSum.revenue());
+		model.addAttribute("weekOrders", weekSum.orders());
+
 		return "manager/dashboard";
 	}
-
-	// =========================================================
-	// CHI TIẾT CHI NHÁNH
-	// Template: templates/manager/branches/detail.html
-	//
-	// Manager chỉ sửa mô tả và ảnh bìa.
-	// Tên, địa chỉ, giờ hoạt động và trạng thái do Admin quản lý.
-	// =========================================================
 
 	@GetMapping("/branches/{id}")
 	public String branchDetail(@PathVariable Integer id, Principal principal, HttpSession session, Model model,
@@ -238,19 +234,12 @@ public class ManagerController {
 		return "manager/branches/detail";
 	}
 
-	// =========================================================
-	// CẬP NHẬT MÔ TẢ VÀ ẢNH BÌA CHI NHÁNH
-	// POST /manager/branches/{id}/homepage
-	// Không cần tạo homepage.html riêng.
-	// =========================================================
-
 	@PostMapping(value = "/branches/{id}/homepage", consumes = "multipart/form-data")
 	public String updateBranchHomepage(@PathVariable Integer id,
 			@RequestParam(name = "description", required = false) String description,
 			@RequestParam(name = "imageFile", required = false) MultipartFile imageFile, Principal principal,
 			HttpSession session, RedirectAttributes ra) {
 
-		// Kiểm tra chi nhánh thuộc Manager đang đăng nhập.
 		Branch branch = ownBranch(id, principal, session);
 
 		if (branch == null) {
@@ -260,15 +249,6 @@ public class ManagerController {
 		try {
 			String username = principal != null ? principal.getName() : null;
 
-			/*
-			 * BranchService phải có phương thức:
-			 *
-			 * updateManagerHomepage( Integer id, String username, String description,
-			 * MultipartFile imageFile )
-			 *
-			 * Service cần kiểm tra quyền sở hữu lần nữa, xử lý upload Cloudinary và lưu
-			 * Branch.
-			 */
 			branchService.updateManagerHomepage(id, username, description, imageFile);
 
 			ra.addFlashAttribute("success", "Đã cập nhật mô tả và ảnh bìa chi nhánh thành công.");
@@ -283,11 +263,6 @@ public class ManagerController {
 		return "redirect:/manager/branches/" + id;
 	}
 
-	// =========================================================
-	// QUẢN LÝ SẢN PHẨM
-	// Template: templates/manager/branches/products.html
-	// =========================================================
-
 	@GetMapping("/branches/{branchId}/products")
 	public String branchProducts(@PathVariable Integer branchId, Principal principal, HttpSession session, Model model,
 			RedirectAttributes ra) {
@@ -298,18 +273,12 @@ public class ManagerController {
 			return denied(ra);
 		}
 
-		// Topping mua riêng có khu riêng bên dưới (bật / tắt topping là bật / tắt luôn món mua riêng)
-		List<Product> products = productRepository.findAll().stream().filter(p -> !p.isToppingItem()).toList();
-
-		List<Integer> unavailableProductIds = branchProductRepository.findUnavailableProductIds(branchId);
-		model.addAttribute("toppings", toppingRepository.findAll().stream()
-				.sorted(java.util.Comparator.comparing(vn.utetra.entity.Topping::getId)).toList());
-		model.addAttribute("unavailableToppingIds", toppingService.unavailableToppingIds(branchId));
-
 		model.addAttribute("branch", branch);
-		model.addAttribute("products", products);
+		model.addAttribute("products", branchStockService.drinks());
+		model.addAttribute("unavailableProductIds", branchStockService.unavailableProductIds(branchId));
+		model.addAttribute("toppings", branchStockService.toppings());
+		model.addAttribute("unavailableToppingIds", branchStockService.unavailableToppingIds(branchId));
 		model.addAttribute("branchProducts", branchProductRepository.findByBranchId(branchId));
-		model.addAttribute("unavailableProductIds", unavailableProductIds);
 
 		return "manager/branches/products";
 	}
@@ -324,56 +293,16 @@ public class ManagerController {
 			return denied(ra);
 		}
 
-		Optional<Product> optionalProduct = productRepository.findById(productId);
-
-		if (optionalProduct.isEmpty()) {
-			ra.addFlashAttribute("error", "Không tìm thấy sản phẩm.");
-
-			return "redirect:/manager/branches/" + branchId + "/products";
+		try {
+			BranchStockService.Toggled t = branchStockService.toggleProduct(branchId, productId, false);
+			ra.addFlashAttribute("success", (t.available() ? "Đã mở bán lại " : "Đã báo hết ") + t.name() + " tại chi nhánh.");
+		} catch (vn.utetra.exception.BusinessException e) {
+			ra.addFlashAttribute("error", e.getMessage());
 		}
-
-		Product product = optionalProduct.get();
-
-		if (branch.getStatus() != BranchStatus.APPROVED) {
-			ra.addFlashAttribute("error", "Chi nhánh đang tạm ngưng, " + "không thể điều chỉnh sản phẩm.");
-
-			return "redirect:/manager/branches/" + branchId + "/products";
-		}
-
-		if (!Boolean.TRUE.equals(product.getIsAvailable())) {
-			ra.addFlashAttribute("error", "Sản phẩm đang bị khóa toàn hệ thống, " + "không thể mở bán tại chi nhánh.");
-
-			return "redirect:/manager/branches/" + branchId + "/products";
-		}
-
-		Optional<BranchProduct> optionalBranchProduct = branchProductRepository.findByBranch_IdAndProduct_Id(branchId,
-				productId);
-
-		BranchProduct branchProduct;
-
-		if (optionalBranchProduct.isPresent()) {
-			branchProduct = optionalBranchProduct.get();
-
-			branchProduct.setIsAvailable(!Boolean.TRUE.equals(branchProduct.getIsAvailable()));
-		} else {
-			branchProduct = new BranchProduct();
-			branchProduct.setBranch(branch);
-			branchProduct.setProduct(product);
-
-			// Lần đầu tạo liên kết: mặc định chưa mở bán.
-			branchProduct.setIsAvailable(false);
-		}
-
-		branchProductRepository.save(branchProduct);
-		notifyAdminsStock(branch, "món", product.getName(), Boolean.TRUE.equals(branchProduct.getIsAvailable()));
-
-		ra.addFlashAttribute("success", (Boolean.TRUE.equals(branchProduct.getIsAvailable()) ? "Đã mở bán lại " : "Đã báo hết ")
-				+ product.getName() + " tại chi nhánh.");
 
 		return "redirect:/manager/branches/" + branchId + "/products";
 	}
 
-	/** Báo hết / mở bán lại 1 topping tại chi nhánh (cả thêm vào ly lẫn mua riêng) */
 	@PostMapping("/branches/{branchId}/toppings/{toppingId}/toggle")
 	public String toggleBranchTopping(@PathVariable Integer branchId, @PathVariable Integer toppingId,
 			Principal principal, HttpSession session, RedirectAttributes ra) {
@@ -382,13 +311,8 @@ public class ManagerController {
 		if (branch == null) {
 			return denied(ra);
 		}
-		if (branch.getStatus() != BranchStatus.APPROVED) {
-			ra.addFlashAttribute("error", "Chi nhánh đang tạm ngưng, không thể điều chỉnh topping.");
-			return "redirect:/manager/branches/" + branchId + "/products#toppings";
-		}
 		try {
-			boolean dangBan = toppingService.toggleAtBranch(branch, toppingId);
-			notifyAdminsStock(branch, "topping", toppingService.get(toppingId).getName(), dangBan);
+			boolean dangBan = branchStockService.toggleTopping(branchId, toppingId, false).available();
 			ra.addFlashAttribute("success", dangBan ? "Đã mở bán lại topping tại chi nhánh."
 					: "Đã báo hết topping tại chi nhánh (khách không chọn được topping này khi đặt ở chi nhánh bạn).");
 		} catch (vn.utetra.exception.BusinessException e) {
@@ -397,9 +321,92 @@ public class ManagerController {
 		return "redirect:/manager/branches/" + branchId + "/products#toppings";
 	}
 
-	// =========================================================
-	// KHÁCH HÀNG CỦA CHI NHÁNH
-	// =========================================================
+	public record ShipperRow(Integer id, String name, String username, String phone, boolean active,
+			List<Integer> deliveringIds, long deliveredToday, long deliveredTotal, LocalDateTime lastDeliveredAt) {
+	}
+
+	@GetMapping("/branches/{branchId}/shippers")
+	public String branchShippers(@PathVariable Integer branchId, Principal principal, HttpSession session,
+			Model model, RedirectAttributes ra) {
+
+		Branch branch = ownBranch(branchId, principal, session);
+
+		if (branch == null) {
+			return denied(ra);
+		}
+
+		List<Order> orders = ordersOf(branchId);
+		LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+		List<ShipperRow> rows = new java.util.ArrayList<>();
+		for (vn.utetra.entity.User s : userRepository.findShippersOfBranch(branchId)) {
+			List<Order> mine = orders.stream()
+					.filter(o -> o.getShipper() != null && o.getShipper().getId().equals(s.getId())).toList();
+			List<Integer> delivering = mine.stream()
+					.filter(o -> o.getStatus() == OrderStatus.PICKED_UP || o.getStatus() == OrderStatus.DELIVERING)
+					.map(Order::getId).sorted().toList();
+			List<Order> delivered = mine.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED).toList();
+			long today = delivered.stream()
+					.filter(o -> o.getDeliveredAt() != null && !o.getDeliveredAt().isBefore(todayStart)).count();
+			LocalDateTime last = delivered.stream().map(Order::getDeliveredAt).filter(java.util.Objects::nonNull)
+					.max(java.util.Comparator.naturalOrder()).orElse(null);
+			rows.add(new ShipperRow(s.getId(), s.getFullName(), s.getUsername(), s.getPhone(),
+					Boolean.TRUE.equals(s.getIsActive()), delivering, today, delivered.size(), last));
+		}
+
+		model.addAttribute("branch", branch);
+		model.addAttribute("shippers", rows);
+		model.addAttribute("busyCount", rows.stream().filter(r -> r.active() && !r.deliveringIds().isEmpty()).count());
+		model.addAttribute("freeCount", rows.stream().filter(r -> r.active() && r.deliveringIds().isEmpty()).count());
+
+		return "manager/shippers/index";
+	}
+
+	@GetMapping("/branches/{branchId}/shippers/{shipperId}")
+	public String branchShipperDetail(@PathVariable Integer branchId, @PathVariable Integer shipperId,
+			Principal principal, HttpSession session, Model model, RedirectAttributes ra) {
+
+		Branch branch = ownBranch(branchId, principal, session);
+
+		if (branch == null) {
+			return denied(ra);
+		}
+
+		vn.utetra.entity.User s = userRepository.findById(shipperId).orElse(null);
+		List<Order> mine = s == null ? List.of() : ordersOf(branchId).stream()
+				.filter(o -> o.getShipper() != null && o.getShipper().getId().equals(shipperId)).toList();
+		boolean inBranch = s != null && s.getBranch() != null && s.getBranch().getId().equals(branchId);
+		if (s == null || !inBranch && mine.isEmpty()) {
+			ra.addFlashAttribute("error", "Không tìm thấy shipper này ở chi nhánh");
+			return "redirect:/manager/branches/" + branchId + "/shippers";
+		}
+
+		List<Order> delivering = mine.stream()
+				.filter(o -> o.getStatus() == OrderStatus.PICKED_UP || o.getStatus() == OrderStatus.DELIVERING)
+				.sorted(Comparator.comparing(Order::getId)).toList();
+		List<Order> waiting = mine.stream()
+				.filter(o -> o.getStatus() == OrderStatus.PENDING || o.getStatus() == OrderStatus.CONFIRMED
+						|| o.getStatus() == OrderStatus.READY)
+				.sorted(Comparator.comparing(Order::getId)).toList();
+		List<Order> delivered = mine.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED)
+				.sorted(Comparator.comparing(Order::getDeliveredAt,
+						Comparator.nullsLast(Comparator.reverseOrder())))
+				.toList();
+
+		LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+		LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+		model.addAttribute("branch", branch);
+		model.addAttribute("shipper", s);
+		model.addAttribute("inBranch", inBranch);
+		model.addAttribute("delivering", delivering);
+		model.addAttribute("waiting", waiting);
+		model.addAttribute("delivered", delivered);
+		model.addAttribute("deliveredToday", delivered.stream()
+				.filter(o -> o.getDeliveredAt() != null && !o.getDeliveredAt().isBefore(todayStart)).count());
+		model.addAttribute("deliveredMonth", delivered.stream()
+				.filter(o -> o.getDeliveredAt() != null && !o.getDeliveredAt().isBefore(monthStart)).count());
+
+		return "manager/shippers/detail";
+	}
 
 	@GetMapping("/branches/{branchId}/customers")
 	public String branchCustomers(@PathVariable Integer branchId, @RequestParam(required = false) String keyword,
@@ -445,10 +452,6 @@ public class ManagerController {
 		}
 	}
 
-	// =========================================================
-	// ĐƠN HÀNG - SỬ DỤNG ManagerOrderController
-	// =========================================================
-
 	@GetMapping("/branches/{branchId}/orders")
 	public String branchOrders(@PathVariable Integer branchId) {
 
@@ -461,19 +464,10 @@ public class ManagerController {
 		return "redirect:/manager/orders/" + orderId;
 	}
 
-	// =========================================================
-	// ĐẾM ĐƠN THEO TRẠNG THÁI
-	// =========================================================
-
 	private long countOrdersByStatus(List<Order> orders, OrderStatus status) {
 
 		return orders.stream().filter(o -> o.getStatus() == status).count();
 	}
-
-	// =========================================================
-	// VOUCHER CỦA CHI NHÁNH
-	// Template: templates/manager/vouchers/index.html
-	// =========================================================
 
 	@GetMapping("/branches/{branchId}/vouchers")
 	public String branchVouchers(@PathVariable Integer branchId, Model model, Principal principal, HttpSession session,
@@ -499,11 +493,6 @@ public class ManagerController {
 
 		return "manager/vouchers/index";
 	}
-
-	// =========================================================
-	// BÁO CÁO DOANH THU
-	// Template: templates/manager/reports/index.html
-	// =========================================================
 
 	@GetMapping("/branches/{branchId}/reports")
 	public String branchReports(@PathVariable Integer branchId,
@@ -533,113 +522,40 @@ public class ManagerController {
 			endDate = temp;
 		}
 
-		LocalDateTime rangeStart = startDate.atStartOfDay();
-		LocalDateTime rangeEnd = endDate.plusDays(1).atStartOfDay();
+		List<ReportService.Point> days = reportService.byDay(startDate, endDate, branchId);
+		ReportService.Point sum = ReportService.total(days);
+		List<ReportService.Point> today1 = reportService.byDay(today, today, branchId);
+		LocalDate monthStartDate = today.withDayOfMonth(1);
+		ReportService.Point month = ReportService.total(reportService.byDay(monthStartDate, today, branchId));
+		List<ReportService.Point> months = reportService.byMonth(12, endDate, branchId);
 
 		List<Order> branchOrders = ordersOf(branchId);
-
-		List<Order> deliveredOrders = branchOrders.stream().filter(order -> order.getStatus() == OrderStatus.DELIVERED)
-				.filter(order -> order.getDeliveredAt() != null)
-				.filter(order -> !order.getDeliveredAt().isBefore(rangeStart))
-				.filter(order -> order.getDeliveredAt().isBefore(rangeEnd))
-				.sorted(Comparator.comparing(Order::getDeliveredAt)).collect(Collectors.toList());
-
-		BigDecimal selectedRevenue = BigDecimal.ZERO;
-
-		for (Order order : deliveredOrders) {
-			if (order.getSalesAmount() != null) {
-				selectedRevenue = selectedRevenue.add(order.getSalesAmount());
-			}
-		}
-
-		LocalDateTime todayStart = today.atStartOfDay();
-		LocalDateTime tomorrowStart = today.plusDays(1).atStartOfDay();
-
-		LocalDate monthStartDate = today.withDayOfMonth(1);
-
-		LocalDateTime monthStart = monthStartDate.atStartOfDay();
-		LocalDateTime nextMonthStart = monthStartDate.plusMonths(1).atStartOfDay();
-
-		BigDecimal todayRevenue = sumRevenue(branchOrders, todayStart, tomorrowStart);
-
-		BigDecimal monthRevenue = sumRevenue(branchOrders, monthStart, nextMonthStart);
-
-		long todayOrders = countDeliveredOrders(branchOrders, todayStart, tomorrowStart);
-
-		long monthOrders = countDeliveredOrders(branchOrders, monthStart, nextMonthStart);
-
-		Map<LocalDate, BigDecimal> revenueByDay = new LinkedHashMap<>();
-
-		for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-
-			revenueByDay.put(date, BigDecimal.ZERO);
-		}
-
-		for (Order order : deliveredOrders) {
-			LocalDate deliveredDate = order.getDeliveredAt().toLocalDate();
-
-			BigDecimal amount = order.getSalesAmount();
-
-			if (amount != null) {
-				revenueByDay.merge(deliveredDate, amount, BigDecimal::add);
-			}
-		}
-
-		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM");
-
-		List<String> chartLabels = revenueByDay.keySet().stream().map(date -> date.format(formatter))
-				.collect(Collectors.toList());
-
-		List<BigDecimal> chartValues = new ArrayList<>(revenueByDay.values());
-
-		BigDecimal maxRevenue = chartValues.stream().filter(Objects::nonNull).max(BigDecimal::compareTo)
-				.orElse(BigDecimal.ZERO);
-
-		List<Integer> chartPercentages = new ArrayList<>();
-
-		for (BigDecimal revenue : chartValues) {
-			int percentage = 0;
-
-			if (revenue != null && maxRevenue.compareTo(BigDecimal.ZERO) > 0) {
-
-				percentage = revenue.multiply(BigDecimal.valueOf(100)).divide(maxRevenue, 0, RoundingMode.HALF_UP)
-						.intValue();
-			}
-
-			chartPercentages.add(percentage);
-		}
 
 		model.addAttribute("branch", branch);
 		model.addAttribute("startDate", startDate);
 		model.addAttribute("endDate", endDate);
 
-		model.addAttribute("todayRevenue", todayRevenue);
-		model.addAttribute("monthRevenue", monthRevenue);
-		model.addAttribute("selectedRevenue", selectedRevenue);
-
-		model.addAttribute("selectedAverage", deliveredOrders.isEmpty() ? BigDecimal.ZERO
-				: selectedRevenue.divide(BigDecimal.valueOf(deliveredOrders.size()), 0, RoundingMode.HALF_UP));
-
-		model.addAttribute("todayOrders", todayOrders);
-		model.addAttribute("monthOrders", monthOrders);
-		model.addAttribute("selectedOrders", deliveredOrders.size());
+		model.addAttribute("todayRevenue", today1.get(0).revenue());
+		model.addAttribute("todayOrders", today1.get(0).orders());
+		model.addAttribute("monthRevenue", month.revenue());
+		model.addAttribute("monthOrders", month.orders());
+		model.addAttribute("selectedRevenue", sum.revenue());
+		model.addAttribute("selectedOrders", sum.orders());
+		model.addAttribute("selectedAverage", sum.average());
 
 		model.addAttribute("allBranchOrders", branchOrders.size());
-
 		model.addAttribute("pendingOrders", countOrdersByStatus(branchOrders, OrderStatus.PENDING));
-
 		model.addAttribute("cancelledOrders", countOrdersByStatus(branchOrders, OrderStatus.CANCELLED));
 
-		model.addAttribute("chartLabels", chartLabels);
-		model.addAttribute("chartValues", chartValues);
-		model.addAttribute("chartPercentages", chartPercentages);
+		model.addAttribute("chartLabels", days.stream().map(ReportService.Point::label).toList());
+		model.addAttribute("chartValues", days.stream().map(ReportService.Point::revenue).toList());
+		model.addAttribute("monthLabels", months.stream().map(ReportService.Point::label).toList());
+		model.addAttribute("monthValues", months.stream().map(ReportService.Point::revenue).toList());
+		model.addAttribute("monthCounts", months.stream().map(ReportService.Point::orders).toList());
+		model.addAttribute("topProducts", reportService.topProducts(startDate, endDate, branchId, 10));
 
 		return "manager/reports/index";
 	}
-
-	// =========================================================
-	// TÍNH DOANH THU ĐƠN ĐÃ GIAO TRONG KHOẢNG THỜI GIAN
-	// =========================================================
 
 	private BigDecimal sumRevenue(List<Order> orders, LocalDateTime start, LocalDateTime end) {
 
@@ -649,10 +565,6 @@ public class ManagerController {
 				.filter(order -> order.getDeliveredAt().isBefore(end)).map(Order::getSalesAmount)
 				.filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
 	}
-
-	// =========================================================
-	// ĐẾM ĐƠN ĐÃ GIAO TRONG KHOẢNG THỜI GIAN
-	// =========================================================
 
 	private long countDeliveredOrders(List<Order> orders, LocalDateTime start, LocalDateTime end) {
 

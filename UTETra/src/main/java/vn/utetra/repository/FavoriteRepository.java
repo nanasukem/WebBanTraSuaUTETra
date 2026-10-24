@@ -13,7 +13,6 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Integer> {
 
 	boolean existsByUserIdAndProductId(Integer userId, Integer productId);
 
-	/** Món đã thích, thích sau cùng lên đầu */
 	List<Favorite> findByUserIdOrderByCreatedAtDescIdDesc(Integer userId);
 
 	long countByProductId(Integer productId);

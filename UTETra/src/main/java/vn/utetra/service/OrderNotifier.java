@@ -13,19 +13,12 @@ import vn.utetra.entity.enums.DeliveryType;
 import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.service.impl.OrderFlowServiceImpl;
 
-/**
- * Báo tin về đơn hàng:
- * 1. Chuông thông báo (NotificationService): lưu bảng Notifications + đẩy /user/queue/notifications
- * 2. Trang đơn hàng đang mở tự cập nhật: đẩy OrderEventRes SAU KHI lưu đơn thành công (afterCommit)
- *    - Quán (manager của chi nhánh): /user/queue/manager-orders
- *    - Khách:                /user/queue/orders
- *    Gửi theo tài khoản (convertAndSendToUser) nên người khác không nghe lén được.
- */
 @Component
 public class OrderNotifier {
 
 	public static final String MANAGER_QUEUE = "/queue/manager-orders";
 	public static final String CUSTOMER_QUEUE = "/queue/orders";
+	public static final String SHIPPER_QUEUE = "/queue/shipper-orders";
 
 	private final NotificationService notificationService;
 	private final SimpMessagingTemplate messagingTemplate;
@@ -38,12 +31,10 @@ public class OrderNotifier {
 		this.userRepository = userRepository;
 	}
 
-	/** Đọc lại người dùng theo id: proxy của đơn có thể đã tách khỏi phiên sau các câu UPDATE (clearAutomatically) */
 	private User fresh(User u) {
 		return u == null ? null : userRepository.findById(u.getId()).orElse(u);
 	}
 
-	/** Khách vừa đặt đơn -> báo manager của chi nhánh (chuông + popup ở Quầy đơn hàng) */
 	public void onNewOrder(Order o) {
 		User owner = fresh(o.getBranch().getOwner());
 		boolean pickup = o.getDeliveryType() == DeliveryType.PICKUP;
@@ -55,20 +46,10 @@ public class OrderNotifier {
 				o.getStatus().name(), OrderFlowServiceImpl.statusLabel(o.getStatus(), pickup), title, message));
 	}
 
-	/**
-	 * Đơn đổi trạng thái.
-	 * byCustomer = true: khách tự huỷ -> báo cho quán.
-	 * byCustomer = false: quán / shipper đổi -> báo cho khách.
-	 * Trang đơn hàng của cả hai bên đang mở đều tự cập nhật.
-	 */
 	public void onStatusChanged(Order o, boolean byCustomer) {
 		onStatusChanged(o, byCustomer ? CancelledBy.CUSTOMER : CancelledBy.STORE, true);
 	}
 
-	/**
-	 * actor: CUSTOMER (khách huỷ) / STORE (quán, shipper, Admin) / SYSTEM (hệ thống tự huỷ: quá hạn thanh toán).
-	 * storeKnew = false: đơn huỷ khi còn Chờ thanh toán -> quán chưa từng thấy đơn, không báo quán.
-	 */
 	public void onStatusChanged(Order o, CancelledBy actor, boolean storeKnew) {
 		boolean byCustomer = actor == CancelledBy.CUSTOMER;
 		User customer = fresh(o.getUser());
@@ -128,19 +109,32 @@ public class OrderNotifier {
 				title, message);
 		push(customer.getUsername(), CUSTOMER_QUEUE, event);
 		if (storeKnew) push(owner.getUsername(), MANAGER_QUEUE, event);
+		if (!pickup && storeKnew) pushShippers(o, event);
+	}
+
+	public void onShipperChanged(Order o) {
+		String label = OrderFlowServiceImpl.statusLabel(o.getStatus(), false);
+		String title = o.getShipper() == null ? "Đơn #" + o.getId() + " chờ shipper nhận"
+				: "Quán giao đơn #" + o.getId() + " cho " + o.getShipper().getFullName();
+		pushShippers(o, new OrderEventRes("SHIPPER", o.getId(), o.getBranch().getId(), o.getStatus().name(), label,
+				title, ""));
+	}
+
+	private void pushShippers(Order o, OrderEventRes event) {
+		for (User s : userRepository.findShippersOfBranch(o.getBranch().getId())) {
+			if (Boolean.TRUE.equals(s.getIsActive())) push(s.getUsername(), SHIPPER_QUEUE, event);
+		}
 	}
 
 	private static String money(Order o) {
 		return String.format("%,d", o.getTotalAmount().longValue()).replace(',', '.');
 	}
 
-	/** Đẩy WebSocket sau khi transaction commit (chưa lưu xong thì chưa báo) */
 	private void push(String username, String destination, OrderEventRes payload) {
 		Runnable send = () -> {
 			try {
 				messagingTemplate.convertAndSendToUser(username, destination, payload);
 			} catch (Exception e) {
-				// Lỗi WebSocket không được làm hỏng đơn hàng; trang quán có tự tải lại mỗi phút
 			}
 		};
 		if (TransactionSynchronizationManager.isSynchronizationActive()) {

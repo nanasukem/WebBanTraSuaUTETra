@@ -56,7 +56,6 @@
 }
 		</style>
 
-		<!-- Tiêu đề + chọn chi nhánh + trạng thái kết nối + chuông -->
 		<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
 			<h1 class="h4 fw-bold text-success mb-0 me-2">
 				<i class="bi bi-bell me-1"></i>Quầy đơn hàng
@@ -84,7 +83,6 @@
 		<div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
 		<div id="vo-error" class="small text-danger mb-2"></div>
 
-		<!-- 4 cột -->
 		<div class="row g-3" th:if="${branchId != null}">
 			<div class="col-md-6 col-xl-3">
 				<div class="vo-col">
@@ -124,7 +122,6 @@
 			</div>
 		</div>
 
-		<!-- Modal huỷ đơn -->
 		<div class="modal fade" id="vo-cancel-modal" tabindex="-1" aria-hidden="true">
 			<div class="modal-dialog modal-dialog-centered">
 				<div class="modal-content">
@@ -154,10 +151,8 @@
 			</div>
 		</div>
 
-		<!-- Popup đơn mới -->
 		<div class="vo-toasts" id="vo-toasts"></div>
 
-		<!-- manager-orders.js tự nạp thư viện STOMP (WebSocket); mạng chậm thì bảng đơn vẫn hiện bình thường -->
 		<script th:src="@{/js/live-socket.js}"></script>
 		<script th:src="@{/js/manager-orders.js}"></script>
 	</div>

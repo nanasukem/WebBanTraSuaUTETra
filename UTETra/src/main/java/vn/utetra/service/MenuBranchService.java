@@ -17,20 +17,12 @@ import vn.utetra.repository.BranchProductRepository;
 import vn.utetra.repository.BranchRepository;
 import vn.utetra.repository.ProductRepository;
 
-/**
- * "MENU ĐANG XEM TẠI CHI NHÁNH NÀO" (như Katinat / Phúc Long: chọn cửa hàng trước, menu báo món hết ngay).
- * - Khách (kể cả chưa đăng nhập) và Admin: tự chọn chi nhánh ở đầu menu, lưu trong phiên (session).
- * - Manager: luôn là chi nhánh mình quản lý, không đổi được.
- * - Chưa chọn: menu chung như cũ, bước thanh toán mới chọn chi nhánh.
- */
 @Service
 @Transactional(readOnly = true)
 public class MenuBranchService {
 
 	public static final String SESSION_KEY = "menuBranchId";
-	/** true = chi nhánh đang chọn là hệ thống tự chọn gần nhất (khách chưa tự đổi) */
 	public static final String SESSION_AUTO = "menuBranchAuto";
-	/** true = khách bấm "Chọn khi thanh toán": không tự chọn gần nhất nữa */
 	public static final String SESSION_NONE = "menuBranchNone";
 
 	private final BranchRepository branchRepository;
@@ -54,12 +46,10 @@ public class MenuBranchService {
 				.sorted(Comparator.comparing(Branch::getId)).toList();
 	}
 
-	/** Manager: menu cố định theo chi nhánh của mình */
 	public boolean locked(HttpSession session) {
 		return "MANAGER".equals(role(session));
 	}
 
-	/** Chi nhánh đang xem menu (null = chưa chọn) */
 	public Branch current(HttpSession session) {
 		if (session == null) return null;
 		if (locked(session)) {
@@ -72,7 +62,6 @@ public class MenuBranchService {
 			Branch b = branchRepository.findById(bid).filter(x -> x.getStatus() == BranchStatus.APPROVED).orElse(null);
 			if (b != null) return b;
 		}
-		// Chưa chọn: khách đã đăng nhập có địa chỉ mặc định (đã ghim vị trí) -> tự chọn chi nhánh gần nhất
 		if (!Boolean.TRUE.equals(session.getAttribute(SESSION_NONE)) && "USER".equals(role(session))) {
 			User u = (User) session.getAttribute("user");
 			Branch near = addressRepository.findByUserIdAndIsDefaultTrue(u.getId())
@@ -87,19 +76,16 @@ public class MenuBranchService {
 		return null;
 	}
 
-	/** Đang dùng chi nhánh do hệ thống tự chọn gần nhất */
 	public boolean auto(HttpSession session) {
 		return session != null && Boolean.TRUE.equals(session.getAttribute(SESSION_AUTO));
 	}
 
-	/** Chi nhánh đang hoạt động gần toạ độ (lat, lng) nhất (chi nhánh chưa có toạ độ thì bỏ qua) */
 	public Branch nearest(double lat, double lng) {
 		return openBranches().stream().filter(b -> b.getLatitude() != null && b.getLongitude() != null)
 				.min(Comparator.comparingDouble(b -> km(lat, lng, b.getLatitude().doubleValue(), b.getLongitude().doubleValue())))
 				.orElse(null);
 	}
 
-	/** Trình duyệt gửi vị trí (khách chưa đăng nhập / chưa có địa chỉ) -> tự chọn chi nhánh gần nhất */
 	public Branch chooseNearest(HttpSession session, double lat, double lng) {
 		if (locked(session) || session.getAttribute(SESSION_KEY) != null
 				|| Boolean.TRUE.equals(session.getAttribute(SESSION_NONE))) {
@@ -125,22 +111,20 @@ public class MenuBranchService {
 		return b == null ? null : b.getId();
 	}
 
-	/** Khách / Admin chọn chi nhánh (null hoặc chi nhánh không hoạt động = bỏ chọn) */
 	public void choose(HttpSession session, Integer branchId) {
 		if (locked(session)) return;
 		boolean ok = branchId != null && branchRepository.findById(branchId)
 				.map(b -> b.getStatus() == BranchStatus.APPROVED).orElse(false);
-		session.removeAttribute(SESSION_AUTO); // khách tự chọn -> không còn là "gần nhất tự chọn"
+		session.removeAttribute(SESSION_AUTO);
 		if (ok) {
 			session.setAttribute(SESSION_KEY, branchId);
 			session.removeAttribute(SESSION_NONE);
 		} else {
 			session.removeAttribute(SESSION_KEY);
-			session.setAttribute(SESSION_NONE, true); // "Chọn khi thanh toán": thôi tự chọn
+			session.setAttribute(SESSION_NONE, true);
 		}
 	}
 
-	/** Món đang hết ở chi nhánh (Manager báo hết món, hoặc topping mua riêng mà topping đó hết) */
 	public Set<Integer> outProductIds(Integer branchId) {
 		if (branchId == null) return Set.of();
 		Set<Integer> ids = new HashSet<>(branchProductRepository.findUnavailableProductIds(branchId));

@@ -2,18 +2,9 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/user-layout :: main('Thực đơn - UTETra', ~{::#menu-content})}">
 
-<!--
-	TRANG THỰC ĐƠN - ai cũng xem được (Guest, User, Manager, Admin):
-	TOÀN BỘ món đang bán, xếp theo từng danh mục như tờ menu ở quán.
-- Thanh danh mục (dính trên đầu khi cuộn): bấm để cuộn tới danh mục (#cat-{id})
-- Tìm kiếm theo tên + sắp xếp (mặc định / bán chạy / mới nhất / giá)
-- Món nổi bật (bán chạy, mới, đánh giá, yêu thích) nằm ở TRANG CHỦ, không lặp lại ở đây
-	cardMode (HomeController): buy = USER chọn món | guest = "+" dẫn tới đăng nhập | view = Manager/Admin chỉ xem
--->
 <body>
 	<div id="menu-content">
 
-		<!-- TIÊU ĐỀ + TÌM KIẾM -->
 		<section id="thuc-don" class="bg-white rounded-4 shadow-sm p-4 mb-3"
 			style="scroll-margin-top: 90px;">
 			<div class="row g-3 align-items-end">
@@ -75,10 +66,8 @@
 			</div>
 		</section>
 
-		<!-- Đang đặt tại chi nhánh nào (món hết báo ngay) -->
 		<div th:replace="~{fragments/menu-branch :: bar}"></div>
 
-		<!-- THANH DANH MỤC (dính trên đầu khi cuộn) -->
 		<nav class="menu-cats bg-light py-2 mb-3"
 			th:unless="${#lists.isEmpty(sections)}" aria-label="Danh mục">
 			<div class="d-flex flex-nowrap overflow-auto gap-2 pb-1">
@@ -91,7 +80,6 @@
 			</div>
 		</nav>
 
-		<!-- TỪNG DANH MỤC -->
 		<section th:each="sec : ${sections}"
 			th:id="'cat-' + ${sec.categoryId}" class="menu-section mb-5">
 			<div
@@ -114,7 +102,6 @@
 			</div>
 		</section>
 
-		<!-- KHÔNG CÓ MÓN -->
 		<div class="card border-0 shadow-sm rounded-4"
 			th:if="${#lists.isEmpty(sections)}">
 			<div class="card-body text-center py-5">
@@ -126,7 +113,6 @@
 			</div>
 		</div>
 
-		<!-- MODAL CHỌN MÓN (chỉ nút "+" của USER mới mở) -->
 		<div th:replace="~{fragments/product-modal :: productModal}"></div>
 
 		<style>
@@ -153,7 +139,6 @@
 
 		<script>
 			(function() {
-				// TÌM KIẾM: tự gửi sau khi ngừng gõ 400ms; đổi sắp xếp thì gửi ngay
 				const form = document.getElementById('menuFilterForm');
 				const keyword = document.getElementById('keyword');
 				const sortBy = document.getElementById('sortBy');
@@ -175,7 +160,6 @@
 						form.requestSubmit();
 					});
 
-				// THANH DANH MỤC: tô sáng danh mục đang xem khi cuộn
 				const links = Array.from(document
 						.querySelectorAll('.menu-cat-link'));
 				const sections = Array.from(document

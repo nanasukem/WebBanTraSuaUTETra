@@ -7,7 +7,6 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
-/** Bảng MemberTiers - hạng thành viên, xét theo chi tiêu 12 tháng gần nhất */
 @Entity
 @Table(name = "MemberTiers")
 @Getter
@@ -23,13 +22,13 @@ public class MemberTier {
 	private String name;
 
 	@Column(name = "min_spent", nullable = false, precision = 12, scale = 0)
-	private BigDecimal minSpent = BigDecimal.ZERO; // chi tiêu tối thiểu để đạt hạng
+	private BigDecimal minSpent = BigDecimal.ZERO;
 
 	@Column(name = "discount_percent", nullable = false, precision = 5, scale = 2)
-	private BigDecimal discountPercent = BigDecimal.ZERO; // % giảm tiền món mỗi đơn
+	private BigDecimal discountPercent = BigDecimal.ZERO;
 
 	@Column(name = "max_discount", precision = 12, scale = 0)
-	private BigDecimal maxDiscount; // giảm tối đa mỗi đơn, null = không giới hạn
+	private BigDecimal maxDiscount;
 
 	@Column(name = "sort_order", nullable = false)
 	private Integer sortOrder = 0;

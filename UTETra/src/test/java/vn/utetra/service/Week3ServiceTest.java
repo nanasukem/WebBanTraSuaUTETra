@@ -39,21 +39,6 @@ import vn.utetra.exception.BusinessException;
 import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.UserRepository;
 
-/**
- * TEST TUẦN 3 (User): 20 sản phẩm nhất có phân trang, chi tiết món, thích sản phẩm, sản phẩm đã xem,
- * đánh giá + bình luận sản phẩm đã mua, cập nhật thông tin cá nhân, đổi mật khẩu,
- * khuyến mãi của chi nhánh (Manager chỉ xem, Admin tạo).
- *
- * Mỗi test tự rollback.
- * Không test phần tải file thật lên Cloudinary (chỉ test các trường hợp file bị từ chối TRƯỚC khi tải).
- *
- * Dữ liệu mẫu dùng ở đây:
- * - user1 (id 6, mật khẩu 123456): giỏ 1 Bạc xỉu M = 34.000; thích món 1, 7; đã xem món 1, 2, 5
- *   đơn #1 ĐÃ GIAO: ly #1 = món 1 (ĐÃ đánh giá), ly #2 = món 2 (CHƯA đánh giá), dùng mã giảm món VVN15 (15.000đ)
- *   đơn #2 CHỜ XÁC NHẬN: ly #3 = món 5
- * - user2 (id 7)
- * - 40 món, mỗi món có size S (+0), M (+5.000), L (+10.000). Món 1 = Trà sữa trân châu đường đen 35.000, danh mục Trà sữa
- */
 @SpringBootTest
 @Transactional
 class Week3ServiceTest {
@@ -78,17 +63,15 @@ class Week3ServiceTest {
 	@Autowired vn.utetra.repository.MemberTierRepository memberTierRepository;
 	@Autowired jakarta.persistence.EntityManager em;
 
-	/** Giờ mở cửa mẫu 7:00 - 22:00 & chuẩn hoá dữ liệu mẫu (rollback sau mỗi test) */
 	@org.junit.jupiter.api.BeforeEach
 	void moCuaCaNgay() {
 		em.createNativeQuery("UPDATE Branches SET open_time = '00:00', close_time = '00:00'").executeUpdate();
-		// Dữ liệu thử tay trên web (báo hết món / topping, Admin ngừng bán) không làm test sai -> trả về như dữ liệu mẫu (tự rollback)
 		em.createNativeQuery("DELETE FROM BranchToppings").executeUpdate();
 		em.createNativeQuery("UPDATE Toppings SET is_available = 1").executeUpdate();
 		em.createNativeQuery("UPDATE Products SET is_available = 1").executeUpdate();
 		em.createNativeQuery("DELETE FROM BranchProducts WHERE NOT (branch_id = 2 AND product_id = 4)").executeUpdate();
-		em.createNativeQuery("IF NOT EXISTS (SELECT 1 FROM BranchProducts WHERE branch_id = 2 AND product_id = 4) "
-				+ "INSERT INTO BranchProducts (branch_id, product_id, is_available) VALUES (2, 4, 0)").executeUpdate();
+		em.createNativeQuery("INSERT INTO BranchProducts (branch_id, product_id, is_available) SELECT 2, 4, 0 "
+				+ "WHERE NOT EXISTS (SELECT 1 FROM BranchProducts WHERE branch_id = 2 AND product_id = 4)").executeUpdate();
 		em.createNativeQuery("UPDATE BranchProducts SET is_available = 0 WHERE branch_id = 2 AND product_id = 4").executeUpdate();
 		em.createNativeQuery("UPDATE Users SET carrier_id = 1 WHERE carrier_id IS NOT NULL AND carrier_id <> 1").executeUpdate();
 		em.createNativeQuery("UPDATE Orders SET carrier_id = 1 WHERE delivery_type = 'DELIVERY'").executeUpdate();
@@ -104,8 +87,6 @@ class Week3ServiceTest {
 				+ "AND NOT EXISTS (SELECT 1 FROM VoucherUsages u WHERE u.voucher_id = v.id AND u.order_id = 1)").executeUpdate();
 		em.clear();
 	}
-
-	// ======================= 20 SẢN PHẨM NHẤT (PHÂN TRANG) =======================
 
 	@Test
 	void top20_banChay_phanTrang8MonMotTrang() {
@@ -152,8 +133,6 @@ class Week3ServiceTest {
 		}
 	}
 
-	// ======================= CHI TIẾT MÓN =======================
-
 	@Test
 	void chiTietMon_giaTheoSize_soSao() {
 		ProductDetailRes d = productService.getDetail(1);
@@ -176,8 +155,6 @@ class Week3ServiceTest {
 		assertTrue(related.stream().noneMatch(c -> c.id() == 1), "không lặp lại món đang xem");
 		assertTrue(related.stream().allMatch(c -> "Trà sữa".equals(c.categoryName())));
 	}
-
-	// ======================= THÍCH SẢN PHẨM =======================
 
 	@Test
 	void thich_bamLan2_boThich() {
@@ -205,8 +182,6 @@ class Week3ServiceTest {
 		assertThrows(ResourceNotFoundException.class, () -> favoriteService.toggle(USER1, 99999));
 	}
 
-	// ======================= SẢN PHẨM ĐÃ XEM =======================
-
 	@Test
 	void daXem_monMoi_lenDau_xemLaiKhongTrung() {
 		long before = viewedProductService.count(USER1);
@@ -214,7 +189,7 @@ class Week3ServiceTest {
 		assertEquals(before + 1, viewedProductService.count(USER1));
 		assertEquals(10, viewedProductService.recent(USER1, 40).get(0).id());
 
-		viewedProductService.record(USER1, 1); // món đã xem rồi -> chỉ cập nhật thời gian
+		viewedProductService.record(USER1, 1);
 		assertEquals(before + 1, viewedProductService.count(USER1));
 		assertEquals(1, viewedProductService.recent(USER1, 40).get(0).id());
 		assertEquals(2, viewedProductService.recent(USER1, 2).size());
@@ -230,8 +205,6 @@ class Week3ServiceTest {
 		assertEquals(0, viewedProductService.count(USER1));
 		assertTrue(viewedProductService.recent(USER1, 40).isEmpty());
 	}
-
-	// ======================= ĐÁNH GIÁ (NHƯ APP KATINAT / HIGHLANDS) =======================
 
 	@Test
 	void danhGia_lyDaMua_chiDonDaGiao() {
@@ -283,7 +256,6 @@ class Week3ServiceTest {
 
 	@Test
 	void danhGia_caDon1Luot_monVaQuan() {
-		// Đơn mới của user1: đến lấy -> quán nhận -> pha xong -> khách nhận
 		int id = orderService.placeOrder(USER1, denLayUser1(false)).getId();
 		orderFlowService.updateStatus(id, OrderStatus.CONFIRMED, null);
 		orderFlowService.updateStatus(id, OrderStatus.READY, null);
@@ -351,8 +323,6 @@ class Week3ServiceTest {
 		assertNull(ReviewService.mediaType(new MockMultipartFile("m", "a.txt", "text/plain", new byte[1])));
 	}
 
-	// ======================= AI HUỶ ĐƠN =======================
-
 	@Test
 	void huyDon_ghiRoKhachTuHuyHayQuanHuy() {
 		orderFlowService.cancelByCustomer(USER1, 2, "Đặt nhầm, không còn nhu cầu");
@@ -366,8 +336,6 @@ class Week3ServiceTest {
 		assertEquals("STORE", orderFlowService.myOrder(USER1, id).cancelledBy(), "quán huỷ khi đang pha chế");
 		assertEquals("Cửa hàng đã huỷ đơn", OrderFlowServiceImpl.cancelledByLabel(CancelledBy.STORE, true));
 	}
-
-	// ======================= CHUÔNG THÔNG BÁO =======================
 
 	@Test
 	void thongBao_moiNhatLenDau_daDoc() {
@@ -395,26 +363,21 @@ class Week3ServiceTest {
 		assertEquals(truoc + 1, notificationService.unreadCount(1));
 	}
 
-	// ======================= GIẢM GIÁ THEO HẠNG THÀNH VIÊN =======================
-
 	@Test
 	void hangThanhVien_giamDungPhanTram_vaToiDa() {
 		List<MemberTier> tiers = memberTierRepository.findAllByOrderByMinSpentAsc();
 		assertEquals(List.of("Thành viên", "Bạc", "Vàng", "Kim cương"), tiers.stream().map(MemberTier::getName).toList());
 		java.math.BigDecimal tram = new java.math.BigDecimal("100000");
 		java.math.BigDecimal trieu = new java.math.BigDecimal("1000000");
-		assertMoney(0, memberService.calculateDiscount(tiers.get(0), tram));       // 0%
-		assertMoney(3000, memberService.calculateDiscount(tiers.get(1), tram));    // Bạc 3%
-		assertMoney(10000, memberService.calculateDiscount(tiers.get(1), trieu));  // Bạc tối đa 10.000
-		assertMoney(5000, memberService.calculateDiscount(tiers.get(2), tram));    // Vàng 5%
-		assertMoney(20000, memberService.calculateDiscount(tiers.get(2), trieu));  // Vàng tối đa 20.000
-		assertMoney(8000, memberService.calculateDiscount(tiers.get(3), tram));    // Kim cương 8%
-		assertMoney(30000, memberService.calculateDiscount(tiers.get(3), trieu));  // Kim cương tối đa 30.000
+		assertMoney(0, memberService.calculateDiscount(tiers.get(0), tram));
+		assertMoney(3000, memberService.calculateDiscount(tiers.get(1), tram));
+		assertMoney(10000, memberService.calculateDiscount(tiers.get(1), trieu));
+		assertMoney(5000, memberService.calculateDiscount(tiers.get(2), tram));
+		assertMoney(20000, memberService.calculateDiscount(tiers.get(2), trieu));
+		assertMoney(8000, memberService.calculateDiscount(tiers.get(3), tram));
+		assertMoney(30000, memberService.calculateDiscount(tiers.get(3), trieu));
 		assertEquals("Thành viên", memberService.getTierInfo(USER1).tierName(), "user1 mới chi 148.000đ");
 	}
-
-	/** user1 đến lấy ở chi nhánh 1 (giỏ mẫu: 1 Bạc xỉu M = 34.000) */
-	// ======================= GHI CHÚ MÓN + MUA LẠI =======================
 
 	@Test
 	void ghiChuMon_khacGhiChuThiTachDong_giongThiCongDon_theoVaoDon() {
@@ -507,8 +470,6 @@ class Week3ServiceTest {
 		assertEquals(0, java.math.BigDecimal.valueOf(expected).compareTo(actual), "mong đợi " + expected + " nhưng là " + actual);
 	}
 
-	// ======================= THÔNG TIN CÁ NHÂN + ĐỔI MẬT KHẨU =======================
-
 	@Test
 	void capNhatThongTin_chuanHoaTenVaSoDienThoai() {
 		User u = userService.updateProfile(USER1, "  Trần   Thị  Khách Mới ", "091 234 5678", null);
@@ -550,8 +511,6 @@ class Week3ServiceTest {
 		assertTrue(passwordEncoder.matches("123456", userRepository.findById(USER1).orElseThrow().getPassword()));
 	}
 
-	// ======================= KHUYẾN MÃI: MANAGER CHỈ XEM =======================
-
 	@Test
 	void khuyenMai_managerThayMaToanChuoiVaMaRiengChiNhanhMinh() {
 		List<ManagerVoucherRes> cn1 = voucherService.branchView(1);
@@ -562,7 +521,6 @@ class Week3ServiceTest {
 		assertTrue(cn1.stream().anyMatch(v -> v.code().equals("UTETRA20") && v.chainWide()));
 		assertTrue(cn2.stream().anyMatch(v -> v.code().equals("UTETRA20") && v.chainWide()));
 
-		// Đơn #1 (chi nhánh 1) dùng VVN15 giảm 15.000đ tiền món
 		assertTrue(vvn15.usedAtBranch() >= 1);
 		assertTrue(vvn15.discountAtBranch().compareTo(new java.math.BigDecimal("15000")) >= 0);
 		assertEquals("Giảm tiền món", vvn15.applyToLabel());
@@ -581,8 +539,6 @@ class Week3ServiceTest {
 		assertEquals("RUNNING", list.get(0).status(), "mã đang chạy xếp trước");
 		assertTrue(list.indexOf(off) > list.stream().filter(x -> x.status().equals("RUNNING")).count() - 1);
 	}
-
-	// ======================= NHÃN TRẠNG THÁI THEO ĐỀ =======================
 
 	@Test
 	void tabDonHang_giongAppThat() {

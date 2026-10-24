@@ -19,12 +19,6 @@ import vn.utetra.entity.User;
 import vn.utetra.repository.NotificationRepository;
 import vn.utetra.repository.UserRepository;
 
-/**
- * Chuông thông báo (User, Manager, Admin):
- * - Lưu vào bảng Notifications (cùng transaction với việc gây ra thông báo)
- * - Lưu xong (commit) thì đẩy WebSocket tới đúng tài khoản: /user/queue/notifications
- *   -> chuông tăng số, thông báo mới hiện lên ĐẦU danh sách, không cần tải lại trang
- */
 @Service
 @Transactional(readOnly = true)
 public class NotificationService {
@@ -44,20 +38,15 @@ public class NotificationService {
 		this.messagingTemplate = messagingTemplate;
 	}
 
-	// ================= GỬI =================
-
-	/** Gửi 1 thông báo cho 1 người */
 	@Transactional
 	public Notification create(User to, Order order, String type, String title, String content, String link) {
 		return create(to, order, type, title, content, link, null);
 	}
 
-	/** refKey != null: người này đã nhận thông báo cùng refKey thì bỏ qua (chống trùng) */
 	@Transactional
 	public Notification create(User to, Order order, String type, String title, String content, String link,
 			String refKey) {
 		if (to == null) return null;
-		// Người nhận có thể là proxy đã tách khỏi phiên (sau các câu UPDATE clearAutomatically) -> đọc lại theo id
 		to = userRepository.findById(to.getId()).orElse(to);
 		if (refKey != null && notificationRepository.existsByUserIdAndRefKey(to.getId(), refKey)) return null;
 		Notification n = new Notification();
@@ -75,7 +64,6 @@ public class NotificationService {
 		return n;
 	}
 
-	/** Gửi cho tất cả Admin (khách mới đăng ký, voucher sắp hết lượt / hết hạn...) */
 	@Transactional
 	public int notifyAdmins(String type, String title, String content, String link, String refKey) {
 		int sent = 0;
@@ -85,8 +73,6 @@ public class NotificationService {
 		return sent;
 	}
 
-	// ================= XEM / ĐÃ ĐỌC =================
-
 	public List<NotificationRes> latest(Integer userId) {
 		return notificationRepository.findTop20ByUserIdOrderByCreatedAtDescIdDesc(userId).stream().map(this::toRes).toList();
 	}
@@ -95,7 +81,6 @@ public class NotificationService {
 		return notificationRepository.countByUserIdAndIsReadFalse(userId);
 	}
 
-	/** Đánh dấu đã đọc 1 thông báo của chính mình; trả về link để mở */
 	@Transactional
 	public String markRead(Integer userId, Integer id) {
 		return notificationRepository.findByIdAndUserId(id, userId).map(n -> {
@@ -109,14 +94,11 @@ public class NotificationService {
 		return notificationRepository.markAllRead(userId);
 	}
 
-	// ================= HÀM PHỤ =================
-
 	private NotificationRes toRes(Notification n) {
 		return new NotificationRes(n.getId(), n.getType(), n.getTitle(), n.getContent(), n.getLink(),
 				ago(n.getCreatedAt()), Boolean.TRUE.equals(n.getIsRead()));
 	}
 
-	/** "Vừa xong", "5 phút trước", "3 giờ trước", quá 1 ngày thì ghi ngày giờ */
 	static String ago(LocalDateTime t) {
 		if (t == null) return "";
 		Duration d = Duration.between(t, LocalDateTime.now());
@@ -130,13 +112,11 @@ public class NotificationService {
 		return s == null || s.length() <= max ? s : s.substring(0, max - 1) + "…";
 	}
 
-	/** Đẩy WebSocket sau khi transaction commit (chưa lưu xong thì chưa báo) */
 	private void push(String username, Object payload) {
 		Runnable send = () -> {
 			try {
 				messagingTemplate.convertAndSendToUser(username, QUEUE, payload);
 			} catch (Exception e) {
-				// Lỗi WebSocket không làm hỏng nghiệp vụ; chuông tự tải lại khi mở trang
 			}
 		};
 		if (TransactionSynchronizationManager.isSynchronizationActive()) {

@@ -30,7 +30,6 @@ public class AdminVoucherController {
 		this.branchRepository = branchRepository;
 	}
 
-	// Danh sách TẤT CẢ voucher giảm tiền món: toàn chuỗi + riêng từng chi nhánh
 	@GetMapping
 	public String index(Model model) {
 		model.addAttribute("vouchers", voucherService.findAllVouchers());
@@ -38,7 +37,6 @@ public class AdminVoucherController {
 		return "admin/vouchers/index";
 	}
 
-	// Mở form tạo voucher
 	@GetMapping("/new")
 	public String createForm(Model model) {
 		VoucherReq req = new VoucherReq();
@@ -55,7 +53,6 @@ public class AdminVoucherController {
 		return "admin/vouchers/form";
 	}
 
-	// Lưu voucher mới
 	@PostMapping
 	public String create(@Valid @ModelAttribute("voucherReq") VoucherReq req, BindingResult result, Model model,
 			RedirectAttributes redirectAttributes) {
@@ -82,7 +79,6 @@ public class AdminVoucherController {
 		}
 	}
 
-	// Mở form chỉnh sửa
 	@GetMapping("/{id}/edit")
 	public String editForm(@PathVariable Integer id, Model model) {
 
@@ -95,7 +91,6 @@ public class AdminVoucherController {
 		return "admin/vouchers/form";
 	}
 
-	// Cập nhật voucher
 	@PostMapping("/{id}")
 	public String update(@PathVariable Integer id, @Valid @ModelAttribute("voucherReq") VoucherReq req,
 			BindingResult result, Model model, RedirectAttributes redirectAttributes) {
@@ -123,7 +118,6 @@ public class AdminVoucherController {
 		}
 	}
 
-	// Bật / tắt voucher
 	@PostMapping("/{id}/toggle")
 	public String toggle(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 
@@ -133,7 +127,6 @@ public class AdminVoucherController {
 		return "redirect:/admin/vouchers";
 	}
 
-	// Xóa voucher; service tự chuyển sang tắt nếu đã được sử dụng
 	@PostMapping("/{id}/delete")
 	public String delete(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 
@@ -155,4 +148,3 @@ public class AdminVoucherController {
 		model.addAttribute("branches", branchRepository.findAll());
 	}
 }
-

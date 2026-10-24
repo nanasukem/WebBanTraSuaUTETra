@@ -1,10 +1,3 @@
-/*
- * Trang kết quả thanh toán:
- * - Đếm ngược hạn giữ đơn (quá hạn hệ thống tự huỷ)
- * - Đang chờ cổng xác nhận: hỏi /payment/{id}/status mỗi 4 giây (3 lần hỏi thì nhờ server hỏi lại VNPAY/MoMo 1 lần),
- *   trạng thái đổi thì tải lại trang
- * - "Quay lại sửa đơn": huỷ đơn chưa trả, cho món lại vào giỏ rồi về trang thanh toán
- */
 (function () {
 	const main = document.getElementById('pr-main');
 	if (!main) return;
@@ -12,7 +5,6 @@
 	const state = main.dataset.state;
 	const deadline = Number(main.dataset.deadline || 0);
 
-	// Đếm ngược
 	const counters = document.querySelectorAll('[data-countdown]');
 	if (deadline > 0 && counters.length) {
 		const tick = () => {
@@ -22,14 +14,13 @@
 			counters.forEach((c) => (c.textContent = `${m}:${s}`));
 			if (left <= 0) {
 				clearInterval(timer);
-				setTimeout(() => location.reload(), 70000); // hệ thống huỷ đơn quá hạn mỗi phút
+				setTimeout(() => location.reload(), 70000);
 			}
 		};
 		const timer = setInterval(tick, 1000);
 		tick();
 	}
 
-	// Hỏi trạng thái
 	if (state === 'PROCESSING' || state === 'FAILED') {
 		let n = 0;
 		const poll = async () => {
@@ -43,13 +34,12 @@
 						: d.transactionStatus === 'PENDING' ? 'PROCESSING' : 'FAILED';
 					if (now === 'DONE' || now !== state) return location.reload();
 				}
-			} catch (e) { /* mất mạng: thử lại lần sau */ }
+			} catch (e) {  }
 			setTimeout(poll, state === 'PROCESSING' ? 4000 : 15000);
 		};
 		setTimeout(poll, 3000);
 	}
 
-	// Quay lại sửa đơn
 	const back = document.getElementById('pr-back-edit');
 	if (back) back.addEventListener('click', async (e) => {
 		e.preventDefault();

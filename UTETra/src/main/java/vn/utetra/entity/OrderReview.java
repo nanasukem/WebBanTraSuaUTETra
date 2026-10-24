@@ -8,7 +8,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/** Đánh giá quán của cả đơn (phục vụ, đóng gói, tốc độ) + góp ý. 1 đơn 1 dòng */
 @Entity
 @Table(name = "OrderReviews")
 @Getter
@@ -31,11 +30,9 @@ public class OrderReview {
 	@Column(name = "store_rating", nullable = false)
 	private Integer storeRating;
 
-	/** Góp ý cho quán (không bắt buộc) */
 	@Column(length = 1000)
 	private String comment;
 
-	/** Gợi ý khách bấm chọn, ngăn bằng "|": "Nhân viên thân thiện|Làm món nhanh" */
 	@Column(length = 255)
 	private String tags;
 

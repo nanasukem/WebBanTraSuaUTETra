@@ -9,7 +9,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Bảng OrderDetails - mỗi dòng là 1 loại ly trong đơn */
 @Entity
 @Table(name = "OrderDetails")
 @Getter
@@ -30,24 +29,23 @@ public class OrderDetail {
 	private Product product;
 
 	@Column(name = "size", nullable = false, length = 1)
-	private String size = "M"; // S, M, L
+	private String size = "M";
 
 	@Column(name = "sugar_level", nullable = false)
-	private Integer sugarLevel = 100; // 0, 30, 50, 70, 100
+	private Integer sugarLevel = 100;
 
 	@Column(name = "ice_level", nullable = false)
-	private Integer iceLevel = 100; // 0, 30, 50, 70, 100
+	private Integer iceLevel = 100;
 
 	@Column(name = "quantity", nullable = false)
 	private Integer quantity;
 
 	@Column(name = "unit_price", nullable = false, precision = 12, scale = 0)
-	private BigDecimal unitPrice; // giá 1 ly = base + size + topping, chốt lúc đặt
+	private BigDecimal unitPrice;
 
 	@Column(name = "subtotal", nullable = false, precision = 12, scale = 0)
-	private BigDecimal subtotal; // unitPrice * quantity
+	private BigDecimal subtotal;
 
-	/** Ghi chú món, chép từ giỏ lúc đặt (quán đọc khi pha) */
 	@Column(length = 200)
 	private String note;
 
