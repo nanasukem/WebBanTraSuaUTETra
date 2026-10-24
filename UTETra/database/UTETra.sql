@@ -30,7 +30,7 @@ CREATE TABLE Users (
     password              VARCHAR(255)  NOT NULL,
     full_name             NVARCHAR(100) NULL,
     email                 VARCHAR(100)  NOT NULL UNIQUE,
-    phone                 VARCHAR(15)   NULL,
+    phone                 VARCHAR(15)   NOT NULL UNIQUE,
     avatar_cloudinary_id  VARCHAR(255)  NULL,
     role_id               INT           NOT NULL,
     carrier_id            INT           NULL,
