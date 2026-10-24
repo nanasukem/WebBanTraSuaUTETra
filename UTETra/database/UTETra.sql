@@ -1,4 +1,3 @@
-
 USE [master]
 GO
 IF DB_ID('UTETra') IS NOT NULL
@@ -472,14 +471,14 @@ INSERT INTO Roles (name) VALUES ('ADMIN'), ('MANAGER'), ('SHIPPER'), ('USER');
 
 INSERT INTO Carriers (name, fee, per_km_fee) VALUES (N'Shipper UTETra', 15000, 10000);
 
-INSERT INTO Users (username, password, full_name, email, phone, role_id, carrier_id, is_verified) VALUES
- ('admin',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Quản trị viên',      'admin@utetra.vn',    '0900000001', 1, NULL, 1),
- ('manager3', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Lê Văn Quản Lý',     'manager3@utetra.vn', '0900000002', 2, NULL, 1),
- ('manager1', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Nguyễn Quản Lý',     'manager1@utetra.vn', '0900000003', 2, NULL, 1),
- ('manager2', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Trần Quản Lý',       'manager2@utetra.vn', '0900000004', 2, NULL, 1),
- ('shipper1', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Nguyễn Văn Giao',    'shipper1@utetra.vn', '0900000005', 3, 1,    1),
- ('user1',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Trần Thị Khách',     'user1@gmail.com',    '0900000006', 4, NULL, 1),
- ('user2',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Phạm Văn Mua',       'user2@gmail.com',    '0900000007', 4, NULL, 1);
+INSERT INTO Users (username, password, full_name, email, phone, avatar_cloudinary_id, role_id, carrier_id, is_verified) VALUES
+ ('admin',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Quản trị viên',      'admin@utetra.vn',    '0900000001', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828693/admin.jpg',    1, NULL, 1),
+ ('manager3', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Lê Văn Quản Lý',     'manager3@utetra.vn', '0900000002', NULL,                                                                         2, NULL, 1),
+ ('manager1', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Nguyễn Quản Lý',     'manager1@utetra.vn', '0900000003', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828737/manager1.jpg', 2, NULL, 1),
+ ('manager2', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Trần Quản Lý',       'manager2@utetra.vn', '0900000004', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828736/manager2.jpg', 2, NULL, 1),
+ ('shipper1', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Nguyễn Văn Giao',    'shipper1@utetra.vn', '0900000005', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828748/shipper1.jpg', 3, 1,    1),
+ ('user1',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Trần Thị Khách',     'user1@gmail.com',    '0900000006', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828749/user1.jpg',    4, NULL, 1),
+ ('user2',    '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Phạm Văn Mua',       'user2@gmail.com',    '0900000007', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792829123/user2.jpg',    4, NULL, 1);
 
 INSERT INTO Addresses (user_id, receiver_name, receiver_phone, address_line, province, ward, street, address_type, note, latitude, longitude, is_default) VALUES
  (6, N'Trần Thị Khách', '0900000006', N'KTX Khu B ĐHQG, Phường Đông Hòa, Thành phố Hồ Chí Minh',
@@ -495,57 +494,62 @@ INSERT INTO MemberTiers (name, min_spent, discount_percent, max_discount, sort_o
  (N'Vàng',       1000000, 5, 20000, 3),
  (N'Kim cương',  3000000, 8, 30000, 4);
 
-INSERT INTO Branches (owner_id, name, address, latitude, longitude, phone, description, status) VALUES
- (3, N'UTETra Võ Văn Ngân', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM', 10.850700, 106.771900, '0281234567', N'Chi nhánh gần ĐH Sư phạm Kỹ thuật', 'APPROVED'),
- (4, N'UTETra Quận 1',      N'12 Nguyễn Huệ, Quận 1, TP.HCM',       10.774600, 106.703900, '0287654321', N'Chi nhánh trung tâm', 'APPROVED');
+INSERT INTO Branches (owner_id, name, address, latitude, longitude, phone, description, image_cloudinary_id, status) VALUES
+ (3, N'UTETra Võ Văn Ngân', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM', 10.850700, 106.771900, '0281234567', N'Chi nhánh gần ĐH Sư phạm Kỹ thuật', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792829767/branches.VVN.jpg', 'APPROVED'),
+ (4, N'UTETra Quận 1',      N'12 Nguyễn Huệ, Quận 1, TP.HCM',       10.774600, 106.703900, '0287654321', N'Chi nhánh trung tâm',               'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792829768/branches.Q1.jpg',  'APPROVED');
 
 UPDATE Users SET branch_id = 1 WHERE username = 'shipper1';
 
-INSERT INTO Categories (name) VALUES (N'Trà sữa'), (N'Trà trái cây'), (N'Cà phê'), (N'Đá xay'), (N'Topping');
+INSERT INTO Categories (name, image_cloudinary_id) VALUES
+ (N'Trà sữa',      'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828687/cate.milktea.jpg'),
+ (N'Trà trái cây', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828688/cate.tea.jpg'),
+ (N'Cà phê',       'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828690/cate.coffee.jpg'),
+ (N'Đá xay',       'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828691/cate.freezy.jpg'),
+ (N'Topping',      'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828689/cate.topping.jpg');
 
-INSERT INTO Products (category_id, name, base_price, description, sold_count) VALUES
- (1, N'Trà sữa trân châu đường đen', 35000, N'Best seller của quán', 152),
- (2, N'Trà đào cam sả',              40000, N'Thanh mát, giải nhiệt', 87),
- (3, N'Bạc xỉu',                     29000, NULL, 45),
- (4, N'Matcha đá xay',               45000, NULL, 8),
- (1, N'Trà sữa khoai môn',           30000, NULL, 64),
- (2, N'Trà vải hoa hồng',            38000, NULL, 23),
- (3, N'Cà phê muối',                 32000, NULL, 110),
- (4, N'Cookie đá xay',               49000, NULL, 3);
+INSERT INTO Products (category_id, name, base_price, description, image_cloudinary_id, sold_count) VALUES
+ (1, N'Trà sữa trân châu đường đen', 35000, N'Best seller của quán',  'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828625/pro1.1.jpg', 152),
+ (2, N'Trà đào cam sả',              40000, N'Thanh mát, giải nhiệt', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828637/pro2.1.jpg', 87),
+ (3, N'Bạc xỉu',                     29000, NULL,                     'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828665/pro3.1.jpg', 45),
+ (4, N'Matcha đá xay',               45000, NULL,                     'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828686/pro4.1.jpg', 8),
+ (1, N'Trà sữa khoai môn',           30000, NULL,                     'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828626/pro1.2.jpg', 64),
+ (2, N'Trà vải hoa hồng',            38000, NULL,                     'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828639/pro2.2.jpg', 23),
+ (3, N'Cà phê muối',                 32000, NULL,                     'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828666/pro3.2.jpg', 110),
+ (4, N'Cookie đá xay',               49000, NULL,                     'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828595/pro4.2.jpg', 3);
 
-INSERT INTO Products (category_id, name, base_price, description, sold_count, created_at) VALUES
- (1, N'Trà sữa Oolong nướng', 39000, N'Oolong rang thơm khói, sữa béo nhẹ', 96, '2026-06-05'),
- (1, N'Trà sữa matcha', 37000, N'Matcha Nhật pha sữa tươi', 58, '2026-06-12'),
- (1, N'Trà sữa socola', 33000, N'Socola đậm vị, hợp trẻ em', 27, '2026-06-20'),
- (1, N'Hồng trà sữa', 31000, N'Hồng trà Ceylon, vị trà rõ', 74, '2026-07-01'),
- (1, N'Trà sữa caramel', 36000, N'Caramel cháy thơm, ngọt dịu', 15, '2026-07-15'),
- (1, N'Trà sữa dâu tây', 34000, N'Dâu tây Đà Lạt xay cùng sữa', 9, '2026-08-02'),
- (1, N'Trà sữa hạnh nhân', 38000, N'Sữa hạnh nhân, ít béo', 6, '2026-09-10'),
- (1, N'Trà sữa kem trứng nướng', 42000, N'Lớp kem trứng khò lửa phía trên', 4, '2026-10-12'),
- (2, N'Trà chanh dây', 32000, N'Chanh dây tươi, chua ngọt', 68, '2026-06-03'),
- (2, N'Trà dứa nhiệt đới', 35000, N'Dứa tươi, thạch dừa', 41, '2026-06-18'),
- (2, N'Trà ổi hồng', 36000, N'Ổi hồng ép, thanh mát', 33, '2026-07-05'),
- (2, N'Trà xoài chanh leo', 39000, N'Xoài cát chín, chanh leo', 22, '2026-07-22'),
- (2, N'Trà táo xanh bạc hà', 34000, N'Táo xanh và lá bạc hà', 12, '2026-08-14'),
- (2, N'Trà dưa hấu', 33000, N'Dưa hấu ép mát lạnh', 8, '2026-09-02'),
- (2, N'Trà nho xanh', 37000, N'Nho xanh không hạt, thạch nha đam', 5, '2026-09-28'),
- (2, N'Trà mãng cầu', 39000, N'Mãng cầu xiêm xay, vị chua dịu', 2, '2026-10-15'),
- (3, N'Cà phê sữa đá', 25000, N'Phin truyền thống, sữa đặc', 135, '2026-06-01'),
- (3, N'Cà phê đen đá', 22000, N'Robusta đậm vị', 88, '2026-06-08'),
- (3, N'Bạc xỉu dừa', 33000, N'Bạc xỉu với nước cốt dừa', 47, '2026-06-25'),
- (3, N'Cappuccino', 39000, N'Espresso, sữa nóng, bọt sữa mịn', 29, '2026-07-12'),
- (3, N'Latte caramel', 42000, N'Latte thêm sốt caramel', 18, '2026-08-05'),
- (3, N'Americano cam', 36000, N'Americano kèm nước cam tươi', 11, '2026-08-25'),
- (3, N'Cà phê kem trứng', 38000, N'Cốt cà phê phủ kem trứng đánh bông', 7, '2026-09-18'),
- (3, N'Cold brew đào', 40000, N'Cold brew ủ lạnh 16 giờ, đào ngâm', 3, '2026-10-18'),
- (4, N'Socola đá xay', 45000, N'Socola đậm, kem tươi', 52, '2026-06-10'),
- (4, N'Cà phê đá xay', 43000, N'Cà phê xay đá, sốt caramel', 36, '2026-06-28'),
- (4, N'Khoai môn đá xay', 44000, N'Khoai môn tươi xay mịn', 24, '2026-07-18'),
- (4, N'Dâu đá xay', 46000, N'Dâu tây xay cùng sữa chua', 16, '2026-08-09'),
- (4, N'Việt quất đá xay', 47000, N'Việt quất và sữa chua', 10, '2026-08-30'),
- (4, N'Trà xanh đậu đỏ đá xay', 45000, N'Matcha xay, đậu đỏ ninh', 6, '2026-09-22'),
- (4, N'Bơ đá xay', 48000, N'Bơ sáp xay cùng sữa đặc', 1, '2026-10-08'),
- (4, N'Xoài đá xay', 46000, N'Xoài cát xay mịn', 0, '2026-10-20');
+INSERT INTO Products (category_id, name, base_price, description, image_cloudinary_id, sold_count, created_at) VALUES
+ (1, N'Trà sữa Oolong nướng',     39000, N'Oolong rang thơm khói, sữa béo nhẹ',  'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828627/pro1.3.jpg',  96,  '2026-06-05'),
+ (1, N'Trà sữa matcha',           37000, N'Matcha Nhật pha sữa tươi',            'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828628/pro1.4.jpg',  58,  '2026-06-12'),
+ (1, N'Trà sữa socola',           33000, N'Socola đậm vị, hợp trẻ em',           'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828629/pro1.5.jpg',  27,  '2026-06-20'),
+ (1, N'Hồng trà sữa',             31000, N'Hồng trà Ceylon, vị trà rõ',          'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828630/pro1.6.jpg',  74,  '2026-07-01'),
+ (1, N'Trà sữa caramel',          36000, N'Caramel cháy thơm, ngọt dịu',         'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828631/pro1.7.jpg',  15,  '2026-07-15'),
+ (1, N'Trà sữa dâu tây',          34000, N'Dâu tây Đà Lạt xay cùng sữa',         'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828633/pro1.8.jpg',  9,   '2026-08-02'),
+ (1, N'Trà sữa hạnh nhân',        38000, N'Sữa hạnh nhân, ít béo',               'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828635/pro1.9.jpg',  6,   '2026-09-10'),
+ (1, N'Trà sữa kem trứng nướng',  42000, N'Lớp kem trứng khò lửa phía trên',     'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828636/pro1.10.jpg', 4,   '2026-10-12'),
+ (2, N'Trà chanh dây',            32000, N'Chanh dây tươi, chua ngọt',           'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828640/pro2.3.jpg',  68,  '2026-06-03'),
+ (2, N'Trà dứa nhiệt đới',        35000, N'Dứa tươi, thạch dừa',                 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828641/pro2.4.jpg',  41,  '2026-06-18'),
+ (2, N'Trà ổi hồng',              36000, N'Ổi hồng ép, thanh mát',               'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828642/pro2.5.jpg',  33,  '2026-07-05'),
+ (2, N'Trà xoài chanh leo',       39000, N'Xoài cát chín, chanh leo',            'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828662/pro2.6.jpg',  22,  '2026-07-22'),
+ (2, N'Trà táo xanh bạc hà',      34000, N'Táo xanh và lá bạc hà',               'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828661/pro2.7.jpg',  12,  '2026-08-14'),
+ (2, N'Trà dưa hấu',              33000, N'Dưa hấu ép mát lạnh',                 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828663/pro2.8.jpg',  8,   '2026-09-02'),
+ (2, N'Trà nho xanh',             37000, N'Nho xanh không hạt, thạch nha đam',   'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828668/pro2.9.jpg',  5,   '2026-09-28'),
+ (2, N'Trà mãng cầu',             39000, N'Mãng cầu xiêm xay, vị chua dịu',      'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828664/pro2.10.jpg', 2,   '2026-10-15'),
+ (3, N'Cà phê sữa đá',            25000, N'Phin truyền thống, sữa đặc',          'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828667/pro3.3.jpg',  135, '2026-06-01'),
+ (3, N'Cà phê đen đá',            22000, N'Robusta đậm vị',                      'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828669/pro3.4.jpg',  88,  '2026-06-08'),
+ (3, N'Bạc xỉu dừa',              33000, N'Bạc xỉu với nước cốt dừa',            'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828671/pro3.5.jpg',  47,  '2026-06-25'),
+ (3, N'Cappuccino',               39000, N'Espresso, sữa nóng, bọt sữa mịn',     'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828672/pro3.6.jpg',  29,  '2026-07-12'),
+ (3, N'Latte caramel',            42000, N'Latte thêm sốt caramel',              'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828673/pro3.7.jpg',  18,  '2026-08-05'),
+ (3, N'Americano cam',            36000, N'Americano kèm nước cam tươi',         'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828675/pro3.8.jpg',  11,  '2026-08-25'),
+ (3, N'Cà phê kem trứng',         38000, N'Cốt cà phê phủ kem trứng đánh bông',  'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828685/pro3.9.jpg',  7,   '2026-09-18'),
+ (3, N'Cold brew đào',            40000, N'Cold brew ủ lạnh 16 giờ, đào ngâm',   'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828684/pro3.10.jpg', 3,   '2026-10-18'),
+ (4, N'Socola đá xay',            45000, N'Socola đậm, kem tươi',                'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828596/pro4.3.jpg',  52,  '2026-06-10'),
+ (4, N'Cà phê đá xay',            43000, N'Cà phê xay đá, sốt caramel',          'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828597/pro4.4.jpg',  36,  '2026-06-28'),
+ (4, N'Khoai môn đá xay',         44000, N'Khoai môn tươi xay mịn',              'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828606/pro4.5.jpg',  24,  '2026-07-18'),
+ (4, N'Dâu đá xay',               46000, N'Dâu tây xay cùng sữa chua',           'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828607/pro4.6.jpg',  16,  '2026-08-09'),
+ (4, N'Việt quất đá xay',         47000, N'Việt quất và sữa chua',               'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828609/pro4.7.jpg',  10,  '2026-08-30'),
+ (4, N'Trà xanh đậu đỏ đá xay',   45000, N'Matcha xay, đậu đỏ ninh',             'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828621/pro4.8.jpg',  6,   '2026-09-22'),
+ (4, N'Bơ đá xay',                48000, N'Bơ sáp xay cùng sữa đặc',             'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828622/pro4.9.jpg',  1,   '2026-10-08'),
+ (4, N'Xoài đá xay',              46000, N'Xoài cát xay mịn',                    'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828624/pro4.10.jpg', 0,   '2026-10-20');
 UPDATE Products SET created_at = '2026-05-01' WHERE id <= 8;
 
 INSERT INTO BranchProducts (branch_id, product_id, is_available) VALUES (2, 4, 0);
@@ -558,8 +562,15 @@ CROSS JOIN (VALUES ('S', 0), ('M', 5000), ('L', 10000)) AS s(size, extra);
 INSERT INTO Toppings (name, price) VALUES
  (N'Trân châu đen', 5000), (N'Thạch phô mai', 8000), (N'Pudding trứng', 7000), (N'Kem cheese', 10000);
 
-INSERT INTO Products (category_id, name, base_price, description, topping_id, created_at)
-SELECT (SELECT id FROM Categories WHERE name = N'Topping'), t.name, t.price, N'Topping ' + t.name + N' mua riêng', t.id, '2026-05-01'
+INSERT INTO Products (category_id, name, base_price, description, image_cloudinary_id, topping_id, created_at)
+SELECT (SELECT id FROM Categories WHERE name = N'Topping'), t.name, t.price, N'Topping ' + t.name + N' mua riêng',
+       CASE t.id
+           WHEN 1 THEN 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828551/tr%C3%A2n_ch%C3%A2u.jpg'
+           WHEN 2 THEN 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828552/vi%C3%AAn_ph%C3%B4_mai.jpg'
+           WHEN 3 THEN 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828550/pudding.jpg'
+           WHEN 4 THEN 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828550/kemcheese.jpg'
+       END,
+       t.id, '2026-05-01'
 FROM Toppings t ORDER BY t.id;
 INSERT INTO ProductSizes (product_id, size, extra_price) SELECT id, 'M', 0 FROM Products WHERE topping_id IS NOT NULL;
 
@@ -605,14 +616,14 @@ VALUES (1, 'VNPAY', 'VNP14567890', 148000, 'SUCCESS', SYSDATETIME());
 INSERT INTO Reviews (user_id, product_id, order_detail_id, rating, content) VALUES
  (6, 1, 1, 5, N'Trà sữa trân châu đường đen rất ngon, trân châu dẻo, vị ngọt vừa phải, giao hàng nhanh, sẽ ủng hộ quán dài dài.');
 
-INSERT INTO Users (username, password, full_name, email, phone, role_id, carrier_id, is_verified) VALUES
- ('user3', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Lê Minh Anh', 'user3@gmail.com', '0900000008', 4, NULL, 1),
- ('user4', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Ngô Gia Bảo', 'user4@gmail.com', '0900000009', 4, NULL, 1),
- ('user5', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Võ Thanh Hà', 'user5@gmail.com', '0900000010', 4, NULL, 1),
- ('user6', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Đặng Quốc Huy', 'user6@gmail.com', '0900000011', 4, NULL, 1);
+INSERT INTO Users (username, password, full_name, email, phone, avatar_cloudinary_id, role_id, carrier_id, is_verified) VALUES
+ ('user3', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Lê Minh Anh',   'user3@gmail.com', '0900000008', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792829126/user3.jpg', 4, NULL, 1),
+ ('user4', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Ngô Gia Bảo',   'user4@gmail.com', '0900000009', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792829122/user4.jpg', 4, NULL, 1),
+ ('user5', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Võ Thanh Hà',   'user5@gmail.com', '0900000010', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792829077/user5.jpg', 4, NULL, 1),
+ ('user6', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Đặng Quốc Huy', 'user6@gmail.com', '0900000011', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828750/user6.jpg', 4, NULL, 1);
 
-INSERT INTO Users (username, password, full_name, email, phone, role_id, carrier_id, branch_id, is_verified) VALUES
- ('shipper2', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Lê Văn Chở', 'shipper2@utetra.vn', '0900000012', 3, 1, 2, 1);
+INSERT INTO Users (username, password, full_name, email, phone, avatar_cloudinary_id, role_id, carrier_id, branch_id, is_verified) VALUES
+ ('shipper2', '$2a$10$t2Kg3w0n0BnQouy8HN4a7OUL/tCTEAkQRHFLr7cwHeCWS12K0zUM2', N'Lê Văn Chở', 'shipper2@utetra.vn', '0900000012', 'https://res.cloudinary.com/mxo7ulcv/image/upload/v1792828747/shipper2.jpg', 3, 1, 2, 1);
 
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, receiver_name, receiver_phone, delivery_address,
                     items_total, member_discount, member_tier_name, shipping_fee, total_amount,
