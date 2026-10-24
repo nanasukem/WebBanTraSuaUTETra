@@ -5,7 +5,6 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,18 +13,13 @@ import vn.utetra.dto.response.CheckoutInitRes;
 import vn.utetra.dto.response.CheckoutPageRes;
 import vn.utetra.entity.Order;
 import vn.utetra.entity.User;
-import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.entity.enums.PaymentMethod;
-import vn.utetra.entity.enums.PaymentStatus;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.exception.ResourceNotFoundException;
-import vn.utetra.repository.OrderRepository;
-import vn.utetra.repository.VoucherRepository;
 import vn.utetra.service.*;
 
 import java.security.Principal;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -37,28 +31,20 @@ public class CheckoutApiController {
 	private final MemberService memberService;
 	private final vn.utetra.service.ShippingFeeService shippingFeeService;
 	private final CurrentUserService currentUserService;
-	private final VoucherRepository voucherRepository;
-	private final OrderRepository orderRepository;
-	private final CartService cartService;
-	private final OrderFlowService orderFlowService;
+	private final vn.utetra.service.CheckoutService checkoutService;
 	@org.springframework.beans.factory.annotation.Autowired
 	private vn.utetra.service.MenuBranchService menuBranchService;
 
 	public CheckoutApiController(OrderService orderService, AddressService addressService,
 			MemberService memberService, vn.utetra.service.ShippingFeeService shippingFeeService,
-			CurrentUserService currentUserService,
-			VoucherRepository voucherRepository, OrderRepository orderRepository, CartService cartService,
-			OrderFlowService orderFlowService) {
-		this.orderFlowService = orderFlowService;
+			CurrentUserService currentUserService, vn.utetra.service.CheckoutService checkoutService) {
+		this.checkoutService = checkoutService;
 
 		this.orderService = orderService;
 		this.addressService = addressService;
 		this.memberService = memberService;
 		this.shippingFeeService = shippingFeeService;
 		this.currentUserService = currentUserService;
-		this.voucherRepository = voucherRepository;
-		this.orderRepository = orderRepository;
-		this.cartService = cartService;
 	}
 
 	@GetMapping("/init")
@@ -83,9 +69,7 @@ public class CheckoutApiController {
 	@GetMapping("/voucher-type")
 	public Map<String, String> voucherType(@RequestParam String code) {
 
-		return voucherRepository.findByCodeIgnoreCase(code.trim())
-				.map(v -> Map.of("code", v.getCode(), "applyTo", v.getApplyTo().name()))
-				.orElseThrow(() -> new BusinessException("Mã " + code.trim().toUpperCase() + " không tồn tại"));
+		return checkoutService.voucherType(code);
 	}
 
 	@PostMapping
@@ -109,24 +93,12 @@ public class CheckoutApiController {
 	}
 
 	@PostMapping("/{orderId}/return-to-checkout")
-	@Transactional
 	public ResponseEntity<Map<String, Object>> returnToCheckout(@PathVariable Integer orderId, Principal principal,
 			HttpSession session) {
 
 		Integer userId = currentUserService.requireUserId(principal, session);
 
-		Order order = orderRepository.findById(orderId)
-				.filter(o -> o.getUser() != null && o.getUser().getId().equals(userId))
-				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + orderId));
-
-		if (order.getStatus() != OrderStatus.AWAITING_PAYMENT || order.getPaymentStatus() != PaymentStatus.UNPAID) {
-			throw new BusinessException(order.getPaymentStatus() == PaymentStatus.PAID
-					? "Đơn hàng đã thanh toán thành công, không thể quay lại chỉnh sửa"
-					: "Đơn hàng không còn chờ thanh toán");
-		}
-
-		orderFlowService.cancelByCustomer(userId, orderId, "Quay lại sửa đơn trước khi thanh toán");
-		cartService.reorder(userId, orderId);
+		checkoutService.returnToCheckout(userId, orderId);
 
 		return ResponseEntity
 				.ok(Map.of("redirectUrl", "/checkout", "message", "Đã cho món lại vào giỏ, bạn có thể sửa đơn"));

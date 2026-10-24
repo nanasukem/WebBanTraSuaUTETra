@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:fragment="main(title, activePage, content, extra)">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title th:text="'Shipper UTETra - ' + ${title}">Shipper UTETra</title>
+<th:block th:replace="~{fragments/theme :: assets('shipper')}"></th:block>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+	<header
+		class="shipper-header d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm">
+		<div class="d-flex align-items-center gap-2">
+			<i class="bi bi-scooter fs-3 text-warning"></i>
+			<div>
+				<div class="fw-bold fs-5">Shipper UTETra</div>
+				<div class="small opacity-75" th:if="${shipper != null}">
+					<span th:text="${shipper.fullName != null ? shipper.fullName : shipper.username}">Shipper</span>
+					· <i class="bi bi-shop"></i> <span th:text="${branch != null ? branch.name : 'Chưa phân công chi nhánh'}">Chi nhánh</span>
+				</div>
+			</div>
+		</div>
+		<div class="d-flex align-items-center gap-2 flex-wrap">
+			<div class="btn-group btn-group-sm me-1">
+				<a th:href="@{/shipper/orders}" class="btn"
+					th:classappend="${activePage == 'orders'} ? 'btn-light fw-semibold' : 'btn-outline-light'"><i class="bi bi-box-seam me-1"></i>Đơn giao</a>
+				<a th:href="@{/shipper/stats}" class="btn"
+					th:classappend="${activePage == 'stats'} ? 'btn-light fw-semibold' : 'btn-outline-light'"><i class="bi bi-bar-chart-line me-1"></i>Thống kê</a>
+			</div>
+			<a th:if="${activePage == 'orders'}" th:href="@{/shipper/orders(tab=${currentTab})}"
+				class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-clockwise me-1"></i>Làm mới</a>
+			<div th:replace="~{fragments/notification-bell :: bell('light')}"></div>
+			<a th:href="@{/account}" class="btn btn-sm"
+				th:classappend="${activePage == 'account'} ? 'btn-light fw-semibold' : 'btn-outline-light'">
+				<i class="bi bi-person-circle me-1"></i>Tài khoản
+			</a>
+			<form th:action="@{/auth/logout}" method="post" class="m-0">
+				<button type="submit" class="btn btn-sm btn-outline-light">
+					<i class="bi bi-box-arrow-right me-1"></i>Đăng xuất
+				</button>
+			</form>
+		</div>
+	</header>
+
+	<th:block th:replace="${content}"></th:block>
+
+	<th:block th:replace="~{fragments/theme :: bootstrapJs}"></th:block>
+	<th:block th:replace="~{fragments/notification-bell :: scripts}"></th:block>
+	<th:block th:replace="${extra}"></th:block>
+</body>
+</html>

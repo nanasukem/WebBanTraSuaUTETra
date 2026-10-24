@@ -188,7 +188,7 @@ CREATE TABLE Vouchers (
         CONSTRAINT CK_Vouchers_PerUser CHECK (per_user_limit IS NULL OR per_user_limit > 0),
     audience         VARCHAR(20)   NOT NULL
         CONSTRAINT DF_Vouchers_Audience DEFAULT 'ALL'
-        CONSTRAINT CK_Vouchers_Audience CHECK (audience IN ('ALL', 'NEW_USER', 'MIN_TIER')),
+        CONSTRAINT CK_Vouchers_Audience CHECK (audience IN ('ALL', 'NEW_USER', 'MIN_TIER', 'SPECIFIC')),
     min_tier_id      INT           NULL,
     payment_method   VARCHAR(20)   NULL
         CONSTRAINT CK_Vouchers_PaymentMethod
@@ -308,6 +308,14 @@ CREATE TABLE OrderDetailToppings (
     CONSTRAINT UQ_ODT UNIQUE (order_detail_id, topping_id)
 );
 
+CREATE TABLE VoucherUsers (
+    voucher_id  INT NOT NULL,
+    user_id     INT NOT NULL,
+    PRIMARY KEY (voucher_id, user_id),
+    CONSTRAINT FK_VoucherUsers_Vouchers FOREIGN KEY (voucher_id) REFERENCES Vouchers(id) ON DELETE CASCADE,
+    CONSTRAINT FK_VoucherUsers_Users    FOREIGN KEY (user_id)    REFERENCES Users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE VoucherUsages (
     id          INT IDENTITY(1,1) PRIMARY KEY,
     voucher_id  INT       NOT NULL,
@@ -379,6 +387,7 @@ CREATE TABLE OrderIssues (
     store_note     NVARCHAR(255)  NULL,
     created_at     DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
     resolved_at    DATETIME2      NULL,
+    removed_reviews INT           NOT NULL DEFAULT 0,
     CONSTRAINT FK_OrderIssues_Orders FOREIGN KEY (order_id) REFERENCES Orders(id) ON DELETE CASCADE,
     CONSTRAINT FK_OrderIssues_Users  FOREIGN KEY (user_id)  REFERENCES Users(id)
 );

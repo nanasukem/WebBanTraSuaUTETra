@@ -7,54 +7,38 @@ import vn.utetra.service.OrderFlowService;
 import vn.utetra.service.impl.OrderFlowServiceImpl;
 
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import vn.utetra.entity.Branch;
 import vn.utetra.entity.Order;
 import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.entity.enums.PaymentMethod;
 import vn.utetra.entity.enums.PaymentStatus;
-import vn.utetra.repository.BranchRepository;
-import vn.utetra.repository.OrderRepository;
 
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 @Controller
 @RequestMapping("/admin/orders")
-@Transactional(readOnly = true)
 public class AdminOrderController {
 
-	private final OrderRepository orderRepository;
-	@org.springframework.beans.factory.annotation.Autowired
-	private vn.utetra.service.OrderIssueService orderIssueService;
-	@org.springframework.beans.factory.annotation.Autowired
-	private vn.utetra.repository.OrderIssueRepository orderIssueRepository;
-	private final BranchRepository branchRepository;
+	private final vn.utetra.service.AdminOrderService adminOrderService;
+	private final vn.utetra.service.OrderIssueService orderIssueService;
+	private final vn.utetra.service.BranchService branchService;
 	private final OrderFlowService orderFlowService;
 	private final vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder;
-	private final vn.utetra.repository.PaymentRepository paymentRepository;
 	private final vn.utetra.service.RefundService refundService;
-	private final vn.utetra.service.VnPayService vnPayService;
-	private final vn.utetra.service.MomoService momoService;
 
-	public AdminOrderController(OrderRepository orderRepository, BranchRepository branchRepository,
+	public AdminOrderController(vn.utetra.service.AdminOrderService adminOrderService,
+			vn.utetra.service.OrderIssueService orderIssueService, vn.utetra.service.BranchService branchService,
 			OrderFlowService orderFlowService, vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder,
-			vn.utetra.repository.PaymentRepository paymentRepository, vn.utetra.service.RefundService refundService,
-			vn.utetra.service.VnPayService vnPayService, vn.utetra.service.MomoService momoService) {
-		this.vnPayService = vnPayService;
-		this.momoService = momoService;
-		this.paymentInfoBuilder = paymentInfoBuilder;
-		this.paymentRepository = paymentRepository;
-		this.refundService = refundService;
-		this.orderRepository = orderRepository;
-		this.branchRepository = branchRepository;
+			vn.utetra.service.RefundService refundService) {
+		this.adminOrderService = adminOrderService;
+		this.orderIssueService = orderIssueService;
+		this.branchService = branchService;
 		this.orderFlowService = orderFlowService;
+		this.paymentInfoBuilder = paymentInfoBuilder;
+		this.refundService = refundService;
 	}
 
 	@GetMapping
@@ -66,67 +50,13 @@ public class AdminOrderController {
 			@RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to,
 			Model model) {
 
-		List<Order> allOrders = orderRepository.findAll();
-
-		List<Order> orders = allOrders.stream().filter(o -> {
-			if (keyword == null || keyword.isBlank()) {
-				return true;
-			}
-
-			String key = keyword.trim().toLowerCase(Locale.ROOT);
-
-			String orderId = String.valueOf(o.getId());
-			String customerName = o.getUser() != null && o.getUser().getFullName() != null
-					? o.getUser().getFullName().toLowerCase(Locale.ROOT)
-					: "";
-			String username = o.getUser() != null && o.getUser().getUsername() != null
-					? o.getUser().getUsername().toLowerCase(Locale.ROOT)
-					: "";
-			String branchName = o.getBranch() != null && o.getBranch().getName() != null
-					? o.getBranch().getName().toLowerCase(Locale.ROOT)
-					: "";
-
-			return orderId.contains(key) || customerName.contains(key) || username.contains(key)
-					|| branchName.contains(key);
-		}).filter(o -> {
-			if (branchId == null || branchId.isBlank()) {
-				return true;
-			}
-
-			try {
-				return o.getBranch() != null && o.getBranch().getId().equals(Integer.valueOf(branchId));
-			} catch (NumberFormatException e) {
-				return false;
-			}
-		}).filter(o -> status == null || status.isBlank() || o.getStatus().name().equals(status))
-				.filter(o -> paymentStatus == null || paymentStatus.isBlank()
-						|| o.getPaymentStatus().name().equals(paymentStatus))
-				.filter(o -> paymentMethod == null || paymentMethod.isBlank()
-						|| o.getPaymentMethod().name().equals(paymentMethod))
-				.filter(o -> {
-					java.time.LocalDateTime t = o.getStatus() == OrderStatus.DELIVERED && o.getDeliveredAt() != null
-							? o.getDeliveredAt() : o.getCreatedAt();
-					if (t == null) return from == null && to == null;
-					return (from == null || !t.toLocalDate().isBefore(from)) && (to == null || !t.toLocalDate().isAfter(to));
-				})
-				.sorted((a, b) -> {
-					if (a.getCreatedAt() == null)
-						return 1;
-					if (b.getCreatedAt() == null)
-						return -1;
-					return b.getCreatedAt().compareTo(a.getCreatedAt());
-				}).toList();
+		List<Order> orders = adminOrderService.search(keyword, branchId, status, paymentStatus, paymentMethod, from, to);
 
 		model.addAttribute("orders", orders);
-		java.util.Map<Integer, String> issueLabels = new java.util.HashMap<>();
-		java.util.Set<Integer> issuePending = new java.util.HashSet<>();
-		for (vn.utetra.entity.OrderIssue i : orderIssueRepository.findAll()) {
-			issueLabels.put(i.getOrder().getId(), i.getStatus().getLabel());
-			if (i.getStatus() == vn.utetra.entity.enums.IssueStatus.PENDING) issuePending.add(i.getOrder().getId());
-		}
-		model.addAttribute("issueLabels", issueLabels);
-		model.addAttribute("issuePending", issuePending);
-		model.addAttribute("branches", branchRepository.findAll());
+		vn.utetra.service.AdminOrderService.IssueMarks marks = adminOrderService.issueMarks();
+		model.addAttribute("issueLabels", marks.labels());
+		model.addAttribute("issuePending", marks.pending());
+		model.addAttribute("branches", branchService.findAll());
 		model.addAttribute("orderStatuses", OrderStatus.values());
 		model.addAttribute("paymentStatuses", PaymentStatus.values());
 		model.addAttribute("paymentMethods", PaymentMethod.values());
@@ -139,13 +69,11 @@ public class AdminOrderController {
 		model.addAttribute("from", from);
 		model.addAttribute("to", to);
 
-		model.addAttribute("totalOrders", allOrders.size());
-		model.addAttribute("pendingOrders",
-				allOrders.stream().filter(o -> o.getStatus() == OrderStatus.PENDING).count());
-		model.addAttribute("deliveredOrders",
-				allOrders.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED).count());
-		model.addAttribute("cancelledOrders",
-				allOrders.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count());
+		vn.utetra.service.AdminOrderService.OrderCounts counts = adminOrderService.counts();
+		model.addAttribute("totalOrders", counts.total());
+		model.addAttribute("pendingOrders", counts.pending());
+		model.addAttribute("deliveredOrders", counts.delivered());
+		model.addAttribute("cancelledOrders", counts.cancelled());
 
 		return "admin/orders/index";
 	}
@@ -153,7 +81,7 @@ public class AdminOrderController {
 	@GetMapping("/{id}")
 	public String detail(@PathVariable Integer id, Model model, RedirectAttributes redirectAttributes) {
 
-		Order order = orderRepository.findById(id).orElse(null);
+		Order order = adminOrderService.find(id).orElse(null);
 
 		if (order == null) {
 			redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy đơn hàng #" + id);
@@ -164,26 +92,18 @@ public class AdminOrderController {
 		model.addAttribute("nextStatuses", getNextStatuses(order));
 		model.addAttribute("pay", paymentInfoBuilder.build(order));
 		model.addAttribute("issue", orderIssueService.forOrder(id));
-		model.addAttribute("payments", paymentRepository.findByOrderIdOrderByCreatedAtDesc(id));
+		model.addAttribute("payments", adminOrderService.payments(id));
 
 		return "admin/orders/detail";
 	}
 
 	@PostMapping("/{id}/gateway-check")
 	public String gatewayCheck(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
-		List<String> lines = new java.util.ArrayList<>();
-		for (vn.utetra.entity.Payment p : paymentRepository.findByOrderIdOrderByCreatedAtDesc(id)) {
-			if (p.getTxnRef() == null) continue;
-			String r = "VNPAY".equals(p.getMethod()) ? vnPayService.lookup(p) : momoService.lookup(p);
-			lines.add(p.getTxnRef() + " → " + r);
-		}
-		if (lines.isEmpty()) lines.add("Đơn không có giao dịch online để tra cứu");
-		redirectAttributes.addFlashAttribute("gatewayCheck", lines);
+		redirectAttributes.addFlashAttribute("gatewayCheck", adminOrderService.gatewayCheck(id));
 		return "redirect:/admin/orders/" + id;
 	}
 
 	@PostMapping("/{id}/refund")
-	@Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
 	public String retryRefund(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 		if (refundService.retry(id)) {
 			redirectAttributes.addFlashAttribute("successMessage", "Cổng thanh toán đã nhận lệnh hoàn tiền đơn #" + id + ".");
@@ -195,7 +115,6 @@ public class AdminOrderController {
 	}
 
 	@PostMapping("/{id}/status")
-	@Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
 	public String updateStatus(@PathVariable Integer id, @RequestParam OrderStatus status,
 			@RequestParam(required = false) String reason, RedirectAttributes redirectAttributes) {
 		try {

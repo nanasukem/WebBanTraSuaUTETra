@@ -1,0 +1,29 @@
+body {
+	background-color: #f8f9fa;
+}
+
+.auth-card {
+	width: 100%;
+	max-width: 420px;
+	border-radius: 1rem;
+	border: none;
+}
+
+.auth-card.auth-register {
+	max-width: 480px;
+}
+
+.btn-success {
+	background-color: #198754;
+	border: none;
+}
+
+.btn-success:hover {
+	background-color: #146c43;
+}
+
+.otp-input {
+	letter-spacing: 8px;
+	font-size: 1.5rem;
+	text-align: center;
+}

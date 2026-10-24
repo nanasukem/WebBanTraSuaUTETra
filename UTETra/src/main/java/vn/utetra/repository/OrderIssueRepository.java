@@ -16,6 +16,8 @@ public interface OrderIssueRepository extends JpaRepository<OrderIssue, Integer>
 
 	Page<OrderIssue> findByOrderBranchIdOrderByCreatedAtDesc(Integer branchId, Pageable pageable);
 
+	long countByOrderBranchId(Integer branchId);
+
 	long countByOrderBranchIdAndStatus(Integer branchId, IssueStatus status);
 
 	@org.springframework.data.jpa.repository.Query("select i.order.id from OrderIssue i where i.user.id = :userId and i.status = :status")

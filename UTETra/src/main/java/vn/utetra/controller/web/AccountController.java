@@ -10,7 +10,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.servlet.http.HttpSession;
 import vn.utetra.entity.User;
 import vn.utetra.exception.BusinessException;
-import vn.utetra.repository.UserRepository;
 import vn.utetra.service.EmailService;
 import vn.utetra.service.NotificationService;
 import vn.utetra.service.UserService;
@@ -19,16 +18,14 @@ import vn.utetra.service.UserService;
 public class AccountController {
 
 	private final UserService userService;
-	private final UserRepository userRepository;
 	private final EmailService emailService;
 	private final NotificationService notificationService;
-	@org.springframework.beans.factory.annotation.Autowired
-	private vn.utetra.repository.BranchRepository branchRepository;
+	private final vn.utetra.service.BranchService branchService;
 
-	public AccountController(UserService userService, UserRepository userRepository, EmailService emailService,
-			NotificationService notificationService) {
+	public AccountController(UserService userService, EmailService emailService,
+			NotificationService notificationService, vn.utetra.service.BranchService branchService) {
 		this.userService = userService;
-		this.userRepository = userRepository;
+		this.branchService = branchService;
 		this.emailService = emailService;
 		this.notificationService = notificationService;
 	}
@@ -40,7 +37,7 @@ public class AccountController {
 		if (Boolean.TRUE.equals(u.getMustChangePassword())) return "redirect:/account/change-password";
 		String role = roleOf(u);
 		if ("USER".equals(role)) return "redirect:/user/profile";
-		User fresh = userRepository.findById(u.getId()).orElse(u);
+		User fresh = userService.findById(u.getId()).orElse(u);
 		model.addAttribute("account", fresh);
 		model.addAttribute("roleName", role);
 		model.addAttribute("roleLabel", switch (role) {
@@ -49,7 +46,7 @@ public class AccountController {
 		case "SHIPPER" -> "Nhân viên giao hàng (Shipper)";
 		default -> role;
 		});
-		model.addAttribute("myBranches", branchRepository.findByOwnerIdOrderByIdAsc(fresh.getId()));
+		model.addAttribute("myBranches", branchService.findByOwner(fresh.getId()));
 		model.addAttribute("tab", "password".equals(tab) ? "password" : "info");
 		return switch (role) {
 		case "ADMIN" -> "account/admin";
@@ -99,10 +96,7 @@ public class AccountController {
 					: "redirect:/account?tab=password";
 		}
 		boolean forced = Boolean.TRUE.equals(u.getMustChangePassword());
-		User fresh = userRepository.findById(u.getId()).orElse(u);
-		fresh.setMustChangePassword(false);
-		fresh.setTempPasswordExpiresAt(null);
-		userRepository.save(fresh);
+		User fresh = userService.clearTemporaryPassword(u.getId());
 		session.setAttribute("user", fresh);
 
 		emailService.send(fresh.getEmail(), "UTETra - Mật khẩu của bạn đã được đổi",

@@ -16,7 +16,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import vn.utetra.entity.User;
 import vn.utetra.exception.BusinessException;
-import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.service.AddressService;
 import vn.utetra.service.CurrentUserService;
 import vn.utetra.service.FavoriteService;
@@ -33,14 +32,11 @@ public class UserPageController {
 	private final FavoriteService favoriteService;
 	private final ViewedProductService viewedProductService;
 	private final vn.utetra.service.MemberService memberService;
-	private final vn.utetra.repository.MemberTierRepository memberTierRepository;
 
 	public UserPageController(CurrentUserService currentUserService, UserService userService,
 			AddressService addressService, FavoriteService favoriteService, ViewedProductService viewedProductService,
-			vn.utetra.service.MemberService memberService,
-			vn.utetra.repository.MemberTierRepository memberTierRepository) {
+			vn.utetra.service.MemberService memberService) {
 		this.memberService = memberService;
-		this.memberTierRepository = memberTierRepository;
 		this.currentUserService = currentUserService;
 		this.userService = userService;
 		this.addressService = addressService;
@@ -57,7 +53,7 @@ public class UserPageController {
 		model.addAttribute("favoriteCount", favoriteService.count(userId));
 		model.addAttribute("viewedCount", viewedProductService.count(userId));
 		model.addAttribute("tier", memberService.getTierInfo(userId));
-		model.addAttribute("tiers", memberTierRepository.findAllByOrderByMinSpentAsc());
+		model.addAttribute("tiers", memberService.allTiers());
 		model.addAttribute("tab", List.of("info", "password", "address").contains(tab) ? tab : "info");
 		return "user/profile";
 	}

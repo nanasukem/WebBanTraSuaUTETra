@@ -83,6 +83,11 @@ public class Voucher {
 	@Column(name = "payment_method", length = 20)
 	private PaymentMethod paymentMethod;
 
+	@ManyToMany(fetch = FetchType.EAGER)
+	@JoinTable(name = "VoucherUsers", joinColumns = @JoinColumn(name = "voucher_id"),
+			inverseJoinColumns = @JoinColumn(name = "user_id"))
+	private java.util.Set<User> assignedUsers = new java.util.HashSet<>();
+
 	@PrePersist
 	void prePersist() {
 		if (createdAt == null)

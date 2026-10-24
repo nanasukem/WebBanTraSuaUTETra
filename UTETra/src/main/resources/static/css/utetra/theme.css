@@ -1,0 +1,168 @@
+:root {
+	--ut-green: #198754;
+	--ut-green-dark: #146c43;
+	--ut-green-soft: #e8f5ee;
+	--ut-text: #26352d;
+	--ut-bg: #f5f8f6;
+	--ut-radius: 14px;
+	--ut-shadow: 0 2px 10px rgba(0, 0, 0, .05);
+	--bs-link-color-rgb: 25, 135, 84;
+	--bs-link-hover-color-rgb: 20, 108, 67;
+}
+
+.ut-card {
+	border: 0;
+	border-radius: var(--ut-radius);
+	box-shadow: var(--ut-shadow);
+	background: #fff;
+}
+
+.ut-pill-nav .nav-link {
+	color: var(--ut-text);
+	background: #fff;
+	border: 1px solid #dee2e6;
+	border-radius: 999px;
+	font-weight: 600;
+}
+
+.ut-pill-nav .nav-link.active {
+	background: var(--ut-green);
+	color: #fff;
+	border-color: var(--ut-green);
+}
+
+.pagination .page-item.active .page-link {
+	background-color: var(--ut-green);
+	border-color: var(--ut-green);
+}
+
+.pagination .page-link {
+	color: var(--ut-green);
+}
+
+.form-control:focus,
+.form-select:focus {
+	border-color: #75b798;
+	box-shadow: 0 0 0 .2rem rgba(25, 135, 84, .2);
+}
+
+.admin-collapse {
+	display: contents;
+}
+
+.admin-header .admin-menu {
+	order: 1;
+}
+
+.admin-header .admin-bell {
+	order: 2;
+	margin-left: auto;
+	margin-right: 10px;
+}
+
+.admin-header .admin-actions {
+	order: 3;
+	margin-left: 0;
+}
+
+.admin-toggle {
+	display: none;
+	order: 4;
+	background: transparent;
+	color: #fff;
+	border: 1px solid rgba(255, 255, 255, .45);
+	border-radius: 8px;
+	width: 42px;
+	height: 40px;
+	font-size: 22px;
+	line-height: 1;
+}
+
+.admin-toggle:hover {
+	background: rgba(255, 255, 255, .12);
+}
+
+@media (max-width: 991.98px) {
+	header.admin-header {
+		height: auto;
+		min-height: 64px;
+		flex-wrap: wrap;
+		padding: 10px 16px;
+		row-gap: 8px;
+		position: relative;
+	}
+
+	.admin-toggle {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.admin-collapse {
+		display: none;
+		order: 10;
+		width: 100%;
+		flex-direction: column;
+		gap: 6px;
+		padding: 8px 0 4px;
+		border-top: 1px solid rgba(255, 255, 255, .25);
+	}
+
+	.admin-collapse.open {
+		display: flex;
+	}
+
+	header.admin-header .admin-collapse .admin-menu {
+		flex-direction: column;
+		align-items: stretch;
+		margin-left: 0;
+		width: 100%;
+	}
+
+	.admin-collapse .admin-menu > a,
+	.admin-collapse .admin-menu .dropdown-toggle {
+		width: 100%;
+		padding: 10px 12px;
+	}
+
+	.admin-collapse .admin-menu .dropdown-menu {
+		position: static !important;
+		transform: none !important;
+		width: 100%;
+		margin: 2px 0 6px;
+	}
+
+	.admin-collapse .admin-actions {
+		width: 100%;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 6px;
+	}
+
+	.admin-collapse .admin-user,
+	.admin-collapse .admin-logout {
+		width: 100%;
+		justify-content: flex-start;
+	}
+
+	.admin-collapse .admin-actions form {
+		width: 100%;
+	}
+
+	.admin-header .admin-menu span,
+	.admin-header .admin-actions span {
+		display: inline !important;
+	}
+
+	header.admin-header .admin-brand {
+		font-size: 21px;
+	}
+
+	header.admin-header .admin-brand-icon {
+		font-size: 24px;
+	}
+
+	main.admin-main {
+		padding: 18px 14px;
+	}
+}

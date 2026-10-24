@@ -49,6 +49,21 @@ public class BranchServiceImpl implements BranchService {
 	}
 
 	@Override
+	public List<Branch> findAll() {
+		return branchRepository.findAll();
+	}
+
+	@Override
+	public java.util.Optional<Branch> findOptional(Integer id) {
+		return id == null ? java.util.Optional.empty() : branchRepository.findById(id);
+	}
+
+	@Override
+	public List<Branch> findByOwner(Integer ownerId) {
+		return branchRepository.findByOwnerIdOrderByIdAsc(ownerId);
+	}
+
+	@Override
 	public Branch findById(Integer id) {
 		return branchRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi nhánh với ID: " + id));

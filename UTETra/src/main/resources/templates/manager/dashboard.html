@@ -157,12 +157,14 @@
 				<a th:href="@{/manager/reports}" class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
-							<p class="text-muted mb-2">Doanh thu hôm nay</p>
+							<p class="text-muted mb-2">Tổng thu hôm nay</p>
 							<h4 class="fw-bold mb-0 text-dark">
 								<span
 									th:text="${#numbers.formatDecimal(todayRevenue, 0, 'POINT', 0, 'COMMA')}">0</span>
 								đ
 							</h4>
+							<small class="text-muted">Bán hàng <span th:text="${#numbers.formatDecimal(todayStat.sales(), 0, 'POINT', 0, 'COMMA')}"></span> đ ·
+								Ship <span th:text="${#numbers.formatDecimal(todayStat.shipping(), 0, 'POINT', 0, 'COMMA')}"></span> đ</small>
 						</div>
 					</div>
 				</a>
@@ -171,12 +173,14 @@
 				<a th:href="@{/manager/reports}" class="text-decoration-none">
 					<div class="card border-0 shadow-sm h-100">
 						<div class="card-body">
-							<p class="text-muted mb-2">Doanh thu tháng này</p>
+							<p class="text-muted mb-2">Tổng thu tháng này</p>
 							<h4 class="fw-bold mb-0 text-dark">
 								<span
 									th:text="${#numbers.formatDecimal(monthRevenue, 0, 'POINT', 0, 'COMMA')}">0</span>
 								đ
 							</h4>
+							<small class="text-muted">Bán hàng <span th:text="${#numbers.formatDecimal(monthStat.sales(), 0, 'POINT', 0, 'COMMA')}"></span> đ ·
+								Ship <span th:text="${#numbers.formatDecimal(monthStat.shipping(), 0, 'POINT', 0, 'COMMA')}"></span> đ</small>
 						</div>
 					</div>
 				</a>

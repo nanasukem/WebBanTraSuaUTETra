@@ -33,17 +33,7 @@ public class ManagerOrderController {
 
 	private final vn.utetra.service.OrderIssueService orderIssueService;
 	@org.springframework.beans.factory.annotation.Autowired
-	private vn.utetra.repository.OrderRepository orderRepository;
-	@org.springframework.beans.factory.annotation.Autowired
-	private vn.utetra.repository.UserRepository userRepository;
-	@org.springframework.beans.factory.annotation.Autowired
-	private vn.utetra.service.NotificationService notificationService;
-	@org.springframework.beans.factory.annotation.Autowired
-	private vn.utetra.service.OrderNotifier orderNotifier;
-
-	private static final List<OrderStatus> ASSIGNABLE = List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED,
-			OrderStatus.READY);
-	private static final List<OrderStatus> ON_THE_ROAD = List.of(OrderStatus.PICKED_UP, OrderStatus.DELIVERING);
+	private vn.utetra.service.BranchShipperService branchShipperService;
 
 	public ManagerOrderController(ManagerOrderService managerOrderService, CurrentUserService currentUserService,
 			vn.utetra.service.OrderIssueService orderIssueService) {
@@ -130,71 +120,21 @@ public class ManagerOrderController {
 	}
 
 	private void addShipperInfo(Integer orderId, Model model) {
-		vn.utetra.entity.Order o = orderRepository.findById(orderId).orElse(null);
-		if (o == null || o.getDeliveryType() != vn.utetra.entity.enums.DeliveryType.DELIVERY) {
-			model.addAttribute("shipperBox", false);
-			return;
-		}
-		model.addAttribute("shipperBox", true);
-		model.addAttribute("orderShipper", o.getShipper());
-		model.addAttribute("canAssignShipper", ASSIGNABLE.contains(o.getStatus()));
-		List<ShipperOption> options = new java.util.ArrayList<>();
-		if (o.getBranch() != null) {
-			for (vn.utetra.entity.User s : userRepository.findShippersOfBranch(o.getBranch().getId())) {
-				if (!Boolean.TRUE.equals(s.getIsActive())) continue;
-				int busy = orderRepository.findOpenOrderIdsOfShipper(s.getId(), ON_THE_ROAD).size();
-				options.add(new ShipperOption(s.getId(), s.getFullName(), s.getPhone(), busy));
-			}
-		}
-		model.addAttribute("branchShippers", options);
-	}
-
-	public record ShipperOption(Integer id, String name, String phone, int busy) {
+		vn.utetra.service.BranchShipperService.ShipperBox box = branchShipperService.box(orderId);
+		model.addAttribute("shipperBox", box.show());
+		if (!box.show()) return;
+		model.addAttribute("orderShipper", box.shipper());
+		model.addAttribute("canAssignShipper", box.canAssign());
+		model.addAttribute("branchShippers", box.options());
 	}
 
 	@PostMapping("/manager/orders/{id}/shipper")
-	@org.springframework.transaction.annotation.Transactional
 	public String assignShipper(@PathVariable Integer id, @RequestParam(required = false) Integer shipperId,
 			Principal principal, HttpSession session, RedirectAttributes ra) {
 		Integer managerId = currentUserService.requireUserId(principal, session);
 		try {
 			managerOrderService.orderCard(managerId, id);
-			vn.utetra.entity.Order o = orderRepository.findById(id)
-					.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + id));
-			if (o.getDeliveryType() != vn.utetra.entity.enums.DeliveryType.DELIVERY) {
-				throw new BusinessException("Đơn #" + id + " là đơn khách tự đến lấy, không cần shipper");
-			}
-			if (!ASSIGNABLE.contains(o.getStatus())) {
-				throw new BusinessException("Shipper đã lấy hàng hoặc đơn đã kết thúc, không đổi shipper được nữa");
-			}
-			vn.utetra.entity.User old = o.getShipper();
-			vn.utetra.entity.User s = null;
-			if (shipperId != null) {
-				s = userRepository.findById(shipperId).orElse(null);
-				if (s == null || s.getRole() == null || !"SHIPPER".equals(s.getRole().getName())
-						|| s.getBranch() == null || o.getBranch() == null
-						|| !s.getBranch().getId().equals(o.getBranch().getId())) {
-					throw new BusinessException("Shipper này không thuộc chi nhánh của đơn");
-				}
-				if (!Boolean.TRUE.equals(s.getIsActive())) {
-					throw new BusinessException("Tài khoản shipper " + s.getFullName() + " đang bị khoá");
-				}
-			}
-			if (old == null && s == null || old != null && s != null && old.getId().equals(s.getId())) {
-				throw new BusinessException("Đơn #" + id + " không có gì thay đổi");
-			}
-			o.setShipper(s);
-			orderRepository.save(o);
-			orderNotifier.onShipperChanged(o);
-			if (s != null) {
-				notificationService.create(s, o, "ORDER", "Quán giao đơn #" + id + " cho bạn",
-						"Đơn giao tới " + o.getDeliveryAddress() + ". Pha xong là đơn hiện ở mục Chờ lấy tại quán.",
-						"/shipper/orders");
-			}
-			if (old != null) {
-				notificationService.create(old, o, "ORDER", "Quán đã chuyển đơn #" + id + " cho shipper khác",
-						"Bạn không cần giao đơn này nữa.", "/shipper/orders");
-			}
+			vn.utetra.entity.User s = branchShipperService.assign(id, shipperId);
 			ra.addFlashAttribute("success", s == null
 					? "Đã bỏ chỉ định shipper đơn #" + id + ": shipper nào của quán lấy hàng trước thì nhận"
 					: "Đã giao đơn #" + id + " cho shipper " + s.getFullName());

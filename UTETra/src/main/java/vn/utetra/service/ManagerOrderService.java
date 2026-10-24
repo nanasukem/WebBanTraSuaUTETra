@@ -24,4 +24,6 @@ public interface ManagerOrderService {
 	OrderDetailRes orderDetail(Integer managerId, Integer orderId);
 
 	ManagerOrderRes orderCard(Integer managerId, Integer orderId);
+
+	List<vn.utetra.entity.Order> branchOrders(Integer branchId);
 }

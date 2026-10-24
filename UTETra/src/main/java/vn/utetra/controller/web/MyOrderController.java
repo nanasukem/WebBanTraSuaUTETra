@@ -160,8 +160,9 @@ public class MyOrderController {
 			model.addAttribute("cancelReasons", CANCEL_REASONS);
 			model.addAttribute("reviewItems", reviewService.purchasedItems(userId, null).stream()
 					.filter(i -> i.orderId().equals(id)).toList());
-			model.addAttribute("pendingReview", reviewService.pendingItems(userId, null).stream()
-					.filter(i -> i.orderId().equals(id)).count());
+			long pending = reviewService.pendingItems(userId, null).stream().filter(i -> i.orderId().equals(id)).count();
+			model.addAttribute("pendingReview", pending);
+			model.addAttribute("canReview", pending > 0);
 			return "orders/detail";
 		} catch (ResourceNotFoundException e) {
 			ra.addFlashAttribute("error", e.getMessage());
@@ -222,7 +223,8 @@ public class MyOrderController {
 			vn.utetra.entity.enums.IssueReason r = reason == null || reason.isBlank() ? null
 					: vn.utetra.entity.enums.IssueReason.valueOf(reason);
 			orderIssueService.submit(userId, id, r, description, images);
-			ra.addFlashAttribute("success", "Đã gửi báo cáo cho quán. Quán sẽ phản hồi sớm, bạn theo dõi ở chuông thông báo nhé.");
+			ra.addFlashAttribute("success", "Đã gửi báo cáo cho quán. Quán sẽ phản hồi sớm, bạn theo dõi ở chuông thông báo nhé."
+					+ " Đơn đang được giải quyết nên đánh giá của đơn này (nếu có) đã được gỡ.");
 			return "redirect:/orders/" + id;
 		} catch (BusinessException | ResourceNotFoundException | IllegalArgumentException e) {
 			ra.addFlashAttribute("error", e.getMessage());

@@ -2,10 +2,6 @@ package vn.utetra.controller.web;
 
 import jakarta.servlet.http.HttpSession;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,8 +9,6 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,21 +19,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import vn.utetra.dto.response.CategoryCardRes;
 import vn.utetra.dto.response.MenuSectionRes;
-import vn.utetra.dto.response.ProductCardRes;
 import vn.utetra.dto.response.OrderTab;
-import vn.utetra.entity.Branch;
 import vn.utetra.entity.Category;
-import vn.utetra.entity.Product;
 import vn.utetra.entity.User;
 
-import vn.utetra.repository.BranchRepository;
-import vn.utetra.repository.CategoryRepository;
-import vn.utetra.repository.ProductRepository;
-import vn.utetra.repository.UserRepository;
-import vn.utetra.service.BranchReviewManagementService;
+import vn.utetra.service.CatalogService;
 import vn.utetra.service.OrderFlowService;
+import vn.utetra.service.UserService;
 import vn.utetra.service.ProductHighlightService;
 import vn.utetra.service.ViewedProductService;
 
@@ -54,30 +41,22 @@ public class HomeController {
 
 	private static final int HIGHLIGHT_PAGE_SIZE = 8;
 
-	private final UserRepository userRepository;
-	private final ProductRepository productRepository;
-	private final CategoryRepository categoryRepository;
+	private final UserService userService;
+	private final CatalogService catalogService;
 	private final ProductHighlightService productHighlightService;
 	private final OrderFlowService orderFlowService;
 	private final ViewedProductService viewedProductService;
 	private final vn.utetra.service.ReviewService reviewService;
-	private final BranchRepository branchRepository;
-	private final BranchReviewManagementService branchReviewManagementService;
 
-	public HomeController(UserRepository userRepository, ProductRepository productRepository,
-			CategoryRepository categoryRepository, ProductHighlightService productHighlightService,
-			OrderFlowService orderFlowService, ViewedProductService viewedProductService,
-			vn.utetra.service.ReviewService reviewService, BranchRepository branchRepository,
-			BranchReviewManagementService branchReviewManagementService) {
-		this.reviewService = reviewService;
-		this.userRepository = userRepository;
-		this.productRepository = productRepository;
-		this.categoryRepository = categoryRepository;
+	public HomeController(UserService userService, CatalogService catalogService,
+			ProductHighlightService productHighlightService, OrderFlowService orderFlowService,
+			ViewedProductService viewedProductService, vn.utetra.service.ReviewService reviewService) {
+		this.userService = userService;
+		this.catalogService = catalogService;
 		this.productHighlightService = productHighlightService;
 		this.orderFlowService = orderFlowService;
 		this.viewedProductService = viewedProductService;
-		this.branchRepository = branchRepository;
-		this.branchReviewManagementService = branchReviewManagementService;
+		this.reviewService = reviewService;
 	}
 
 	@GetMapping("/")
@@ -90,7 +69,7 @@ public class HomeController {
 
 		if (isLoggedIn) {
 
-			Optional<User> userOptional = userRepository.findByUsername(authentication.getName());
+			Optional<User> userOptional = userService.findByUsername(authentication.getName());
 
 			if (userOptional.isPresent()) {
 
@@ -130,7 +109,7 @@ public class HomeController {
 		if (authentication == null || "anonymousUser".equals(authentication.getName())) {
 			return "redirect:/auth/login";
 		}
-		Optional<User> userOptional = userRepository.findByUsername(authentication.getName());
+		Optional<User> userOptional = userService.findByUsername(authentication.getName());
 		if (userOptional.isEmpty()) {
 			return "redirect:/";
 		}
@@ -156,30 +135,14 @@ public class HomeController {
 	}
 
 	private String guestHome(int page, Model model) {
-		page = Math.max(page, 0);
-		Page<Product> productPage = productRepository
-				.findBySoldCountGreaterThanAndIsAvailableTrueOrderBySoldCountDescIdAsc(GUEST_MIN_SOLD,
-						PageRequest.of(page, PAGE_SIZE));
+		CatalogService.CardPage best = catalogService.bestSellers(GUEST_MIN_SOLD, page, PAGE_SIZE);
+		addBranches(model);
 
-		if (productPage.getTotalPages() > 0 && page >= productPage.getTotalPages()) {
-			page = productPage.getTotalPages() - 1;
-			productPage = productRepository.findBySoldCountGreaterThanAndIsAvailableTrueOrderBySoldCountDescIdAsc(
-					GUEST_MIN_SOLD, PageRequest.of(page, PAGE_SIZE));
-		}
-
-		List<Branch> branches = branchRepository.findAll();
-		Map<Integer, Map<String, Object>> branchReviewSummaries = new HashMap<>();
-		for (Branch b : branches) {
-			branchReviewSummaries.put(b.getId(), branchReviewManagementService.getBranchReviewSummary(b.getId()));
-		}
-		model.addAttribute("branches", branches);
-		model.addAttribute("branchReviewSummaries", branchReviewSummaries);
-
-		model.addAttribute("products", productHighlightService.toCards(productPage.getContent()));
-		model.addAttribute("currentPage", page);
-		model.addAttribute("totalPages", productPage.getTotalPages());
-		model.addAttribute("totalItems", productPage.getTotalElements());
-		model.addAttribute("rankOffset", page * PAGE_SIZE);
+		model.addAttribute("products", best.cards());
+		model.addAttribute("currentPage", best.page());
+		model.addAttribute("totalPages", best.totalPages());
+		model.addAttribute("totalItems", best.totalItems());
+		model.addAttribute("rankOffset", best.page() * PAGE_SIZE);
 		model.addAttribute("minSold", GUEST_MIN_SOLD);
 		model.addAttribute("isBuyer", false);
 		model.addAttribute("isGuest", true);
@@ -204,15 +167,8 @@ public class HomeController {
 			model.addAttribute("recentViewed", viewedProductService.recent(user.getId(), 8));
 		}
 
-		model.addAttribute("categories", categoryCards());
-
-		List<Branch> branches = branchRepository.findAll();
-		Map<Integer, Map<String, Object>> branchReviewSummaries = new HashMap<>();
-		for (Branch b : branches) {
-			branchReviewSummaries.put(b.getId(), branchReviewManagementService.getBranchReviewSummary(b.getId()));
-		}
-		model.addAttribute("branches", branches);
-		model.addAttribute("branchReviewSummaries", branchReviewSummaries);
+		model.addAttribute("categories", catalogService.categoryCards());
+		addBranches(model);
 
 		model.addAttribute("newestPage", productHighlightService.page("newest", 0, HIGHLIGHT_PAGE_SIZE));
 		model.addAttribute("soldPage", productHighlightService.page("sold", 0, HIGHLIGHT_PAGE_SIZE));
@@ -238,49 +194,34 @@ public class HomeController {
 			@RequestParam(name = "sortBy", defaultValue = "sold") String sortBy,
 			@RequestParam(name = "page", defaultValue = "0") int page, HttpSession session, Model model) {
 
-		Optional<Category> categoryOpt = categoryRepository.findById(id);
+		Optional<Category> categoryOpt = catalogService.findCategory(id);
 		if (categoryOpt.isEmpty()) {
 			return "redirect:/menu#thuc-don";
 		}
 
-		if (!List.of("newest", "sold", "price_asc", "price_desc").contains(sortBy)) {
+		if (!CatalogService.CATEGORY_SORTS.contains(sortBy)) {
 			sortBy = "sold";
 		}
-		page = Math.max(page, 0);
-
-		Page<Product> productPage = productRepository.menuProductsPaged(id, sortBy, PageRequest.of(page, PAGE_SIZE));
-		if (productPage.getTotalPages() > 0 && page >= productPage.getTotalPages()) {
-			page = productPage.getTotalPages() - 1;
-			productPage = productRepository.menuProductsPaged(id, sortBy, PageRequest.of(page, PAGE_SIZE));
-		}
+		CatalogService.CardPage result = catalogService.categoryProducts(id, sortBy, page, PAGE_SIZE);
 
 		String role = roleOf(session);
 		model.addAttribute("category", categoryOpt.get());
-		model.addAttribute("categories", categoryCards());
-		model.addAttribute("products", productHighlightService.toCards(productPage.getContent()));
+		model.addAttribute("categories", catalogService.categoryCards());
+		model.addAttribute("products", result.cards());
 		model.addAttribute("sortBy", sortBy);
-		model.addAttribute("currentPage", page);
-		model.addAttribute("totalPages", productPage.getTotalPages());
-		model.addAttribute("totalItems", productPage.getTotalElements());
+		model.addAttribute("currentPage", result.page());
+		model.addAttribute("totalPages", result.totalPages());
+		model.addAttribute("totalItems", result.totalItems());
 		model.addAttribute("isBuyer", "USER".equals(role));
 		model.addAttribute("isGuest", role.isEmpty());
 		model.addAttribute("cardMode", cardModeOf(role));
 		return "category";
 	}
 
-	private List<CategoryCardRes> categoryCards() {
-		Map<Integer, Long> counts = new HashMap<>();
-		try {
-			for (Object[] row : productRepository.countAvailableByCategory()) {
-				if (row[0] != null) {
-					counts.put(((Number) row[0]).intValue(), ((Number) row[1]).longValue());
-				}
-			}
-		} catch (Exception e) {
-			logger.error("Không đếm được số món theo danh mục", e);
-		}
-		return categoryRepository.findAll().stream().map(c -> new CategoryCardRes(c.getId(), c.getName(),
-				c.getImageCloudinaryId(), counts.getOrDefault(c.getId(), 0L))).toList();
+	private void addBranches(Model model) {
+		CatalogService.BranchOverview overview = catalogService.branchOverview();
+		model.addAttribute("branches", overview.branches());
+		model.addAttribute("branchReviewSummaries", overview.reviewSummaries());
 	}
 
 	private static String cardModeOf(String role) {
@@ -308,35 +249,14 @@ public class HomeController {
 
 		keyword = keyword == null ? "" : keyword.trim();
 
-		if (!List.of("default", "newest", "sold", "price_asc", "price_desc").contains(sortBy)) {
+		if (!CatalogService.MENU_SORTS.contains(sortBy)) {
 			sortBy = "default";
 		}
-
-		List<Product> products = productRepository.menuProducts(keyword.isEmpty() ? null : keyword, null,
-				"default".equals(sortBy) ? "id" : sortBy);
-		if ("default".equals(sortBy)) {
-			products = products.stream().sorted(Comparator.comparing((Product p) -> !Boolean.TRUE.equals(p.getIsAvailable()))
-					.thenComparing(Product::getId)).toList();
-		}
-		List<ProductCardRes> cards = productHighlightService.toCards(products);
-
-		Map<Integer, List<ProductCardRes>> byCategory = new LinkedHashMap<>();
-		for (int i = 0; i < products.size() && i < cards.size(); i++) {
-			Category c = products.get(i).getCategory();
-			byCategory.computeIfAbsent(c != null ? c.getId() : 0, k -> new ArrayList<>()).add(cards.get(i));
-		}
-		List<MenuSectionRes> sections = new ArrayList<>();
-		for (Category c : categoryRepository.findAll()) {
-			List<ProductCardRes> items = byCategory.remove(c.getId());
-			if (items != null && !items.isEmpty()) {
-				sections.add(new MenuSectionRes(c.getId(), c.getName(), items));
-			}
-		}
-		byCategory.values().stream().filter(l -> !l.isEmpty()).findFirst()
-				.ifPresent(rest -> sections.add(new MenuSectionRes(0, "Khác", rest)));
+		List<MenuSectionRes> sections = catalogService.menuSections(keyword, sortBy);
+		int totalItems = sections.stream().mapToInt(x -> x.items().size()).sum();
 
 		model.addAttribute("sections", sections);
-		model.addAttribute("totalItems", cards.size());
+		model.addAttribute("totalItems", totalItems);
 		model.addAttribute("keyword", keyword);
 		model.addAttribute("sortBy", sortBy);
 		model.addAttribute("isBuyer", "USER".equals(role));

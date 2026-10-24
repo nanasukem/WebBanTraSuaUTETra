@@ -64,6 +64,11 @@ public class AdminUserService {
 		this.emailService = emailService;
 	}
 
+	@Transactional(readOnly = true)
+	public List<vn.utetra.entity.Role> roles() {
+		return roleRepository.findAll();
+	}
+
 	public record SearchResult(List<User> users, Map<Integer, String> branchLabels, String tab, String role,
 			String status, String branch, long staffCount, long customerCount, long totalUsers, long activeUsers) {
 	}

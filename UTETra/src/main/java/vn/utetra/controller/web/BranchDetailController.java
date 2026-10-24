@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import vn.utetra.dto.response.BranchReviewRes;
 import vn.utetra.entity.Branch;
-import vn.utetra.repository.BranchRepository;
 import vn.utetra.service.BranchReviewManagementService;
 
 import java.time.LocalTime;
@@ -21,7 +20,7 @@ public class BranchDetailController {
 	private BranchReviewManagementService reviewService;
 
 	@Autowired
-	private BranchRepository branchRepository;
+	private vn.utetra.service.BranchService branchService;
 
 	@GetMapping("/branches/{id:\\d+}/reviews-public")
 	public String oldReviewsLink(@PathVariable Integer id) {
@@ -30,7 +29,7 @@ public class BranchDetailController {
 
 	@GetMapping("/branches/{id:\\d+}")
 	public String branchDetail(@PathVariable Integer id, Model model) {
-		Branch branch = branchRepository.findById(id).orElse(null);
+		Branch branch = branchService.findOptional(id).orElse(null);
 		if (branch == null || branch.getStatus() != vn.utetra.entity.enums.BranchStatus.APPROVED) {
 			return "redirect:/branches";
 		}

@@ -12,7 +12,6 @@ import vn.utetra.entity.Voucher;
 import vn.utetra.entity.enums.DiscountType;
 import vn.utetra.entity.enums.VoucherApplyTo;
 import vn.utetra.exception.BusinessException;
-import vn.utetra.repository.BranchRepository;
 import vn.utetra.service.VoucherService;
 
 import java.time.LocalDateTime;
@@ -23,17 +22,22 @@ import java.util.List;
 public class AdminVoucherController {
 
 	private final VoucherService voucherService;
-	private final BranchRepository branchRepository;
+	private final vn.utetra.service.BranchService branchService;
+	private final vn.utetra.service.MemberService memberService;
+	private final vn.utetra.service.UserService userService;
 
-	public AdminVoucherController(VoucherService voucherService, BranchRepository branchRepository) {
+	public AdminVoucherController(VoucherService voucherService, vn.utetra.service.BranchService branchService,
+			vn.utetra.service.MemberService memberService, vn.utetra.service.UserService userService) {
 		this.voucherService = voucherService;
-		this.branchRepository = branchRepository;
+		this.branchService = branchService;
+		this.memberService = memberService;
+		this.userService = userService;
 	}
 
 	@GetMapping
 	public String index(Model model) {
 		model.addAttribute("vouchers", voucherService.findAllVouchers());
-		model.addAttribute("branches", branchRepository.findAll());
+		model.addAttribute("branches", branchService.findAll());
 		return "admin/vouchers/index";
 	}
 
@@ -145,6 +149,9 @@ public class AdminVoucherController {
 	private void addFormOptions(Model model) {
 		model.addAttribute("discountTypes", DiscountType.values());
 		model.addAttribute("applyToOptions", List.of(VoucherApplyTo.PRODUCT));
-		model.addAttribute("branches", branchRepository.findAll());
+		model.addAttribute("branches", branchService.findAll());
+		model.addAttribute("tiers", memberService.allTiers());
+		model.addAttribute("paymentMethods", vn.utetra.entity.enums.PaymentMethod.values());
+		model.addAttribute("customers", userService.customers());
 	}
 }

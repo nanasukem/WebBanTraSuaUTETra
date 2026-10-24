@@ -140,11 +140,16 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		}
 		List<ManagerTabRes> tabs = new ArrayList<>();
 		long choXuLy = orderIssueRepository.countByOrderBranchIdAndStatus(id, vn.utetra.entity.enums.IssueStatus.PENDING);
+		long tongVanDe = orderIssueRepository.countByOrderBranchId(id);
 		TABS.forEach((key, t) -> {
 			long n = t.statuses().stream().mapToLong(s -> counts.getOrDefault(s, 0L)).sum();
-			if ("ISSUE".equals(key)) n = choXuLy;
+			long cho = 0;
+			if ("ISSUE".equals(key)) {
+				n = tongVanDe;
+				cho = choXuLy;
+			}
 			if ("DELIVERED".equals(key)) n -= choXuLy;
-			tabs.add(new ManagerTabRes(key, t.label(), n));
+			tabs.add(new ManagerTabRes(key, t.label(), n, cho));
 		});
 
 		PageRequest pr = PageRequest.of(Math.max(0, page), PAGE_SIZE);
@@ -235,5 +240,12 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		return d.getQuantity() + "× " + d.getProduct().getName() + " · " + options
 				+ (toppings.isEmpty() ? "" : " + " + toppings)
 				+ (d.getNote() == null ? "" : " · Ghi chú: " + d.getNote());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<Order> branchOrders(Integer branchId) {
+		return orderRepository.findByBranchIdAndStatusInOrderByCreatedAtAsc(branchId,
+				java.util.EnumSet.allOf(OrderStatus.class));
 	}
 }

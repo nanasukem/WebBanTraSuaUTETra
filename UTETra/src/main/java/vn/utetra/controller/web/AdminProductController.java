@@ -1,6 +1,5 @@
 package vn.utetra.controller.web;
 
-import java.io.IOException;
 import java.util.List;
 
 import org.springframework.stereotype.Controller;
@@ -11,7 +10,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import lombok.RequiredArgsConstructor;
 import vn.utetra.dto.ProductDto;
 import vn.utetra.dto.ProductFormDto;
-import vn.utetra.entity.Category;
 import vn.utetra.entity.Product;
 import vn.utetra.service.AdminProductService;
 
@@ -21,7 +19,7 @@ import vn.utetra.service.AdminProductService;
 public class AdminProductController {
 
 	private final AdminProductService adminProductService;
-	private final vn.utetra.repository.BranchProductRepository branchProductRepository;
+	private final vn.utetra.service.BranchStockService branchStockService;
 
 	@GetMapping
 	public String index(@RequestParam(required = false) String keyword,
@@ -57,11 +55,7 @@ public class AdminProductController {
 				.filter(c -> !toppingCategoryIds.contains(c.getId())).toList());
 		model.addAttribute("keyword", keyword);
 
-		java.util.Map<Integer, List<String>> outAt = new java.util.HashMap<>();
-		for (Object[] r : branchProductRepository.findAllUnavailable()) {
-			outAt.computeIfAbsent((Integer) r[0], k -> new java.util.ArrayList<>()).add((String) r[1]);
-		}
-		model.addAttribute("outAt", outAt);
+		model.addAttribute("outAt", branchStockService.unavailableBranchNamesByProduct());
 		model.addAttribute("categoryId", categoryId);
 		model.addAttribute("status", status);
 

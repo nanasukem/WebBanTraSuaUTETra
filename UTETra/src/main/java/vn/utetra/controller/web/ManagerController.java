@@ -1,22 +1,13 @@
 package vn.utetra.controller.web;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.security.Principal;
 import java.time.LocalDate;
 import vn.utetra.service.ReportService;
 import vn.utetra.service.BranchStockService;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -29,19 +20,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import vn.utetra.dto.response.ManagerVoucherRes;
 import vn.utetra.entity.Branch;
-import vn.utetra.entity.BranchProduct;
 import vn.utetra.entity.Order;
-import vn.utetra.entity.Product;
-import vn.utetra.entity.enums.BranchStatus;
 import vn.utetra.entity.enums.OrderStatus;
 import vn.utetra.exception.ResourceNotFoundException;
-import vn.utetra.repository.BranchProductRepository;
-import vn.utetra.repository.BranchRepository;
-import vn.utetra.repository.OrderRepository;
-import vn.utetra.repository.ProductRepository;
 import vn.utetra.service.BranchService;
 import vn.utetra.service.CurrentUserService;
 import vn.utetra.service.ManagerCustomerService;
+import vn.utetra.service.ManagerOrderService;
 import vn.utetra.service.VoucherService;
 
 @Controller
@@ -52,15 +37,11 @@ public class ManagerController {
 
 	private static final String NO_BRANCH = "Tài khoản của bạn chưa được Admin giao chi nhánh nào.";
 
-	private final BranchRepository branchRepository;
-	private final BranchProductRepository branchProductRepository;
-	private final ProductRepository productRepository;
-	private final OrderRepository orderRepository;
+	private final ManagerOrderService managerOrderService;
 	private final VoucherService voucherService;
 	private final CurrentUserService currentUserService;
 	private final ManagerCustomerService managerCustomerService;
 	private final BranchService branchService;
-	private final vn.utetra.repository.ToppingRepository toppingRepository;
 	private final vn.utetra.service.ToppingService toppingService;
 	private final vn.utetra.service.NotificationService notificationService;
 	@org.springframework.beans.factory.annotation.Autowired
@@ -68,24 +49,18 @@ public class ManagerController {
 	@org.springframework.beans.factory.annotation.Autowired
 	private vn.utetra.service.BranchStockService branchStockService;
 	@org.springframework.beans.factory.annotation.Autowired
-	private vn.utetra.repository.UserRepository userRepository;
+	private vn.utetra.service.BranchShipperService branchShipperService;
 
-	public ManagerController(BranchRepository branchRepository, BranchProductRepository branchProductRepository,
-			ProductRepository productRepository, OrderRepository orderRepository, VoucherService voucherService,
+	public ManagerController(ManagerOrderService managerOrderService, VoucherService voucherService,
 			CurrentUserService currentUserService, ManagerCustomerService managerCustomerService,
-			BranchService branchService, vn.utetra.repository.ToppingRepository toppingRepository,
-			vn.utetra.service.ToppingService toppingService,
+			BranchService branchService, vn.utetra.service.ToppingService toppingService,
 			vn.utetra.service.NotificationService notificationService) {
 
-		this.branchRepository = branchRepository;
-		this.branchProductRepository = branchProductRepository;
-		this.productRepository = productRepository;
-		this.orderRepository = orderRepository;
+		this.managerOrderService = managerOrderService;
 		this.voucherService = voucherService;
 		this.currentUserService = currentUserService;
 		this.managerCustomerService = managerCustomerService;
 		this.branchService = branchService;
-		this.toppingRepository = toppingRepository;
 		this.toppingService = toppingService;
 		this.notificationService = notificationService;
 	}
@@ -93,7 +68,7 @@ public class ManagerController {
 	private Branch myBranch(Principal principal, HttpSession session) {
 		Integer managerId = currentUserService.requireUserId(principal, session);
 
-		List<Branch> branches = branchRepository.findByOwnerIdOrderByIdAsc(managerId);
+		List<Branch> branches = branchService.findByOwner(managerId);
 
 		return branches.isEmpty() ? null : branches.get(0);
 	}
@@ -111,7 +86,7 @@ public class ManagerController {
 	}
 
 	private List<Order> ordersOf(Integer branchId) {
-		return orderRepository.findByBranchIdAndStatusInOrderByCreatedAtAsc(branchId, EnumSet.allOf(OrderStatus.class));
+		return managerOrderService.branchOrders(branchId);
 	}
 
 	private String toMyBranch(String suffix, Principal principal, HttpSession session, RedirectAttributes ra) {
@@ -198,12 +173,16 @@ public class ManagerController {
 
 		model.addAttribute("cancelledOrders", countOrdersByStatus(orders, OrderStatus.CANCELLED));
 
-		model.addAttribute("todayRevenue", sumRevenue(orders, todayStart, tomorrowStart));
+		ReportService.Point todayStat = reportService.summary(todayStart, tomorrowStart, branch.getId());
+		ReportService.Point monthStat = reportService.summary(monthStart, nextMonthStart, branch.getId());
+		model.addAttribute("todayStat", todayStat);
+		model.addAttribute("monthStat", monthStat);
+		model.addAttribute("todayRevenue", todayStat.revenue());
 
-		model.addAttribute("monthRevenue", sumRevenue(orders, monthStart, nextMonthStart));
+		model.addAttribute("monthRevenue", monthStat.revenue());
 
 		model.addAttribute("unavailableProducts",
-				branchProductRepository.findUnavailableProductIds(branch.getId()).size());
+				branchStockService.unavailableProductIds(branch.getId()).size());
 
 		model.addAttribute("activeVouchers",
 				voucherService.branchView(branch.getId()).stream().filter(v -> "RUNNING".equals(v.status())).count());
@@ -229,7 +208,7 @@ public class ManagerController {
 		}
 
 		model.addAttribute("branch", branch);
-		model.addAttribute("branchProducts", branchProductRepository.findByBranchId(id));
+		model.addAttribute("branchProducts", branchStockService.branchProducts(id));
 
 		return "manager/branches/detail";
 	}
@@ -278,7 +257,7 @@ public class ManagerController {
 		model.addAttribute("unavailableProductIds", branchStockService.unavailableProductIds(branchId));
 		model.addAttribute("toppings", branchStockService.toppings());
 		model.addAttribute("unavailableToppingIds", branchStockService.unavailableToppingIds(branchId));
-		model.addAttribute("branchProducts", branchProductRepository.findByBranchId(branchId));
+		model.addAttribute("branchProducts", branchStockService.branchProducts(branchId));
 
 		return "manager/branches/products";
 	}
@@ -321,10 +300,6 @@ public class ManagerController {
 		return "redirect:/manager/branches/" + branchId + "/products#toppings";
 	}
 
-	public record ShipperRow(Integer id, String name, String username, String phone, boolean active,
-			List<Integer> deliveringIds, long deliveredToday, long deliveredTotal, LocalDateTime lastDeliveredAt) {
-	}
-
 	@GetMapping("/branches/{branchId}/shippers")
 	public String branchShippers(@PathVariable Integer branchId, Principal principal, HttpSession session,
 			Model model, RedirectAttributes ra) {
@@ -335,23 +310,7 @@ public class ManagerController {
 			return denied(ra);
 		}
 
-		List<Order> orders = ordersOf(branchId);
-		LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-		List<ShipperRow> rows = new java.util.ArrayList<>();
-		for (vn.utetra.entity.User s : userRepository.findShippersOfBranch(branchId)) {
-			List<Order> mine = orders.stream()
-					.filter(o -> o.getShipper() != null && o.getShipper().getId().equals(s.getId())).toList();
-			List<Integer> delivering = mine.stream()
-					.filter(o -> o.getStatus() == OrderStatus.PICKED_UP || o.getStatus() == OrderStatus.DELIVERING)
-					.map(Order::getId).sorted().toList();
-			List<Order> delivered = mine.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED).toList();
-			long today = delivered.stream()
-					.filter(o -> o.getDeliveredAt() != null && !o.getDeliveredAt().isBefore(todayStart)).count();
-			LocalDateTime last = delivered.stream().map(Order::getDeliveredAt).filter(java.util.Objects::nonNull)
-					.max(java.util.Comparator.naturalOrder()).orElse(null);
-			rows.add(new ShipperRow(s.getId(), s.getFullName(), s.getUsername(), s.getPhone(),
-					Boolean.TRUE.equals(s.getIsActive()), delivering, today, delivered.size(), last));
-		}
+		List<vn.utetra.service.BranchShipperService.ShipperRow> rows = branchShipperService.rows(branchId);
 
 		model.addAttribute("branch", branch);
 		model.addAttribute("shippers", rows);
@@ -371,39 +330,21 @@ public class ManagerController {
 			return denied(ra);
 		}
 
-		vn.utetra.entity.User s = userRepository.findById(shipperId).orElse(null);
-		List<Order> mine = s == null ? List.of() : ordersOf(branchId).stream()
-				.filter(o -> o.getShipper() != null && o.getShipper().getId().equals(shipperId)).toList();
-		boolean inBranch = s != null && s.getBranch() != null && s.getBranch().getId().equals(branchId);
-		if (s == null || !inBranch && mine.isEmpty()) {
+		vn.utetra.service.BranchShipperService.ShipperDetail d = branchShipperService.detail(branchId, shipperId)
+				.orElse(null);
+		if (d == null) {
 			ra.addFlashAttribute("error", "Không tìm thấy shipper này ở chi nhánh");
 			return "redirect:/manager/branches/" + branchId + "/shippers";
 		}
 
-		List<Order> delivering = mine.stream()
-				.filter(o -> o.getStatus() == OrderStatus.PICKED_UP || o.getStatus() == OrderStatus.DELIVERING)
-				.sorted(Comparator.comparing(Order::getId)).toList();
-		List<Order> waiting = mine.stream()
-				.filter(o -> o.getStatus() == OrderStatus.PENDING || o.getStatus() == OrderStatus.CONFIRMED
-						|| o.getStatus() == OrderStatus.READY)
-				.sorted(Comparator.comparing(Order::getId)).toList();
-		List<Order> delivered = mine.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED)
-				.sorted(Comparator.comparing(Order::getDeliveredAt,
-						Comparator.nullsLast(Comparator.reverseOrder())))
-				.toList();
-
-		LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-		LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
 		model.addAttribute("branch", branch);
-		model.addAttribute("shipper", s);
-		model.addAttribute("inBranch", inBranch);
-		model.addAttribute("delivering", delivering);
-		model.addAttribute("waiting", waiting);
-		model.addAttribute("delivered", delivered);
-		model.addAttribute("deliveredToday", delivered.stream()
-				.filter(o -> o.getDeliveredAt() != null && !o.getDeliveredAt().isBefore(todayStart)).count());
-		model.addAttribute("deliveredMonth", delivered.stream()
-				.filter(o -> o.getDeliveredAt() != null && !o.getDeliveredAt().isBefore(monthStart)).count());
+		model.addAttribute("shipper", d.shipper());
+		model.addAttribute("inBranch", d.inBranch());
+		model.addAttribute("delivering", d.delivering());
+		model.addAttribute("waiting", d.waiting());
+		model.addAttribute("delivered", d.delivered());
+		model.addAttribute("deliveredToday", d.deliveredToday());
+		model.addAttribute("deliveredMonth", d.deliveredMonth());
 
 		return "manager/shippers/detail";
 	}
@@ -535,6 +476,11 @@ public class ManagerController {
 		model.addAttribute("startDate", startDate);
 		model.addAttribute("endDate", endDate);
 
+		model.addAttribute("todayStat", today1.get(0));
+		model.addAttribute("monthStat", month);
+		model.addAttribute("selectedStat", sum);
+		model.addAttribute("monthSales", months.stream().map(ReportService.Point::sales).toList());
+		model.addAttribute("monthShipping", months.stream().map(ReportService.Point::shipping).toList());
 		model.addAttribute("todayRevenue", today1.get(0).revenue());
 		model.addAttribute("todayOrders", today1.get(0).orders());
 		model.addAttribute("monthRevenue", month.revenue());
@@ -555,15 +501,6 @@ public class ManagerController {
 		model.addAttribute("topProducts", reportService.topProducts(startDate, endDate, branchId, 10));
 
 		return "manager/reports/index";
-	}
-
-	private BigDecimal sumRevenue(List<Order> orders, LocalDateTime start, LocalDateTime end) {
-
-		return orders.stream().filter(order -> order.getStatus() == OrderStatus.DELIVERED)
-				.filter(order -> order.getDeliveredAt() != null)
-				.filter(order -> !order.getDeliveredAt().isBefore(start))
-				.filter(order -> order.getDeliveredAt().isBefore(end)).map(Order::getSalesAmount)
-				.filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
 	}
 
 	private long countDeliveredOrders(List<Order> orders, LocalDateTime start, LocalDateTime end) {

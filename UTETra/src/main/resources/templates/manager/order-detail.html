@@ -152,11 +152,16 @@
 								<span th:text="|− ${#numbers.formatInteger(order.issue.refundAmount, 1, 'POINT')}đ|"></span>
 							</div>
 							<div class="d-flex justify-content-between mt-1">
-								<span class="fw-semibold">Doanh thu thực</span>
+								<span class="fw-semibold">Tổng thu thực</span>
 								<span class="fw-bold text-success"
 									th:text="|${#numbers.formatInteger(order.totalAmount.subtract(order.issue.refundAmount).max(T(java.math.BigDecimal).ZERO), 1, 'POINT')}đ|"></span>
 							</div>
 						</th:block>
+						<div class="d-flex justify-content-between mt-1 small text-muted"
+							th:with="rf=${order.issue != null and order.issue.status == 'REFUNDED' ? order.issue.refundAmount : T(java.math.BigDecimal).ZERO}">
+							<span>Doanh thu bán hàng</span>
+							<span th:text="|${#numbers.formatInteger(order.totalAmount.subtract(rf).max(T(java.math.BigDecimal).ZERO).subtract(order.shippingFee), 1, 'POINT')}đ|"></span>
+						</div>
 						<div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
 							<span class="small" th:text="${order.payment.methodLabel}"></span>
 							<span class="badge rounded-pill"
@@ -194,6 +199,8 @@
 								th:text="| - ${order.issue.description}|"></span>
 						</div>
 						<div class="mt-2" th:insert="~{fragments/media :: urls(${order.issue.images}, 84)}"></div>
+						<div th:if="${order.issue.removedReviews > 0}" class="small mt-2 text-warning-emphasis">
+							<i class="bi bi-eraser me-1"></i><span th:text="'Đã gỡ ' + ${order.issue.removedReviews} + ' đánh giá của khách cho đơn này (gỡ khi khách báo vấn đề)'"></span></div>
 
 						<div th:if="${order.issue.status != 'PENDING'}"
 							class="small mt-2 text-muted">

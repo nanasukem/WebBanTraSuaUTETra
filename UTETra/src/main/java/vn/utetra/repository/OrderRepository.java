@@ -102,24 +102,43 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
 
 	@Query(value = "SELECT CAST(o.delivered_at AS DATE) AS ngay, SUM(o.total_amount - o.refund_amount) AS doanh_thu, "
-			+ "COUNT(*) AS so_don FROM Orders o WHERE o.status = 'DELIVERED' "
+			+ "SUM(o.shipping_fee) AS phi_ship, COUNT(*) AS so_don FROM Orders o WHERE o.status = 'DELIVERED' "
 			+ "AND o.delivered_at >= :start AND o.delivered_at < :end AND (:branchId = 0 OR o.branch_id = :branchId) "
 			+ "GROUP BY CAST(o.delivered_at AS DATE) ORDER BY ngay", nativeQuery = true)
 	List<Object[]> revenueByDay(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
 			@Param("branchId") int branchId);
 
-	@Query("SELECT YEAR(o.deliveredAt), MONTH(o.deliveredAt), COALESCE(SUM(o.totalAmount - o.refundAmount), 0), COUNT(o) "
+	@Query("SELECT YEAR(o.deliveredAt), MONTH(o.deliveredAt), COALESCE(SUM(o.totalAmount - o.refundAmount), 0), "
+			+ "COALESCE(SUM(o.shippingFee), 0), COUNT(o) "
 			+ "FROM Order o WHERE o.status = :status AND o.deliveredAt >= :start AND o.deliveredAt < :end "
 			+ "AND (:branchId IS NULL OR o.branch.id = :branchId) "
 			+ "GROUP BY YEAR(o.deliveredAt), MONTH(o.deliveredAt) ORDER BY YEAR(o.deliveredAt), MONTH(o.deliveredAt)")
 	List<Object[]> revenueByMonth(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
 
-	@Query("SELECT o.branch.id, o.branch.name, COALESCE(SUM(o.totalAmount - o.refundAmount), 0), COUNT(o) "
+	@Query("SELECT o.branch.id, o.branch.name, COALESCE(SUM(o.totalAmount - o.refundAmount), 0), "
+			+ "COALESCE(SUM(o.shippingFee), 0), COUNT(o) "
 			+ "FROM Order o WHERE o.status = :status AND o.deliveredAt >= :start AND o.deliveredAt < :end "
 			+ "GROUP BY o.branch.id, o.branch.name ORDER BY COALESCE(SUM(o.totalAmount - o.refundAmount), 0) DESC")
 	List<Object[]> revenueByBranch(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end);
+
+	@Query("SELECT COALESCE(SUM(o.totalAmount - o.refundAmount), 0), COALESCE(SUM(o.shippingFee), 0), COUNT(o) "
+			+ "FROM Order o WHERE o.status = :status AND o.deliveredAt >= :start AND o.deliveredAt < :end "
+			+ "AND (:branchId IS NULL OR o.branch.id = :branchId)")
+	List<Object[]> summaryOfBranch(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
+
+	@Query("SELECT o FROM Order o WHERE o.status = :status AND o.shippingFee > 0 AND o.deliveredAt >= :start "
+			+ "AND o.deliveredAt < :end AND (:branchId IS NULL OR o.branch.id = :branchId) ORDER BY o.deliveredAt DESC")
+	org.springframework.data.domain.Page<Order> findShippedBetween(@Param("status") OrderStatus status,
+			@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, @Param("branchId") Integer branchId,
+			org.springframework.data.domain.Pageable pageable);
+
+	@Query("SELECT o FROM Order o WHERE o.status = :status AND o.shippingFee > 0 "
+			+ "AND (:branchId IS NULL OR o.branch.id = :branchId) ORDER BY o.deliveredAt DESC")
+	List<Order> findLatestShipped(@Param("status") OrderStatus status, @Param("branchId") Integer branchId,
+			org.springframework.data.domain.Pageable pageable);
 
 	List<Order> findByShipper_IdAndStatusOrderByDeliveredAtDesc(Integer shipperId, OrderStatus status);
 }

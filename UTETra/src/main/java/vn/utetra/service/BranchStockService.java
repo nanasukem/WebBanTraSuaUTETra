@@ -95,6 +95,20 @@ public class BranchStockService {
 	}
 
 	@Transactional(readOnly = true)
+	public List<vn.utetra.entity.BranchProduct> branchProducts(Integer branchId) {
+		return branchProductRepository.findByBranchId(branchId);
+	}
+
+	@Transactional(readOnly = true)
+	public java.util.Map<Integer, List<String>> unavailableBranchNamesByProduct() {
+		java.util.Map<Integer, List<String>> outAt = new java.util.HashMap<>();
+		for (Object[] r : branchProductRepository.findAllUnavailable()) {
+			outAt.computeIfAbsent((Integer) r[0], k -> new java.util.ArrayList<>()).add((String) r[1]);
+		}
+		return outAt;
+	}
+
+	@Transactional(readOnly = true)
 	public List<Integer> unavailableProductIds(Integer branchId) {
 		return branchProductRepository.findUnavailableProductIds(branchId);
 	}

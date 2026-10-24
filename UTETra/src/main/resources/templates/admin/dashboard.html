@@ -200,7 +200,7 @@
                         flex-wrap gap-3">
 				<div>
 					<div class="text-muted mb-2">
-						<i class="bi bi-cash-stack me-1"></i> Doanh thu từ đơn đã giao
+						<i class="bi bi-cash-stack me-1"></i> Tổng thu từ đơn đã giao
 					</div>
 
 					<div class="revenue-value"
@@ -209,7 +209,9 @@
 						0 ₫</div>
 
 					<small class="text-muted"> <span
-						th:text="${deliveredOrders}">0</span> đơn đã hoàn thành
+						th:text="${deliveredOrders}">0</span> đơn đã hoàn thành ·
+						Bán hàng <b th:text="${#numbers.formatDecimal(revenueSales, 0, 'POINT', 0, 'COMMA')} + ' ₫'"></b> ·
+						Phí giao hàng <b th:text="${#numbers.formatDecimal(revenueShipping, 0, 'POINT', 0, 'COMMA')} + ' ₫'"></b>
 					</small>
 				</div>
 
@@ -308,7 +310,12 @@
 									<td><span class="badge"
 										th:classappend="${T(vn.utetra.service.impl.OrderFlowServiceImpl).badgeClass(o.status)}"
 										th:text="${o.status.name() == 'CANCELLED'} ? ${T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(o.cancelledBy, false)} : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, o.deliveryType != null and o.deliveryType.name() == 'PICKUP')}">
-											PENDING </span></td>
+											PENDING </span>
+										<div th:if="${issueLabels[o.id] != null}" class="mt-1">
+											<span class="badge" th:classappend="${issuePending.contains(o.id)} ? 'text-bg-danger' : 'text-bg-light border text-dark'">
+												<i class="bi bi-exclamation-triangle me-1"></i><span th:text="${issueLabels[o.id]}"></span></span></div>
+										<div th:if="${o.refundAmount != null and o.refundAmount.signum() > 0}" class="small text-danger mt-1"
+											th:text="'Đã hoàn ' + ${#numbers.formatDecimal(o.refundAmount, 0, 'POINT', 0, 'COMMA')} + ' ₫'"></div></td>
 								</tr>
 							</tbody>
 						</table>
