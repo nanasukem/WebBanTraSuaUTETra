@@ -251,6 +251,7 @@ CREATE TABLE Orders (
         CONSTRAINT CK_Orders_DeliveryType CHECK (delivery_type IN ('DELIVERY', 'PICKUP')),
     carrier_id           INT           NULL,
     shipper_id           INT           NULL,
+    manager_id           INT           NULL,
     product_voucher_id   INT           NULL,
     receiver_name        NVARCHAR(100) NOT NULL,
     receiver_phone       VARCHAR(15)   NOT NULL,
@@ -280,6 +281,7 @@ CREATE TABLE Orders (
     CONSTRAINT FK_Orders_Branches    FOREIGN KEY (branch_id)           REFERENCES Branches(id),
     CONSTRAINT FK_Orders_Carriers    FOREIGN KEY (carrier_id)          REFERENCES Carriers(id),
     CONSTRAINT FK_Orders_Shippers    FOREIGN KEY (shipper_id)          REFERENCES Users(id),
+    CONSTRAINT FK_Orders_Managers    FOREIGN KEY (manager_id)          REFERENCES Users(id),
     CONSTRAINT FK_Orders_ProdVoucher FOREIGN KEY (product_voucher_id)  REFERENCES Vouchers(id)
 );
 
@@ -706,6 +708,8 @@ INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, qu
  (11, 34, 'M', 70, 70, 1, 48000, 48000),
  (12, 2, 'L', 70, 70, 1, 50000, 50000),
  (12, 9, 'M', 70, 70, 1, 44000, 44000);
+
+UPDATE Orders SET manager_id = (SELECT b.owner_id FROM Branches b WHERE b.id = Orders.branch_id) WHERE manager_id IS NULL;
 
 INSERT INTO Payments (order_id, method, transaction_code, amount, status, paid_at) VALUES
  (4, 'VNPAY', 'VNP2026100004', 72000, 'SUCCESS', '2026-09-08 14:30'),

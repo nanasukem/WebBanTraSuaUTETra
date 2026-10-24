@@ -84,15 +84,16 @@
 										<span th:if="${order.branch.phone}"> · <i class="bi bi-telephone"></i>
 											<span th:text="${order.branch.phone}"></span></span>
 									</small>
-									<small class="d-block mt-1">
-										<span class="text-muted">Quản lý:</span>
-										<th:block th:if="${order.branch.owner != null}">
-											<a th:href="@{/admin/users/{id}(id=${order.branch.owner.id})}" class="fw-semibold text-decoration-none"
-												th:text="${order.branch.owner.fullName}"></a>
-											<span class="text-muted" th:if="${order.branch.owner.phone}"
-												th:text="' · ' + ${order.branch.owner.phone}"></span>
+									<small class="d-block mt-1" th:with="m=${order.manager != null ? order.manager : order.branch.owner}">
+										<span class="text-muted">Manager xử lý đơn:</span>
+										<th:block th:if="${m != null}">
+											<a th:href="@{/admin/users/{id}/orders(id=${m.id})}" class="fw-semibold text-decoration-none"
+												th:text="${m.fullName}"></a>
+											<span class="text-muted" th:if="${m.phone}" th:text="' · ' + ${m.phone}"></span>
+											<span th:if="${order.branch.owner == null or order.branch.owner.id != m.id}"
+												class="badge text-bg-light border ms-1">đã chuyển khỏi chi nhánh này</span>
 										</th:block>
-										<span th:if="${order.branch.owner == null}" class="text-danger">Chưa có quản lý</span>
+										<span th:if="${m == null}" class="text-danger">Chưa có quản lý</span>
 									</small>
 								</th:block>
 							</div>

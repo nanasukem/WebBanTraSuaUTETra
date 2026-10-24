@@ -315,6 +315,7 @@ public class OrderServiceImpl implements OrderService {
 
         o.setUser(user);
         o.setBranch(c.branch);
+        o.setManager(c.branch.getOwner());
         o.setDeliveryType(c.deliveryType);
         o.setCarrier(c.carrier);
         o.setProductVoucher(c.productVoucher);

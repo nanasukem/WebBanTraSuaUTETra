@@ -46,6 +46,10 @@ public class Order {
 	private User shipper;
 
 	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "manager_id")
+	private User manager;
+
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "product_voucher_id")
 	private Voucher productVoucher;
 

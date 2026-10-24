@@ -53,7 +53,7 @@ public class BranchShipperService {
 	public record ShipperOption(Integer id, String name, String phone, int busy) {
 	}
 
-	public record ShipperBox(boolean show, User shipper, boolean canAssign, List<ShipperOption> options) {
+	public record ShipperBox(boolean show, User shipper, boolean canAssign, List<ShipperOption> options, Integer branchId) {
 	}
 
 	private List<Order> ordersOf(Integer branchId) {
@@ -108,7 +108,7 @@ public class BranchShipperService {
 	public ShipperBox box(Integer orderId) {
 		Order o = orderId == null ? null : orderRepository.findById(orderId).orElse(null);
 		if (o == null || o.getDeliveryType() != DeliveryType.DELIVERY) {
-			return new ShipperBox(false, null, false, List.of());
+			return new ShipperBox(false, null, false, List.of(), null);
 		}
 		List<ShipperOption> options = new ArrayList<>();
 		if (o.getBranch() != null) {
@@ -118,7 +118,8 @@ public class BranchShipperService {
 				options.add(new ShipperOption(s.getId(), s.getFullName(), s.getPhone(), busy));
 			}
 		}
-		return new ShipperBox(true, o.getShipper(), ASSIGNABLE.contains(o.getStatus()), options);
+		return new ShipperBox(true, o.getShipper(), ASSIGNABLE.contains(o.getStatus()), options,
+				o.getBranch() == null ? null : o.getBranch().getId());
 	}
 
 	@Transactional

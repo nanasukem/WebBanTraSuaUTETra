@@ -124,6 +124,7 @@ public class ManagerOrderController {
 		model.addAttribute("shipperBox", box.show());
 		if (!box.show()) return;
 		model.addAttribute("orderShipper", box.shipper());
+		model.addAttribute("shipperBranchId", box.branchId());
 		model.addAttribute("canAssignShipper", box.canAssign());
 		model.addAttribute("branchShippers", box.options());
 	}

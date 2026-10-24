@@ -122,6 +122,10 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		if (shipperStep) {
 			throw new BusinessException("Đơn #" + orderId + " giao tận nơi: các bước Lấy hàng, Đang giao, Đã giao do Shipper cập nhật");
 		}
+		if (o.getBranch() != null && o.getBranch().getOwner() != null) {
+			o.setManager(o.getBranch().getOwner());
+			orderRepository.save(o);
+		}
 		orderFlowService.updateStatus(orderId, to, reason);
 	}
 
