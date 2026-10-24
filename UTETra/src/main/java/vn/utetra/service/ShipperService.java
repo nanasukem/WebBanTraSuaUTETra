@@ -96,6 +96,13 @@ public class ShipperService {
 				countSince(all, today.withDayOfYear(1).atStartOfDay()), all.size(), cod, ship);
 	}
 
+	public List<Order> delivering(Integer shipperId) {
+		List<Integer> ids = orderRepository.findOpenOrderIdsOfShipper(shipperId,
+				List.of(OrderStatus.PICKED_UP, OrderStatus.DELIVERING));
+		return ids.isEmpty() ? List.of()
+				: orderRepository.findAllById(ids).stream().sorted(Comparator.comparing(Order::getId)).toList();
+	}
+
 	@Transactional
 	public void updateStatus(User shipper, Integer id, OrderStatus status) {
 		Order order = orderRepository.findById(id)

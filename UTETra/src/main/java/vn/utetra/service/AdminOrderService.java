@@ -50,6 +50,25 @@ public class AdminOrderService {
 	public record OrderCounts(long total, long pending, long delivered, long cancelled) {
 	}
 
+	public static final List<OrderStatus> OPEN_STATUSES = List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED,
+			OrderStatus.READY, OrderStatus.PICKED_UP, OrderStatus.DELIVERING);
+
+	public record ManagerOrders(List<Order> open, List<Order> inRange, long countAll, long countDelivered,
+			long countCancelled, java.math.BigDecimal revenue) {
+	}
+
+	public ManagerOrders managerOrders(Integer managerId, vn.utetra.dto.DateRange range) {
+		List<Order> all = orderRepository.findByManager_IdOrderByCreatedAtDesc(managerId).stream()
+				.filter(o -> o.getStatus() != OrderStatus.AWAITING_PAYMENT).toList();
+		List<Order> open = all.stream().filter(o -> OPEN_STATUSES.contains(o.getStatus())).toList();
+		List<Order> inRange = all.stream().filter(o -> range.contains(o.getCreatedAt())).toList();
+		java.math.BigDecimal revenue = inRange.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED)
+				.map(Order::getSalesAmount).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+		return new ManagerOrders(open, inRange, all.size(),
+				all.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED).count(),
+				all.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count(), revenue);
+	}
+
 	public List<Order> search(String keyword, String branchId, String status, String paymentStatus,
 			String paymentMethod, LocalDate from, LocalDate to) {
 		return orderRepository.findAll().stream().filter(o -> {

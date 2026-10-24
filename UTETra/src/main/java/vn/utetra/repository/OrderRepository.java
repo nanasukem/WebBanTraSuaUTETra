@@ -140,5 +140,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	List<Order> findLatestShipped(@Param("status") OrderStatus status, @Param("branchId") Integer branchId,
 			org.springframework.data.domain.Pageable pageable);
 
+	List<Order> findByManager_IdOrderByCreatedAtDesc(Integer managerId);
+
 	List<Order> findByShipper_IdAndStatusOrderByDeliveredAtDesc(Integer shipperId, OrderStatus status);
 }

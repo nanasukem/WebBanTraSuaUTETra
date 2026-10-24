@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+	th:replace="~{layout/admin-layout :: main('Đơn của shipper', 'users', ~{::#admin-content})}">
+
+<section id="admin-content">
+	<div class="container-fluid py-3">
+
+		<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+			<div>
+				<h2 class="fw-bold mb-1"><i class="bi bi-scooter text-success me-2"></i><span th:text="${user.fullName}">Shipper</span></h2>
+				<p class="text-muted mb-0">
+					@<span th:text="${user.username}">shipper1</span>
+					<span th:if="${user.phone}" th:text="' · ' + ${user.phone}"></span>
+					· <i class="bi bi-shop"></i> <span th:text="${user.branch != null ? user.branch.name : 'Chưa phân công chi nhánh'}">Chi nhánh</span>
+					<span th:if="${!user.isActive}" class="badge text-bg-danger ms-1">Đã khoá</span>
+				</p>
+			</div>
+			<div class="d-flex gap-2">
+				<a th:href="@{/admin/users/{id}(id=${user.id})}" class="btn btn-outline-success"><i class="bi bi-person me-1"></i>Thông tin tài khoản</a>
+				<a th:href="@{/admin/users}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Danh sách</a>
+			</div>
+		</div>
+
+		<div class="row g-3 mb-3 text-center">
+			<div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-3">
+				<div class="small text-muted">Đã giao hôm nay</div><div class="fs-3 fw-bold" th:text="${stats.countToday()}">0</div></div></div></div>
+			<div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-3">
+				<div class="small text-muted">Tháng này</div><div class="fs-3 fw-bold" th:text="${stats.countMonth()}">0</div></div></div></div>
+			<div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-3">
+				<div class="small text-muted">Năm nay</div><div class="fs-3 fw-bold" th:text="${stats.countYear()}">0</div></div></div></div>
+			<div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-3">
+				<div class="small text-muted">Tất cả</div><div class="fs-3 fw-bold text-success" th:text="${stats.countAll()}">0</div></div></div></div>
+		</div>
+
+		<div class="card border-0 shadow-sm mb-3">
+			<div class="card-header bg-white py-3 fw-bold"><i class="bi bi-truck me-1 text-primary"></i>Đang nhận / đang giao
+				<span class="badge text-bg-primary ms-1" th:text="${delivering.size()}">0</span></div>
+			<div class="card-body">
+				<div th:if="${#lists.isEmpty(delivering)}" class="text-muted small">Shipper hiện không có đơn nào đang giao.</div>
+				<div class="list-group list-group-flush" th:unless="${#lists.isEmpty(delivering)}">
+					<a th:each="o : ${delivering}" th:href="@{/admin/orders/{id}(id=${o.id})}"
+						class="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap gap-2">
+						<div>
+							<b th:text="'#' + ${o.id}">#13</b>
+							<span class="badge text-bg-primary ms-1" th:text="${o.status.name() == 'PICKED_UP'} ? 'Đã lấy hàng' : 'Đang giao'"></span>
+							<div class="small text-muted" th:text="${o.receiverName} + ' · ' + ${o.deliveryAddress}"></div>
+						</div>
+						<span class="small" th:text="${o.branch != null ? o.branch.name : ''}"></span>
+					</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="card border-0 shadow-sm">
+			<div class="card-header bg-white py-3 fw-bold"><i class="bi bi-check2-circle me-1 text-success"></i>Đơn đã giao</div>
+			<div class="card-body">
+				<div class="mb-3" th:insert="~{fragments/date-filter :: filter('/admin/users/' + ${user.id} + '/orders', ${range}, ${years}, null)}"></div>
+
+				<div class="d-flex flex-wrap gap-4 small mb-2">
+					<div><span class="text-muted">Số đơn:</span> <b th:text="${stats.orders().size()}">0</b></div>
+					<div><span class="text-muted">Tiền mặt đã thu (COD):</span>
+						<b class="text-danger" th:text="${#numbers.formatDecimal(stats.codTotal(), 0, 'POINT', 0, 'COMMA')} + 'đ'">0đ</b></div>
+					<div><span class="text-muted">Tổng phí ship:</span>
+						<b th:text="${#numbers.formatDecimal(stats.shipTotal(), 0, 'POINT', 0, 'COMMA')} + 'đ'">0đ</b></div>
+				</div>
+
+				<div class="table-responsive">
+					<table class="table table-hover align-middle mb-0">
+						<thead class="table-light">
+							<tr>
+								<th>Đơn</th>
+								<th>Giao xong lúc</th>
+								<th>Chi nhánh</th>
+								<th>Khách nhận</th>
+								<th>Địa chỉ giao</th>
+								<th>Thanh toán</th>
+								<th class="text-end">Phí ship</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr th:if="${#lists.isEmpty(stats.orders())}">
+								<td colspan="7" class="text-center text-muted py-4">Không có đơn nào trong kỳ này</td>
+							</tr>
+							<tr th:each="o : ${stats.orders()}" style="cursor: pointer;"
+								th:onclick="|location.href='@{/admin/orders/{id}(id=${o.id})}'|">
+								<td><a class="fw-semibold text-decoration-none" th:href="@{/admin/orders/{id}(id=${o.id})}" th:text="'#' + ${o.id}">#1</a></td>
+								<td class="small text-nowrap" th:text="${o.deliveredAt != null} ? ${#temporals.format(o.deliveredAt, 'HH:mm dd/MM/yyyy')} : '—'"></td>
+								<td class="small">
+									<span th:text="${o.branch != null ? o.branch.name : '—'}"></span>
+									<span th:if="${user.branch != null and o.branch != null and o.branch.id != user.branch.id}"
+										class="badge text-bg-light border ms-1">chi nhánh cũ</span>
+								</td>
+								<td>
+									<div th:text="${o.receiverName}"></div>
+									<div class="small text-muted" th:text="${o.receiverPhone}"></div>
+								</td>
+								<td class="small" style="max-width: 260px;" th:text="${o.deliveryAddress}"></td>
+								<td class="small">
+									<span th:if="${o.paymentMethod.name() == 'COD'}" class="text-danger fw-semibold"
+										th:text="'Thu ' + ${#numbers.formatDecimal(o.totalAmount, 0, 'POINT', 0, 'COMMA')} + 'đ'"></span>
+									<span th:unless="${o.paymentMethod.name() == 'COD'}" class="text-success"
+										th:text="'Đã trả ' + ${o.paymentMethod.name()}"></span>
+								</td>
+								<td class="text-end" th:text="${#numbers.formatDecimal(o.shippingFee, 0, 'POINT', 0, 'COMMA')} + 'đ'"></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+</html>

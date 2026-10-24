@@ -262,6 +262,7 @@ public class AdminUserService {
 		long n;
 		if ((n = count("SELECT COUNT(o) FROM Order o WHERE o.user.id = :id", id)) > 0) lyDo.add(n + " đơn đã đặt");
 		if ((n = count("SELECT COUNT(o) FROM Order o WHERE o.shipper.id = :id", id)) > 0) lyDo.add(n + " đơn đã giao");
+		if ((n = count("SELECT COUNT(o) FROM Order o WHERE o.manager.id = :id", id)) > 0) lyDo.add(n + " đơn đã xử lý");
 		if ((n = count("SELECT COUNT(r) FROM Review r WHERE r.user.id = :id", id)
 				+ count("SELECT COUNT(r) FROM OrderReview r WHERE r.user.id = :id", id)) > 0) lyDo.add(n + " đánh giá");
 		if ((n = count("SELECT COUNT(r) FROM ReviewReply r WHERE r.repliedBy.id = :id", id)) > 0) lyDo.add(n + " phản hồi đánh giá");

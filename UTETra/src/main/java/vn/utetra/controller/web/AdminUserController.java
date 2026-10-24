@@ -21,8 +21,51 @@ import vn.utetra.service.AdminUserService;
 public class AdminUserController {
 
 	private final AdminUserService adminUserService;
-	public AdminUserController(AdminUserService adminUserService) {
+	private final vn.utetra.service.ShipperService shipperService;
+	private final vn.utetra.service.AdminOrderService adminOrderService;
+
+	public AdminUserController(AdminUserService adminUserService, vn.utetra.service.ShipperService shipperService,
+			vn.utetra.service.AdminOrderService adminOrderService) {
 		this.adminUserService = adminUserService;
+		this.shipperService = shipperService;
+		this.adminOrderService = adminOrderService;
+	}
+
+	@GetMapping("/{id}/orders")
+	public String orders(@PathVariable Integer id, @RequestParam(required = false) String period,
+			@RequestParam(required = false) String month, @RequestParam(required = false) Integer year,
+			@RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+			@RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to,
+			RedirectAttributes ra, Model model) {
+		User user;
+		try {
+			user = adminUserService.get(id);
+		} catch (BusinessException e) {
+			ra.addFlashAttribute("errorMessage", e.getMessage());
+			return "redirect:/admin/users";
+		}
+		String role = user.getRole() == null ? "" : user.getRole().getName();
+		if ("USER".equals(role)) {
+			return "redirect:/admin/orders?keyword=" + java.net.URLEncoder.encode(user.getUsername(),
+					java.nio.charset.StandardCharsets.UTF_8);
+		}
+		if (!"SHIPPER".equals(role) && !"MANAGER".equals(role)) {
+			return "redirect:/admin/users/" + id;
+		}
+		vn.utetra.dto.DateRange range = vn.utetra.dto.DateRange.resolve(period, month, year, from, to, "ALL");
+		model.addAttribute("user", user);
+		model.addAttribute("range", range);
+		model.addAttribute("years", vn.utetra.dto.DateRange.recentYears(5));
+		if ("MANAGER".equals(role)) {
+			java.util.List<vn.utetra.entity.Branch> managed = adminUserService.managedBranches(id);
+			model.addAttribute("managedBranches", managed);
+			model.addAttribute("managedIds", managed.stream().map(vn.utetra.entity.Branch::getId).toList());
+			model.addAttribute("mo", adminOrderService.managerOrders(id, range));
+			return "admin/users/manager-orders";
+		}
+		model.addAttribute("stats", shipperService.stats(user, range));
+		model.addAttribute("delivering", shipperService.delivering(user.getId()));
+		return "admin/users/shipper-orders";
 	}
 
 	@GetMapping

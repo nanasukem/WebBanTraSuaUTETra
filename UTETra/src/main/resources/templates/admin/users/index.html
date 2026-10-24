@@ -188,7 +188,13 @@
                             <td class="ps-3" th:text="${u.id}">1</td>
 
                             <td>
-                                <div class="fw-semibold"
+                                <a th:if="${u.role != null and u.role.name != 'ADMIN'}" class="fw-semibold text-decoration-none d-block"
+                                   th:href="@{/admin/users/{id}/orders(id=${u.id})}"
+                                   th:title="${u.role.name == 'SHIPPER'} ? 'Xem đơn shipper đang và đã giao' : (${u.role.name == 'USER'} ? 'Xem đơn khách đã đặt' : 'Xem đơn manager đang và đã xử lý')"
+                                   th:text="${u.fullName != null and !u.fullName.isBlank() ? u.fullName : u.username}">
+                                    Nguyễn Văn A
+                                </a>
+                                <div th:unless="${u.role != null and u.role.name != 'ADMIN'}" class="fw-semibold"
                                      th:text="${u.fullName != null and !u.fullName.isBlank() ? u.fullName : u.username}">
                                     Nguyễn Văn A
                                 </div>
