@@ -308,13 +308,17 @@ class Week4ServiceTest {
 	@Test
 	void taiKhoan_taoNhanVien_loi_khongGuiEmail() {
 		assertThrows(BusinessException.class, () -> adminUserService.createStaff("shipper_moi", "Shipper Mới",
-				"moi@utetra.vn", null, "SHIPPER", null, "123456", "123456"), "shipper bắt buộc chọn chi nhánh");
+				"moi@utetra.vn", "0911111111", "SHIPPER", null, "123456", "123456"), "shipper bắt buộc chọn chi nhánh");
 		assertThrows(BusinessException.class, () -> adminUserService.createStaff("khach_moi", "Khách",
-				"khach@utetra.vn", null, "USER", null, "123456", "123456"), "khách tự đăng ký trên web");
+				"khach@utetra.vn", "0911111112", "USER", null, "123456", "123456"), "khách tự đăng ký trên web");
 		assertThrows(BusinessException.class, () -> adminUserService.createStaff("admin", "Trùng",
-				"trung@utetra.vn", null, "ADMIN", null, "123456", "123456"), "trùng tên đăng nhập");
+				"trung@utetra.vn", "0911111113", "ADMIN", null, "123456", "123456"), "trùng tên đăng nhập");
 		assertThrows(BusinessException.class, () -> adminUserService.createStaff("nv_moi", "NV",
-				"nv@utetra.vn", null, "MANAGER", null, "123456", "654321"), "nhập lại mật khẩu không khớp");
+				"nv@utetra.vn", "0911111114", "MANAGER", null, "123456", "654321"), "nhập lại mật khẩu không khớp");
+		assertThrows(BusinessException.class, () -> adminUserService.createStaff("nv_moi2", "NV",
+				"nv2@utetra.vn", null, "MANAGER", null, "123456", "123456"), "bắt buộc số điện thoại");
+		assertThrows(BusinessException.class, () -> adminUserService.createStaff("nv_moi3", "NV",
+				"nv3@utetra.vn", "0900000006", "MANAGER", null, "123456", "123456"), "trùng số điện thoại của user1");
 	}
 
 	@Test
@@ -461,5 +465,44 @@ class Week4ServiceTest {
 		List<vn.utetra.entity.Order> moiNhat = reportService.latestShipped(null, 10);
 		assertTrue(moiNhat.size() <= 10);
 		moiNhat.forEach(o -> assertTrue(o.getShippingFee().signum() > 0));
+	}
+
+	@Autowired AuthenticationService authenticationService;
+
+	@Test
+	void dangNhap_bangTenEmailHoacSoDienThoai() {
+		User u1 = userRepository.findByUsername("user1").orElseThrow();
+		assertEquals(u1.getId(), userRepository.findByLogin("user1").orElseThrow().getId());
+		assertEquals(u1.getId(), userRepository.findByLogin("user1@gmail.com").orElseThrow().getId());
+		assertEquals(u1.getId(), userRepository.findByLogin("USER1@GMAIL.COM").orElseThrow().getId());
+		assertEquals(u1.getId(), userRepository.findByLogin("0900000006").orElseThrow().getId());
+		assertEquals(u1.getId(), userRepository.findByLogin("+84 900 000 006").orElseThrow().getId());
+		assertTrue(userRepository.findByLogin("0999999999").isEmpty());
+
+		vn.utetra.dto.request.LoginRequest req = new vn.utetra.dto.request.LoginRequest();
+		req.setUsername("0900000006");
+		req.setPassword("123456");
+		assertEquals(u1.getId(), authenticationService.authenticate(req).getId(), "đăng nhập bằng số điện thoại");
+		req.setPassword("sai-mat-khau");
+		assertThrows(RuntimeException.class, () -> authenticationService.authenticate(req));
+	}
+
+	@Test
+	void dangKy_soDienThoaiBatBuocDungDinhDangKhongTrung() {
+		java.util.function.Function<String, vn.utetra.dto.request.RegisterRequest> req = phone -> {
+			vn.utetra.dto.request.RegisterRequest r = new vn.utetra.dto.request.RegisterRequest();
+			r.setUsername("khachmoi_junit");
+			r.setPassword("123456");
+			r.setFullName("Khách Mới");
+			r.setEmail("khachmoi_junit@gmail.com");
+			r.setPhone(phone);
+			return r;
+		};
+		RuntimeException e1 = assertThrows(RuntimeException.class, () -> authenticationService.signup(req.apply(null)));
+		assertTrue(e1.getMessage().contains("số điện thoại"));
+		assertThrows(RuntimeException.class, () -> authenticationService.signup(req.apply("12345")));
+		RuntimeException e2 = assertThrows(RuntimeException.class, () -> authenticationService.signup(req.apply("0900000006")));
+		assertTrue(e2.getMessage().contains("đã được dùng"));
+		assertTrue(userRepository.findByUsername("khachmoi_junit").isEmpty(), "lỗi thì không tạo tài khoản");
 	}
 }

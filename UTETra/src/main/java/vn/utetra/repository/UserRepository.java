@@ -21,6 +21,29 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
 	boolean existsByEmail(String email);
 
+	Optional<User> findByPhone(String phone);
+
+	boolean existsByPhone(String phone);
+
+	boolean existsByPhoneAndIdNot(String phone, Integer id);
+
+	static String normalizePhone(String raw) {
+		if (raw == null) return "";
+		String p = raw.trim().replaceAll("[\\s.()-]", "");
+		if (p.matches("\\+?84\\d{9}")) p = "0" + p.substring(p.length() - 9);
+		return p;
+	}
+
+	default Optional<User> findByLogin(String login) {
+		if (login == null || login.isBlank()) return Optional.empty();
+		String l = login.trim();
+		Optional<User> u = findByUsernameOrEmail(l, l);
+		if (u.isEmpty() && l.contains("@")) u = findByEmail(l.toLowerCase());
+		if (u.isPresent()) return u;
+		String phone = normalizePhone(l);
+		return phone.matches("0\\d{9}") ? findByPhone(phone) : Optional.empty();
+	}
+
 	List<User> findByRole_Name(String roleName);
 
 	@Query("SELECT u FROM User u WHERE u.role.name = 'SHIPPER' AND u.branch.id = :branchId ORDER BY u.fullName")

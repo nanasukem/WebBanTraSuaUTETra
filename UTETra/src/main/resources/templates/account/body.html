@@ -44,8 +44,8 @@
 								th:value="${account.fullName}">
 						</div>
 						<div class="mb-3">
-							<label for="phone" class="form-label fw-semibold">Số điện thoại</label>
-							<input type="tel" id="phone" name="phone" class="form-control" maxlength="10" pattern="0[0-9]{9}"
+							<label for="phone" class="form-label fw-semibold">Số điện thoại <span class="text-danger">*</span></label>
+							<input type="tel" id="phone" name="phone" class="form-control" maxlength="10" pattern="0[0-9]{9}" required title="10 số, bắt đầu bằng 0"
 								placeholder="VD: 0901234567" th:value="${account.phone}">
 						</div>
 						<button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Lưu thay đổi</button>

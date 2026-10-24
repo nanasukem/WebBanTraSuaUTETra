@@ -176,7 +176,7 @@ public class AdminUserService {
 		String u = username == null ? "" : username.trim();
 		String name = fullName == null ? "" : fullName.trim().replaceAll("\\s+", " ");
 		String mail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
-		String tel = phone == null ? "" : phone.trim();
+		String tel = UserRepository.normalizePhone(phone);
 		String r = role == null ? "" : role.trim().toUpperCase(Locale.ROOT);
 
 		if (!u.matches("[A-Za-z0-9_.]{3,50}"))
@@ -185,7 +185,9 @@ public class AdminUserService {
 		if (name.isEmpty() || name.length() > 100) throw new BusinessException("Vui lòng nhập họ tên (tối đa 100 ký tự).");
 		if (!mail.matches("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$")) throw new BusinessException("Email không hợp lệ.");
 		if (userRepository.existsByEmail(mail)) throw new BusinessException("Email " + mail + " đã được dùng cho tài khoản khác.");
-		if (!tel.isEmpty() && !tel.matches("0\\d{9}")) throw new BusinessException("Số điện thoại gồm 10 số, bắt đầu bằng 0.");
+		if (tel.isEmpty()) throw new BusinessException("Vui lòng nhập số điện thoại.");
+		if (!tel.matches("0\\d{9}")) throw new BusinessException("Số điện thoại gồm 10 số, bắt đầu bằng 0.");
+		if (userRepository.existsByPhone(tel)) throw new BusinessException("Số điện thoại " + tel + " đã được dùng cho tài khoản khác.");
 		if (!STAFF_ROLES.contains(r))
 			throw new BusinessException("Chỉ tạo được tài khoản nhân viên (Manager, Shipper, Admin). Khách hàng tự đăng ký trên web.");
 		Branch branch = branchId == null ? null : branchRepository.findById(branchId).orElse(null);
@@ -200,7 +202,7 @@ public class AdminUserService {
 		user.setUsername(u);
 		user.setFullName(name);
 		user.setEmail(mail);
-		user.setPhone(tel.isEmpty() ? null : tel);
+		user.setPhone(tel);
 		user.setPassword(passwordEncoder.encode(password));
 		user.setRole(targetRole);
 		user.setIsVerified(true);

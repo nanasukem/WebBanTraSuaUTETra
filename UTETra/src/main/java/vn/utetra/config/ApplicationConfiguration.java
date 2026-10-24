@@ -25,7 +25,7 @@ public class ApplicationConfiguration {
 
 	@Bean
 	public UserDetailsService userDetailsService() {
-		return login -> userRepository.findByUsernameOrEmail(login, login)
+		return login -> userRepository.findByLogin(login)
 				.map(user -> new org.springframework.security.core.userdetails.User(user.getUsername(),
 						user.getPassword(), Boolean.TRUE.equals(user.getIsActive()),
 						true, true, true, Collections.singletonList(() -> "ROLE_" + user.getRole().getName())))

@@ -72,9 +72,15 @@ public class UserService {
 		if (name.length() > 100) {
 			throw new BusinessException("Họ và tên tối đa 100 ký tự");
 		}
-		String p = phone == null ? "" : phone.trim().replaceAll("[\\s.-]", "");
-		if (!p.isEmpty() && !p.matches(PHONE_REGEX)) {
+		String p = UserRepository.normalizePhone(phone);
+		if (p.isEmpty()) {
+			throw new BusinessException("Vui lòng nhập số điện thoại");
+		}
+		if (!p.matches(PHONE_REGEX)) {
 			throw new BusinessException("Số điện thoại phải có 10 số, bắt đầu bằng 0");
+		}
+		if (userRepository.existsByPhoneAndIdNot(p, userId)) {
+			throw new BusinessException("Số điện thoại đã được dùng cho tài khoản khác");
 		}
 
 		if (avatar != null && !avatar.isEmpty()) {
@@ -99,7 +105,7 @@ public class UserService {
 		}
 
 		u.setFullName(name);
-		u.setPhone(p.isEmpty() ? null : p);
+		u.setPhone(p);
 		return userRepository.saveAndFlush(u);
 	}
 

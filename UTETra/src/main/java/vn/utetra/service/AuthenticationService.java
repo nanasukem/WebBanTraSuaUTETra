@@ -64,19 +64,41 @@ public class AuthenticationService {
 	}
 
 	public User signup(RegisterRequest input) {
-		if (userRepository.existsByUsername(input.getUsername())) {
+		String username = input.getUsername() == null ? "" : input.getUsername().trim();
+		String email = input.getEmail() == null ? "" : input.getEmail().trim().toLowerCase();
+		String phone = UserRepository.normalizePhone(input.getPhone());
+		String fullName = input.getFullName() == null ? "" : input.getFullName().trim().replaceAll("\\s+", " ");
+		if (!username.matches("[A-Za-z0-9_.]{3,50}")) {
+			throw new RuntimeException("Tên đăng nhập 3–50 ký tự, chỉ gồm chữ không dấu, số, dấu _ hoặc dấu chấm");
+		}
+		if (input.getPassword() == null || input.getPassword().length() < 6) {
+			throw new RuntimeException("Mật khẩu tối thiểu 6 ký tự");
+		}
+		if (!email.matches("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$")) {
+			throw new RuntimeException("Email không hợp lệ");
+		}
+		if (phone.isEmpty()) {
+			throw new RuntimeException("Vui lòng nhập số điện thoại");
+		}
+		if (!phone.matches("0\\d{9}")) {
+			throw new RuntimeException("Số điện thoại phải có 10 số, bắt đầu bằng 0");
+		}
+		if (userRepository.existsByUsername(username)) {
 			throw new RuntimeException("Tên đăng nhập đã tồn tại!");
 		}
-		if (userRepository.existsByEmail(input.getEmail())) {
+		if (userRepository.existsByEmail(email)) {
 			throw new RuntimeException("Email đã được sử dụng!");
+		}
+		if (userRepository.existsByPhone(phone)) {
+			throw new RuntimeException("Số điện thoại đã được dùng cho tài khoản khác!");
 		}
 
 		User user = new User();
-		user.setUsername(input.getUsername());
+		user.setUsername(username);
 		user.setPassword(passwordEncoder.encode(input.getPassword()));
-		user.setFullName(input.getFullName());
-		user.setEmail(input.getEmail());
-		user.setPhone(input.getPhone());
+		user.setFullName(fullName.isEmpty() ? null : fullName);
+		user.setEmail(email);
+		user.setPhone(phone);
 		user.setIsVerified(false);
 		user.setIsActive(true);
 
@@ -123,7 +145,7 @@ public class AuthenticationService {
 	public User authenticate(LoginRequest input) {
 		String login = input.getUsername() == null ? "" : input.getUsername().trim();
 
-		User user = userRepository.findByUsernameOrEmail(login, login)
+		User user = userRepository.findByLogin(login)
 				.orElseThrow(() -> new RuntimeException("Tài khoản hoặc mật khẩu không chính xác!"));
 
 		try {

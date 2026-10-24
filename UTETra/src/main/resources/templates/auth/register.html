@@ -51,8 +51,9 @@
 
 				<div class="mb-3">
 					<label for="phone" class="form-label small fw-bold"> Số
-						điện thoại </label> <input type="tel" id="phone" class="form-control"
-						th:field="*{phone}" autocomplete="tel" placeholder="0901234567">
+						điện thoại (*) </label> <input type="tel" id="phone" class="form-control"
+						th:field="*{phone}" autocomplete="tel" placeholder="0901234567" required
+						pattern="0[0-9]{9}" maxlength="10" title="10 số, bắt đầu bằng 0">
 				</div>
 
 				<button type="submit"

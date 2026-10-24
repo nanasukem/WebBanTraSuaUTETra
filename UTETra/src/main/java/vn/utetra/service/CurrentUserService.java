@@ -21,7 +21,7 @@ public class CurrentUserService {
 	public User requireUser(Principal principal, HttpSession session) {
 		if (principal != null) {
 			String name = principal.getName();
-			return userRepository.findByUsernameOrEmail(name, name)
+			return userRepository.findByLogin(name)
 					.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Vui lòng đăng nhập"));
 		}
 		if (session != null && session.getAttribute("user") instanceof User u) {

@@ -477,7 +477,12 @@ class Week3ServiceTest {
 		assertEquals("0912345678", u.getPhone());
 		assertEquals("user1@gmail.com", u.getEmail(), "email không đổi");
 
-		assertNull(userService.updateProfile(USER1, "Khách", "", null).getPhone(), "bỏ trống số điện thoại = xoá");
+		assertThrows(BusinessException.class, () -> userService.updateProfile(USER1, "Khách", "", null),
+				"số điện thoại bắt buộc, không xoá trống được");
+		assertThrows(BusinessException.class, () -> userService.updateProfile(USER1, "Khách", "0900000007", null),
+				"không được trùng số của khách khác");
+		assertEquals("0912345678", userService.updateProfile(USER1, "Khách", "+84 912 345 678", null).getPhone(),
+				"+84 đổi về 0");
 	}
 
 	@Test
@@ -487,7 +492,7 @@ class Week3ServiceTest {
 		assertThrows(BusinessException.class, () -> userService.updateProfile(USER1, "Khách", "12345", null));
 		assertThrows(BusinessException.class, () -> userService.updateProfile(USER1, "Khách", "1912345678", null));
 		MultipartFile notImage = new MockMultipartFile("avatar", "a.txt", "text/plain", new byte[5]);
-		assertThrows(BusinessException.class, () -> userService.updateProfile(USER1, "Khách", null, notImage));
+		assertThrows(BusinessException.class, () -> userService.updateProfile(USER1, "Khách", "0900000006", notImage));
 		assertEquals("Trần Thị Khách", userService.getProfile(USER1).getFullName(), "lỗi thì không đổi gì");
 	}
 

@@ -400,8 +400,7 @@ public class VoucherServiceImpl implements VoucherService {
 		for (String raw : text.split("[,;\\s]+")) {
 			String key = raw.trim();
 			if (key.isEmpty()) continue;
-			java.util.Optional<User> u = userRepository.findByUsernameOrEmail(key, key.toLowerCase());
-			if (u.isEmpty()) u = userRepository.findAll().stream().filter(x -> key.equals(x.getPhone())).findFirst();
+			java.util.Optional<User> u = userRepository.findByLogin(key);
 			if (u.isEmpty() || u.get().getRole() == null || !"USER".equals(u.get().getRole().getName())) {
 				missing.add(key);
 			} else {
