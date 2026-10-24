@@ -38,7 +38,12 @@ public class SecurityConfiguration {
 
 		http.cors(Customizer.withDefaults())
 
-				.csrf(csrf -> csrf.disable())
+				.csrf(csrf -> csrf
+						.ignoringRequestMatchers("/payment/vnpay/ipn", "/payment/momo/ipn", "/ws/**", "/api/auth/**")
+						.ignoringRequestMatchers(request -> {
+							String auth = request.getHeader("Authorization");
+							return auth != null && auth.startsWith("Bearer ");
+						}))
 
 				.authorizeHttpRequests(auth -> auth
 

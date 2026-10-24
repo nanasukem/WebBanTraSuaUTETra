@@ -225,7 +225,7 @@ public class AdminProductController {
 			return e.getMessage();
 		}
 
-		e.printStackTrace();
+		org.slf4j.LoggerFactory.getLogger(AdminProductController.class).error("Lỗi quản lý sản phẩm", e);
 		return fallback;
 	}
 }

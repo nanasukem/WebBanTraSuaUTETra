@@ -18,6 +18,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Integer> {
 
 	Optional<Payment> findByTxnRef(String txnRef);
 
+	boolean existsByTxnRef(String txnRef);
+
 	List<Payment> findByOrderIdAndStatus(Integer orderId, String status);
 
 	Optional<Payment> findFirstByOrderIdAndStatusInOrderByCreatedAtDesc(Integer orderId, Collection<String> statuses);

@@ -42,6 +42,14 @@ public class PaymentService {
 	private final OrderFlowService orderFlowService;
 	private final PaymentService self;
 
+	private String newTxnRef(Integer orderId) {
+		String ref;
+		do {
+			ref = "UTE" + orderId + "T" + System.currentTimeMillis() + ThreadLocalRandom.current().nextInt(100, 1000);
+		} while (paymentRepository.existsByTxnRef(ref));
+		return ref;
+	}
+
 	public PaymentService(PaymentProperties props, PaymentRepository paymentRepository, OrderRepository orderRepository,
 			VnPayService vnPayService, MomoService momoService, RefundService refundService,
 			NotificationService notificationService, OrderNotifier orderNotifier, OrderFlowService orderFlowService,
@@ -87,7 +95,7 @@ public class PaymentService {
 		p.setMethod(m.name());
 		p.setAmount(o.getTotalAmount());
 		p.setStatus("PENDING");
-		p.setTxnRef("UTE" + orderId + "T" + (System.currentTimeMillis() / 1000) + ThreadLocalRandom.current().nextInt(10, 99));
+		p.setTxnRef(newTxnRef(orderId));
 		p.setGatewayDate(LocalDateTime.now(VnPayService.VN).format(VnPayService.VNP_TIME));
 		p.setCreatedAt(LocalDateTime.now());
 		paymentRepository.save(p);
