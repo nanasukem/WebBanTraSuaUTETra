@@ -15,13 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.utetra.service.CurrentUserService;
 import vn.utetra.service.NotificationService;
 
-/**
- * Chuông thông báo (mọi tài khoản đã đăng nhập):
- * GET  /api/notifications            -> {unread, items: 20 thông báo mới nhất}
- * POST /api/notifications/{id}/read  -> {link} (đánh dấu đã đọc, trả về trang cần mở)
- * POST /api/notifications/read-all   -> {updated}
- * Thông báo mới tới trực tiếp qua WebSocket /user/queue/notifications (NotificationService).
- */
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationApiController {

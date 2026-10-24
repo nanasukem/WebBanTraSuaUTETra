@@ -146,7 +146,6 @@
 	color: #94a3b8;
 }
 
-/* Khu vực ảnh bìa */
 #admin-content .cover-editor {
 	position: relative;
 	isolation: isolate;
@@ -380,7 +379,6 @@
 }
 </style>
 
-	<!-- TIÊU ĐỀ -->
 	<div class="page-heading">
 		<div class="d-flex align-items-center gap-3">
 			<div class="page-icon">
@@ -399,7 +397,6 @@
 		</a>
 	</div>
 
-	<!-- THÔNG BÁO -->
 	<div th:if="${success != null}"
 		class="alert alert-success alert-dismissible fade show rounded-3"
 		role="alert">
@@ -418,7 +415,6 @@
 			aria-label="Đóng"></button>
 	</div>
 
-	<!-- ẢNH BÌA NỔI BẬT -->
 	<div class="section-card mb-4">
 		<div class="cover-editor">
 			<img id="coverPreview" class="cover-image"
@@ -461,10 +457,8 @@
 		</div>
 	</div>
 
-	<!-- THÔNG TIN VÀ LỐI TẮT -->
 	<div class="row g-4 mb-4">
 
-		<!-- THÔNG TIN CHI NHÁNH -->
 		<div class="col-12 col-xl-7">
 			<div class="section-card h-100">
 				<div class="section-header">
@@ -599,7 +593,6 @@
 			</div>
 		</div>
 
-		<!-- LỐI TẮT QUẢN LÝ -->
 		<div class="col-12 col-xl-5">
 			<div class="section-card h-100">
 				<div class="section-header">
@@ -655,7 +648,6 @@
 		</div>
 	</div>
 
-	<!-- CHỈNH SỬA TRANG CHỦ -->
 	<div class="section-card mb-4" id="edit-homepage">
 
 		<div class="section-header">
@@ -673,7 +665,6 @@
 			<form th:action="@{/manager/branches/{id}/homepage(id=${branch.id})}"
 				method="post" enctype="multipart/form-data" id="homepageForm">
 
-				<!-- Ảnh xem trước cũng là ảnh sẽ gửi lên khi lưu -->
 				<div class="mb-4">
 					<label class="form-label fw-bold"> <i
 						class="bi bi-image text-orange me-1"></i> Xem trước ảnh bìa
@@ -727,7 +718,6 @@
 					</div>
 				</div>
 
-				<!-- MÔ TẢ -->
 				<div class="mb-4">
 					<label for="description" class="form-label fw-bold"> <i
 						class="bi bi-card-text text-orange me-1"></i> Mô tả chi nhánh

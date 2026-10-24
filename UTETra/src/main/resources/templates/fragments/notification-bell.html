@@ -1,11 +1,5 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<!--
-	CHUÔNG THÔNG BÁO dùng chung cho User (header khách), Manager và Admin (header quản lý).
-	- bell(theme): theme 'light' = nút trắng trên nền xanh (header khách), 'admin' = header quản lý
-	- scripts: nạp live-socket.js + notifications.js (đặt cuối trang, sau Bootstrap JS)
-	Thông báo mới tới qua WebSocket -> số trên chuông tăng, thông báo mới hiện lên ĐẦU danh sách + popup góc phải.
--->
 
 <div th:fragment="bell(theme)" class="dropdown nb-wrap">
 	<button type="button" id="nb-toggle" class="btn btn-sm position-relative nb-btn"

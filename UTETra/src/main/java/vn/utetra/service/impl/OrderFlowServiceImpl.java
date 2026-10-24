@@ -36,15 +36,9 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 	private static final int REASON_MAX = 255;
-	/** Hạn đánh giá sau khi nhận hàng (giống Shopee) */
 	public static final int REVIEW_DAYS = 30;
 
-	/**
-	 * Luồng giao tận nơi: Đơn mới -> Đang pha chế -> Pha xong (chờ shipper) -> Shipper đã lấy -> Đang giao -> Đã giao.
-	 * Quán huỷ được tới lúc pha xong (vd hết nguyên liệu); khách chỉ tự huỷ khi quán chưa nhận đơn.
-	 */
 	private static final Map<OrderStatus, Set<OrderStatus>> DELIVERY_FLOW = Map.of(
-			// Chờ thanh toán -> Chờ xác nhận chỉ do PaymentService chuyển khi cổng báo đã trả
 			OrderStatus.AWAITING_PAYMENT, Set.of(OrderStatus.CANCELLED),
 			OrderStatus.PENDING, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
 			OrderStatus.CONFIRMED, Set.of(OrderStatus.READY, OrderStatus.CANCELLED),
@@ -52,7 +46,6 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 			OrderStatus.PICKED_UP, Set.of(OrderStatus.DELIVERING),
 			OrderStatus.DELIVERING, Set.of(OrderStatus.DELIVERED));
 
-	/** Luồng đến lấy: Đơn mới -> Đang pha chế -> Đã xong, chờ khách đến lấy -> Khách đã nhận (không qua shipper) */
 	private static final Map<OrderStatus, Set<OrderStatus>> PICKUP_FLOW = Map.of(
 			OrderStatus.AWAITING_PAYMENT, Set.of(OrderStatus.CANCELLED),
 			OrderStatus.PENDING, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
@@ -88,15 +81,12 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		this.orderNotifier = orderNotifier;
 	}
 
-	// ================= KHÁCH XEM ĐƠN =================
-
 	@Override
 	public List<OrderListRes> myOrders(Integer userId, OrderTab tab) {
 		Set<Integer> dangGiaiQuyet = new HashSet<>(
 				orderIssueRepository.findOrderIdsByUserAndStatus(userId, vn.utetra.entity.enums.IssueStatus.PENDING));
 		return orderRepository.findByUserIdAndStatusInOrderByCreatedAtDesc(userId, tab.getStatuses())
 				.stream()
-				// Đang giải quyết: đơn khách báo vấn đề chờ quán xử lý; Hoàn thành: bỏ các đơn đó ra
 				.filter(o -> tab == OrderTab.ISSUE ? dangGiaiQuyet.contains(o.getId())
 						: tab != OrderTab.DELIVERED || !dangGiaiQuyet.contains(o.getId()))
 				.map(this::toListRes).toList();
@@ -131,8 +121,6 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + orderId)));
 	}
 
-	// ================= HUỶ / ĐỔI TRẠNG THÁI =================
-
 	@Override
 	@Transactional
 	public void cancelByCustomer(Integer userId, Integer orderId, String reason) {
@@ -160,12 +148,8 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		changeStatus(o, to, cancelReason, CancelledBy.STORE);
 	}
 
-	/**
-	 * actor: CUSTOMER = khách tự huỷ (báo cho quán); STORE = quán / shipper / Admin đổi (báo cho khách);
-	 * SYSTEM = hệ thống tự huỷ (quá hạn thanh toán).
-	 */
 	private void changeStatus(Order o, OrderStatus to, String reason, CancelledBy actor) {
-		boolean storeKnew = o.getStatus() != OrderStatus.AWAITING_PAYMENT; // đơn chưa trả xong thì quán chưa thấy
+		boolean storeKnew = o.getStatus() != OrderStatus.AWAITING_PAYMENT;
 		boolean pickup = isPickup(o);
 		Map<OrderStatus, Set<OrderStatus>> flow = pickup ? PICKUP_FLOW : DELIVERY_FLOW;
 		if (to == null || !flow.getOrDefault(o.getStatus(), Set.of()).contains(to)) {
@@ -181,7 +165,6 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				throw new BusinessException("Lý do huỷ tối đa " + REASON_MAX + " ký tự");
 		}
 
-		// Gom số ly theo món TRƯỚC khi lưu (dùng để tăng "đã bán" khi giao xong)
 		Map<Integer, Integer> qtyByProduct = new HashMap<>();
 		if (to == OrderStatus.DELIVERED) {
 			for (OrderDetail d : o.getDetails()) qtyByProduct.merge(d.getProduct().getId(), d.getQuantity(), Integer::sum);
@@ -196,28 +179,23 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		}
 		if (to == OrderStatus.DELIVERED) {
 			o.setDeliveredAt(now);
-			// COD: shipper / quầy đã thu tiền khi giao
 			if (o.getPaymentMethod() == PaymentMethod.COD) o.setPaymentStatus(PaymentStatus.PAID);
 		}
 		Integer orderId = o.getId();
 		orderRepository.saveAndFlush(o);
 
-		// Lưu thông báo + đẩy WebSocket (đẩy sau khi commit). Gọi TRƯỚC các câu UPDATE bên dưới
 		orderNotifier.onStatusChanged(o, actor, storeKnew);
 
-		// Đơn đã trả trước (VNPAY / MoMo) bị huỷ -> hoàn tiền qua cổng (chạy nền sau khi lưu)
 		if (to == OrderStatus.CANCELLED && o.getPaymentStatus() == PaymentStatus.PAID
 				&& o.getPaymentMethod() != PaymentMethod.COD) {
 			refundService.refundOrder(o, "Đơn bị huỷ: " + cleanReason);
 			orderRepository.flush();
 		}
 
-		// Các câu UPDATE bên dưới có clearAutomatically -> phải lưu đơn xong ở trên trước
 		if (to == OrderStatus.CANCELLED) refundVouchers(orderId);
 		qtyByProduct.forEach(productRepository::increaseSoldCount);
 	}
 
-	/** Huỷ đơn: xoá lịch sử dùng mã của đơn + trả lại 1 lượt cho mỗi mã */
 	private void refundVouchers(Integer orderId) {
 		List<VoucherUsage> usages = voucherUsageRepository.findByOrderId(orderId);
 		if (usages.isEmpty()) return;
@@ -226,15 +204,12 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		voucherIds.forEach(voucherRepository::decreaseUsedCount);
 	}
 
-	// ================= HÀM PHỤ =================
-
 	private Order findOwned(Integer userId, Integer orderId) {
 		return orderRepository.findById(orderId)
 				.filter(o -> o.getUser().getId().equals(userId))
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + orderId));
 	}
 
-	/** Khách tự huỷ được khi quán chưa nhận đơn (Chờ xác nhận) hoặc còn đang Chờ thanh toán */
 	private static boolean canCustomerCancel(Order o) {
 		return o.getStatus() == OrderStatus.PENDING || o.getStatus() == OrderStatus.AWAITING_PAYMENT;
 	}
@@ -243,7 +218,6 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		return o.getDeliveryType() == DeliveryType.PICKUP;
 	}
 
-	/** Chữ hiển thị theo trạng thái (đơn đến lấy dùng chữ khác cho dễ hiểu) */
 	public static String statusLabel(OrderStatus s, boolean pickup) {
 		return switch (s) {
 			case AWAITING_PAYMENT -> "Chờ thanh toán";
@@ -315,7 +289,6 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				paymentInfoBuilder.build(o), orderIssueService.forOrder(o.getId()));
 	}
 
-	/** Đơn đã giao còn trong hạn đánh giá (30 ngày) và không có báo vấn đề: số ly chưa đánh giá. Khác -> 0 */
 	private int toReviewCount(Order o) {
 		if (o.getStatus() != OrderStatus.DELIVERED || o.getDeliveredAt() == null
 				|| o.getDeliveredAt().plusDays(REVIEW_DAYS).isBefore(LocalDateTime.now())
@@ -328,7 +301,7 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		boolean pickup = isPickup(o);
 		List<OrderDetailRes.Item> items = o.getDetails().stream().map(d -> new OrderDetailRes.Item(
 				d.getProduct().getName(),
-				d.getProduct().isToppingItem() ? null : String.valueOf(d.getSize()), // topping mua riêng: không size
+				d.getProduct().isToppingItem() ? null : String.valueOf(d.getSize()),
 				d.getProduct().isToppingItem() ? null : d.getSugarLevel() + "% đường · " + d.getIceLevel() + "% đá",
 				d.getToppings().stream().map(t -> t.getTopping().getName()).collect(Collectors.joining(", ")),
 				d.getQuantity(),
@@ -343,7 +316,8 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				badgeClass(o.getStatus()), pickup, steps(o.getStatus(), pickup),
 				o.getBranch().getName(), o.getBranch().getAddress(), o.getBranch().getPhone(),
 				o.getReceiverName(), o.getReceiverPhone(), o.getDeliveryAddress(), o.getDeliveryNote(),
-				carrierLabel, o.getNote(),
+				carrierLabel, o.getShipper() == null || pickup ? null : o.getShipper().getFullName(),
+				o.getShipper() == null || pickup ? null : o.getShipper().getPhone(), o.getNote(),
 				items, totalQty, money(o.getItemsTotal()),
 				money(o.getProductDiscount()), o.getProductVoucher() == null ? null : o.getProductVoucher().getCode(),
 				money(o.getMemberDiscount()), o.getMemberTierName(),
@@ -359,7 +333,6 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				etaLabel(o, pickup));
 	}
 
-	/** "Dự kiến giao lúc 14:20 - 14:30" / "Dự kiến món xong lúc ..." - chỉ khi đơn còn đang làm / đang giao */
 	private static String etaLabel(Order o, boolean pickup) {
 		if (o.getEtaMinutes() == null || o.getCreatedAt() == null) return null;
 		OrderStatus s = o.getStatus();
@@ -371,13 +344,11 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				+ from.plusMinutes(10).format(hm);
 	}
 
-	/** Trạng thái được chuyển tiếp từ trạng thái hiện tại (theo kiểu đơn) */
 	public static List<OrderStatus> nextStatuses(OrderStatus from, boolean pickup) {
 		Set<OrderStatus> next = (pickup ? PICKUP_FLOW : DELIVERY_FLOW).getOrDefault(from, Set.of());
 		return Arrays.stream(OrderStatus.values()).filter(next::contains).toList();
 	}
 
-	/** Các bước của thanh tiến trình theo kiểu đơn */
 	public static List<OrderStatus> flowOf(boolean pickup) {
 		return pickup
 				? List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.READY, OrderStatus.DELIVERED)
@@ -385,7 +356,6 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 						OrderStatus.DELIVERING, OrderStatus.DELIVERED);
 	}
 
-	/** Chữ hiển thị "ai huỷ" - phía khách: Bạn đã huỷ / Cửa hàng đã huỷ; phía quán: Khách tự huỷ / Quán đã huỷ */
 	public static String cancelledByLabel(CancelledBy by, boolean forCustomer) {
 		if (by == null) return forCustomer ? "Đơn đã huỷ" : "Đã huỷ";
 		return switch (by) {
@@ -395,7 +365,6 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		};
 	}
 
-	/** Thanh tiến trình. Đơn đã huỷ / trả hàng: không vẽ (trang hiện thông báo riêng) */
 	private static List<OrderDetailRes.Step> steps(OrderStatus status, boolean pickup) {
 		List<OrderStatus> flow = flowOf(pickup);
 		List<String> labels = pickup

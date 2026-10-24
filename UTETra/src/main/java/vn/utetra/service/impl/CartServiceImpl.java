@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class CartServiceImpl implements CartService {
 
-	private static final Set<Integer> LEVELS = Set.of(0, 30, 50, 70, 100); // khớp CHECK trong DB
+	private static final Set<Integer> LEVELS = Set.of(0, 30, 50, 70, 100);
 	private static final int MAX_QTY = 50;
 
 	private final CartItemRepository cartItemRepository;
@@ -53,7 +53,6 @@ public class CartServiceImpl implements CartService {
 		this.userRepository = userRepository;
 	}
 
-	// ================= ĐỌC GIỎ =================
 	@Override
 	public CartRes getCart(Integer userId) {
 		List<CartItemRes> items = cartItemRepository.findByUserId(userId).stream()
@@ -63,7 +62,6 @@ public class CartServiceImpl implements CartService {
 		return new CartRes(items, totalQty, subtotal);
 	}
 
-	// ================= THÊM MÓN =================
 	@Override
 	@Transactional
 	public CartRes addItem(Integer userId, CartAddReq req) {
@@ -78,13 +76,12 @@ public class CartServiceImpl implements CartService {
 			throw new BusinessException("Món " + product.getName() + " đã ngừng bán");
 
 		if (product.isToppingItem()) {
-			// Topping mua riêng: 1 cỡ, không chọn đường / đá, không thêm topping vào topping
 			req.setSize("M");
 			req.setSugarLevel(100);
 			req.setIceLevel(100);
 			req.setToppingIds(List.of());
 		}
-		String size = req.getSize() == null ? "S" : req.getSize().trim().toUpperCase(); // mặc định S
+		String size = req.getSize() == null ? "S" : req.getSize().trim().toUpperCase();
 		if (productSizeRepository.findByProductIdAndSize(product.getId(), size).isEmpty())
 			throw new BusinessException("Món này không có size " + size);
 
@@ -97,7 +94,6 @@ public class CartServiceImpl implements CartService {
 		String note = req.getNote() == null || req.getNote().isBlank() ? null : req.getNote().trim();
 		if (note != null && note.length() > 200) throw new BusinessException("Ghi chú món tối đa 200 ký tự");
 
-		// Trùng cấu hình (cả topping và ghi chú) -> cộng dồn
 		for (CartItem ci : cartItemRepository.findAllByUserIdAndProductIdAndSizeAndSugarLevelAndIceLevel(userId,
 				product.getId(), size, sugar, ice)) {
 			if (toppingIdsOf(ci).equals(wanted) && java.util.Objects.equals(ci.getNote(), note)) {
@@ -108,7 +104,6 @@ public class CartServiceImpl implements CartService {
 			}
 		}
 
-		// Khác cấu hình -> dòng mới
 		CartItem ci = new CartItem();
 		ci.setUser(user);
 		ci.setProduct(product);
@@ -124,7 +119,6 @@ public class CartServiceImpl implements CartService {
 		return getCart(userId);
 	}
 
-	// ================= MUA LẠI =================
 	@Override
 	@Transactional
 	public ReorderRes reorder(Integer userId, Integer orderId) {
@@ -151,7 +145,7 @@ public class CartServiceImpl implements CartService {
 			}
 			req.setToppingIds(toppingIds);
 			try {
-				addItem(userId, req); // gọi trong cùng class -> lỗi 1 món không làm hỏng cả lượt
+				addItem(userId, req);
 				added += d.getQuantity();
 			} catch (BusinessException e) {
 				notes.add(name + ": " + e.getMessage());
@@ -160,14 +154,11 @@ public class CartServiceImpl implements CartService {
 		return new ReorderRes(added, notes);
 	}
 
-	// ================= SỬA / XOÁ =================
 	@Override
 	@Transactional
 	public CartRes updateOptions(Integer userId, Integer cartItemId, CartAddReq req) {
 		CartItem ci = ownedItem(userId, cartItemId);
-		req.setProductId(ci.getProduct().getId()); // chỉ đổi tuỳ chọn, không đổi món
-		// Xoá dòng cũ rồi thêm lại theo lựa chọn mới (trùng cấu hình với dòng khác thì cộng dồn).
-		// Lỗi (topping ngừng bán, size sai...) -> cả giao dịch huỷ, giỏ giữ nguyên.
+		req.setProductId(ci.getProduct().getId());
 		cartItemToppingRepository.deleteByCartItemId(ci.getId());
 		cartItemRepository.delete(ci);
 		cartItemRepository.flush();
@@ -200,7 +191,6 @@ public class CartServiceImpl implements CartService {
 		}
 	}
 
-	// ================= TÙY CHỌN MÓN (cho modal) =================
 	@Override
 	public ProductOptionsRes getOptions(Integer productId) {
 		return getOptions(productId, null);
@@ -212,7 +202,7 @@ public class CartServiceImpl implements CartService {
 		if (!Boolean.TRUE.equals(p.getIsAvailable()))
 			throw new BusinessException("Món " + p.getName() + " đã ngừng bán");
 
-		Map<String, BigDecimal> sizes = new LinkedHashMap<>(); // giữ thứ tự S, M, L
+		Map<String, BigDecimal> sizes = new LinkedHashMap<>();
 		productSizeRepository.findByProductId(productId).stream()
 				.sorted(Comparator.comparingInt(ps -> "SML".indexOf(ps.getSize())))
 				.forEach(ps -> sizes.put(ps.getSize(), ps.getExtraPrice()));
@@ -227,7 +217,6 @@ public class CartServiceImpl implements CartService {
 				: toppingRepository.findAll().stream()
 						.filter(t -> !Boolean.TRUE.equals(t.getIsAvailable())).sorted(Comparator.comparing(Topping::getId))
 						.map(t -> new CartItemRes.ToppingRes(t.getId(), t.getName(), t.getPrice())).toList();
-		// Topping hết ở chi nhánh đang chọn: bỏ khỏi danh sách chọn, hiện mờ "Hết ở chi nhánh"
 		vn.utetra.entity.Branch branch = branchId == null ? null : branchRepository.findById(branchId).orElse(null);
 		List<CartItemRes.ToppingRes> out = List.of();
 		if (branch != null) {
@@ -239,9 +228,6 @@ public class CartServiceImpl implements CartService {
 				branch == null ? null : branch.getName());
 	}
 
-	// ================= HÀM PHỤ =================
-
-	/** Dòng giỏ hàng phải thuộc đúng user, nếu không coi như không tồn tại */
 	private CartItem ownedItem(Integer userId, Integer cartItemId) {
 		return cartItemRepository.findById(cartItemId).filter(ci -> ci.getUser().getId().equals(userId)).orElseThrow(
 				() -> new ResourceNotFoundException("Không tìm thấy món #" + cartItemId + " trong giỏ hàng"));
@@ -278,7 +264,6 @@ public class CartServiceImpl implements CartService {
 			throw new BusinessException("Số lượng mỗi món phải từ 1 đến " + MAX_QTY);
 	}
 
-	/** Entity -> dữ liệu gửi trình duyệt. Giá tính lại từ DB ở đây */
 	private CartItemRes toRes(CartItem ci) {
 		Product p = ci.getProduct();
 		List<Topping> toppings = cartItemToppingRepository.findByCartItemId(ci.getId()).stream()
@@ -298,7 +283,6 @@ public class CartServiceImpl implements CartService {
 				stopNote != null || outEverywhere(p, toppings));
 	}
 
-	/** Chi nhánh đang hoạt động */
 	private List<vn.utetra.entity.Branch> openBranches() {
 		return branchRepository.findByStatus(vn.utetra.entity.enums.BranchStatus.APPROVED);
 	}
@@ -314,7 +298,6 @@ public class CartServiceImpl implements CartService {
 				.map(bt -> !Boolean.TRUE.equals(bt.getIsAvailable())).orElse(false);
 	}
 
-	/** "Hết ở UTETra Võ Văn Ngân" · "Topping Trân châu đen hết ở UTETra Q1" (khách đổi chi nhánh lúc thanh toán được) */
 	private String outNote(Product p, List<Topping> toppings) {
 		List<vn.utetra.entity.Branch> open = openBranches();
 		if (open.isEmpty()) return null;
@@ -333,14 +316,12 @@ public class CartServiceImpl implements CartService {
 		return parts.isEmpty() ? null : String.join(" · ", parts);
 	}
 
-	/** Không chi nhánh nào làm được ly này -> phải xoá khỏi giỏ */
 	private boolean outEverywhere(Product p, List<Topping> toppings) {
 		List<vn.utetra.entity.Branch> open = openBranches();
 		return !open.isEmpty() && open.stream().allMatch(b -> productOut(b.getId(), p)
 				|| toppings.stream().anyMatch(t -> toppingOut(b.getId(), t)));
 	}
 
-	/** Món / topping trong giỏ mà Admin đã ngừng bán toàn chuỗi -> ghi rõ ngay ở dòng đó */
 	private static String stopNote(Product p, List<Topping> toppings) {
 		if (!Boolean.TRUE.equals(p.getIsAvailable())
 				|| (p.getTopping() != null && !Boolean.TRUE.equals(p.getTopping().getIsAvailable()))) {

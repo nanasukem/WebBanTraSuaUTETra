@@ -13,11 +13,6 @@ import vn.utetra.repository.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Quản lý đánh giá:
- * - Manager: xem + phản hồi đánh giá của chi nhánh mình (khách nhận thông báo "quán đã phản hồi")
- * - Admin: chỉ xem toàn hệ thống + xoá đánh giá vi phạm (quá khích, xúc phạm, spam); KHÔNG phản hồi
- */
 @Service
 public class BranchReviewManagementService {
 
@@ -42,6 +37,12 @@ public class BranchReviewManagementService {
 	@Autowired
 	private NotificationService notificationService;
 
+	@Autowired
+	private ReviewService reviewService;
+
+	@Autowired
+	private OrderReviewMediaRepository orderReviewMediaRepository;
+
 	public Branch getManagedBranch(User manager) {
 		if (manager == null)
 			return null;
@@ -50,7 +51,6 @@ public class BranchReviewManagementService {
 				.orElse(null);
 	}
 
-	// 1. User & Guest: Xem đánh giá QUÁN công khai của 1 chi nhánh
 	@Transactional(readOnly = true)
 	public List<BranchReviewRes> getPublicReviewsByBranch(Integer branchId) {
 		if (branchId == null) {
@@ -68,8 +68,6 @@ public class BranchReviewManagementService {
 		return result;
 	}
 
-	// 2. Admin: Xem tất cả đánh giá của tất cả chi nhánh (hỗ trợ lọc theo branchId,
-	// type, rating)
 	@Transactional(readOnly = true)
 	public List<BranchReviewRes> getAllReviewsForAdmin(Integer branchId, String type, Integer rating) {
 		List<BranchReviewRes> result = new ArrayList<>();
@@ -103,8 +101,6 @@ public class BranchReviewManagementService {
 		return result;
 	}
 
-	// 3. Manager: Xem đánh giá chi nhánh do mình phụ trách (hỗ trợ lọc theo type,
-	// rating)
 	@Transactional(readOnly = true)
 	public List<BranchReviewRes> getReviewsForManager(User manager, String type, Integer rating) {
 		Branch myBranch = getManagedBranch(manager);
@@ -114,10 +110,8 @@ public class BranchReviewManagementService {
 		return getAllReviewsForAdmin(myBranch.getId(), type, rating);
 	}
 
-	// 4. Tính điểm sao trung bình và tổng số lượng đánh giá QUÁN của 1 chi nhánh
 	@Transactional(readOnly = true)
 	public Map<String, Object> getBranchReviewSummary(Integer branchId) {
-		// Chỉ lấy đánh giá quán (OrderReview) để tính điểm trung bình cho chi nhánh
 		List<BranchReviewRes> storeReviews = getPublicReviewsByBranch(branchId);
 		double avgRating = storeReviews.stream().mapToInt(BranchReviewRes::getRating).average().orElse(0.0);
 
@@ -127,7 +121,6 @@ public class BranchReviewManagementService {
 		return summary;
 	}
 
-	// 5. Phản hồi đánh giá - CHỈ quản lý chi nhánh (admin chỉ xem / xoá)
 	@Transactional
 	public void replyToReview(ReplyReviewReq req, User currentUser) {
 		if (req.getContent() == null || req.getContent().trim().isEmpty()) {
@@ -151,7 +144,6 @@ public class BranchReviewManagementService {
 					.replyContent(req.getContent().trim()).build();
 			replyRepo.save(reply);
 
-			// Báo cho khách: bấm vào mở trang đánh giá của quán để xem phản hồi
 			notifyCustomer(or.getUser(), or.getOrder(), reviewBranch, "đánh giá quán", reply.getReplyContent(),
 					reviewBranch != null ? "/branches/" + reviewBranch.getId() : "/branches");
 
@@ -167,7 +159,6 @@ public class BranchReviewManagementService {
 					.replyContent(req.getContent().trim()).build();
 			replyRepo.save(reply);
 
-			// Báo cho khách: nội dung phản hồi nằm luôn trong thông báo
 			String what = "đánh giá món " + (r.getProduct() != null ? r.getProduct().getName() : "");
 			notifyCustomer(r.getUser(), o, reviewBranch, what.trim(), reply.getReplyContent(),
 					o != null ? "/orders/" + o.getId() + "/review" : "/orders");
@@ -176,13 +167,20 @@ public class BranchReviewManagementService {
 		}
 	}
 
-	// 6. Admin xoá đánh giá vi phạm (kèm phản hồi + ảnh/video của đánh giá đó)
 	@Transactional
 	public void deleteReview(String type, Integer id) {
 		if ("STORE".equalsIgnoreCase(type)) {
 			OrderReview or = orderReviewRepo.findById(id)
 					.orElseThrow(() -> new BusinessException("Không tìm thấy đánh giá quán #" + id));
 			replyRepo.deleteAll(replyRepo.findByOrderReviewIdOrderByCreatedAtAsc(id));
+			List<OrderReviewMedia> storeMedia = orderReviewMediaRepository.findByOrderReviewIdOrderByIdAsc(id);
+			storeMedia.forEach(m -> {
+				try {
+					cloudinaryService.deleteImage(m.getCloudinaryId());
+				} catch (RuntimeException ignored) {
+				}
+			});
+			orderReviewMediaRepository.deleteAll(storeMedia);
 			orderReviewRepo.delete(or);
 		} else if ("PRODUCT".equalsIgnoreCase(type)) {
 			Review r = reviewRepo.findById(id)
@@ -193,7 +191,6 @@ public class BranchReviewManagementService {
 				try {
 					cloudinaryService.deleteImage(m.getCloudinaryId());
 				} catch (RuntimeException ignored) {
-					// file trên Cloudinary không xoá được thì vẫn xoá đánh giá
 				}
 			});
 			mediaRepo.deleteAll(media);
@@ -203,7 +200,6 @@ public class BranchReviewManagementService {
 		}
 	}
 
-	/** Thông báo cho khách: "UTETra ... đã phản hồi đánh giá của bạn" + trích nội dung phản hồi */
 	private void notifyCustomer(User customer, Order order, Branch branch, String what, String replyContent,
 			String link) {
 		if (customer == null) {
@@ -229,7 +225,8 @@ public class BranchReviewManagementService {
 				.customerName(or.getUser() != null && or.getUser().getFullName() != null ? or.getUser().getFullName()
 						: "Khách hàng")
 				.rating((int) or.getStoreRating()).comment(or.getComment()).tags(or.getTags()).type("STORE")
-				.productName(null).createdAt(or.getCreatedAt()).replies(mapReplies(replies)).build();
+				.productName(null).createdAt(or.getCreatedAt()).replies(mapReplies(replies))
+				.media(reviewService.storeMediaOf(List.of(or.getId())).getOrDefault(or.getId(), List.of())).build();
 	}
 
 	private BranchReviewRes convertProductReviewToRes(Review r, Order o, Branch b) {
@@ -240,7 +237,8 @@ public class BranchReviewManagementService {
 						: "Khách hàng")
 				.rating((int) r.getRating()).comment(r.getContent()).tags(r.getTags()).type("PRODUCT")
 				.productName(r.getProduct() != null ? r.getProduct().getName() : null).createdAt(r.getCreatedAt())
-				.replies(mapReplies(replies)).build();
+				.replies(mapReplies(replies))
+				.media(reviewService.productMediaOf(List.of(r.getId())).getOrDefault(r.getId(), List.of())).build();
 	}
 
 	private List<ReplyDto> mapReplies(List<ReviewReply> replies) {

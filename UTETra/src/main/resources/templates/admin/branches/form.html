@@ -23,7 +23,6 @@
                   ? '/admin/branches/create'
                   : '/admin/branches/' + branchId + '/edit'}">
 
-			<!-- Tên chi nhánh -->
 			<div class="mb-3">
 				<label class="form-label"> Tên chi nhánh <span
 					class="text-danger">*</span>
@@ -33,7 +32,6 @@
 				<div class="invalid-feedback" th:errors="*{name}"></div>
 			</div>
 
-			<!-- Địa chỉ -->
 			<div class="mb-3">
 				<label class="form-label"> Địa chỉ <span class="text-danger">*</span>
 				</label> <input type="text" th:field="*{address}" class="form-control"
@@ -42,7 +40,6 @@
 				<div class="invalid-feedback" th:errors="*{address}"></div>
 			</div>
 
-			<!-- Tọa độ -->
 			<div class="row g-3 mb-1">
 
 				<div class="col-md-6">
@@ -76,7 +73,6 @@
 				</a>
 			</div>
 
-			<!-- Số điện thoại và giờ hoạt động -->
 			<div class="row g-3 mb-3">
 
 				<div class="col-md-6">
@@ -102,7 +98,6 @@
 
 			</div>
 
-			<!-- Manager phụ trách -->
 			<div class="mb-4">
 				<label class="form-label"> Quản lý chi nhánh (Manager) <span
 					class="text-danger">*</span>
@@ -121,8 +116,6 @@
 				<div class="form-text">Mỗi Manager chỉ quản lý một chi nhánh.
 					Chọn Manager chưa được giao chi nhánh nào.</div>
 			</div>
-
-			<!-- Không có trường mô tả hoặc ảnh bìa ở form Admin -->
 
 			<div class="alert alert-info small">
 				<i class="bi bi-info-circle me-1"></i> Ảnh bìa và mô tả trang chủ do

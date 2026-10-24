@@ -216,10 +216,8 @@ body {
 }
 </style>
 
-
 	<div class="page-container">
 
-		<!-- Tiêu đề trang -->
 		<div class="page-header">
 			<div>
 				<h1 class="page-title">Quản lý danh mục</h1>
@@ -233,7 +231,6 @@ body {
 			</a>
 		</div>
 
-		<!-- Thông báo -->
 		<div th:if="${successMessage}"
 			class="alert alert-success alert-dismissible fade show" role="alert">
 			<i class="bi bi-check-circle-fill me-2"></i> <span
@@ -250,7 +247,6 @@ body {
 				aria-label="Đóng"></button>
 		</div>
 
-		<!-- Khung tìm kiếm giống Product -->
 		<div class="panel">
 			<form th:action="@{/admin/categories}" method="get">
 
@@ -278,7 +274,6 @@ body {
 			</form>
 		</div>
 
-		<!-- Bảng danh mục giống bảng Product -->
 		<div class="panel">
 
 			<div class="panel-heading">

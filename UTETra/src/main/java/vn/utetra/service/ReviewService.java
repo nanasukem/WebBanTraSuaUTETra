@@ -23,6 +23,7 @@ import vn.utetra.dto.response.ReviewableItemRes;
 import vn.utetra.entity.Order;
 import vn.utetra.entity.OrderDetail;
 import vn.utetra.entity.OrderReview;
+import vn.utetra.entity.OrderReviewMedia;
 import vn.utetra.entity.Review;
 import vn.utetra.entity.ReviewMedia;
 import vn.utetra.entity.User;
@@ -37,26 +38,16 @@ import vn.utetra.repository.ReviewMediaRepository;
 import vn.utetra.repository.ReviewRepository;
 import vn.utetra.service.impl.OrderFlowServiceImpl;
 
-/**
- * Đánh giá sản phẩm đã mua - như app Katinat / Highlands:
- * - Chỉ đơn ĐÃ GIAO của chính khách, trong 30 ngày kể từ lúc nhận; mỗi ly đánh giá 1 lần
- * - Đánh giá CẢ ĐƠN trong 1 lượt (đơn nhiều món thì nhắc đánh giá hết)
- * - Bắt buộc chấm sao 1..5; bình luận và ảnh/video KHÔNG bắt buộc, không giới hạn số chữ tối thiểu
- *   (tối đa 5 file / ly, ảnh <= 5MB, video <= 30MB)
- * - Đánh giá quán (phục vụ, đóng gói) + góp ý: 1 lần / đơn, đã đánh giá thì không sửa được
- * - Gửi xong -> báo cho manager chi nhánh (đánh giá <= 2 sao thì ghi rõ "Đánh giá thấp" để trả lời sớm)
- */
 @Service
 @Transactional(readOnly = true)
 public class ReviewService {
 
 	public static final int MAX_CONTENT = 2000;
 	public static final int MAX_FILES = 5;
-	public static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;   // 5MB
-	public static final long MAX_VIDEO_BYTES = 30L * 1024 * 1024;  // 30MB
+	public static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
+	public static final long MAX_VIDEO_BYTES = 30L * 1024 * 1024;
 	public static final int REVIEW_DAYS = OrderFlowServiceImpl.REVIEW_DAYS;
 
-	/** Gợi ý chọn nhanh khi đánh giá món / quán (bấm để tô sáng, lưu thành nhãn) */
 	public static final List<String> PRODUCT_TAGS = List.of("Đúng vị, rất ngon", "Độ ngọt vừa phải", "Topping nhiều",
 			"Hơi ngọt", "Hơi nhạt", "Sẽ mua lại");
 	public static final List<String> STORE_TAGS = List.of("Nhân viên thân thiện", "Đóng gói cẩn thận", "Làm món nhanh",
@@ -69,6 +60,8 @@ public class ReviewService {
 
 	private final ReviewRepository reviewRepository;
 	private final ReviewMediaRepository reviewMediaRepository;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.OrderReviewMediaRepository orderReviewMediaRepository;
 	private final OrderDetailRepository orderDetailRepository;
 	private final OrderRepository orderRepository;
 	private final OrderReviewRepository orderReviewRepository;
@@ -90,9 +83,6 @@ public class ReviewService {
 		this.notificationService = notificationService;
 	}
 
-	// ================= XEM ĐÁNH GIÁ CỦA MÓN =================
-
-	/** Đánh giá của 1 món, mới nhất lên đầu (kèm ảnh/video) */
 	public List<ReviewRes> listByProduct(Integer productId) {
 		List<Review> reviews = reviewRepository.findByProductIdOrderByCreatedAtDescIdDesc(productId);
 		if (reviews.isEmpty()) {
@@ -102,12 +92,6 @@ public class ReviewService {
 		return reviews.stream().map(r -> toRes(r, media.getOrDefault(r.getId(), List.of()))).toList();
 	}
 
-	// ================= MÓN ĐÃ MUA (trang chi tiết món, chi tiết đơn) =================
-
-	/**
-	 * Các ly khách đã mua + đã nhận (đơn Đã giao). productId = null: mọi món.
-	 * reviewed = true: ly đó đã đánh giá rồi.
-	 */
 	public List<ReviewableItemRes> purchasedItems(Integer userId, Integer productId) {
 		if (userId == null) {
 			return List.of();
@@ -122,7 +106,6 @@ public class ReviewService {
 				time(d.getOrder().getDeliveredAt()), reviewed.contains(d.getId()))).toList();
 	}
 
-	/** Các ly CHƯA đánh giá và CÒN HẠN (để nhắc đánh giá) */
 	public List<ReviewableItemRes> pendingItems(Integer userId, Integer productId) {
 		if (userId == null) return List.of();
 		List<OrderDetail> details = orderDetailRepository.findPurchased(userId, productId, OrderStatus.DELIVERED);
@@ -135,12 +118,9 @@ public class ReviewService {
 				.toList();
 	}
 
-	/** Nhắc đánh giá: số đơn còn món chưa đánh giá (còn hạn) */
 	public int pendingOrderCount(Integer userId) {
 		return (int) pendingItems(userId, null).stream().map(ReviewableItemRes::orderId).distinct().count();
 	}
-
-	// ================= TRANG ĐÁNH GIÁ ĐƠN =================
 
 	public OrderReviewPageRes reviewPage(Integer userId, Integer orderId) {
 		Order o = ownOrder(userId, orderId);
@@ -167,15 +147,10 @@ public class ReviewService {
 				o.getBranch().getImageCloudinaryId(), time(o.getDeliveredAt()),
 				o.getDeliveredAt() == null ? null : o.getDeliveredAt().plusDays(REVIEW_DAYS).format(DAY), can, items,
 				pending, or != null, or == null ? null : or.getStoreRating(),
-				or == null ? List.of() : splitTags(or.getTags()), or == null ? null : or.getComment());
+				or == null ? List.of() : splitTags(or.getTags()), or == null ? null : or.getComment(),
+				or == null ? List.of() : storeMediaOf(List.of(or.getId())).getOrDefault(or.getId(), List.of()));
 	}
 
-	// ================= GỬI ĐÁNH GIÁ =================
-
-	/**
-	 * Gửi đánh giá cả đơn 1 lượt. Kiểm tra hết TRƯỚC khi tải ảnh/video lên Cloudinary;
-	 * lỗi giữa chừng -> xoá file đã tải và huỷ cả lượt đánh giá (rollback).
-	 */
 	@Transactional
 	public ReviewSubmitRes submit(Integer userId, Integer orderId, OrderReviewReq req) {
 		Order o = ownOrder(userId, orderId);
@@ -193,7 +168,6 @@ public class ReviewService {
 				.collect(Collectors.toMap(OrderDetail::getId, Function.identity()));
 		Set<Integer> reviewed = reviewedIds(new ArrayList<>(details.keySet()));
 
-		// 1. Kiểm tra từng ly (chỉ ly có chấm sao mới tính)
 		List<ReviewItemReq> toSave = new ArrayList<>();
 		Map<Integer, List<MultipartFile>> files = new HashMap<>();
 		for (ReviewItemReq it : req.items() == null ? List.<ReviewItemReq>of() : req.items()) {
@@ -212,18 +186,17 @@ public class ReviewService {
 			toSave.add(it);
 		}
 
-		// 2. Đánh giá quán (1 lần / đơn - đã đánh giá rồi thì bỏ qua, không cho sửa)
 		Integer store = req.storeRating();
 		boolean service = store != null && !orderReviewRepository.existsByOrderId(orderId);
 		if (store != null && (store < 1 || store > 5)) throw new BusinessException("Đánh giá quán phải từ 1 đến 5 sao");
 		String storeComment = clean(req.storeComment());
 		if (storeComment != null && storeComment.length() > 1000) throw new BusinessException("Góp ý cho quán tối đa 1000 ký tự");
+		List<MultipartFile> storeFiles = service ? validFiles(req.storeMedia()) : List.of();
 
 		if (toSave.isEmpty() && !service) {
 			throw new BusinessException("Vui lòng chấm sao ít nhất 1 món hoặc đánh giá quán");
 		}
 
-		// 3. Lưu đánh giá từng ly + tải ảnh/video
 		List<String> uploaded = new ArrayList<>();
 		try {
 			for (ReviewItemReq it : toSave) {
@@ -252,27 +225,36 @@ public class ReviewService {
 					reviewMediaRepository.save(m);
 				}
 			}
+
+			if (service) {
+				OrderReview or = new OrderReview();
+				or.setOrder(o);
+				or.setUser(o.getUser());
+				or.setStoreRating(store);
+				or.setComment(storeComment);
+				or.setTags(joinTags(req.storeTags()));
+				or = orderReviewRepository.save(or);
+				for (MultipartFile f : storeFiles) {
+					String url = cloudinaryService.uploadImage(f, "store-reviews");
+					if (url == null) continue;
+					uploaded.add(url);
+					OrderReviewMedia m = new OrderReviewMedia();
+					m.setOrderReviewId(or.getId());
+					m.setCloudinaryId(url);
+					m.setMediaType(mediaType(f));
+					orderReviewMediaRepository.save(m);
+				}
+			}
 		} catch (RuntimeException e) {
 			uploaded.forEach(cloudinaryService::deleteImage);
 			if (e instanceof BusinessException be) throw be;
 			throw new BusinessException("Không tải được ảnh/video lên, vui lòng thử lại");
-		}
-
-		if (service) {
-			OrderReview or = new OrderReview();
-			or.setOrder(o);
-			or.setUser(o.getUser());
-			or.setStoreRating(store);
-			or.setComment(storeComment);
-			or.setTags(joinTags(req.storeTags()));
-			orderReviewRepository.save(or);
 		}
 		reviewRepository.flush();
 		notifyManager(o, toSave, service ? store : null);
 		return new ReviewSubmitRes(toSave.size(), service);
 	}
 
-	/** Đánh giá nhanh 1 ly (giữ cho chỗ khác / test dùng) */
 	@Transactional
 	public ReviewSubmitRes create(Integer userId, Integer orderDetailId, Integer rating, String content,
 			List<MultipartFile> files) {
@@ -286,12 +268,8 @@ public class ReviewService {
 						List.of(), null));
 	}
 
-	// ================= HÀM PHỤ =================
-
-	/** Sao <= mức này coi là đánh giá thấp, báo nổi bật cho manager */
 	static final int LOW_RATING = 2;
 
-	/** Báo manager chi nhánh: 1 thông báo cho cả lượt đánh giá, bấm vào mở trang Quản lý đánh giá */
 	private void notifyManager(Order o, List<ReviewItemReq> items, Integer store) {
 		User manager = o.getBranch() == null ? null : o.getBranch().getOwner();
 		if (manager == null || (items.isEmpty() && store == null)) {
@@ -333,6 +311,18 @@ public class ReviewService {
 				.collect(Collectors.toSet());
 	}
 
+	public Map<Integer, List<ReviewRes.Media>> storeMediaOf(List<Integer> orderReviewIds) {
+		if (orderReviewIds.isEmpty()) return Map.of();
+		return orderReviewMediaRepository.findByOrderReviewIdInOrderByIdAsc(orderReviewIds).stream()
+				.collect(Collectors.groupingBy(OrderReviewMedia::getOrderReviewId,
+						Collectors.mapping(m -> new ReviewRes.Media(m.getCloudinaryId(), m.getMediaType()),
+								Collectors.toList())));
+	}
+
+	public Map<Integer, List<ReviewRes.Media>> productMediaOf(List<Integer> reviewIds) {
+		return mediaOf(reviewIds);
+	}
+
 	private Map<Integer, List<ReviewRes.Media>> mediaOf(List<Integer> reviewIds) {
 		if (reviewIds.isEmpty()) return Map.of();
 		return reviewMediaRepository.findByReviewIdInOrderByIdAsc(reviewIds).stream()
@@ -341,7 +331,6 @@ public class ReviewService {
 								Collectors.toList())));
 	}
 
-	/** Gợi ý đã chọn -> "a|b|c" (tối đa 6 gợi ý, mỗi gợi ý 50 ký tự, cả chuỗi 255) */
 	static String joinTags(List<String> tags) {
 		if (tags == null) return null;
 		List<String> list = tags.stream().filter(t -> t != null && !t.isBlank())
@@ -360,7 +349,6 @@ public class ReviewService {
 		return s == null || s.isBlank() ? null : s.trim();
 	}
 
-	/** Bỏ file rỗng, kiểm tra số lượng, loại (ảnh/video) và dung lượng */
 	private List<MultipartFile> validFiles(List<MultipartFile> files) {
 		List<MultipartFile> list = files == null ? List.of()
 				: files.stream().filter(f -> f != null && !f.isEmpty()).toList();
@@ -380,7 +368,6 @@ public class ReviewService {
 		return list;
 	}
 
-	/** IMAGE / VIDEO theo loại file (hoặc đuôi file); không phải ảnh/video -> null */
 	static String mediaType(MultipartFile f) {
 		String ct = f.getContentType() == null ? "" : f.getContentType().toLowerCase();
 		if (ct.startsWith("image/")) return "IMAGE";
@@ -400,7 +387,6 @@ public class ReviewService {
 				media);
 	}
 
-	/** "Size L · 70% đường · 50% đá" */
 	static String info(OrderDetail d) {
 		if (d.getProduct() != null && d.getProduct().isToppingItem()) return "Topping mua riêng";
 		return "Size " + d.getSize() + " · " + d.getSugarLevel() + "% đường · " + d.getIceLevel() + "% đá";

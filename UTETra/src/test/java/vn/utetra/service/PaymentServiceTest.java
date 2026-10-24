@@ -36,20 +36,13 @@ import vn.utetra.repository.OrderRepository;
 import vn.utetra.repository.PaymentRepository;
 import vn.utetra.repository.VoucherRepository;
 
-/**
- * TEST TUẦN 3 (B): thanh toán VNPAY / MoMo sandbox, đơn Chờ thanh toán, quá hạn tự huỷ, hoàn tiền,
- * nhãn Đã thanh toán / Chưa thanh toán.
- *
- * Không gọi mạng tới VNPAY / MoMo: chữ ký được kiểm bằng dữ liệu tự ký; luồng thành công dùng chế độ demo của VNPAY
- * (ép vnpay.tmn-code rỗng trong môi trường test để 4 hàm demo luôn chạy xanh kể cả khi .env đã điền mã thật).
- */
 @SpringBootTest
 @TestPropertySource(properties = { "vnpay.tmn-code=", "vnpay.hash-secret=" })
 @Transactional
 class PaymentServiceTest {
 
 	static final int USER1 = 6;
-	static final int MANAGER1 = 3; // chủ chi nhánh 1
+	static final int MANAGER1 = 3;
 
 	@Autowired OrderService orderService;
 	@Autowired OrderFlowService orderFlowService;
@@ -61,22 +54,18 @@ class PaymentServiceTest {
 	@Autowired VoucherRepository voucherRepository;
 	@Autowired EntityManager em;
 
-	/** Giờ mở cửa mẫu 7:00 - 22:00: test chạy giờ nào cũng được -> cho chi nhánh mở cả ngày (rollback sau mỗi test) */
 	@org.junit.jupiter.api.BeforeEach
 	void moCuaCaNgay() {
 		em.createNativeQuery("UPDATE Branches SET open_time = '00:00', close_time = '00:00'").executeUpdate();
-		// Dữ liệu thử tay trên web (báo hết món / topping, Admin ngừng bán) không làm test sai -> trả về như dữ liệu mẫu (tự rollback)
 		em.createNativeQuery("DELETE FROM BranchToppings").executeUpdate();
 		em.createNativeQuery("UPDATE Toppings SET is_available = 1").executeUpdate();
 		em.createNativeQuery("UPDATE Products SET is_available = 1").executeUpdate();
 		em.createNativeQuery("DELETE FROM BranchProducts WHERE NOT (branch_id = 2 AND product_id = 4)").executeUpdate();
-		em.createNativeQuery("IF NOT EXISTS (SELECT 1 FROM BranchProducts WHERE branch_id = 2 AND product_id = 4) "
-				+ "INSERT INTO BranchProducts (branch_id, product_id, is_available) VALUES (2, 4, 0)").executeUpdate();
+		em.createNativeQuery("INSERT INTO BranchProducts (branch_id, product_id, is_available) SELECT 2, 4, 0 "
+				+ "WHERE NOT EXISTS (SELECT 1 FROM BranchProducts WHERE branch_id = 2 AND product_id = 4)").executeUpdate();
 		em.createNativeQuery("UPDATE BranchProducts SET is_available = 0 WHERE branch_id = 2 AND product_id = 4").executeUpdate();
 		em.clear();
 	}
-
-	// ======================= ĐẶT ĐƠN TRẢ TRƯỚC =======================
 
 	@Test
 	void datMomo_choThanhToan_quanChuaThay_gioDaXoa() {
@@ -213,7 +202,7 @@ class PaymentServiceTest {
 		em.flush();
 		em.clear();
 
-		paymentService.demoResult(USER1, o.getId(), true); // khách vẫn trả ở trang cổng đã mở từ trước
+		paymentService.demoResult(USER1, o.getId(), true);
 		em.flush();
 		em.clear();
 		assertEquals(PaymentStatus.REFUND_PENDING, orderRepository.findById(o.getId()).orElseThrow().getPaymentStatus());
@@ -238,8 +227,6 @@ class PaymentServiceTest {
 		assertTrue(managerOrderService.orderCard(MANAGER1, o.getId()).paymentLabel().contains("thu"),
 				"quán thấy phải thu tiền mặt");
 	}
-
-	// ======================= BÁO VẤN ĐỀ VỚI ĐƠN (thay Trả hàng) =======================
 
 	@Autowired OrderIssueService orderIssueService;
 	@Autowired vn.utetra.repository.OrderIssueRepository orderIssueRepository;
@@ -335,7 +322,6 @@ class PaymentServiceTest {
 		return orderFlowService.myOrders(USER1, tab).stream().anyMatch(x -> x.id().equals(o.getId()));
 	}
 
-	/** Đơn đến lấy đã nhận món; MoMo thì giả lập đã trả qua MoMo (có giao dịch thành công) */
 	private Order daNhan(PaymentMethod pm) {
 		Order o = datDon(pm == PaymentMethod.COD ? PaymentMethod.COD : PaymentMethod.MOMO, null);
 		if (pm != PaymentMethod.COD) {
@@ -359,7 +345,6 @@ class PaymentServiceTest {
 		return orderRepository.findById(o.getId()).orElseThrow();
 	}
 
-	/** Tạo sẵn báo cáo (bỏ qua bước tải ảnh lên Cloudinary) */
 	private void taoBaoCao(Order o) {
 		vn.utetra.entity.OrderIssue i = new vn.utetra.entity.OrderIssue();
 		i.setOrder(orderRepository.getReferenceById(o.getId()));
@@ -371,8 +356,6 @@ class PaymentServiceTest {
 		em.flush();
 		em.clear();
 	}
-
-	// ======================= CHỮ KÝ CỔNG THANH TOÁN =======================
 
 	@Test
 	void vnpay_chuKyDung_suaSoTienThiSai() {
@@ -388,7 +371,6 @@ class PaymentServiceTest {
 		assertTrue(url.contains("vnp_Amount=5000000"), "VNPAY tính tiền x100");
 		assertTrue(url.contains("vnp_SecureHash="));
 
-		// VNPAY trả về (tự ký bằng cùng secret như VNPAY làm)
 		Map<String, String> ret = new TreeMap<>();
 		ret.put("vnp_Amount", "5000000");
 		ret.put("vnp_BankCode", "NCB");
@@ -444,8 +426,6 @@ class PaymentServiceTest {
 		assertFalse(momo.readResult(p).verified(), "đổi kết quả -> sai chữ ký");
 	}
 
-	// ======================= HÀM PHỤ =======================
-
 	private Order datDon(PaymentMethod pm, String voucher) {
 		cartService.clear(USER1);
 		CartAddReq c = new CartAddReq();
@@ -486,7 +466,6 @@ class PaymentServiceTest {
 		return p;
 	}
 
-	/** Ký giống VNPAY: xếp theo tên, giá trị mã hoá URL, HMAC-SHA512 */
 	private static String kyVnpay(Map<String, String> params, String secret) {
 		StringBuilder sb = new StringBuilder();
 		new TreeMap<>(params).forEach((k, v) -> {

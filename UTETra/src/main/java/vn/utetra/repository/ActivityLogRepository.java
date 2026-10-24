@@ -12,7 +12,6 @@ import vn.utetra.entity.ActivityLog;
 
 public interface ActivityLogRepository extends JpaRepository<ActivityLog, Integer> {
 
-	/** Lọc theo vai trò, từ khoá (tên người làm / nội dung), khoảng ngày; mới nhất trước */
 	@Query("SELECT a FROM ActivityLog a WHERE (:role IS NULL OR a.actorRole = :role) "
 			+ "AND (:kw IS NULL OR LOWER(a.actorName) LIKE :kw OR LOWER(a.action) LIKE :kw) "
 			+ "AND (:from IS NULL OR a.createdAt >= :from) AND (:to IS NULL OR a.createdAt < :to) "

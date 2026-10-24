@@ -31,7 +31,6 @@ public class AuthApiController {
 		this.userDetailsService = userDetailsService;
 	}
 
-	// 1. API ĐĂNG KÝ
 	@PostMapping("/signup")
 	public ResponseEntity<?> register(@RequestBody RegisterRequest registerUser) {
 		try {
@@ -45,7 +44,6 @@ public class AuthApiController {
 		}
 	}
 
-	// 2. API XÁC THỰC OTP ĐĂNG KÝ
 	@PostMapping("/verify-otp")
 	public ResponseEntity<?> verifyOtp(@RequestParam("email") String email, @RequestParam("code") String code) {
 		try {
@@ -56,7 +54,6 @@ public class AuthApiController {
 		}
 	}
 
-	// 3. API ĐĂNG NHẬP (Trả về Token JWT)
 	@PostMapping("/login")
 	public ResponseEntity<?> authenticate(@RequestBody LoginRequest loginUser) {
 		try {
@@ -77,7 +74,6 @@ public class AuthApiController {
 		}
 	}
 
-	// 4. API QUÊN MẬT KHẨU (Gửi OTP qua email)
 	@PostMapping("/forgot-password")
 	public ResponseEntity<?> forgotPassword(@RequestParam("email") String email) {
 		try {
@@ -88,7 +84,6 @@ public class AuthApiController {
 		}
 	}
 
-	// 5. API ĐẶT LẠI MẬT KHẨU MỚI
 	@PostMapping("/reset-password")
 	public ResponseEntity<?> resetPassword(@RequestParam("email") String email, @RequestParam("code") String code,
 			@RequestParam("newPassword") String newPassword) {
@@ -100,17 +95,14 @@ public class AuthApiController {
 		}
 	}
 
-	// 6. API ĐĂNG XUẤT
 	@PostMapping("/logout")
 	public ResponseEntity<?> logout(HttpServletResponse response) {
-		// Xóa Cookie JWT nếu có
 		Cookie jwtCookie = new Cookie("JWT_TOKEN", null);
 		jwtCookie.setPath("/");
 		jwtCookie.setHttpOnly(true);
 		jwtCookie.setMaxAge(0);
 		response.addCookie(jwtCookie);
 
-		// Xóa Context Security hiện tại
 		SecurityContextHolder.clearContext();
 
 		return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công!"));

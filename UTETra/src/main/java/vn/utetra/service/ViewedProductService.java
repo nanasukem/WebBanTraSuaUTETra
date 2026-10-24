@@ -14,16 +14,10 @@ import vn.utetra.repository.ProductRepository;
 import vn.utetra.repository.UserRepository;
 import vn.utetra.repository.ViewedProductRepository;
 
-/**
- * Sản phẩm đã xem: mở trang chi tiết món thì ghi lại.
- * Xem lại món cũ -> chỉ cập nhật thời gian (bảng ViewedProducts có UNIQUE user_id + product_id),
- * nên danh sách luôn xếp "xem gần nhất lên đầu", không bị trùng món.
- */
 @Service
 @Transactional(readOnly = true)
 public class ViewedProductService {
 
-	/** Trang "Đã xem" hiện tối đa 40 món gần nhất */
 	public static final int MAX_ITEMS = 40;
 
 	private final ViewedProductRepository viewedProductRepository;
@@ -39,7 +33,6 @@ public class ViewedProductService {
 		this.productHighlightService = productHighlightService;
 	}
 
-	/** Ghi nhận user vừa xem món (gọi khi mở trang chi tiết). Món không tồn tại thì bỏ qua */
 	@Transactional
 	public void record(Integer userId, Integer productId) {
 		if (userId == null || productId == null) {
@@ -58,7 +51,6 @@ public class ViewedProductService {
 		viewedProductRepository.saveAndFlush(v);
 	}
 
-	/** limit món xem gần nhất */
 	public List<ProductCardRes> recent(Integer userId, int limit) {
 		List<Product> products = viewedProductRepository
 				.findByUserIdOrderByViewedAtDescIdDesc(userId, PageRequest.of(0, Math.max(1, limit))).stream()
@@ -70,7 +62,6 @@ public class ViewedProductService {
 		return viewedProductRepository.countByUserId(userId);
 	}
 
-	/** Xoá lịch sử xem. Trả về số món đã xoá */
 	@Transactional
 	public int clear(Integer userId) {
 		return viewedProductRepository.deleteAllOfUser(userId);

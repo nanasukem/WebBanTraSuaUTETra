@@ -30,7 +30,6 @@ import java.util.*;
 @Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
 
-    /** SĐT Việt Nam: 10 số, bắt đầu bằng 0 */
     private static final String PHONE_REGEX = "0\\d{9}";
 
     private static final DateTimeFormatter DATE =
@@ -39,11 +38,6 @@ public class OrderServiceImpl implements OrderService {
     private static final DateTimeFormatter DATE_TIME =
             DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 
-    /**
-     * Đội ngũ giao hàng nội bộ của quán: Shipper UTETra
-     * - Từ 3 km trở xuống: đồng giá 15.000đ
-     * - Trên 3 km: cộng thêm 10.000đ cho mỗi km vượt quá (làm tròn lên), giao tối đa 15 km
-     */
     public static final int BASE_KM = 3;
     public static final int MAX_KM = 15;
     public static final String DEFAULT_CARRIER_NAME = "Shipper UTETra";
@@ -95,14 +89,13 @@ public class OrderServiceImpl implements OrderService {
         this.toppingService = toppingService;
     }
 
-    /** Kết quả tính toán dùng chung cho preview và placeOrder */
     private static class Calc {
         CartRes cart;
         Branch branch;
         DeliveryType deliveryType;
         Address address;
         Carrier carrier;
-        BigDecimal distanceKm; // khoảng cách chi nhánh -> địa chỉ giao
+        BigDecimal distanceKm;
 
         String receiverName;
         String receiverPhone;
@@ -118,18 +111,16 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         List<String> unavailable = new ArrayList<>();
-        java.util.Map<Integer, String> itemWarnings = new java.util.LinkedHashMap<>(); // dòng giỏ có topping đã hết
+        java.util.Map<Integer, String> itemWarnings = new java.util.LinkedHashMap<>();
         List<String> toppingOut = new ArrayList<>();
-        Integer etaMinutes;                            // thời gian dự kiến (phút)
+        Integer etaMinutes;
         List<String> stopped = new ArrayList<>();
-        boolean stockBlocked;                          // có món / topping hết hoặc ngừng bán -> chưa đặt được      // món Admin đã ngừng bán (khác "hết ở chi nhánh")                                   // tên topping đã hết
+        boolean stockBlocked;
 
         String productVoucherError;
 
         List<String> errors = new ArrayList<>();
     }
-
-    // ================= XEM TRƯỚC ĐƠN HÀNG =================
 
     @Override
     public CheckoutPreviewRes preview(Integer userId, CheckoutReq req) {
@@ -164,8 +155,6 @@ public class OrderServiceImpl implements OrderService {
                 c.etaMinutes
         );
     }
-
-    // ================= DANH SÁCH VOUCHER (CHỈ VOUCHER GIẢM MÓN) =================
 
     @Override
     public List<VoucherOptionRes> voucherOptions(Integer userId, CheckoutReq req) {
@@ -262,8 +251,6 @@ public class OrderServiceImpl implements OrderService {
         return tags;
     }
 
-    // ================= TÓM TẮT ĐƠN HÀNG =================
-
     @Override
     public OrderSummaryRes getOrderSummary(Integer userId, Integer orderId) {
 
@@ -302,8 +289,6 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
-    // ================= ĐẶT HÀNG =================
-
     @Override
     @Transactional
     public Order placeOrder(Integer userId, CheckoutReq req) {
@@ -317,7 +302,6 @@ public class OrderServiceImpl implements OrderService {
                         )
                 );
 
-        // 1. Tạo đơn hàng
         Order o = new Order();
 
         o.setUser(user);
@@ -351,14 +335,12 @@ public class OrderServiceImpl implements OrderService {
         o.setTotalAmount(c.totalAmount);
         o.setEtaMinutes(c.etaMinutes);
 
-        // COD: vào quán ngay (Chờ xác nhận). VNPAY/MoMo: Chờ thanh toán, trả xong quán mới thấy đơn
         boolean online = req.getPaymentMethod() == PaymentMethod.VNPAY
                 || req.getPaymentMethod() == PaymentMethod.MOMO;
         o.setStatus(online ? OrderStatus.AWAITING_PAYMENT : OrderStatus.PENDING);
         o.setPaymentMethod(req.getPaymentMethod());
         o.setPaymentStatus(PaymentStatus.UNPAID);
 
-        // 2. Lưu chi tiết món và topping
         for (CartItemRes line : c.cart.items()) {
 
             OrderDetail d = new OrderDetail();
@@ -391,7 +373,6 @@ public class OrderServiceImpl implements OrderService {
             o.addDetail(d);
         }
 
-        // 3. Lưu đơn hàng
         Order saved = orderRepository.save(o);
 
         markVouchersUsed(c, userId, saved.getId());
@@ -403,7 +384,6 @@ public class OrderServiceImpl implements OrderService {
         return saved;
     }
 
-    /** Ghi nhận voucher đã dùng (giữ chỗ ngay khi đặt; huỷ đơn thì OrderFlowService trả lại lượt) */
     private void markVouchersUsed(Calc c, Integer userId, Integer orderId) {
 
         if (c.productVoucher != null) {
@@ -415,17 +395,10 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    // ================= TÍNH TOÁN DÙNG CHUNG =================
-
-    /**
-     * strict = true: gặp lỗi thì ném BusinessException.
-     * strict = false: ghi lỗi để trang checkout hiển thị.
-     */
     private Calc calculate(Integer userId, CheckoutReq req, boolean strict) {
 
         Calc c = new Calc();
 
-        // Giỏ hàng
         c.cart = cartService.getCart(userId);
 
         if (c.cart.items().isEmpty()) {
@@ -434,7 +407,6 @@ public class OrderServiceImpl implements OrderService {
 
         c.itemsTotal = c.cart.subtotal();
 
-        // 1. Chi nhánh
         if (req.getBranchId() == null) {
 
             fail(c, strict, "Vui lòng chọn chi nhánh");
@@ -471,7 +443,6 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 2. Kiểm tra món và topping còn bán
         Set<Integer> hetOChiNhanh = c.branch == null
                 ? Set.of()
                 : new HashSet<>(
@@ -480,7 +451,6 @@ public class OrderServiceImpl implements OrderService {
                         )
                 );
 
-        // Topping chi nhánh đang báo hết (Manager bật / tắt)
         Set<Integer> hetToppingOChiNhanh = c.branch == null
                 ? Set.of()
                 : toppingService.unavailableToppingIds(c.branch.getId());
@@ -492,9 +462,8 @@ public class OrderServiceImpl implements OrderService {
         for (CartItemRes line : c.cart.items()) {
 
             Product p = productRepository.findById(line.productId()).orElse(null);
-            Topping tp = p == null ? null : p.getTopping(); // != null: topping mua riêng
+            Topping tp = p == null ? null : p.getTopping();
 
-            // a) Admin NGỪNG BÁN toàn chuỗi (món, hoặc topping của món mua riêng)
             boolean ngungBan = p == null
                     || !Boolean.TRUE.equals(p.getIsAvailable())
                     || (tp != null && !Boolean.TRUE.equals(tp.getIsAvailable()));
@@ -505,7 +474,6 @@ public class OrderServiceImpl implements OrderService {
                 continue;
             }
 
-            // b) Chi nhánh báo HẾT món (hoặc hết topping của món mua riêng)
             boolean het = hetOChiNhanh.contains(line.productId())
                     || (tp != null && hetToppingOChiNhanh.contains(tp.getId()));
             if (het) {
@@ -515,7 +483,6 @@ public class OrderServiceImpl implements OrderService {
                 continue;
             }
 
-            // c) Món còn nhưng topping thêm vào ly đã ngừng bán / đã hết -> báo đúng topping
             List<String> ngungTopping = new ArrayList<>();
             List<String> hetTopping = new ArrayList<>();
             for (CartItemRes.ToppingRes t : line.toppings()) {
@@ -571,14 +538,12 @@ public class OrderServiceImpl implements OrderService {
             );
         }
 
-        // 3. Hình thức nhận hàng
         c.deliveryType = req.getDeliveryType() == null
                 ? DeliveryType.DELIVERY
                 : req.getDeliveryType();
 
         if (c.deliveryType == DeliveryType.DELIVERY) {
 
-            // 3a. Địa chỉ giao hàng
             if (req.getAddressId() == null) {
 
                 fail(c, strict, "Vui lòng chọn địa chỉ nhận hàng");
@@ -600,14 +565,12 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
 
-            // 3b. Phí giao cố định bởi Shipper UTETra (<= 3km đồng giá 15.000đ, trên 3km +10.000đ/km)
             if (c.address != null && c.branch != null) {
                 deliveryFee(c, strict);
             }
 
         } else {
 
-            // 3c. Đến lấy tại cửa hàng
             c.receiverName = trimToNull(req.getReceiverName());
             c.receiverPhone = trimToNull(req.getReceiverPhone());
 
@@ -629,7 +592,6 @@ public class OrderServiceImpl implements OrderService {
             c.shippingFee = BigDecimal.ZERO;
         }
 
-        // 4. Phương thức thanh toán
         if (req.getPaymentMethod() == null) {
 
             fail(c, strict, "Vui lòng chọn phương thức thanh toán");
@@ -643,7 +605,6 @@ public class OrderServiceImpl implements OrderService {
             fail(c, strict, "Phương thức thanh toán không hợp lệ");
         }
 
-        // 5. Voucher giảm tiền món (mỗi đơn 1 mã)
         Integer branchId = c.branch == null
                 ? null
                 : c.branch.getId();
@@ -677,7 +638,6 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 6. Giảm giá theo hạng thành viên
         MemberTier tier = memberService.getCurrentTier(userId);
 
         c.memberTierName = tier.getName();
@@ -687,24 +647,16 @@ public class OrderServiceImpl implements OrderService {
                 c.itemsTotal.subtract(c.productDiscount)
         );
 
-        // 7. Tổng tiền
         c.totalAmount = c.itemsTotal
                 .subtract(c.productDiscount)
                 .subtract(c.memberDiscount)
                 .add(c.shippingFee);
 
-        // 8. Thời gian dự kiến
         c.etaMinutes = c.branch == null || c.cart.items().isEmpty() ? null : eta(c);
 
         return c;
     }
 
-    /**
-     * Thời gian dự kiến (phút), ước lượng như app giao đồ uống:
-     * - Pha chế: 8 phút + 1 phút mỗi ly (tối đa 20 phút)
-     * - Hàng chờ: mỗi đơn đang chờ / đang pha ở chi nhánh thêm 2 phút (tối đa 20 phút)
-     * - Giao: 5 phút lấy hàng + khoảng 4 phút mỗi km (xe máy trong thành phố); đến lấy thì không có
-     */
     private int eta(Calc c) {
         int prep = Math.min(20, 8 + c.cart.totalQty());
         long dangLam = orderRepository.countByBranch_IdAndStatusIn(c.branch.getId(),
@@ -716,11 +668,6 @@ public class OrderServiceImpl implements OrderService {
         return prep + queue + ship;
     }
 
-    /**
-     * Phí giao hàng nội bộ Shipper UTETra:
-     * - Từ {@value #BASE_KM} km trở xuống: đồng giá (Admin cài, mặc định 15.000đ)
-     * - Trên {@value #BASE_KM} km: cộng thêm phí mỗi km (mặc định 10.000đ) cho mỗi km vượt quá (làm tròn lên), giao tối đa {@value #MAX_KM} km.
-     */
     private void deliveryFee(Calc c, boolean strict) {
         Address a = c.address;
         Branch b = c.branch;
@@ -740,12 +687,10 @@ public class OrderServiceImpl implements OrderService {
                     + MAX_KM + " km. Vui lòng chọn chi nhánh gần hơn hoặc đến lấy tại quán");
             return;
         }
-        // Phí giao do Admin cài ở trang "Phí giao hàng" (mặc định 15.000đ <= 3 km, +10.000đ mỗi km thêm)
         c.shippingFee = shippingFeeService.feeFor(c.distanceKm);
-        c.carrier = shippingFeeService.shipper(); // Shipper UTETra của quán
+        c.carrier = shippingFeeService.shipper();
     }
 
-    /** Khoảng cách 2 toạ độ (km), công thức Haversine */
     static double distanceKm(double lat1, double lng1, double lat2, double lng2) {
         double dLat = Math.toRadians(lat2 - lat1);
         double dLng = Math.toRadians(lng2 - lng1);
@@ -777,10 +722,6 @@ public class OrderServiceImpl implements OrderService {
         return v;
     }
 
-    /**
-     * Món / topping hết hoặc ngừng bán: lúc đặt hàng thì báo lỗi; lúc xem trước thì KHÔNG thêm khung lỗi
-     * (từng dòng món đã ghi rõ + nút "Sửa giỏ hàng ngay"), chỉ khoá nút Đặt hàng.
-     */
     private void failStock(Calc c, boolean strict, String message) {
 
         if (strict) {
@@ -807,7 +748,6 @@ public class OrderServiceImpl implements OrderService {
         return s == null || s.isBlank() ? null : s.trim();
     }
 
-    /** 46000 -> "46.000đ" */
     private static String money(BigDecimal v) {
         return String.format(Locale.US, "%,d", v.longValue())
                 .replace(',', '.') + "đ";

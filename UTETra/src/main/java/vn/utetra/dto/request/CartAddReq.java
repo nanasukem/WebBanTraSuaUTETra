@@ -6,7 +6,6 @@ import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Dữ liệu JS gửi lên khi bấm "Thêm vào giỏ" - KHÔNG có giá tiền */
 @Data
 public class CartAddReq {
 
@@ -14,7 +13,7 @@ public class CartAddReq {
 	private Integer productId;
 
 	@Pattern(regexp = "^[SMLsml]$", message = "Size phải là S, M hoặc L")
-	private String size = "S"; // mặc định size S (đúng giá trên thẻ món)
+	private String size = "S";
 
 	private Integer sugarLevel = 100;
 
@@ -26,7 +25,6 @@ public class CartAddReq {
 	@Max(value = 50, message = "Mỗi món tối đa 50 ly")
 	private Integer quantity = 1;
 
-	/** Ghi chú món (không bắt buộc), tối đa 200 ký tự */
 	@Size(max = 200, message = "Ghi chú món tối đa 200 ký tự")
 	private String note;
 }

@@ -170,7 +170,6 @@
 	line-height: 1.7;
 }
 
-/* Ảnh bìa */
 #admin-content .branch-cover {
 	position: relative;
 	width: 100%;
@@ -286,7 +285,6 @@
 	flex-shrink: 0;
 }
 
-/* Mô tả */
 #admin-content .description-content {
 	padding: 20px 22px;
 	border: 1px solid #f0e8e2;
@@ -304,7 +302,11 @@
 	border: 1px dashed #e0e5eb;
 }
 
-/* Thông tin cơ bản */
+#admin-content .staff-link:hover {
+	border-color: #198754 !important;
+	box-shadow: 0 4px 14px rgba(25, 135, 84, .12);
+}
+
 #admin-content .info-item {
 	position: relative;
 	height: 100%;
@@ -383,7 +385,6 @@
 	color: #234a83;
 }
 
-/* Cuối trang */
 #admin-content>main>div:last-child {
 	margin-top: 6px;
 	padding-top: 18px;
@@ -400,7 +401,6 @@
 	color: var(--branch-primary);
 }
 
-/* Tablet */
 @media ( max-width : 991.98px) {
 	#admin-content .detail-card>.p-3, #admin-content .detail-card>.p-md-4 {
 		padding: 20px !important;
@@ -413,7 +413,6 @@
 	}
 }
 
-/* Mobile */
 @media ( max-width : 575.98px) {
 	#admin-content>main {
 		padding: 20px 12px !important;
@@ -495,7 +494,6 @@
 	}
 }
 
-/* Giảm chuyển động nếu người dùng yêu cầu */
 @media ( prefers-reduced-motion : reduce) {
 	#admin-content *, #admin-content *::before, #admin-content *::after {
 		scroll-behavior: auto !important;
@@ -508,7 +506,6 @@
 
 	<main class="container-fluid py-4 px-3 px-lg-4">
 
-		<!-- Tiêu đề -->
 		<div class="detail-header">
 			<div>
 				<a th:href="@{/admin/branches}"
@@ -532,7 +529,6 @@
 			</div>
 		</div>
 
-		<!-- Thông báo -->
 		<div th:if="${success}"
 			class="alert alert-success alert-dismissible fade show" role="alert">
 			<i class="bi bi-check-circle me-2"></i> <span th:text="${success}"></span>
@@ -548,7 +544,6 @@
 				aria-label="Đóng"></button>
 		</div>
 
-		<!-- Ảnh bìa -->
 		<div class="detail-card mb-4">
 			<div class="p-3 p-md-4">
 				<div
@@ -589,7 +584,6 @@
 			</div>
 		</div>
 
-		<!-- Mô tả -->
 		<div class="detail-card mb-4">
 			<div class="p-3 p-md-4">
 				<div
@@ -617,7 +611,6 @@
 			</div>
 		</div>
 
-		<!-- Thông tin cơ bản -->
 		<div class="detail-card mb-4">
 			<div class="p-3 p-md-4">
 				<h2 class="section-heading mb-1">
@@ -629,7 +622,6 @@
 
 				<div class="row g-3">
 
-					<!-- Tên -->
 					<div class="col-12 col-md-6">
 						<div class="info-item">
 							<div class="d-flex gap-3 align-items-start">
@@ -644,7 +636,6 @@
 						</div>
 					</div>
 
-					<!-- Mã -->
 					<div class="col-12 col-md-6">
 						<div class="info-item">
 							<div class="d-flex gap-3 align-items-start">
@@ -658,7 +649,6 @@
 						</div>
 					</div>
 
-					<!-- Địa chỉ -->
 					<div class="col-12">
 						<div class="info-item">
 							<div class="d-flex gap-3 align-items-start">
@@ -673,7 +663,6 @@
 						</div>
 					</div>
 
-					<!-- Điện thoại -->
 					<div class="col-12 col-md-6">
 						<div class="info-item">
 							<div class="d-flex gap-3 align-items-start">
@@ -696,7 +685,6 @@
 						</div>
 					</div>
 
-					<!-- Giờ hoạt động -->
 					<div class="col-12 col-md-6">
 						<div class="info-item">
 							<div class="d-flex gap-3 align-items-start">
@@ -726,7 +714,6 @@
 						</div>
 					</div>
 
-					<!-- Trạng thái -->
 					<div class="col-12 col-md-6">
 						<div class="info-item">
 							<div class="d-flex gap-3 align-items-start">
@@ -744,7 +731,6 @@
 						</div>
 					</div>
 
-					<!-- Manager -->
 					<div class="col-12 col-md-6">
 						<div class="info-item">
 							<div class="d-flex gap-3 align-items-start">
@@ -770,7 +756,29 @@
 						</div>
 					</div>
 
-					<!-- Vĩ độ -->
+					<div class="col-12">
+						<a th:href="@{/admin/users(tab='STAFF', branch=${branch.id})}" class="text-decoration-none text-reset d-block">
+							<div class="info-item staff-link">
+								<div class="d-flex gap-3 align-items-start">
+									<span class="info-icon"> <i class="bi bi-people"></i></span>
+									<div class="flex-grow-1">
+										<div class="info-label">Nhân viên của chi nhánh</div>
+										<div class="info-value"
+											th:text="${branch.owner != null ? 1 : 0} + ' Manager · ' + ${branchShippers.size()} + ' Shipper'">1 Manager · 2 Shipper</div>
+										<div class="small text-muted mt-1">
+											<span th:if="${branch.owner != null}" th:text="'Manager: ' + ${branch.owner.fullName}"></span>
+											<span th:if="${!#lists.isEmpty(branchShippers)}">
+												· Shipper: <span th:each="s, st : ${branchShippers}"
+													th:text="${s.fullName} + (${st.last} ? '' : ', ')"></span></span>
+											<span th:if="${#lists.isEmpty(branchShippers)}" class="text-danger"> · Chưa có shipper</span>
+										</div>
+									</div>
+									<span class="text-success small text-nowrap align-self-center">Xem nhân viên <i class="bi bi-chevron-right"></i></span>
+								</div>
+							</div>
+						</a>
+					</div>
+
 					<div class="col-12 col-md-6" th:if="${branch.latitude != null}">
 						<div class="info-item">
 							<div class="info-label">Vĩ độ (Latitude)</div>
@@ -779,7 +787,6 @@
 						</div>
 					</div>
 
-					<!-- Kinh độ -->
 					<div class="col-12 col-md-6" th:if="${branch.longitude != null}">
 						<div class="info-item">
 							<div class="info-label">Kinh độ (Longitude)</div>
@@ -788,7 +795,6 @@
 						</div>
 					</div>
 
-					<!-- Google Maps -->
 					<div class="col-12"
 						th:if="${branch.latitude != null
                              and branch.longitude != null}">
@@ -803,7 +809,6 @@
 			</div>
 		</div>
 
-		<!-- Cuối trang -->
 		<div
 			class="d-flex flex-wrap justify-content-between align-items-center gap-2 pb-3">
 			<span class="small text-muted"> <i

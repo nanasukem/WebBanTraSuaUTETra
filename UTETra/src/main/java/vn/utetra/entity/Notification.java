@@ -29,15 +29,12 @@ public class Notification {
 	@Column(length = 500)
 	private String content;
 
-	/** Loại để chọn biểu tượng: ORDER, REVIEW, COIN, VOUCHER, USER */
 	@Column(nullable = false, length = 20)
 	private String type = "ORDER";
 
-	/** Bấm vào thông báo thì mở trang này (vd /orders/12) */
 	@Column(length = 255)
 	private String link;
 
-	/** Khoá chống gửi trùng (vd VOUCHER_LOW:5 chỉ báo 1 lần) */
 	@Column(name = "ref_key", length = 100)
 	private String refKey;
 

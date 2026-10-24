@@ -2,11 +2,6 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/manager-layout :: main('Khuyến mãi của chi nhánh', 'branches', ~{::#admin-content})}">
 
-<!--
-	KHUYẾN MÃI CỦA CHI NHÁNH - Manager CHỈ XEM.
-	Mọi chi nhánh thuộc chuỗi nên voucher do Admin tạo (toàn chuỗi hoặc riêng chi nhánh).
-	Trang này cho quản lý biết đang có mã nào áp dụng tại chi nhánh + khách đã dùng bao nhiêu lượt, giảm bao nhiêu tiền.
--->
 <section id="admin-content">
 
 	<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
@@ -23,7 +18,6 @@
 			để tư vấn cho khách. Muốn chạy khuyến mãi riêng cho chi nhánh (khai trương, giờ vắng khách...), hãy đề xuất với Admin.</div>
 	</div>
 
-	<!-- Tổng quan -->
 	<div class="row g-3 mb-4">
 		<div class="col-md-4">
 			<div class="card border-0 shadow-sm h-100"><div class="card-body">
@@ -46,7 +40,6 @@
 		</div>
 	</div>
 
-	<!-- Lọc theo trạng thái -->
 	<div class="d-flex flex-wrap gap-2 mb-3" id="voucherFilter">
 		<button type="button" class="btn btn-sm btn-success" data-filter="ALL">Tất cả</button>
 		<button type="button" class="btn btn-sm btn-outline-success" data-filter="RUNNING">Đang chạy</button>

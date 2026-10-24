@@ -30,11 +30,9 @@ public class Review {
 	@Column(nullable = false)
 	private Integer rating;
 
-	/** Bình luận - không bắt buộc (null = chỉ chấm sao) */
 	@Column(length = 2000)
 	private String content;
 
-	/** Gợi ý khách bấm chọn, ngăn bằng "|": "Đúng vị, rất ngon|Sẽ mua lại" */
 	@Column(length = 255)
 	private String tags;
 

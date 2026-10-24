@@ -21,12 +21,10 @@ import java.util.ArrayList;
 import java.security.Principal;
 import java.util.List;
 
-/** Trang "Đơn hàng của tôi" của khách: /orders?tab=..., /orders/{id}, huỷ đơn */
 @Controller
 @RequestMapping("/orders")
 public class MyOrderController {
 
-	/** Lý do huỷ có sẵn (giống app thật), chọn "Lý do khác" thì khách tự ghi */
 	private static final List<String> CANCEL_REASONS = List.of(
 			"Muốn thay đổi địa chỉ / số điện thoại nhận hàng",
 			"Muốn thay đổi món, size hoặc topping",
@@ -61,10 +59,6 @@ public class MyOrderController {
 		return "orders/list";
 	}
 
-	/**
-	 * "Mua lại" (đơn đã giao / đã huỷ): cho lại các món của đơn vào giỏ với đúng size, đường, đá,
-	 * topping, ghi chú như lần trước rồi chuyển sang giỏ hàng. Giá tính lại theo giá hiện tại.
-	 */
 	@PostMapping("/{id}/reorder")
 	public String reorder(@PathVariable Integer id, Principal principal, HttpSession session, RedirectAttributes ra) {
 		Integer userId = currentUserService.requireUserId(principal, session);
@@ -84,10 +78,6 @@ public class MyOrderController {
 		}
 	}
 
-	/**
-	 * Theo dõi đơn: thanh tiến trình tự nhảy khi quán / shipper đổi trạng thái (WebSocket /user/queue/orders,
-	 * xem static/js/order-tracking.js). Đơn mới -> Đã xác nhận -> Đã lấy hàng -> Đang giao -> Đã giao
-	 */
 	@GetMapping("/{id}/tracking")
 	public String tracking(@PathVariable Integer id, Principal principal, HttpSession session, Model model,
 			RedirectAttributes ra) {
@@ -101,10 +91,6 @@ public class MyOrderController {
 		}
 	}
 
-	/**
-	 * Trạng thái hiện tại của đơn (JSON) - trang Theo dõi đơn gọi khi kết nối WebSocket lại
-	 * hoặc mỗi phút, để không lỡ cập nhật lúc rớt mạng. {"status":"CONFIRMED","statusLabel":"..."}
-	 */
 	@GetMapping("/{id}/status")
 	@ResponseBody
 	public java.util.Map<String, String> status(@PathVariable Integer id, Principal principal, HttpSession session) {
@@ -114,7 +100,6 @@ public class MyOrderController {
 				"message", o.cancelReason() == null ? "" : "Lý do: " + o.cancelReason());
 	}
 
-	/** Trang đánh giá cả đơn 1 lượt (kiểu Shopee) */
 	@GetMapping("/{id}/review")
 	public String reviewPage(@PathVariable Integer id, Principal principal, HttpSession session, Model model,
 			RedirectAttributes ra) {
@@ -130,10 +115,6 @@ public class MyOrderController {
 		}
 	}
 
-	/**
-	 * Gửi đánh giá cả đơn. Mỗi ly: rating_{lyId} (bắt buộc nếu muốn đánh giá ly đó), tags_{lyId} (nhiều gợi ý),
-	 * content_{lyId}, media_{lyId} (nhiều file). Quán: storeRating, storeTags, storeComment.
-	 */
 	@PostMapping("/{id}/review")
 	public String submitReview(@PathVariable Integer id, MultipartHttpServletRequest request, Principal principal,
 			HttpSession session, RedirectAttributes ra) {
@@ -149,7 +130,8 @@ public class MyOrderController {
 		}
 		try {
 			reviewService.submit(userId, id, new OrderReviewReq(items, toInt(request.getParameter("storeRating")),
-					values(request.getParameterValues("storeTags")), request.getParameter("storeComment")));
+					values(request.getParameterValues("storeTags")), request.getParameter("storeComment"),
+					request.getFiles("storeMedia")));
 			ra.addFlashAttribute("success", "Cảm ơn bạn đã đánh giá! Góp ý của bạn giúp quán phục vụ tốt hơn.");
 		} catch (BusinessException | ResourceNotFoundException e) {
 			ra.addFlashAttribute("error", e.getMessage());
@@ -176,10 +158,8 @@ public class MyOrderController {
 		try {
 			model.addAttribute("order", orderFlowService.myOrder(userId, id));
 			model.addAttribute("cancelReasons", CANCEL_REASONS);
-			// Đơn đã giao: các ly của đơn này + đã đánh giá chưa (nút "Đánh giá" -> trang chi tiết món)
 			model.addAttribute("reviewItems", reviewService.purchasedItems(userId, null).stream()
 					.filter(i -> i.orderId().equals(id)).toList());
-			// Số ly chưa đánh giá và còn hạn 30 ngày (nút "Đánh giá ngay")
 			model.addAttribute("pendingReview", reviewService.pendingItems(userId, null).stream()
 					.filter(i -> i.orderId().equals(id)).count());
 			return "orders/detail";
@@ -211,9 +191,6 @@ public class MyOrderController {
 		return "redirect:/orders/" + id;
 	}
 
-	// ================= BÁO VẤN ĐỀ VỚI ĐƠN (thay cho Trả hàng) =================
-
-	/** Form báo vấn đề: chỉ đơn đã nhận trong 2 giờ, chưa báo */
 	@GetMapping("/{id}/issue")
 	public String issueForm(@PathVariable Integer id, Principal principal, HttpSession session, Model model,
 			RedirectAttributes ra) {

@@ -1,16 +1,9 @@
-/* ============================================================
-   order-tracking.js - Trang "Theo dõi đơn" (orders/tracking.html)
-   Nghe WebSocket /user/queue/orders (OrderNotifier đẩy khi quán / shipper đổi trạng thái).
-   Có tin của đúng đơn đang xem -> nhảy thanh tiến trình, đổi badge, ghi nhật ký, rung nhẹ thông báo.
-   Không tải lại trang. Cần live-socket.js nạp trước.
-   Chống lỡ tin khi rớt mạng: mỗi lần kết nối (lại) và mỗi 60 giây hỏi /orders/{id}/status để đồng bộ.
-   ============================================================ */
 (() => {
 	const box = document.getElementById('trkBox');
 	if (!box) return;
 
 	const orderId = Number(box.dataset.orderId);
-	const flow = box.dataset.flow.split(',');           // vd PENDING,CONFIRMED,PICKED_UP,DELIVERING,DELIVERED
+	const flow = box.dataset.flow.split(',');
 	const steps = Array.from(box.querySelectorAll('.trk-step'));
 	const fill = document.getElementById('trkFill');
 	const badge = document.getElementById('trkBadge');
@@ -27,7 +20,6 @@
 	const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
 		(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-	/** Vẽ thanh tiến trình theo trạng thái */
 	function paint(status) {
 		const idx = flow.indexOf(status);
 		const stop = status === 'CANCELLED' || status === 'RETURNED';
@@ -37,7 +29,6 @@
 			el.classList.toggle('current', idx >= 0 && i === idx);
 		});
 		const pct = idx <= 0 ? 0 : (idx / (flow.length - 1)) * 100;
-		// đường nối chạy từ tâm chấm đầu tới tâm chấm cuối
 		fill.style.width = pct + '%';
 		fill.parentElement.style.left = (50 / flow.length) + '%';
 		fill.parentElement.style.right = (50 / flow.length) + '%';
@@ -53,21 +44,20 @@
 		log.prepend(li);
 	}
 
-	/** Đồng bộ với server (lỡ tin khi mất kết nối thì cũng bắt kịp) */
 	async function sync() {
 		try {
 			const res = await fetch('/orders/' + orderId + '/status', { headers: { 'Accept': 'application/json' } });
 			if (!res.ok || (res.redirected && res.url.includes('/auth/login'))) return;
 			const s = await res.json();
 			update({ status: s.status, statusLabel: s.statusLabel, message: s.message });
-		} catch (e) { /* mạng lỗi: lần sau thử lại */ }
+		} catch (e) {  }
 	}
 
 	function setLive(on) {
 		const wasOn = live.classList.contains('on');
 		live.classList.toggle('on', on);
 		liveText.textContent = on ? 'Đang cập nhật trực tiếp' : 'Mất kết nối, đang thử lại...';
-		if (on && !wasOn) sync(); // vừa kết nối (lại) -> lấy trạng thái mới nhất
+		if (on && !wasOn) sync();
 	}
 
 	paint(box.dataset.status);
@@ -79,12 +69,10 @@
 		update(ev);
 	}, setLive);
 
-	/** Áp trạng thái mới lên giao diện (từ WebSocket hoặc từ sync) */
 	function update(ev) {
 		if (!ev.status || ev.status === box.dataset.status) return;
 		paint(ev.status);
 		badge.className = 'badge ' + (BADGE[ev.status] || 'text-bg-secondary');
-		// Quán đã nhận đơn -> không huỷ được nữa
 		const cancelBtn = document.getElementById('trkCancel');
 		if (cancelBtn && ev.status !== 'PENDING') cancelBtn.remove();
 		badge.textContent = ev.statusLabel;

@@ -5,10 +5,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Tình trạng topping theo chi nhánh (Manager báo "hết topping" cho riêng chi nhánh mình).
- * Không có dòng cho (chi nhánh, topping) = topping đang bán ở chi nhánh đó.
- */
 @Entity
 @Table(name = "BranchToppings", uniqueConstraints = @UniqueConstraint(columnNames = { "branch_id", "topping_id" }))
 @Getter

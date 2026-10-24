@@ -2,12 +2,6 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/user-layout :: main('Hồ sơ cá nhân - UTETra', ~{::#profile-content})}">
 
-<!--
-	TRANG PROFILE (USER) /user/profile?tab=info|password|address
-	- info     : họ tên, số điện thoại, ảnh đại diện (Cloudinary). Email / tên đăng nhập chỉ xem
-	- password : đổi mật khẩu (nhập đúng mật khẩu hiện tại)
-	- address  : sổ địa chỉ nhận hàng (nhiều địa chỉ, 1 mặc định) - dùng chung modal + /api/addresses với trang Checkout
--->
 <body>
 	<div id="profile-content">
 		<div class="row g-4">
@@ -19,7 +13,6 @@
 				<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
 				<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-				<!-- Tab -->
 				<ul class="nav nav-pills mb-3 gap-1">
 					<li class="nav-item"><a class="nav-link" th:classappend="${tab == 'info'} ? 'active bg-success' : 'text-success'"
 						th:href="@{/user/profile(tab='info')}">Thông tin cá nhân</a></li>
@@ -29,7 +22,6 @@
 						th:href="@{/user/profile(tab='address')}">Sổ địa chỉ</a></li>
 				</ul>
 
-				<!-- ===================== HẠNG THÀNH VIÊN ===================== -->
 				<section class="bg-white rounded-4 shadow-sm p-4 mb-3" th:if="${tab == 'info'}">
 					<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
 						<div>
@@ -62,7 +54,6 @@
 					</div>
 				</section>
 
-				<!-- ===================== THÔNG TIN CÁ NHÂN ===================== -->
 				<section class="bg-white rounded-4 shadow-sm p-4" th:if="${tab == 'info'}">
 					<h1 class="h5 fw-bold mb-3">Thông tin cá nhân</h1>
 					<form th:action="@{/user/profile}" method="post" enctype="multipart/form-data" class="row g-3">
@@ -101,7 +92,6 @@
 					</form>
 				</section>
 
-				<!-- ===================== ĐỔI MẬT KHẨU ===================== -->
 				<section class="bg-white rounded-4 shadow-sm p-4" th:if="${tab == 'password'}">
 					<h1 class="h5 fw-bold mb-3">Đổi mật khẩu</h1>
 					<form th:action="@{/user/password}" method="post" id="passwordForm" style="max-width: 460px;">
@@ -126,7 +116,6 @@
 					</form>
 				</section>
 
-				<!-- ===================== SỔ ĐỊA CHỈ ===================== -->
 				<section class="bg-white rounded-4 shadow-sm p-4" th:if="${tab == 'address'}" id="addressSection"
 					th:attr="data-name=${me.fullName}, data-phone=${me.phone}">
 					<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -138,7 +127,6 @@
 					</div>
 					<div id="addressError" class="alert alert-danger py-2 d-none"></div>
 					<div id="addressList">
-						<!-- Lần đầu vẽ bằng server; thêm / sửa / xoá thì profile-address.js vẽ lại -->
 						<div class="border rounded-3 p-3 mb-2" th:each="a : ${addresses}">
 							<div class="fw-semibold"><span th:text="${a.receiverName}"></span> <span class="text-muted fw-normal">| <span th:text="${a.receiverPhone}"></span></span></div>
 							<div class="small" th:text="${a.addressLine}"></div>
@@ -147,7 +135,6 @@
 						<p class="text-muted mb-0" th:if="${#lists.isEmpty(addresses)}">Bạn chưa có địa chỉ nào.</p>
 					</div>
 
-					<!-- Modal thêm / sửa địa chỉ kiểu Shopee (dùng chung với Checkout) -->
 					<th:block th:replace="~{fragments/address-modal :: addressModal}"></th:block>
 					<script th:src="@{/js/profile-address.js}"></script>
 				</section>
@@ -155,7 +142,6 @@
 		</div>
 
 		<script>
-			// Xem trước ảnh đại diện + kiểm tra nhập lại mật khẩu
 			(function () {
 				const avatar = document.getElementById('avatar');
 				if (avatar) avatar.addEventListener('change', function () {

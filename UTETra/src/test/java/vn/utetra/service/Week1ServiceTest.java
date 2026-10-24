@@ -25,11 +25,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Test tuần 1 - chạy trên database UTETra có dữ liệu mẫu.
- *
- * @Transactional: mỗi test chạy xong tự rollback, không làm bẩn DB.
- */
 @SpringBootTest
 @Transactional
 class Week1ServiceTest {
@@ -43,7 +38,6 @@ class Week1ServiceTest {
 
 	@BeforeEach
 	void chuanHoaDuLieuMau() {
-		// Đồng bộ dữ liệu mẫu trong transaction (tự rollback sau mỗi test) để chạy đúng dù chưa chạy lại UTETra.sql
 		em.createNativeQuery("UPDATE Users SET carrier_id = 1 WHERE carrier_id IS NOT NULL AND carrier_id <> 1").executeUpdate();
 		em.createNativeQuery("UPDATE Orders SET carrier_id = 1 WHERE delivery_type = 'DELIVERY'").executeUpdate();
 		em.createNativeQuery("DELETE FROM Carriers WHERE id <> 1 AND name = N'Ahamove'").executeUpdate();
@@ -67,7 +61,6 @@ class Week1ServiceTest {
 		assertEquals(0, vnd(expected).compareTo(actual), "Mong đợi " + expected + " nhưng là " + actual);
 	}
 
-	// ================= ENTITY: đọc đơn hàng mẫu #1 =================
 	@Test
 	void entity_docDonHangMau_dungDuLieu() {
 		Order o = em.find(Order.class, 1);
@@ -75,7 +68,7 @@ class Week1ServiceTest {
 		assertEquals(OrderStatus.DELIVERED, o.getStatus());
 		assertEquals(PaymentMethod.VNPAY, o.getPaymentMethod());
 		assertMoney(148000, o.getTotalAmount());
-		assertMoney(148000, o.getSalesAmount()); // Doanh thu gồm cả phí ship của Shipper UTETra, khớp 100% với tổng tiền đơn
+		assertMoney(148000, o.getSalesAmount());
 		assertEquals(2, o.getDetails().size(), "Đơn #1 phải có 2 dòng chi tiết");
 		int soTopping = o.getDetails().stream().mapToInt(d -> d.getToppings().size()).sum();
 		assertEquals(2, soTopping, "Đơn #1 phải có 2 topping");
@@ -83,14 +76,13 @@ class Week1ServiceTest {
 		assertNotNull(o.getProductVoucher(), "Đơn #1 có dùng voucher giảm tiền món VVN15");
 	}
 
-	// ================= BRANCH SERVICE =================
 	@Test
 	void branch_themHopLe_tuDongDuyet() {
 		BranchReq req = new BranchReq();
 		req.setName("UTETra Test JUnit");
 		req.setAddress("123 Đường Test");
 		req.setPhone("0912345678");
-		req.setOwnerId(2); // manager3 - chưa quản lý chi nhánh nào
+		req.setOwnerId(2);
 		Branch b = branchService.create(req);
 		assertNotNull(b.getId());
 		assertEquals(BranchStatus.APPROVED, b.getStatus());
@@ -98,7 +90,6 @@ class Week1ServiceTest {
 
 	@Test
 	void branch_managerDaCoChiNhanh_baoLoi() {
-		// Mỗi Manager chỉ quản lý 1 chi nhánh: manager1 (id 3) đang quản lý chi nhánh 1
 		BranchReq req = new BranchReq();
 		req.setName("UTETra Chi Nhánh Thứ Hai");
 		req.setAddress("abc");
@@ -106,12 +97,10 @@ class Week1ServiceTest {
 		BusinessException ex = assertThrows(BusinessException.class, () -> branchService.create(req));
 		assertTrue(ex.getMessage().contains("chỉ quản lý 1 chi nhánh"));
 
-		// Đổi người quản lý chi nhánh 2 sang manager1 cũng bị chặn
 		BranchReq sua = branchService.toReq(branchService.findById(2));
 		sua.setOwnerId(3);
 		assertThrows(BusinessException.class, () -> branchService.update(2, sua));
 
-		// Sửa chi nhánh 1 mà vẫn giữ manager1 thì vẫn được
 		BranchReq giuNguyen = branchService.toReq(branchService.findById(1));
 		assertEquals(3, branchService.update(1, giuNguyen).getOwner().getId());
 	}
@@ -119,7 +108,7 @@ class Week1ServiceTest {
 	@Test
 	void branch_trungTen_baoLoi() {
 		BranchReq req = new BranchReq();
-		req.setName("utetra quận 1"); // trùng, khác hoa thường
+		req.setName("utetra quận 1");
 		req.setAddress("abc");
 		req.setOwnerId(2);
 		assertThrows(BusinessException.class, () -> branchService.create(req));
@@ -130,17 +119,17 @@ class Week1ServiceTest {
 		BranchReq req = new BranchReq();
 		req.setName("Shop của user thường");
 		req.setAddress("abc");
-		req.setOwnerId(6); // user1 - role USER
+		req.setOwnerId(6);
 		assertThrows(BusinessException.class, () -> branchService.create(req));
 	}
 
 	@Test
 	void branch_doiTrangThai_dungLuong() {
-		branchService.changeStatus(2, BranchStatus.SUSPENDED); // APPROVED -> SUSPENDED: được
+		branchService.changeStatus(2, BranchStatus.SUSPENDED);
 		assertEquals(BranchStatus.SUSPENDED, branchService.findById(2).getStatus());
-		branchService.changeStatus(2, BranchStatus.APPROVED); // mở lại: được
+		branchService.changeStatus(2, BranchStatus.APPROVED);
 		assertEquals(BranchStatus.APPROVED, branchService.findById(2).getStatus());
-		branchService.changeStatus(2, BranchStatus.APPROVED); // đang hoạt động bấm lại: không đổi, không lỗi
+		branchService.changeStatus(2, BranchStatus.APPROVED);
 		assertEquals("Tạm ngưng", BranchStatus.SUSPENDED.getLabel());
 	}
 
@@ -151,7 +140,6 @@ class Week1ServiceTest {
 		assertEquals(0, branchService.search(null, BranchStatus.SUSPENDED).size());
 	}
 
-	// ================= VOUCHER SERVICE (CHỈ GIẢM TIỀN MÓN PRODUCT) =================
 	@Test
 	void voucher_giamSoTien_cuaShop() {
 		assertMoney(15000, voucherService.calculateDiscount("VVN15", 1, vnd(100000)));
@@ -174,8 +162,8 @@ class Week1ServiceTest {
 
 	@Test
 	void voucher_phanTram_vaTranGiam() {
-		assertMoney(20000, voucherService.calculateDiscount("UTETRA20", 2, vnd(100000))); // 20%
-		assertMoney(30000, voucherService.calculateDiscount("utetra20", 2, vnd(500000))); // trần 30k, không phân biệt hoa thường
+		assertMoney(20000, voucherService.calculateDiscount("UTETRA20", 2, vnd(100000)));
+		assertMoney(30000, voucherService.calculateDiscount("utetra20", 2, vnd(500000)));
 	}
 
 	@Test
@@ -208,7 +196,6 @@ class Week1ServiceTest {
 				() -> voucherService.calculateDiscount("UTETRA20", 1, vnd(100000)));
 	}
 
-	// ================= BỔ SUNG: BRANCH =================
 	@Test
 	void branch_capNhat_doiTen() {
 		BranchReq req = branchService.toReq(branchService.findById(2));
@@ -233,12 +220,11 @@ class Week1ServiceTest {
 		assertFalse(ids.contains(6), "user1 (id 6) không phải manager");
 	}
 
-	// ================= BỔ SUNG: VOUCHER =================
 	private VoucherReq voucherReq(String code) {
 		VoucherReq r = new VoucherReq();
 		r.setCode(code);
 		r.setName("Voucher test JUnit");
-		r.setBranchId(null); // voucher của app
+		r.setBranchId(null);
 		r.setApplyTo(VoucherApplyTo.PRODUCT);
 		r.setDiscountType(DiscountType.AMOUNT);
 		r.setDiscountValue(vnd(10000));

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="list(items, size)" class="d-flex flex-wrap gap-2 my-1" th:if="${items != null and !#lists.isEmpty(items)}">
+	<a th:each="m : ${items}" th:href="${m.url}" target="_blank" rel="noopener" class="position-relative d-inline-block">
+		<img th:if="${m.type != 'VIDEO'}" th:src="${m.url}" alt="Ảnh khách gửi" class="rounded-3 border"
+			th:style="|width: ${size}px; height: ${size}px; object-fit: cover;|">
+		<th:block th:if="${m.type == 'VIDEO'}">
+			<video th:src="${m.url}" muted preload="metadata" class="rounded-3 border bg-dark"
+				th:style="|width: ${size}px; height: ${size}px; object-fit: cover;|"></video>
+			<i class="bi bi-play-circle-fill text-white fs-4 position-absolute top-50 start-50 translate-middle"
+				style="text-shadow: 0 0 6px rgba(0,0,0,.6);"></i>
+		</th:block>
+	</a>
+</div>
+
+<div th:fragment="urls(items, size)" class="d-flex flex-wrap gap-2 my-1" th:if="${items != null and !#lists.isEmpty(items)}">
+	<a th:each="u : ${items}" th:href="${u}" target="_blank" rel="noopener" class="position-relative d-inline-block"
+		th:with="video=${#strings.contains(u, '/video/upload/')}">
+		<img th:unless="${video}" th:src="${u}" alt="Ảnh khách gửi" class="rounded-3 border"
+			th:style="|width: ${size}px; height: ${size}px; object-fit: cover;|">
+		<th:block th:if="${video}">
+			<video th:src="${u}" muted preload="metadata" class="rounded-3 border bg-dark"
+				th:style="|width: ${size}px; height: ${size}px; object-fit: cover;|"></video>
+			<i class="bi bi-play-circle-fill text-white fs-4 position-absolute top-50 start-50 translate-middle"
+				style="text-shadow: 0 0 6px rgba(0,0,0,.6);"></i>
+		</th:block>
+	</a>
+</div>
+</html>

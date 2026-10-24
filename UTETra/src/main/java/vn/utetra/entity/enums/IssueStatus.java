@@ -1,6 +1,5 @@
 package vn.utetra.entity.enums;
 
-/** Kết quả xử lý báo cáo vấn đề với đơn */
 public enum IssueStatus {
     PENDING("Đang chờ quán xử lý"),
     REFUNDED("Quán đã hoàn tiền"),

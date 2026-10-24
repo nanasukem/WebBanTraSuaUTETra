@@ -19,7 +19,6 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class MemberServiceImpl implements MemberService {
 
-	/** Xét hạng theo chi tiêu bao nhiêu tháng gần nhất (giống app thật: không mua thì tự xuống hạng) */
 	public static final int REVIEW_MONTHS = 12;
 
 	private final MemberTierRepository memberTierRepository;
@@ -34,7 +33,7 @@ public class MemberServiceImpl implements MemberService {
 	public MemberTier getCurrentTier(Integer userId) {
 		BigDecimal spent = spentLastMonths(userId);
 		MemberTier current = null;
-		for (MemberTier t : tiers()) { // thấp -> cao
+		for (MemberTier t : tiers()) {
 			if (current == null || spent.compareTo(t.getMinSpent()) >= 0) current = t;
 		}
 		return current;
@@ -72,7 +71,6 @@ public class MemberServiceImpl implements MemberService {
 		return !orderRepository.existsByUserIdAndStatusNot(userId, OrderStatus.CANCELLED);
 	}
 
-	// ===== Hàm phụ =====
 	private BigDecimal spentLastMonths(Integer userId) {
 		BigDecimal sum = orderRepository.sumTotalByUserAndStatusSince(userId, OrderStatus.DELIVERED,
 				LocalDateTime.now().minusMonths(REVIEW_MONTHS));

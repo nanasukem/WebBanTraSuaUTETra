@@ -1,12 +1,6 @@
-/* ============================================================
-   manager-orders.js - Quầy đơn hàng của Manager/Barista
-   - Bảng 4 cột: Đơn mới / Đang pha chế / Shipper đang giao / Gần đây
-   - Đơn mới tới qua WebSocket: chuông + popup + nhấp nháy thẻ đơn, không cần tải lại trang
-   - Đổi trạng thái 1 click (server kiểm tra quyền và đúng luồng)
-   ============================================================ */
 (() => {
 	const root = document.getElementById('manager-orders');
-	if (!root || !root.dataset.branchId) return; // chưa có chi nhánh
+	if (!root || !root.dataset.branchId) return;
 	const branchId = Number(root.dataset.branchId);
 	const $ = (id) => document.getElementById(id);
 
@@ -23,15 +17,14 @@
 			throw new Error('Vui lòng đăng nhập');
 		}
 		let data = null;
-		try { data = await res.json(); } catch (e) { /* không phải JSON */ }
+		try { data = await res.json(); } catch (e) {  }
 		if (!res.ok) throw new Error((data && data.message) || 'Có lỗi xảy ra, vui lòng thử lại');
 		return data;
 	}
 
-	// ================= CHUÔNG (tự tạo tiếng bằng Web Audio, không cần file mp3) =================
 	let audioCtx = null;
 	let soundOn = true;
-	try { soundOn = localStorage.getItem('vo-sound') !== '0'; } catch (e) { /* không có localStorage */ }
+	try { soundOn = localStorage.getItem('vo-sound') !== '0'; } catch (e) {  }
 
 	function ensureAudio() {
 		if (!audioCtx) {
@@ -71,19 +64,17 @@
 	$('vo-sound').addEventListener('click', () => {
 		const ready = audioCtx && audioCtx.state === 'running';
 		if (soundOn && !ready) {
-			ensureAudio();               // lần bấm đầu: chỉ mở khoá âm thanh
+			ensureAudio();
 		} else {
 			soundOn = !soundOn;
 			if (soundOn) ensureAudio();
 		}
-		try { localStorage.setItem('vo-sound', soundOn ? '1' : '0'); } catch (e) { /* bỏ qua */ }
+		try { localStorage.setItem('vo-sound', soundOn ? '1' : '0'); } catch (e) {  }
 		setTimeout(() => { renderSoundBtn(); ring(); }, 100);
 	});
-	// Trình duyệt chỉ cho phát tiếng sau khi người dùng bấm vào trang ít nhất 1 lần
 	document.addEventListener('click', () => { if (soundOn) { ensureAudio(); setTimeout(renderSoundBtn, 100); } }, { once: true });
 	renderSoundBtn();
 
-	// ================= POPUP + TIÊU ĐỀ TAB =================
 	const baseTitle = document.title;
 	let unseen = 0;
 	function markUnseen() {
@@ -118,8 +109,7 @@
 		toast.show();
 	}
 
-	// ================= BẢNG ĐƠN =================
-	const highlight = new Set(); // đơn mới tới -> nhấp nháy viền
+	const highlight = new Set();
 	let loadSeq = 0;
 
 	async function load() {
@@ -163,6 +153,9 @@
 				<div class="small text-muted"><i class="bi bi-person"></i> ${esc(o.receiverName)} · ${esc(o.receiverPhone)}</div>
 				${o.deliveryAddress ? `<div class="small text-muted"><i class="bi bi-geo-alt"></i> ${esc(o.deliveryAddress)}</div>` : ''}
 				${o.deliveryNote ? `<div class="small fst-italic text-secondary"><i class="bi bi-sticky"></i> ${esc(o.deliveryNote)}</div>` : ''}
+				${o.pickup ? '' : (o.shipperLabel
+					? `<div class="small text-success fw-semibold"><i class="bi bi-scooter"></i> Shipper: ${esc(o.shipperLabel)}</div>`
+					: (o.status === 'READY' ? '<div class="small text-warning"><i class="bi bi-scooter"></i> Chờ shipper nhận</div>' : ''))}
 				<div class="d-flex justify-content-between align-items-center mt-1">
 					<span class="badge ${o.badgeClass}">${esc(o.statusLabel)}</span>
 					<b class="text-danger">${fmt(o.totalAmount)}</b>
@@ -176,7 +169,6 @@
 		</div>`;
 	}
 
-	// ================= ĐỔI TRẠNG THÁI =================
 	async function changeStatus(orderId, to, reason) {
 		await api(`/api/manager/orders/${orderId}/status`, {
 			method: 'POST', body: JSON.stringify({ status: to, reason: reason || null }),
@@ -201,7 +193,6 @@
 		if (cancelBtn) openCancel(Number(cancelBtn.dataset.cancel));
 	});
 
-	// ================= HUỶ ĐƠN (bắt buộc lý do) =================
 	let cancelId = null;
 	let cancelModal = null;
 	function openCancel(orderId) {
@@ -234,18 +225,17 @@
 		}
 	});
 
-	// ================= NHẬN ĐƠN TRỰC TIẾP (WebSocket) =================
 	function setLive(online) {
 		const el = $('vo-live');
 		el.className = 'badge ' + (online ? 'text-bg-success' : 'text-bg-secondary');
 		el.innerHTML = online
 			? '<i class="bi bi-broadcast"></i> Đang nhận đơn trực tiếp'
 			: '<i class="bi bi-wifi-off"></i> Mất kết nối, đang thử lại...';
-		if (online) load(); // vừa kết nối lại: tải lại để không sót đơn
+		if (online) load();
 	}
 
 	LiveSocket.subscribe('/user/queue/manager-orders', (ev) => {
-		if (ev.branchId !== branchId) return; // đơn của chi nhánh khác (manager có nhiều chi nhánh)
+		if (ev.branchId !== branchId) return;
 		if (ev.type === 'NEW') {
 			highlight.add(ev.orderId);
 			ring();
@@ -255,6 +245,6 @@
 		load();
 	}, setLive);
 
-	setInterval(load, 60000); // dự phòng: 1 phút tự tải lại 1 lần
+	setInterval(load, 60000);
 	load();
 })();

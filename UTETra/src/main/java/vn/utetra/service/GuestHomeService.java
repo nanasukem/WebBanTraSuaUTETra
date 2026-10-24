@@ -19,14 +19,10 @@ public class GuestHomeService {
 		this.categoryRepository = categoryRepository;
 	}
 
-	/**
-	 * Lấy danh sách sản phẩm bán chạy (> 10 lượt bán) cho Banner/Section nổi bật
-	 */
 	public List<Product> getBestSellerProducts() {
 		return productRepository.findBySoldCountGreaterThanOrderBySoldCountDesc(10);
 	}
 
-	/** Lấy toàn bộ sản phẩm hoặc lọc theo danh mục */
 	public List<Product> getProducts(Integer categoryId) {
 		if (categoryId != null && categoryId > 0) {
 			return productRepository.findByCategoryId(categoryId);
@@ -34,12 +30,10 @@ public class GuestHomeService {
 		return productRepository.findAll();
 	}
 
-	/** Lấy toàn bộ danh mục để hiển thị thanh lọc */
 	public List<Category> getAllCategories() {
 		return categoryRepository.findAll();
 	}
 
-	/** Lấy chi tiết 1 sản phẩm */
 	public Product getProductDetail(Integer id) {
 		return productRepository.findById(id)
 				.orElseThrow(() -> new IllegalArgumentException("Sản phẩm không tồn tại!"));

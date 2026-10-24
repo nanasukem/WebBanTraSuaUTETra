@@ -18,25 +18,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-/**
- * Quản lý chi nhánh dành cho ADMIN.
- *
- * Chức năng: - Danh sách, tìm kiếm, lọc chi nhánh. - Xem chi tiết chi nhánh. -
- * Thêm chi nhánh. - Sửa thông tin chi nhánh. - Tạm ngưng hoặc mở lại chi nhánh.
- */
 @Controller
 @RequestMapping("/admin/branches")
 public class AdminBranchController {
 
 	private final BranchService branchService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.UserRepository userRepository;
 
 	public AdminBranchController(BranchService branchService) {
 		this.branchService = branchService;
 	}
 
-	/**
-	 * Danh sách chi nhánh, tìm kiếm và lọc trạng thái. URL: GET /admin/branches
-	 */
 	@GetMapping
 	public String list(@RequestParam(required = false) String keyword,
 			@RequestParam(required = false) BranchStatus status, Model model) {
@@ -49,24 +42,15 @@ public class AdminBranchController {
 		return "admin/branches/index";
 	}
 
-	/**
-	 * Xem chi tiết chi nhánh. URL: GET /admin/branches/{id}
-	 *
-	 * Trang chi tiết sử dụng đối tượng Branch để hiển thị: - Ảnh bìa Cloudinary do
-	 * Manager cập nhật. - Mô tả chi nhánh do Manager cập nhật. - Thông tin cơ bản
-	 * do Admin quản lý.
-	 */
 	@GetMapping("/{id}")
 	public String detail(@PathVariable Integer id, Model model) {
 
 		model.addAttribute("branch", branchService.findById(id));
+		model.addAttribute("branchShippers", userRepository.findShippersOfBranch(id));
 
 		return "admin/branches/detail";
 	}
 
-	/**
-	 * Hiển thị form thêm chi nhánh. URL: GET /admin/branches/create
-	 */
 	@GetMapping("/create")
 	public String createForm(Model model) {
 		model.addAttribute("branchReq", new BranchReq());
@@ -74,9 +58,6 @@ public class AdminBranchController {
 		return formView(model, null);
 	}
 
-	/**
-	 * Xử lý thêm chi nhánh. URL: POST /admin/branches/create
-	 */
 	@PostMapping("/create")
 	public String create(@Valid @ModelAttribute("branchReq") BranchReq req, BindingResult result, Model model,
 			RedirectAttributes ra) {
@@ -99,9 +80,6 @@ public class AdminBranchController {
 		}
 	}
 
-	/**
-	 * Hiển thị form sửa chi nhánh. URL: GET /admin/branches/{id}/edit
-	 */
 	@GetMapping("/{id}/edit")
 	public String editForm(@PathVariable Integer id, Model model) {
 
@@ -110,9 +88,6 @@ public class AdminBranchController {
 		return formView(model, id);
 	}
 
-	/**
-	 * Xử lý cập nhật thông tin chi nhánh. URL: POST /admin/branches/{id}/edit
-	 */
 	@PostMapping("/{id}/edit")
 	public String update(@PathVariable Integer id, @Valid @ModelAttribute("branchReq") BranchReq req,
 			BindingResult result, Model model, RedirectAttributes ra) {
@@ -135,11 +110,6 @@ public class AdminBranchController {
 		}
 	}
 
-	/**
-	 * Thay đổi trạng thái chi nhánh. URL: POST
-	 * /admin/branches/{id}/status?value=APPROVED URL: POST
-	 * /admin/branches/{id}/status?value=SUSPENDED
-	 */
 	@PostMapping("/{id}/status")
 	public String changeStatus(@PathVariable Integer id,
 			@RequestParam(name = "value", required = false) BranchStatus value,
@@ -171,9 +141,6 @@ public class AdminBranchController {
 		return "redirect:/admin/branches";
 	}
 
-	/**
-	 * Chuẩn bị dữ liệu dùng chung cho form thêm và sửa.
-	 */
 	private String formView(Model model, Integer branchId) {
 
 		model.addAttribute("branchId", branchId);

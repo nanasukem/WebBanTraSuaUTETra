@@ -15,7 +15,6 @@ public interface ViewedProductRepository extends JpaRepository<ViewedProduct, In
 
 	Optional<ViewedProduct> findByUserIdAndProductId(Integer userId, Integer productId);
 
-	/** Món đã xem, xem gần nhất lên đầu */
 	List<ViewedProduct> findByUserIdOrderByViewedAtDescIdDesc(Integer userId, Pageable pageable);
 
 	long countByUserId(Integer userId);

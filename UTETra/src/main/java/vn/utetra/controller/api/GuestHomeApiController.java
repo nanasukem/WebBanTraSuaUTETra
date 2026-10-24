@@ -18,28 +18,21 @@ public class GuestHomeApiController {
 		this.guestHomeService = guestHomeService;
 	}
 
-	/** GET /api/guest/categories - Lấy danh sách danh mục */
 	@GetMapping("/categories")
 	public ResponseEntity<List<Category>> getCategories() {
 		return ResponseEntity.ok(guestHomeService.getAllCategories());
 	}
 
-	/**
-	 * GET /api/guest/products?categoryId=1 - Lấy danh sách sản phẩm (có lọc theo
-	 * danh mục)
-	 */
 	@GetMapping("/products")
 	public ResponseEntity<List<Product>> getProducts(@RequestParam(required = false) Integer categoryId) {
 		return ResponseEntity.ok(guestHomeService.getProducts(categoryId));
 	}
 
-	/** GET /api/guest/best-sellers - Lấy sản phẩm bán chạy */
 	@GetMapping("/best-sellers")
 	public ResponseEntity<List<Product>> getBestSellers() {
 		return ResponseEntity.ok(guestHomeService.getBestSellerProducts());
 	}
 
-	/** GET /api/guest/product/{id} - Lấy chi tiết sản phẩm */
 	@GetMapping("/product/{id}")
 	public ResponseEntity<Product> getProductDetail(@PathVariable Integer id) {
 		return ResponseEntity.ok(guestHomeService.getProductDetail(id));

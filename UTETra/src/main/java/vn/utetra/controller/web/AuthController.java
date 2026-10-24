@@ -33,7 +33,6 @@ public class AuthController {
 		this.userDetailsService = userDetailsService;
 	}
 
-	// 1. ĐĂNG NHẬP
 	@GetMapping("/login")
 	public String loginPage(Model model) {
 		model.addAttribute("loginRequest", new LoginRequest());
@@ -46,11 +45,9 @@ public class AuthController {
 		try {
 			User authenticatedUser = authenticationService.authenticate(loginRequest);
 
-			// Sinh JWT Token
 			UserDetails userDetails = userDetailsService.loadUserByUsername(authenticatedUser.getUsername());
 			String token = jwtService.generateToken(userDetails);
 
-			// Lưu Token vào Cookie HTTP-Only cho Thymeleaf
 			Cookie jwtCookie = new Cookie("JWT_TOKEN", token);
 			jwtCookie.setHttpOnly(true);
 			jwtCookie.setPath("/");
@@ -59,8 +56,6 @@ public class AuthController {
 
 			session.setAttribute("currentUser", authenticatedUser);
 
-			// Chuyển hướng theo Role sau khi Đăng nhập
-			// ADMIN: quản lý toàn hệ thống; MANAGER: quản lý 1 chi nhánh -> Tổng quan chi nhánh
 			if ("ADMIN".equalsIgnoreCase(authenticatedUser.getRole().getName())) {
 				return "redirect:/admin/dashboard";
 			} else if ("MANAGER".equalsIgnoreCase(authenticatedUser.getRole().getName())) {
@@ -78,7 +73,6 @@ public class AuthController {
 		}
 	}
 
-	// 1b. GỬI LẠI OTP KÍCH HOẠT (từ trang đăng nhập)
 	@PostMapping("/resend-otp")
 	public String handleResendOtp(@RequestParam("email") String email, RedirectAttributes redirectAttributes) {
 		try {
@@ -92,7 +86,6 @@ public class AuthController {
 		return "redirect:/auth/verify-otp";
 	}
 
-	// 2. ĐĂNG KÝ
 	@GetMapping("/register")
 	public String registerPage(Model model) {
 		model.addAttribute("registerRequest", new RegisterRequest());
@@ -112,7 +105,6 @@ public class AuthController {
 		}
 	}
 
-	// 3. XÁC THỰC OTP ĐĂNG KÝ
 	@GetMapping("/verify-otp")
 	public String verifyOtpPage(@RequestParam("email") String email, Model model) {
 		model.addAttribute("email", email);
@@ -133,7 +125,6 @@ public class AuthController {
 		}
 	}
 
-	// 4. QUÊN MẬT KHẨU (Gửi OTP)
 	@GetMapping("/forgot-password")
 	public String forgotPasswordPage() {
 		return "auth/forgot-password";
@@ -152,7 +143,6 @@ public class AuthController {
 		}
 	}
 
-	// 5. ĐẶT LẠI MẬT KHẨU MỚI (Xác nhận OTP)
 	@GetMapping("/reset-password")
 	public String resetPasswordPage(@RequestParam("email") String email, Model model) {
 		model.addAttribute("email", email);
@@ -174,22 +164,18 @@ public class AuthController {
 		}
 	}
 
-	// 6. ĐĂNG XUẤT (Bắt cả /logout và /auth/logout cho cả GET & POST)
 	@RequestMapping(value = { "/logout", "/auth/logout" }, method = { RequestMethod.GET, RequestMethod.POST })
 	public String logout(HttpServletRequest request, HttpServletResponse response, HttpSession session) {
-		// Xóa Cookie JWT_TOKEN
 		Cookie jwtCookie = new Cookie("JWT_TOKEN", null);
 		jwtCookie.setPath("/");
 		jwtCookie.setHttpOnly(true);
 		jwtCookie.setMaxAge(0);
 		response.addCookie(jwtCookie);
 
-		// Hủy Session
 		if (session != null) {
 			session.invalidate();
 		}
 
-		// Xóa Security Context
 		SecurityContextHolder.clearContext();
 
 		return "redirect:/auth/login?logout=true";

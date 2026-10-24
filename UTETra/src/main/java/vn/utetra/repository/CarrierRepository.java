@@ -11,9 +11,7 @@ public interface CarrierRepository extends JpaRepository<Carrier, Integer> {
 
 	boolean existsByNameIgnoreCaseAndIdNot(String name, Integer id);
 
-	/** Tìm theo tên (trang admin) */
 	List<Carrier> findByNameContainingIgnoreCaseOrderByIdAsc(String keyword);
 
-	/** Đối tác giao hàng đang hoạt động, rẻ nhất lên đầu (trang checkout) */
 	List<Carrier> findByIsActiveTrueOrderByFeeAsc();
 }

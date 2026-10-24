@@ -61,7 +61,6 @@ public class CheckoutApiController {
 		this.cartService = cartService;
 	}
 
-	// Khởi tạo trang checkout
 	@GetMapping("/init")
 	public CheckoutInitRes init(Principal principal, HttpSession session) {
 
@@ -70,11 +69,9 @@ public class CheckoutApiController {
 		return new CheckoutInitRes(user.getFullName(), user.getPhone(), addressService.list(user.getId()),
 				memberService.getTierInfo(user.getId()), memberService.isNewCustomer(user.getId()),
 				shippingFeeService.baseFee(), shippingFeeService.perKmFee(),
-				// Khách tự chọn chi nhánh -> chọn sẵn; hệ thống tự chọn gần nhất -> trang thanh toán tự tính lại theo địa chỉ giao
 				menuBranchService.auto(session) ? null : menuBranchService.currentId(session));
 	}
 
-	// Tính trước đơn hàng
 	@PostMapping("/preview")
 	public CheckoutPageRes preview(@RequestBody CheckoutReq req, Principal principal, HttpSession session) {
 
@@ -83,7 +80,6 @@ public class CheckoutApiController {
 		return new CheckoutPageRes(orderService.preview(userId, req), orderService.voucherOptions(userId, req));
 	}
 
-	// Kiểm tra loại voucher
 	@GetMapping("/voucher-type")
 	public Map<String, String> voucherType(@RequestParam String code) {
 
@@ -92,7 +88,6 @@ public class CheckoutApiController {
 				.orElseThrow(() -> new BusinessException("Mã " + code.trim().toUpperCase() + " không tồn tại"));
 	}
 
-	// Đặt hàng
 	@PostMapping
 	public Map<String, Object> placeOrder(@Valid @RequestBody CheckoutReq req, Principal principal,
 			HttpSession session) {
@@ -107,14 +102,12 @@ public class CheckoutApiController {
 		result.put("message", "Đặt hàng thành công");
 		result.put("paymentMethod", method != null ? method.name() : "COD");
 
-		// VNPAY / MoMo: /payment/{id}/pay tạo giao dịch rồi chuyển sang cổng; COD: trang đặt hàng thành công
 		boolean online = method == PaymentMethod.VNPAY || method == PaymentMethod.MOMO;
 		result.put("paymentUrl", online ? "/payment/" + order.getId() + "/pay" : "/checkout/success/" + order.getId());
 
 		return result;
 	}
 
-	// "Quay lại sửa đơn" khi chưa thanh toán: huỷ đơn chờ thanh toán (trả lượt mã giảm giá) và cho món lại vào giỏ
 	@PostMapping("/{orderId}/return-to-checkout")
 	@Transactional
 	public ResponseEntity<Map<String, Object>> returnToCheckout(@PathVariable Integer orderId, Principal principal,
@@ -139,7 +132,6 @@ public class CheckoutApiController {
 				.ok(Map.of("redirectUrl", "/checkout", "message", "Đã cho món lại vào giỏ, bạn có thể sửa đơn"));
 	}
 
-	// Xử lý lỗi nghiệp vụ
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<Map<String, String>> handleBusiness(BusinessException e) {
 

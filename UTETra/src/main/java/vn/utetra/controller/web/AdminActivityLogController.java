@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import vn.utetra.entity.ActivityLog;
 import vn.utetra.repository.ActivityLogRepository;
 
-/** Admin xem NHẬT KÝ HOẠT ĐỘNG: ai (Admin / Manager / Shipper) làm gì, lúc nào - để truy trách nhiệm */
 @Controller
 @RequestMapping("/admin/activity-logs")
 public class AdminActivityLogController {

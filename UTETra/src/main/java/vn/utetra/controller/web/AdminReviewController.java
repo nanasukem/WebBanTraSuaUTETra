@@ -8,10 +8,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import vn.utetra.repository.BranchRepository;
 import vn.utetra.service.BranchReviewManagementService;
 
-/**
- * Admin quản lý đánh giá toàn hệ thống: CHỈ XEM + XOÁ đánh giá vi phạm (quá khích, xúc phạm, spam).
- * Việc phản hồi khách do quản lý chi nhánh làm (/manager/reviews).
- */
 @Controller
 @RequestMapping("/admin/reviews")
 public class AdminReviewController {
@@ -33,7 +29,6 @@ public class AdminReviewController {
 		return "admin/reviews/index";
 	}
 
-	/** Xoá đánh giá vi phạm. type = STORE (đánh giá quán) | PRODUCT (đánh giá món) */
 	@PostMapping("/{type}/{id}/delete")
 	public String deleteReview(@PathVariable String type, @PathVariable Integer id,
 			@RequestParam(required = false) Integer branchId, @RequestParam(required = false) String filterType,
@@ -44,7 +39,6 @@ public class AdminReviewController {
 		} catch (Exception e) {
 			ra.addFlashAttribute("errorMessage", e.getMessage());
 		}
-		// giữ nguyên bộ lọc đang xem
 		if (branchId != null) ra.addAttribute("branchId", branchId);
 		if (filterType != null && !filterType.isBlank()) ra.addAttribute("type", filterType);
 		if (rating != null) ra.addAttribute("rating", rating);

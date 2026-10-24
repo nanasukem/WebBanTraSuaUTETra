@@ -11,7 +11,6 @@
 .vh-card { border: 0; border-radius: 1rem; box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .06); }
 		</style>
 
-		<!-- Tiêu đề + chọn chi nhánh + nút quay lại -->
 		<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
 			<h1 class="h4 fw-bold text-success mb-0 me-2">
 				<i class="bi bi-receipt-cutoff me-1"></i>Đơn hàng của chi nhánh
@@ -33,7 +32,6 @@
 		<div th:if="${error}" class="alert alert-warning" th:text="${error}"></div>
 
 		<th:block th:if="${data != null}">
-			<!-- Đơn mới, Đang chuẩn bị, Pha xong / chờ lấy, Đã giao shipper / Đang giao, Hoàn thành, Đã huỷ (Trả hàng khi có) -->
 			<ul class="nav vh-tabs mb-3">
 				<li class="nav-item" th:each="t : ${data.tabs}" th:if="${t.status != 'RETURNED' or t.count > 0 or t.status == data.status}">
 					<a class="nav-link" th:classappend="${t.status == data.status} ? 'active'"
@@ -46,13 +44,11 @@
 				</li>
 			</ul>
 
-			<!-- Không có đơn -->
 			<div th:if="${#lists.isEmpty(data.orders)}" class="text-center text-muted py-5">
 				<i class="bi bi-inbox display-4 opacity-50"></i>
 				<p class="mt-2">Không có đơn nào ở mục <b th:text="${data.statusLabel}"></b></p>
 			</div>
 
-			<!-- Danh sách đơn -->
 			<div class="card vh-card mb-2" th:each="o : ${data.orders}">
 				<div class="card-body py-2">
 					<div class="d-flex justify-content-between align-items-start gap-2">
@@ -85,7 +81,6 @@
 				</div>
 			</div>
 
-			<!-- Phân trang -->
 			<nav th:if="${data.totalPages > 1}" class="mt-3">
 				<ul class="pagination pagination-sm justify-content-center">
 					<li class="page-item" th:classappend="${data.page == 0} ? 'disabled'">

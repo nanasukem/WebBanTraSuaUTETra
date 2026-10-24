@@ -44,11 +44,6 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 
 	private static final int PAGE_SIZE = 10;
 
-	/**
-	 * Tab "Đơn hàng của chi nhánh" giống app quán thật: Đơn mới -> Đang chuẩn bị -> Pha xong / chờ lấy (khách đến lấy
-	 * hoặc chờ shipper) -> Đã giao shipper / Đang giao -> Hoàn thành -> Đã huỷ (+ Trả hàng khi có).
-	 * Đơn Chờ thanh toán (VNPAY/MoMo chưa trả xong) KHÔNG hiện cho quán.
-	 */
 	private record Tab(String label, List<OrderStatus> statuses) {
 	}
 
@@ -60,7 +55,6 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		TABS.put("SHIPPING", new Tab("Đã giao shipper / Đang giao", List.of(OrderStatus.PICKED_UP, OrderStatus.DELIVERING)));
 		TABS.put("DELIVERED", new Tab("Hoàn thành", List.of(OrderStatus.DELIVERED)));
 		TABS.put("CANCELLED", new Tab("Đã huỷ", List.of(OrderStatus.CANCELLED)));
-		// Đồ uống không trả hàng: tab "Khách báo vấn đề" (đơn đã giao mà khách báo sai món, đổ vỡ...)
 		TABS.put("ISSUE", new Tab("Khách báo vấn đề", List.of()));
 	}
 
@@ -100,7 +94,6 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		Integer id = resolveBranchId(managerId, branchId);
 		Branch branch = branchRepository.findById(id).orElseThrow();
 
-		// Đơn đang làm: cũ nhất lên đầu (đặt trước làm trước)
 		List<Order> active = orderRepository.findByBranchIdAndStatusInOrderByCreatedAtAsc(id, ACTIVE);
 		List<ManagerOrderRes> newOrders = new ArrayList<>();
 		List<ManagerOrderRes> making = new ArrayList<>();
@@ -110,7 +103,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 			switch (o.getStatus()) {
 				case PENDING -> newOrders.add(card);
 				case CONFIRMED -> making.add(card);
-				default -> shipping.add(card); // pha xong (chờ khách lấy / chờ shipper), shipper đang giao
+				default -> shipping.add(card);
 			}
 		}
 		List<ManagerOrderRes> recent = orderRepository.findTop20ByBranchIdAndStatusInOrderByUpdatedAtDesc(id, FINISHED)
@@ -129,23 +122,18 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		if (shipperStep) {
 			throw new BusinessException("Đơn #" + orderId + " giao tận nơi: các bước Lấy hàng, Đang giao, Đã giao do Shipper cập nhật");
 		}
-		// Luồng (PENDING -> CONFIRMED...) và lý do huỷ do OrderFlowService kiểm tra
 		orderFlowService.updateStatus(orderId, to, reason);
 	}
-
-	// ================= ĐƠN HÀNG CỦA CHI NHÁNH =================
 
 	@Override
 	public ManagerHistoryRes history(Integer managerId, Integer branchId, String tab, int page) {
 		Integer id = resolveBranchId(managerId, branchId);
 		Branch branch = branchRepository.findById(id).orElseThrow();
 		String current = tab == null ? "PENDING" : tab.trim().toUpperCase();
-		// Link cũ ?status=PICKED_UP / DELIVERING -> tab Đang giao; RETURNED (trả hàng cũ) -> Khách báo vấn đề
 		if (current.equals("PICKED_UP") || current.equals("DELIVERING")) current = "SHIPPING";
 		if (current.equals("RETURNED")) current = "ISSUE";
 		if (!TABS.containsKey(current)) current = "PENDING";
 
-		// Số đơn từng tab
 		Map<OrderStatus, Long> counts = new EnumMap<>(OrderStatus.class);
 		for (Object[] row : orderRepository.countByStatusOfBranch(id)) {
 			counts.put((OrderStatus) row[0], ((Number) row[1]).longValue());
@@ -155,7 +143,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		TABS.forEach((key, t) -> {
 			long n = t.statuses().stream().mapToLong(s -> counts.getOrDefault(s, 0L)).sum();
 			if ("ISSUE".equals(key)) n = choXuLy;
-			if ("DELIVERED".equals(key)) n -= choXuLy; // đơn khách báo vấn đề chưa xử lý xong: chưa Hoàn thành
+			if ("DELIVERED".equals(key)) n -= choXuLy;
 			tabs.add(new ManagerTabRes(key, t.label(), n));
 		});
 
@@ -173,7 +161,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 
 	@Override
 	public OrderDetailRes orderDetail(Integer managerId, Integer orderId) {
-		findOwned(managerId, orderId); // kiểm tra đơn thuộc chi nhánh của manager
+		findOwned(managerId, orderId);
 		return orderFlowService.orderDetail(orderId);
 	}
 
@@ -181,8 +169,6 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 	public ManagerOrderRes orderCard(Integer managerId, Integer orderId) {
 		return toCard(findOwned(managerId, orderId), DAY_HOUR);
 	}
-
-	// ================= HÀM PHỤ =================
 
 	private Order findOwned(Integer managerId, Integer orderId) {
 		return orderRepository.findById(orderId)
@@ -220,14 +206,12 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 					: "Khách báo vấn đề: " + issue.getReason().getLabel() + " · " + issue.getStatus().getLabel();
 			default -> { }
 		}
-		// Quán huỷ được tới khi pha xong; đơn đến lấy: huỷ được cả khi khách không tới lấy
 		boolean canCancel = o.getStatus() == OrderStatus.PENDING || o.getStatus() == OrderStatus.CONFIRMED
 				|| (o.getStatus() == OrderStatus.READY && pickup);
 		String label = o.getStatus() == OrderStatus.CANCELLED
 				? OrderFlowServiceImpl.cancelledByLabel(o.getCancelledBy(), false)
 				: OrderFlowServiceImpl.statusLabel(o.getStatus(), pickup);
 
-		// Đơn đang làm: hiện giờ đặt; đơn đã xong/huỷ: hiện giờ xong
 		LocalDateTime t = FINISHED.contains(o.getStatus()) && o.getUpdatedAt() != null ? o.getUpdatedAt() : o.getCreatedAt();
 		String time = t == null ? "" : t.format(timeFormat);
 
@@ -238,10 +222,12 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 				o.getPaymentStatus() == vn.utetra.entity.enums.PaymentStatus.PAID
 						&& o.getPaymentMethod() != vn.utetra.entity.enums.PaymentMethod.COD,
 				issue == null ? null : "Có vấn đề · " + issue.getStatus().getLabel(),
-				issue != null && issue.getStatus() == vn.utetra.entity.enums.IssueStatus.PENDING);
+				issue != null && issue.getStatus() == vn.utetra.entity.enums.IssueStatus.PENDING,
+				pickup || o.getShipper() == null ? null
+						: o.getShipper().getFullName()
+								+ (o.getShipper().getPhone() == null ? "" : " · " + o.getShipper().getPhone()));
 	}
 
-	/** "2× Cà phê muối · L · 70% đường · 50% đá + Kem cheese" */
 	private String itemLine(OrderDetail d) {
 		String toppings = d.getToppings().stream().map(t -> t.getTopping().getName()).collect(Collectors.joining(", "));
 		String options = d.getProduct().isToppingItem() ? "topping mua riêng"

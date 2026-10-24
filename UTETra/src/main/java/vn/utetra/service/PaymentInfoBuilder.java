@@ -17,7 +17,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
-/** Dựng phần "Thanh toán" của đơn (nhãn + câu giải thích + hoàn tiền) cho trang khách, quán, Admin */
 @Component
 public class PaymentInfoBuilder {
 
@@ -107,12 +106,6 @@ public class PaymentInfoBuilder {
 				awaiting, deadlineMillis, awaiting ? deadline.format(HOUR) : null, refund);
 	}
 
-	/**
-	 * Bước cuối "Tiền về tài khoản". Cổng không báo lúc ngân hàng cộng tiền cho khách, nên làm như app thật:
-	 * - MoMo: hoàn thành công là tiền về ví ngay -> xong luôn
-	 * - VNPAY: VNPAY chuyển lệnh cho ngân hàng, ngân hàng xử lý tối đa 3 ngày làm việc -> hiện ngày dự kiến,
-	 *   qua ngày đó thì coi như tiền đã về
-	 */
 	private static boolean arrived(Payment p) {
 		if (!"REFUNDED".equals(p.getStatus()) || p.getRefundedAt() == null) return false;
 		if ("MOMO".equals(p.getMethod())) return true;
@@ -129,7 +122,6 @@ public class PaymentInfoBuilder {
 				: "Ngân hàng đang xử lý, dự kiến tiền về trước " + expectedArrival(p).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 	}
 
-	/** Lúc hoàn + 3 ngày làm việc (bỏ thứ 7, chủ nhật) */
 	private static LocalDateTime expectedArrival(Payment p) {
 		LocalDateTime t = p.getRefundedAt();
 		int days = 0;
@@ -140,7 +132,6 @@ public class PaymentInfoBuilder {
 		return t;
 	}
 
-	/** Nhãn ngắn cho thẻ đơn của quán: quán cần biết có phải thu tiền không */
 	public String storeLabel(Order o) {
 		PaymentStatus s = o.getPaymentStatus();
 		String method = methodLabel(o.getPaymentMethod());

@@ -1,10 +1,3 @@
-/* ============================================================
-   favorite.js - Nút tim "Thích sản phẩm"
-   Nút: <button class="js-favorite" data-id="12">  (trang chi tiết món, trang Yêu thích)
-   - Bấm: POST /api/favorites/{id}/toggle -> đổi màu tim + cập nhật [data-fav-count]
-   - Trang Yêu thích: nút có data-remove-on-unfav -> bỏ thích thì ẩn thẻ món (.fav-item)
-   - Chưa đăng nhập / hết phiên -> chuyển sang trang đăng nhập
-   ============================================================ */
 (() => {
 	document.addEventListener('click', async (e) => {
 		const btn = e.target.closest('.js-favorite');

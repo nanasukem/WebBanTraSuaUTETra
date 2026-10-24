@@ -14,10 +14,6 @@ import vn.utetra.entity.enums.BranchStatus;
 import vn.utetra.repository.BranchRepository;
 import vn.utetra.service.BranchReviewManagementService;
 
-/**
- * Trang "Chi nhánh" trên header (ai cũng xem được): danh sách chi nhánh ĐANG HOẠT ĐỘNG
- * của chuỗi UTETra - tên, số sao đánh giá, địa chỉ, số điện thoại, chỉ đường Google Maps, sắp xếp theo khoảng cách (JS).
- */
 @Controller
 public class BranchPageController {
 
@@ -42,8 +38,7 @@ public class BranchPageController {
 
 		model.addAttribute("branches", branches);
 		model.addAttribute("branchReviewSummaries", branchReviewSummaries);
-		model.addAttribute("now", java.time.LocalTime.now()); // để hiện Đang mở cửa / Đã đóng cửa
+		model.addAttribute("now", java.time.LocalTime.now());
 		return "branches";
 	}
 }
-

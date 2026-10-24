@@ -23,11 +23,6 @@ import vn.utetra.service.FavoriteService;
 import vn.utetra.service.UserService;
 import vn.utetra.service.ViewedProductService;
 
-/**
- * Các trang cá nhân của khách (chỉ USER - xem SecurityConfiguration):
- * /user/profile (thông tin + hạng thành viên, đổi mật khẩu, sổ địa chỉ) · /user/favorites · /user/viewed
- * (Đánh giá: /orders/{id}/review - MyOrderController)
- */
 @Controller
 @RequestMapping("/user")
 public class UserPageController {
@@ -53,8 +48,6 @@ public class UserPageController {
 		this.viewedProductService = viewedProductService;
 	}
 
-	// ================= PROFILE =================
-
 	@GetMapping("/profile")
 	public String profile(@RequestParam(name = "tab", defaultValue = "info") String tab, Principal principal,
 			HttpSession session, Model model) {
@@ -63,7 +56,6 @@ public class UserPageController {
 		model.addAttribute("addresses", addressService.list(userId));
 		model.addAttribute("favoriteCount", favoriteService.count(userId));
 		model.addAttribute("viewedCount", viewedProductService.count(userId));
-		// Hạng thành viên: % giảm mỗi đơn, chi tiêu 12 tháng, còn thiếu bao nhiêu để lên hạng
 		model.addAttribute("tier", memberService.getTierInfo(userId));
 		model.addAttribute("tiers", memberTierRepository.findAllByOrderByMinSpentAsc());
 		model.addAttribute("tab", List.of("info", "password", "address").contains(tab) ? tab : "info");
@@ -78,7 +70,7 @@ public class UserPageController {
 		Integer userId = currentUserService.requireUserId(principal, session);
 		try {
 			User saved = userService.updateProfile(userId, fullName, phone, avatar);
-			session.setAttribute("user", saved); // header hiện tên mới ngay
+			session.setAttribute("user", saved);
 			ra.addFlashAttribute("success", "Đã cập nhật thông tin cá nhân");
 		} catch (BusinessException e) {
 			ra.addFlashAttribute("error", e.getMessage());
@@ -94,7 +86,6 @@ public class UserPageController {
 		Integer userId = currentUserService.requireUserId(principal, session);
 		try {
 			userService.changePassword(userId, currentPassword, newPassword, confirmPassword);
-			// Cập nhật phiên: tự đổi mật khẩu thì không bị đăng xuất (đổi từ nơi khác / Admin đặt lại mới bị đăng xuất)
 			session.setAttribute("user", userService.getProfile(userId));
 			ra.addFlashAttribute("success", "Đã đổi mật khẩu. Lần đăng nhập sau dùng mật khẩu mới");
 		} catch (BusinessException e) {
@@ -102,8 +93,6 @@ public class UserPageController {
 		}
 		return "redirect:/user/profile?tab=password";
 	}
-
-	// ================= YÊU THÍCH / ĐÃ XEM =================
 
 	@GetMapping("/favorites")
 	public String favorites(Principal principal, HttpSession session, Model model) {

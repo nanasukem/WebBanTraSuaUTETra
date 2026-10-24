@@ -21,15 +21,6 @@ import vn.utetra.entity.User;
 import vn.utetra.repository.ActivityLogRepository;
 import vn.utetra.repository.UserRepository;
 
-/**
- * BẢO VỆ PHIÊN ĐĂNG NHẬP + NHẬT KÝ HOẠT ĐỘNG (chạy trước / sau mỗi request):
- * 1. Mỗi request đọc lại tài khoản trong database. Admin vừa KHOÁ, XOÁ, ĐẶT LẠI MẬT KHẨU hoặc ĐỔI VAI TRÒ
- *    -> người đó bị đăng xuất NGAY ở lần bấm tiếp theo (như hệ thống thật).
- * 2. Đang dùng mật khẩu tạm do Admin cấp: chỉ vào được trang đổi mật khẩu; quá 72 giờ chưa đổi thì
- *    mật khẩu tạm hết hạn -> đăng xuất, phải nhờ Admin cấp lại.
- * 3. Thao tác thành công của Admin / Manager / Shipper (có thông báo xanh, hoặc API trả về thành công)
- *    được ghi vào nhật ký: ai làm, làm gì, lúc nào.
- */
 @Configuration
 public class ForceChangePasswordInterceptor implements HandlerInterceptor, WebMvcConfigurer {
 
@@ -55,7 +46,6 @@ public class ForceChangePasswordInterceptor implements HandlerInterceptor, WebMv
 		Object o = session == null ? null : session.getAttribute("user");
 		if (!(o instanceof User su)) return true;
 
-		// 1. Tài khoản bị khoá / xoá / đặt lại mật khẩu / đổi vai trò -> đăng xuất ngay
 		User db = userRepository.findById(su.getId()).orElse(null);
 		String reason = null;
 		if (db == null) reason = "deleted";
@@ -70,7 +60,6 @@ public class ForceChangePasswordInterceptor implements HandlerInterceptor, WebMv
 			return deny(request, response, "/auth/login?signedOut=" + reason);
 		}
 
-		// 2. Mật khẩu tạm: chỉ vào trang đổi mật khẩu
 		if (Boolean.TRUE.equals(db.getMustChangePassword()) && !request.getRequestURI().startsWith(request.getContextPath() + "/account/")) {
 			return deny(request, response, "/account/change-password");
 		}
@@ -86,7 +75,28 @@ public class ForceChangePasswordInterceptor implements HandlerInterceptor, WebMv
 		return false;
 	}
 
-	// ================= 3. NHẬT KÝ HOẠT ĐỘNG =================
+	private static final java.util.regex.Pattern ORDER = java.util.regex.Pattern
+			.compile("^/(?:api/)?(?:admin|manager|shipper)/orders/(\\d+)");
+	private static final java.util.regex.Pattern USER = java.util.regex.Pattern.compile("^/admin/users/(\\d+)");
+	private static final java.util.regex.Pattern BRANCH_STOCK = java.util.regex.Pattern
+			.compile("^/(?:api/)?(?:admin|manager)/branches/(\\d+)/(?:products|toppings|stock)");
+	private static final java.util.regex.Pattern BRANCH = java.util.regex.Pattern
+			.compile("^/(?:api/)?(?:admin|manager)/branches/(\\d+)");
+
+	static String linkFor(String uri, Integer actorId) {
+		java.util.regex.Matcher m;
+		if ((m = ORDER.matcher(uri)).find()) return "/admin/orders/" + m.group(1);
+		if ((m = USER.matcher(uri)).find()) return "/admin/users/" + m.group(1);
+		if ((m = BRANCH_STOCK.matcher(uri)).find()) return "/admin/branches/" + m.group(1) + "/stock";
+		if ((m = BRANCH.matcher(uri)).find()) return "/admin/branches/" + m.group(1);
+		if (uri.startsWith("/account/")) return actorId == null ? null : "/admin/users/" + actorId;
+		if (uri.startsWith("/manager/reviews")) return "/admin/reviews";
+		if (uri.startsWith("/admin/")) {
+			String[] p = uri.split("/");
+			return p.length > 2 ? "/admin/" + p[2] : null;
+		}
+		return null;
+	}
 
 	@Override
 	public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
@@ -105,7 +115,6 @@ public class ForceChangePasswordInterceptor implements HandlerInterceptor, WebMv
 			String role = u.getRole() == null || u.getRole().getName() == null ? "" : u.getRole().getName().toUpperCase();
 			if (uri.startsWith("/account/") && "USER".equals(role)) return;
 
-			// Nội dung: lấy đúng thông báo xanh vừa hiện cho người dùng ("Đã báo hết Bạc xỉu tại chi nhánh.")
 			String action = null;
 			FlashMap flash = RequestContextUtils.getOutputFlashMap(request);
 			for (Map.Entry<String, Object> e : flash.entrySet()) {
@@ -113,14 +122,13 @@ public class ForceChangePasswordInterceptor implements HandlerInterceptor, WebMv
 					action = String.valueOf(e.getValue());
 				}
 			}
-			// API (Quầy đơn hàng...): controller đặt sẵn câu dễ đọc, ví dụ "Xác nhận đơn #12 (bắt đầu pha chế)"
 			if (action == null && request.getAttribute("activityLog") != null && response.getStatus() < 400) {
 				action = String.valueOf(request.getAttribute("activityLog"));
 			}
 			if (action == null && uri.startsWith("/api/") && response.getStatus() < 400) {
 				action = "Thao tác " + uri.replace("/api/", "").replace('/', ' ').trim();
 			}
-			if (action == null) return; // lỗi / không có kết quả thì không ghi
+			if (action == null) return;
 
 			ActivityLog log = new ActivityLog();
 			log.setActorId(u.getId());
@@ -130,9 +138,10 @@ public class ForceChangePasswordInterceptor implements HandlerInterceptor, WebMv
 			log.setActorRole(role.isEmpty() ? "?" : role);
 			log.setAction(action.length() > 500 ? action.substring(0, 500) : action);
 			log.setPath(uri.length() > 255 ? uri.substring(0, 255) : uri);
+			Object link = request.getAttribute("activityLink");
+			log.setLink(link != null ? String.valueOf(link) : linkFor(uri, u.getId()));
 			activityLogRepository.save(log);
 		} catch (RuntimeException ignored) {
-			// ghi nhật ký lỗi thì bỏ qua, không ảnh hưởng thao tác chính
 		}
 	}
 }

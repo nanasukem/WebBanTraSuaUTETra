@@ -58,9 +58,9 @@ public class BranchServiceImpl implements BranchService {
 	@Transactional
 	public Branch create(BranchReq req) {
 		String name = cleanName(req.getName());
-		checkDuplicateName(name, null); // luật 2: không trùng tên
-		User owner = findManager(req.getOwnerId()); // luật 3: người quản lý phải là Manager
-		checkManagerFree(owner, null); // luật 5: mỗi Manager chỉ quản lý 1 chi nhánh
+		checkDuplicateName(name, null);
+		User owner = findManager(req.getOwnerId());
+		checkManagerFree(owner, null);
 		checkCoordinates(req);
 
 		Branch branch = new Branch();
@@ -72,8 +72,6 @@ public class BranchServiceImpl implements BranchService {
 		branch.setPhone(req.getPhone());
 		branch.setDescription(req.getDescription());
 		setHours(branch, req);
-		// luật 1: Admin mở chi nhánh thì hoạt động luôn (form có chọn trạng thái thì
-		// theo form)
 		branch.setStatus(req.getStatus() != null ? req.getStatus() : BranchStatus.APPROVED);
 
 		if (req.getImageFile() != null && !req.getImageFile().isEmpty()) {
@@ -107,7 +105,7 @@ public class BranchServiceImpl implements BranchService {
 		branch.setDescription(req.getDescription());
 		setHours(branch, req);
 		if (req.getStatus() != null && req.getStatus() != branch.getStatus()) {
-			checkTransition(branch.getStatus(), req.getStatus()); // luật 4 áp dụng cả khi sửa qua form
+			checkTransition(branch.getStatus(), req.getStatus());
 			branch.setStatus(req.getStatus());
 		}
 
@@ -127,7 +125,7 @@ public class BranchServiceImpl implements BranchService {
 	public void changeStatus(Integer id, BranchStatus newStatus) {
 		Branch branch = findById(id);
 		if (newStatus == null || newStatus == branch.getStatus())
-			return; // không đổi gì
+			return;
 		checkTransition(branch.getStatus(), newStatus);
 		branch.setStatus(newStatus);
 		branchRepository.save(branch);
@@ -156,13 +154,11 @@ public class BranchServiceImpl implements BranchService {
 		return userRepository.findByRole_Name(MANAGER_ROLE);
 	}
 
-	/** Giờ mở cửa: bỏ trống thì mặc định 7:00 - 22:00 */
 	private static void setHours(Branch branch, BranchReq req) {
 		branch.setOpenTime(req.getOpenTime() != null ? req.getOpenTime() : java.time.LocalTime.of(7, 0));
 		branch.setCloseTime(req.getCloseTime() != null ? req.getCloseTime() : java.time.LocalTime.of(22, 0));
 	}
 
-	// ================= GỢI Ý CHI NHÁNH GẦN NHẤT =================
 	@Override
 	public List<NearbyBranchRes> findNearby(Double lat, Double lng) {
 		boolean coViTri = lat != null && lng != null;
@@ -171,7 +167,6 @@ public class BranchServiceImpl implements BranchService {
 				.map(b -> new NearbyBranchRes(b.getId(), b.getName(), b.getAddress(), b.getPhone(), b.getLatitude(),
 						b.getLongitude(), coViTri ? distanceKm(lat, lng, b.getLatitude(), b.getLongitude()) : null,
 						b.isOpenAt(now), b.getHoursLabel(), b.openStatusAt(now)))
-				// gần -> xa; chi nhánh không tính được khoảng cách xếp cuối, theo tên
 				.sorted(Comparator
 						.comparing(NearbyBranchRes::distanceKm, Comparator.nullsLast(Comparator.naturalOrder()))
 						.thenComparing(NearbyBranchRes::name))
@@ -179,7 +174,7 @@ public class BranchServiceImpl implements BranchService {
 	}
 
 	@Override
-	@Transactional(readOnly = true) // owner là LAZY: cần transaction để đọc
+	@Transactional(readOnly = true)
 	public boolean isOwner(Integer branchId, String username) {
 		if (branchId == null || username == null)
 			return false;
@@ -187,10 +182,6 @@ public class BranchServiceImpl implements BranchService {
 				.map(b -> b.getOwner() != null && username.equals(b.getOwner().getUsername())).orElse(false);
 	}
 
-	/**
-	 * Khoảng cách đường chim bay (công thức Haversine), làm tròn 1 chữ số. null nếu
-	 * chi nhánh chưa có tọa độ
-	 */
 	private Double distanceKm(double lat, double lng, BigDecimal branchLat, BigDecimal branchLng) {
 		if (branchLat == null || branchLng == null)
 			return null;
@@ -202,18 +193,12 @@ public class BranchServiceImpl implements BranchService {
 		return Math.round(km * 10) / 10.0;
 	}
 
-	// ================= LUẬT NGHIỆP VỤ =================
-
 	private String cleanName(String name) {
 		if (name == null || name.isBlank())
 			throw new BusinessException("Tên chi nhánh không được để trống");
 		return name.trim();
 	}
 
-	/**
-	 * Luật 2: tên chi nhánh không trùng (không phân biệt hoa thường). excludeId =
-	 * chi nhánh đang sửa
-	 */
 	private void checkDuplicateName(String name, Integer excludeId) {
 		boolean duplicated = branchRepository.findAll().stream()
 				.anyMatch(b -> b.getName().trim().equalsIgnoreCase(name) && !b.getId().equals(excludeId));
@@ -221,12 +206,6 @@ public class BranchServiceImpl implements BranchService {
 			throw new BusinessException("Tên chi nhánh \"" + name + "\" đã tồn tại");
 	}
 
-	/** Luật 3: người quản lý chi nhánh phải là tài khoản có role MANAGER */
-	/**
-	 * Luật 5 (chuỗi tự mở chi nhánh): Admin mở chi nhánh rồi chỉ định Manager, mỗi
-	 * Manager chỉ quản lý 1 chi nhánh. exceptBranchId = chi nhánh đang sửa (bỏ qua
-	 * chính nó).
-	 */
 	private void checkManagerFree(User manager, Integer exceptBranchId) {
 		branchRepository.findByOwnerIdOrderByIdAsc(manager.getId()).stream()
 				.filter(b -> !b.getId().equals(exceptBranchId)).findFirst().ifPresent(b -> {
@@ -246,17 +225,12 @@ public class BranchServiceImpl implements BranchService {
 		return owner;
 	}
 
-	/** Tọa độ: nhập đủ cả 2 hoặc bỏ trống cả 2 */
 	private void checkCoordinates(BranchReq req) {
 		if ((req.getLatitude() == null) != (req.getLongitude() == null)) {
 			throw new BusinessException("Vui lòng nhập đủ cả vĩ độ và kinh độ (hoặc bỏ trống cả hai)");
 		}
 	}
 
-	/**
-	 * Luật 4: Admin bật/tắt chi nhánh Đang hoạt động -> Tạm ngưng Tạm ngưng -> Đang
-	 * hoạt động (mở lại)
-	 */
 	private void checkTransition(BranchStatus from, BranchStatus to) {
 		boolean ok = switch (from) {
 		case APPROVED -> to == BranchStatus.SUSPENDED;
@@ -282,12 +256,10 @@ public class BranchServiceImpl implements BranchService {
 		Branch branch = branchRepository.findById(branchId)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi nhánh với ID: " + branchId));
 
-		// Manager chỉ được chỉnh sửa trang chủ chi nhánh mình quản lý.
 		if (branch.getOwner() == null || !username.equals(branch.getOwner().getUsername())) {
 			throw new BusinessException("Bạn không có quyền chỉnh sửa trang chủ chi nhánh này");
 		}
 
-		// Không cho phép chỉnh sửa các thông tin do Admin quản lý.
 		String cleanDescription = description == null ? "" : description.trim();
 
 		if (cleanDescription.length() > 3000) {
@@ -308,14 +280,12 @@ public class BranchServiceImpl implements BranchService {
 				throw new BusinessException("Ảnh bìa chỉ chấp nhận định dạng JPG, PNG hoặc WEBP");
 			}
 
-			// Upload ảnh mới trước để tránh mất ảnh cũ khi upload lỗi.
 			String newImageUrl = cloudinaryService.uploadImage(imageFile, "branches");
 
 			if (newImageUrl == null || newImageUrl.isBlank()) {
 				throw new BusinessException("Không thể tải ảnh bìa lên Cloudinary");
 			}
 
-			// Theo cách triển khai hiện tại, imageCloudinaryId đang lưu URL ảnh.
 			branch.setImageCloudinaryId(newImageUrl);
 		}
 

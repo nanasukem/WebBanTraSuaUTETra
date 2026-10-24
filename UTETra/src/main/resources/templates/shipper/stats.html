@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shipper UTETra - Thống kê</title>
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
+	rel="stylesheet">
+<style>
+body {
+	background: #f5f8f6;
+	color: #26352d;
+}
+
+.shipper-header {
+	background: #198754;
+	color: #fff;
+	padding: 14px 24px;
+}
+
+.shipper-card {
+	border: 0;
+	border-radius: 14px;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, .05);
+}
+
+.nav-pills .nav-link {
+	color: #26352d;
+	background: #fff;
+	border: 1px solid #dee2e6;
+	border-radius: 999px;
+	font-weight: 600;
+}
+
+.nav-pills .nav-link.active {
+	background: #198754;
+	color: #fff;
+	border-color: #198754;
+}
+</style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+	<header
+		class="shipper-header d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm">
+		<div class="d-flex align-items-center gap-2">
+			<i class="bi bi-scooter fs-3 text-warning"></i>
+			<div>
+				<div class="fw-bold fs-5">Shipper UTETra</div>
+				<div class="small opacity-75">
+					<span th:text="${shipper.fullName != null ? shipper.fullName : shipper.username}">Shipper</span>
+					· <i class="bi bi-shop"></i> <span th:text="${branch != null ? branch.name : 'Chưa phân công chi nhánh'}">Chi nhánh</span>
+				</div>
+			</div>
+		</div>
+		<div class="d-flex align-items-center gap-2 flex-wrap">
+			<div class="btn-group btn-group-sm me-1">
+				<a th:href="@{/shipper/orders}" class="btn btn-outline-light"><i class="bi bi-box-seam me-1"></i>Đơn giao</a>
+				<a th:href="@{/shipper/stats}" class="btn btn-light fw-semibold"><i class="bi bi-bar-chart-line me-1"></i>Thống kê</a>
+			</div>
+			<div th:replace="~{fragments/notification-bell :: bell('light')}"></div>
+			<a th:href="@{/account}" class="btn btn-sm btn-outline-light">
+				<i class="bi bi-person-circle me-1"></i>Tài khoản
+			</a>
+			<form th:action="@{/auth/logout}" method="post" class="m-0">
+				<button type="submit" class="btn btn-sm btn-outline-light">
+					<i class="bi bi-box-arrow-right me-1"></i>Đăng xuất
+				</button>
+			</form>
+		</div>
+	</header>
+
+	<main class="container py-4 flex-grow-1" style="max-width: 1100px;">
+
+		<h4 class="fw-bold mb-3"><i class="bi bi-bar-chart-line me-2 text-success"></i>Thống kê đơn đã giao</h4>
+
+		<div class="row g-2 mb-3">
+			<div class="col-4" th:each="p : ${ {'TODAY', 'MONTH', 'ALL'} }">
+				<a th:href="@{/shipper/stats(period=${p})}" class="text-decoration-none">
+					<div class="card shipper-card text-center h-100" th:classappend="${period == p} ? 'border border-2 border-success'">
+						<div class="card-body py-2">
+							<div class="small text-muted"
+								th:text="${p == 'TODAY'} ? 'Hôm nay' : (${p == 'MONTH'} ? 'Tháng này' : 'Tất cả')">Hôm nay</div>
+							<div class="fs-3 fw-bold" th:classappend="${period == p} ? 'text-success' : 'text-dark'"
+								th:text="${p == 'TODAY'} ? ${countToday} : (${p == 'MONTH'} ? ${countMonth} : ${countAll})">0</div>
+						</div>
+					</div>
+				</a>
+			</div>
+		</div>
+
+		<div class="card shipper-card mb-3">
+			<div class="card-body d-flex flex-wrap gap-4 small">
+				<div><span class="text-muted">Số đơn:</span> <b th:text="${orders.size()}">0</b></div>
+				<div><span class="text-muted">Tiền mặt đã thu (COD):</span>
+					<b class="text-danger" th:text="${#numbers.formatDecimal(codTotal, 0, 'POINT', 0, 'COMMA')} + 'đ'">0đ</b></div>
+				<div><span class="text-muted">Tổng phí ship:</span>
+					<b th:text="${#numbers.formatDecimal(shipTotal, 0, 'POINT', 0, 'COMMA')} + 'đ'">0đ</b></div>
+			</div>
+		</div>
+
+		<div class="card shipper-card">
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0">
+					<thead class="table-light">
+						<tr>
+							<th class="ps-3">Đơn</th>
+							<th>Giao xong lúc</th>
+							<th>Chi nhánh</th>
+							<th>Khách nhận</th>
+							<th>Địa chỉ giao</th>
+							<th>Thanh toán</th>
+							<th class="text-end pe-3">Phí ship</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr th:if="${#lists.isEmpty(orders)}">
+							<td colspan="7" class="text-center text-muted py-5">
+								<i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>Chưa có đơn nào trong kỳ này.</td>
+						</tr>
+						<tr th:each="o : ${orders}">
+							<td class="ps-3 fw-bold text-success" th:text="'#' + ${o.id}">#13</td>
+							<td class="small text-nowrap"
+								th:text="${o.deliveredAt != null} ? ${#temporals.format(o.deliveredAt, 'HH:mm dd/MM/yyyy')} : '—'">10:29 24/10/2026</td>
+							<td class="small">
+								<span th:text="${o.branch != null ? o.branch.name : '—'}">UTETra Võ Văn Ngân</span>
+								<span th:if="${branch != null and o.branch != null and o.branch.id != branch.id}"
+									class="badge text-bg-light border ms-1">chi nhánh cũ</span>
+							</td>
+							<td>
+								<div th:text="${o.receiverName}">Trần Thị Khách</div>
+								<div class="small text-muted" th:text="${o.receiverPhone}">0900000006</div>
+							</td>
+							<td class="small" style="max-width: 260px;" th:text="${o.deliveryAddress}">KTX Khu B</td>
+							<td class="small">
+								<span th:if="${o.paymentMethod.name() == 'COD'}" class="text-danger fw-semibold"
+									th:text="'Thu ' + ${#numbers.formatDecimal(o.totalAmount, 0, 'POINT', 0, 'COMMA')} + 'đ'">Thu 105.000đ</span>
+								<span th:unless="${o.paymentMethod.name() == 'COD'}" class="text-success"
+									th:text="'Đã trả ' + ${o.paymentMethod.name()}">Đã trả VNPAY</span>
+							</td>
+							<td class="text-end pe-3"
+								th:text="${#numbers.formatDecimal(o.shippingFee, 0, 'POINT', 0, 'COMMA')} + 'đ'">25.000đ</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</main>
+
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<th:block th:replace="~{fragments/notification-bell :: scripts}"></th:block>
+</body>
+</html>

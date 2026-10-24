@@ -30,7 +30,6 @@
 
 		<div class="row g-4">
 
-			<!-- Thông tin tổng quan -->
 			<div class="col-12 col-lg-4">
 				<div class="card border-0 shadow-sm h-100">
 					<div class="card-body text-center p-4">
@@ -75,7 +74,6 @@
 								class="badge bg-warning text-dark">Chưa xác minh</span>
 						</div>
 
-						<!-- Thao tác: chỉ ADMIN -->
 						<div class="border-top mt-4 pt-4" sec:authorize="hasRole('ADMIN')">
 							<h6 class="fw-semibold mb-3">Quản lý tài khoản</h6>
 
@@ -84,7 +82,6 @@
 								<i class="bi bi-person-gear"></i> Đổi vai trò
 							</button>
 
-							<!-- Đặt lại mật khẩu: nhân viên quên mật khẩu / Admin cần lấy lại quyền vào tài khoản -->
 							<button type="button" class="btn btn-outline-warning w-100 mb-2"
 								data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
 								<i class="bi bi-key"></i> Đặt lại mật khẩu
@@ -103,7 +100,6 @@
 								</button>
 							</form>
 
-							<!-- Xoá: chỉ khi tài khoản chưa có dữ liệu (tạo nhầm); đã có đơn / đánh giá thì hệ thống bắt khoá thay vì xoá -->
 							<form th:action="@{/admin/users/{id}/delete(id=${user.id})}" method="post" class="mt-2"
 								onsubmit="return confirm('Xoá hẳn tài khoản này? Chỉ xoá được tài khoản chưa có đơn hàng / đánh giá / chi nhánh. Không khôi phục được.');">
 								<button type="submit" class="btn btn-outline-danger w-100 btn-sm">
@@ -122,7 +118,6 @@
 				</div>
 			</div>
 
-			<!-- Chi tiết tài khoản -->
 			<div class="col-12 col-lg-8">
 				<div class="card border-0 shadow-sm">
 					<div class="card-header bg-white py-3">
@@ -189,10 +184,37 @@
 								<div th:unless="${user.createdAt != null}">—</div>
 							</div>
 
-							<div class="col-12" th:if="${user.carrier != null}">
-								<label class="text-muted small">Thông tin đơn vị vận
-									chuyển</label>
-								<div>Tài khoản đã được liên kết với một đơn vị vận chuyển.</div>
+							<div class="col-12" th:if="${user.role != null and user.role.name == 'MANAGER'}">
+								<label class="text-muted small">Chi nhánh hoạt động</label>
+								<div th:if="${#lists.isEmpty(managedBranches)}" class="text-warning">
+									Chưa giao chi nhánh (vào Quản lý → Chi nhánh → Sửa để giao)</div>
+								<div th:each="b : ${managedBranches}">
+									<i class="bi bi-shop me-1 text-success"></i><strong th:text="${b.name}"></strong>
+									<span class="text-muted small" th:text="' · ' + ${b.address}"></span>
+									<span class="badge text-bg-light border ms-1">Quản lý</span>
+								</div>
+							</div>
+
+							<div class="col-12" th:if="${user.role != null and user.role.name == 'SHIPPER'}">
+								<label class="text-muted small">Chi nhánh hoạt động</label>
+								<div th:if="${user.branch != null}">
+									<i class="bi bi-shop me-1 text-success"></i><strong th:text="${user.branch.name}"></strong>
+									<span class="text-muted small" th:text="' · ' + ${user.branch.address}"></span>
+								</div>
+								<div th:if="${user.branch == null}" class="text-danger">
+									Chưa phân công chi nhánh: shipper này chưa nhận được đơn nào.</div>
+								<form method="post" class="d-flex flex-wrap gap-2 mt-2"
+									th:action="@{/admin/users/{id}/branch(id=${user.id})}">
+									<select name="branchId" class="form-select form-select-sm" style="max-width: 360px;" required>
+										<option value="" th:text="${user.branch == null} ? '-- Chọn chi nhánh --' : '-- Chuyển sang chi nhánh --'"></option>
+										<option th:each="b : ${branches}" th:value="${b.id}"
+											th:disabled="${user.branch != null and user.branch.id == b.id}"
+											th:text="${b.name} + ' · đang có ' + ${shipperCounts.getOrDefault(b.id, 0L)} + ' shipper'"></option>
+									</select>
+									<button type="submit" class="btn btn-sm btn-outline-success"
+										th:text="${user.branch == null} ? 'Phân công' : 'Chuyển chi nhánh'">Phân công</button>
+								</form>
+								<div class="form-text">Shipper còn đơn chưa giao xong thì phải giao xong mới chuyển được.</div>
 							</div>
 
 						</div>
@@ -205,7 +227,6 @@
 			</div>
 		</div>
 
-		<!-- Modal đặt lại mật khẩu -->
 		<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true" sec:authorize="hasRole('ADMIN')">
 			<div class="modal-dialog modal-dialog-centered">
 				<div class="modal-content">
@@ -252,9 +273,8 @@
 					document.getElementById('rpNew').value = p;
 					document.getElementById('rpConfirm').value = p;
 				});
-				// Từ trang danh sách bấm nút chìa khoá -> mở sẵn hộp đặt lại mật khẩu
 				if (location.hash === '#reset') {
-					window.addEventListener('load', function () { // chờ Bootstrap nạp xong
+					window.addEventListener('load', function () {
 						const m = document.getElementById('resetPasswordModal');
 						if (m && window.bootstrap) bootstrap.Modal.getOrCreateInstance(m).show();
 					});
@@ -262,7 +282,6 @@
 			})();
 		</script>
 
-		<!-- Modal đổi vai trò -->
 		<div class="modal fade" id="detailRoleModal" tabindex="-1"
 			aria-hidden="true" sec:authorize="hasRole('ADMIN')">
 
@@ -312,4 +331,3 @@
 	</div>
 </section>
 </html>
-

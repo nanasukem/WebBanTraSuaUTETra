@@ -22,13 +22,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-/**
- * Cổng VNPAY (sandbox) - đúng tài liệu VNPAY Payment Gateway 2.1.0:
- * - Tạo URL thanh toán: tham số vnp_* xếp theo tên, mã hoá URL (US-ASCII), ký HMAC-SHA512 bằng vnp_HashSecret
- * - returnUrl / IPN: tính lại chữ ký để chắc dữ liệu đúng của VNPAY rồi mới tin
- * - querydr: hỏi lại VNPAY giao dịch đã trả chưa (dùng khi chạy localhost, VNPAY không gọi IPN vào được)
- * - refund: hoàn tiền toàn phần khi đơn đã trả bị huỷ
- */
 @Service
 public class VnPayService {
 
@@ -49,19 +42,13 @@ public class VnPayService {
 		return props.vnpayConfigured();
 	}
 
-	// ================= TẠO LINK THANH TOÁN =================
-
-	/**
-	 * URL chuyển khách sang trang VNPAY. payment.gatewayDate phải có sẵn (vnp_CreateDate),
-	 * expireAt: hạn trả tiền (VNPAY tự khoá link sau mốc này).
-	 */
 	public String createPaymentUrl(Payment payment, String orderInfo, String clientIp, LocalDateTime expireAt,
 			String bankCode) {
 		Map<String, String> p = new TreeMap<>();
 		p.put("vnp_Version", VERSION);
 		p.put("vnp_Command", "pay");
 		p.put("vnp_TmnCode", props.vnpTmnCode());
-		p.put("vnp_Amount", String.valueOf(payment.getAmount().longValue() * 100)); // VNPAY tính theo đơn vị x100
+		p.put("vnp_Amount", String.valueOf(payment.getAmount().longValue() * 100));
 		p.put("vnp_CurrCode", "VND");
 		p.put("vnp_TxnRef", payment.getTxnRef());
 		p.put("vnp_OrderInfo", orderInfo);
@@ -88,9 +75,6 @@ public class VnPayService {
 		return props.vnpPayUrl() + "?" + query + "&vnp_SecureHash=" + secureHash;
 	}
 
-	// ================= NHẬN KẾT QUẢ (returnUrl + IPN) =================
-
-	/** Kiểm tra chữ ký + đọc kết quả. Dùng chung cho returnUrl và IPN (cùng bộ tham số) */
 	public GatewayResult readResult(Map<String, String> params) {
 		String received = params.get("vnp_SecureHash");
 		if (received == null || !isConfigured()) return GatewayResult.invalid("Thiếu chữ ký VNPAY");
@@ -121,8 +105,6 @@ public class VnPayService {
 				responseMessage(responseCode));
 	}
 
-	// ================= TRUY VẤN LẠI (querydr) =================
-
 	public GatewayResult query(Payment payment) {
 		String requestId = requestId();
 		String createDate = LocalDateTime.now(VN).format(VNP_TIME);
@@ -148,7 +130,6 @@ public class VnPayService {
 				"Không kết nối được VNPAY");
 		String code = text(res, "vnp_ResponseCode");
 		if ("91".equals(code)) {
-			// VNPAY chưa ghi nhận giao dịch: khách chưa nhập thẻ / đã đóng trang
 			return new GatewayResult(true, "NOT_FOUND", payment.getTxnRef(), null, 0, null, code,
 					"Khách chưa thanh toán");
 		}
@@ -166,10 +147,6 @@ public class VnPayService {
 				parseLong(text(res, "vnp_Amount")) / 100, text(res, "vnp_BankCode"), ts, responseMessage(ts));
 	}
 
-	/**
-	 * Tra cứu tại VNPAY (cho Admin xem bằng chứng): hỏi querydr rồi dịch ra 1 câu dễ đọc.
-	 * vnp_TransactionStatus: 00 thành công, 05 VNPAY đang hoàn, 06 đã gửi lệnh hoàn sang ngân hàng, 09 bị từ chối hoàn...
-	 */
 	public String lookup(Payment payment) {
 		if (!isConfigured()) return "VNPAY đang chạy chế độ demo, không tra cứu được";
 		String requestId = requestId();
@@ -213,14 +190,11 @@ public class VnPayService {
 				+ " · Thời gian " + text(res, "vnp_PayDate");
 	}
 
-	// ================= HOÀN TIỀN (refund) =================
-
 	public RefundResult refund(Payment payment, String createdBy) {
 		String requestId = requestId();
 		String createDate = LocalDateTime.now(VN).format(VNP_TIME);
 		String ip = "127.0.0.1";
 		String amount = String.valueOf(payment.refundValue().longValue() * 100);
-		// 02 = hoàn toàn phần, 03 = hoàn một phần (khách báo vấn đề, quán hoàn 1 phần)
 		String type = payment.refundValue().compareTo(payment.getAmount()) < 0 ? "03" : "02";
 		String transNo = payment.getTransactionCode() == null ? "" : payment.getTransactionCode();
 		String orderInfo = "Hoan tien don UTETra " + payment.getOrder().getId();
@@ -247,15 +221,11 @@ public class VnPayService {
 		if (res == null) return new RefundResult(false, null, null, "Không kết nối được VNPAY");
 		String code = text(res, "vnp_ResponseCode");
 		checkResponseHash(res, false);
-		// 94: lệnh hoàn trước đó VNPAY đang xử lý -> coi như đã nhận lệnh
 		boolean ok = "00".equals(code) || "94".equals(code);
 		return new RefundResult(ok, code, text(res, "vnp_TransactionNo"),
 				ok ? "VNPAY đã nhận lệnh hoàn tiền" : refundMessage(code, text(res, "vnp_Message")));
 	}
 
-	// ================= CHỮ HIỂN THỊ =================
-
-	/** Ý nghĩa vnp_ResponseCode (bảng mã lỗi của VNPAY) */
 	public static String responseMessage(String code) {
 		if (code == null) return "Không rõ kết quả";
 		return switch (code) {
@@ -289,8 +259,6 @@ public class VnPayService {
 		};
 	}
 
-	// ================= HÀM PHỤ =================
-
 	private JsonNode post(Map<String, String> body) {
 		try {
 			HttpRequest req = HttpRequest.newBuilder(URI.create(props.vnpApiUrl()))
@@ -306,7 +274,6 @@ public class VnPayService {
 		}
 	}
 
-	/** Kiểm chữ ký phản hồi (chỉ ghi log: phản hồi đi qua HTTPS trực tiếp từ VNPAY) */
 	private void checkResponseHash(JsonNode res, boolean query) {
 		List<String> keys = new ArrayList<>(List.of("vnp_ResponseId", "vnp_Command", "vnp_ResponseCode", "vnp_Message",
 				"vnp_TmnCode", "vnp_TxnRef", "vnp_Amount", "vnp_BankCode", "vnp_PayDate", "vnp_TransactionNo",

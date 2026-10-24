@@ -10,16 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.utetra.entity.Voucher;
 import vn.utetra.repository.VoucherRepository;
 
-/**
- * Báo Admin (chuông) khi voucher sắp hết lượt / đã hết lượt / sắp hết hạn.
- * - Gọi ngay sau mỗi lần có người dùng mã (VoucherServiceImpl.markUsed)
- * - Quét định kỳ mỗi giờ (mã sắp hết hạn trong 24 giờ)
- * Mỗi việc chỉ báo 1 lần nhờ ref_key (VOUCHER_LOW:id, VOUCHER_OUT:id, VOUCHER_EXP:id:ngày hết hạn).
- */
 @Service
 public class VoucherAlertService {
 
-	/** Còn <= 10% lượt thì báo sắp hết */
 	public static final int LOW_PERCENT = 10;
 	private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 
@@ -31,7 +24,6 @@ public class VoucherAlertService {
 		this.notificationService = notificationService;
 	}
 
-	/** Kiểm tra lượt còn lại của 1 voucher (gọi sau khi có người dùng mã) */
 	@Transactional
 	public void checkRemaining(Integer voucherId) {
 		Voucher v = voucherRepository.findById(voucherId).orElse(null);
@@ -50,7 +42,6 @@ public class VoucherAlertService {
 		}
 	}
 
-	/** Mỗi giờ: báo các mã đang bật sắp hết hạn trong 24 giờ tới (chạy lần đầu sau 1 phút) */
 	@Scheduled(initialDelay = 60_000, fixedDelay = 3_600_000)
 	@Transactional
 	public int scanExpiring() {

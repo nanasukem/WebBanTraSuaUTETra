@@ -26,25 +26,15 @@ import vn.utetra.repository.ProductRepository;
 import vn.utetra.repository.ProductSizeRepository;
 import vn.utetra.repository.ToppingRepository;
 
-/**
- * QUẢN LÝ TOPPING (như Katinat: topping vừa thêm vào ly, vừa mua riêng được).
- * - Admin quản lý 1 chỗ (/admin/toppings): tên, giá, mô tả, ảnh, đang bán / ngưng bán toàn chuỗi.
- * - Mỗi topping có 1 MÓN BÁN RIÊNG tương ứng trong danh mục "Topping" (Products.topping_id),
- *   hệ thống tự tạo / cập nhật / xoá theo topping (cùng tên, giá, trạng thái), chỉ 1 cỡ, không chọn đường / đá.
- * - Manager báo "hết topping" cho riêng chi nhánh mình (BranchToppings), đồng bộ luôn món bán riêng (BranchProducts).
- * - Topping đã có trong đơn hàng thì không xoá được (để hoá đơn cũ còn nguyên), chỉ ngưng bán.
- */
 @Service
 @Transactional
 public class ToppingService {
 
-	/** Tên danh mục chứa các topping bán riêng */
 	public static final String CATEGORY_NAME = "Topping";
 	public static final BigDecimal MAX_PRICE = BigDecimal.valueOf(100_000);
 
-	/** 1 dòng trên trang Admin: topping + món bán riêng + đã bán bao nhiêu lần */
 	public record ToppingRow(Topping topping, Product product, long usedAsAddOn, long soldAlone,
-			List<String> outAt) { // outAt: các chi nhánh đang báo hết topping này
+			List<String> outAt) {
 		public boolean used() {
 			return usedAsAddOn + soldAlone > 0;
 		}
@@ -73,8 +63,6 @@ public class ToppingService {
 		this.em = em;
 	}
 
-	// ================= ADMIN =================
-
 	@Transactional(readOnly = true)
 	public List<ToppingRow> list() {
 		java.util.Map<Integer, List<String>> outAt = new java.util.HashMap<>();
@@ -95,7 +83,6 @@ public class ToppingService {
 				.orElseThrow(() -> new BusinessException("Không tìm thấy topping #" + id));
 	}
 
-	/** Thêm topping + tạo món bán riêng trong danh mục Topping */
 	public Topping create(String name, BigDecimal price, String description, MultipartFile image) {
 		Topping t = new Topping();
 		t.setName(cleanName(name, null));
@@ -114,13 +101,12 @@ public class ToppingService {
 
 		ProductSize size = new ProductSize();
 		size.setProduct(p);
-		size.setSize("M"); // topping bán riêng chỉ 1 cỡ, không cộng thêm tiền
+		size.setSize("M");
 		size.setExtraPrice(BigDecimal.ZERO);
 		productSizeRepository.save(size);
 		return t;
 	}
 
-	/** Sửa tên / giá / mô tả / ảnh (món bán riêng cập nhật theo) */
 	public Topping update(Integer id, String name, BigDecimal price, String description, MultipartFile image) {
 		Topping t = get(id);
 		t.setName(cleanName(name, id));
@@ -137,7 +123,6 @@ public class ToppingService {
 		return t;
 	}
 
-	/** Đang bán <-> ngưng bán toàn chuỗi (cả khi thêm vào ly lẫn mua riêng) */
 	public Topping toggle(Integer id) {
 		Topping t = get(id);
 		t.setIsAvailable(!Boolean.TRUE.equals(t.getIsAvailable()));
@@ -148,7 +133,6 @@ public class ToppingService {
 		return t;
 	}
 
-	/** Xoá hẳn: chỉ khi topping CHƯA từng nằm trong đơn hàng nào */
 	public void delete(Integer id) {
 		Topping t = get(id);
 		Product p = productRepository.findByTopping_Id(id).orElse(null);
@@ -174,7 +158,6 @@ public class ToppingService {
 		if (image != null) deleteImageQuietly(image);
 	}
 
-	/** Danh mục Topping có phải danh mục đang xét không (để chặn thêm món thường vào danh mục này) */
 	@Transactional(readOnly = true)
 	public boolean isToppingCategory(Integer categoryId) {
 		if (categoryId == null) return false;
@@ -184,14 +167,11 @@ public class ToppingService {
 						.map(c -> CATEGORY_NAME.equalsIgnoreCase(c.getName().trim())).orElse(false);
 	}
 
-	// ================= MANAGER: HẾT TOPPING THEO CHI NHÁNH =================
-
 	@Transactional(readOnly = true)
 	public Set<Integer> unavailableToppingIds(Integer branchId) {
 		return branchId == null ? Set.of() : new HashSet<>(branchToppingRepository.findUnavailableToppingIds(branchId));
 	}
 
-	/** Bật / tắt topping tại 1 chi nhánh; món bán riêng của topping đó ở chi nhánh cũng theo */
 	public boolean toggleAtBranch(Branch branch, Integer toppingId) {
 		Topping t = get(toppingId);
 		if (!Boolean.TRUE.equals(t.getIsAvailable())) {
@@ -202,7 +182,7 @@ public class ToppingService {
 					BranchTopping n = new BranchTopping();
 					n.setBranch(branch);
 					n.setTopping(t);
-					n.setIsAvailable(true); // chưa có dòng = đang bán
+					n.setIsAvailable(true);
 					return n;
 				});
 		bt.setIsAvailable(!Boolean.TRUE.equals(bt.getIsAvailable()));
@@ -222,11 +202,8 @@ public class ToppingService {
 		return bt.getIsAvailable();
 	}
 
-	// ================= HÀM PHỤ =================
-
 	private Product productOf(Topping t) {
 		return productRepository.findByTopping_Id(t.getId()).orElseGet(() -> {
-			// dữ liệu cũ chưa có món bán riêng -> tạo bù
 			Product p = new Product();
 			p.setCategory(toppingCategory());
 			p.setTopping(t);
@@ -253,7 +230,6 @@ public class ToppingService {
 		if (p.getDescription() == null) p.setDescription("Topping " + t.getName() + " bán riêng");
 	}
 
-	/** Danh mục Topping: lấy theo món topping đã có (kể cả khi Admin đổi tên), chưa có thì tạo */
 	private Category toppingCategory() {
 		return productRepository.findByToppingIsNotNull().stream().map(Product::getCategory)
 				.filter(c -> c != null).findFirst()
@@ -298,7 +274,6 @@ public class ToppingService {
 		try {
 			cloudinaryService.deleteImage(url);
 		} catch (RuntimeException ignored) {
-			// ảnh trên Cloudinary không xoá được thì bỏ qua
 		}
 	}
 

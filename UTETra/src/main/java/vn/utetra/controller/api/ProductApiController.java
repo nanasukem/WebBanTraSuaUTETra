@@ -20,19 +20,16 @@ public class ProductApiController {
 		this.guestHomeService = guestHomeService;
 	}
 
-	// GET /api/products
 	@GetMapping
 	public ResponseEntity<List<Product>> getAllProducts() {
 		return ResponseEntity.ok(adminProductService.getAllProducts());
 	}
 
-	// GET /api/products/best-sellers (Sản phẩm bán > 10 ly cho trang chủ Guest)
 	@GetMapping("/best-sellers")
 	public ResponseEntity<List<Product>> getBestSellers() {
 		return ResponseEntity.ok(guestHomeService.getBestSellerProducts());
 	}
 
-	// GET /api/products/{id}
 	@GetMapping("/{id}")
 	public ResponseEntity<Product> getProductById(@PathVariable Integer id) {
 		return ResponseEntity.ok(adminProductService.getProductById(id));

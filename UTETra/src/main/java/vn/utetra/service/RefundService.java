@@ -19,14 +19,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Hoàn tiền đơn đã trả trước (VNPAY / MoMo) - giống app thật:
- * 1. Đơn bị huỷ (khách / quán / Admin huỷ) -> giao dịch chuyển "Đang hoàn tiền", đơn hiện "Đang hoàn tiền"
- * 2. Sau khi lưu xong, gọi API hoàn tiền của cổng (chạy nền, không bắt khách chờ)
- * 3. Cổng nhận lệnh -> "Đã hoàn tiền" + báo chuông cho khách. Lỗi (mất mạng...) -> 5 phút thử lại, tối đa 5 lần,
- *    quá 5 lần báo Admin xử lý tay (trang chi tiết đơn của Admin có nút "Hoàn tiền lại").
- * Cũng dùng khi khách trả tiền TRỄ (đơn đã bị huỷ vì quá hạn) hoặc trả 2 lần cho 1 đơn: tự hoàn khoản thừa.
- */
 @Service
 public class RefundService {
 
@@ -51,14 +43,12 @@ public class RefundService {
 		this.self = self;
 	}
 
-	/** Đơn đã trả trước bị huỷ: hoàn khoản đã trả. Gọi trong transaction huỷ đơn */
 	@Transactional
 	public void refundOrder(Order order, String reason) {
 		List<Payment> paid = paymentRepository.findByOrderIdAndStatus(order.getId(), "SUCCESS");
 		order.setPaymentStatus(PaymentStatus.REFUND_PENDING);
 		orderRepository.save(order);
 		if (paid.isEmpty()) {
-			// Đơn mẫu không có dòng giao dịch -> để Admin hoàn tay
 			log.warn("Đơn #{} đã trả trước nhưng không tìm thấy giao dịch để hoàn", order.getId());
 			notificationService.notifyAdmins("REFUND", "Cần hoàn tiền tay đơn #" + order.getId(),
 					"Không tìm thấy giao dịch VNPAY/MoMo của đơn", "/admin/orders/" + order.getId(),
@@ -68,10 +58,6 @@ public class RefundService {
 		paid.forEach(p -> requestRefund(p, reason));
 	}
 
-	/**
-	 * Hoàn 1 phần / toàn bộ đơn ĐÃ GIAO (khách báo vấn đề, quán đồng ý hoàn). Đơn trả trước: hoàn qua cổng.
-	 * Trả về false nếu đơn không trả online (COD: quán tự hoàn tiền mặt / chuyển khoản cho khách).
-	 */
 	@Transactional
 	public boolean refundDelivered(Order order, java.math.BigDecimal amount, String reason) {
 		List<Payment> paid = paymentRepository.findByOrderIdAndStatus(order.getId(), "SUCCESS");
@@ -82,7 +68,6 @@ public class RefundService {
 		return true;
 	}
 
-	/** Đánh dấu 1 giao dịch cần hoàn, sau khi lưu xong thì gọi cổng (chạy nền) */
 	@Transactional
 	public void requestRefund(Payment p, String reason) {
 		if (!"SUCCESS".equals(p.getStatus())) return;
@@ -112,7 +97,6 @@ public class RefundService {
 		}
 	}
 
-	/** Gọi API hoàn tiền của cổng cho 1 giao dịch đang chờ hoàn */
 	@Transactional
 	public boolean process(Integer paymentId) {
 		Payment p = paymentRepository.findById(paymentId).orElse(null);
@@ -165,7 +149,6 @@ public class RefundService {
 		return false;
 	}
 
-	/** Admin bấm "Hoàn tiền lại": đếm lại số lần thử và gọi cổng ngay */
 	@Transactional
 	public boolean retry(Integer orderId) {
 		boolean ok = false;
@@ -176,11 +159,9 @@ public class RefundService {
 		return ok;
 	}
 
-	/** 5 phút thử hoàn lại các giao dịch lần trước lỗi */
 	@Scheduled(fixedDelay = 300_000, initialDelay = 120_000)
 	public void retryFailed() {
 		for (Payment p : paymentRepository.findByStatusAndRefundAttemptsLessThan("REFUND_PENDING", MAX_ATTEMPTS)) {
-			// Lần đầu đã chạy ngay sau khi huỷ; ở đây chỉ chạy lại khi lần trước lỗi / app tắt giữa chừng
 			if (p.getRefundRequestedAt() == null || p.getRefundRequestedAt().isBefore(LocalDateTime.now().minusMinutes(1))) {
 				try {
 					self.process(p.getId());
@@ -191,7 +172,6 @@ public class RefundService {
 		}
 	}
 
-	/** Thời gian tiền về (giống thông báo của các app) */
 	public static String arrivalNote(String method) {
 		return "MOMO".equals(method)
 				? "Ví MoMo thường nhận lại tiền ngay, chậm nhất 1-3 ngày làm việc."

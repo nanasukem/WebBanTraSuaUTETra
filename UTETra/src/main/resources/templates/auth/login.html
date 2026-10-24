@@ -7,22 +7,18 @@
 
 		<div class="card auth-card shadow-sm mx-auto p-4">
 
-			<!-- Tiêu đề -->
 			<div class="text-center mb-4">
 				<h4 class="fw-bold text-success mb-1">Chào mừng trở lại!</h4>
 				<p class="text-muted small mb-0">Đăng nhập tài khoản UTETra của
 					bạn</p>
 			</div>
 
-			<!-- Lỗi đăng nhập -->
 			<div th:if="${param.error != null}"
 				class="alert alert-danger text-center py-2" role="alert">
 				<i class="bi bi-exclamation-circle-fill me-1"></i> Sai tên đăng nhập
 				hoặc mật khẩu!
 			</div>
 
-			<!-- Đăng xuất thành công -->
-			<!-- Bị đăng xuất do Admin thay đổi tài khoản / mật khẩu tạm hết hạn -->
 			<div th:if="${param.signedOut != null}" class="alert alert-warning py-2 small" role="alert"
 				th:switch="${param.signedOut[0]}">
 				<i class="bi bi-shield-exclamation me-1"></i>
@@ -39,15 +35,12 @@
 				công!
 			</div>
 
-			<!-- Thông báo thành công từ Controller -->
 			<div th:if="${success != null}" class="alert alert-success py-2"
 				role="alert" th:text="${success}"></div>
 
-			<!-- Thông báo lỗi từ Controller -->
 			<div th:if="${error != null}" class="alert alert-danger py-2"
 				role="alert" th:text="${error}"></div>
 
-			<!-- Email chưa xác thực -->
 			<div th:if="${unverifiedEmail != null}"
 				class="alert alert-warning text-center py-3">
 
@@ -63,7 +56,6 @@
 				</form>
 			</div>
 
-			<!-- Form đăng nhập -->
 			<form th:action="@{/auth/login}" method="post">
 
 				<div class="mb-3">
@@ -92,7 +84,6 @@
 				</button>
 			</form>
 
-			<!-- Đăng ký -->
 			<div class="text-center mt-4">
 				<p class="small text-muted mb-0">
 					Chưa có tài khoản? <a th:href="@{/auth/register}"
@@ -101,7 +92,6 @@
 				</p>
 			</div>
 
-			<!-- Quay lại trang chủ -->
 			<div class="text-center mt-3">
 				<a th:href="@{/}" class="text-muted small text-decoration-none">
 					<i class="bi bi-arrow-left me-1"></i> Quay lại trang chủ

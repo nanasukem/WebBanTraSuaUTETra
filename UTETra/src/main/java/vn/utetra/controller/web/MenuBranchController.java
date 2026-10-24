@@ -14,7 +14,6 @@ import jakarta.servlet.http.HttpSession;
 import vn.utetra.entity.Branch;
 import vn.utetra.service.MenuBranchService;
 
-/** Chọn chi nhánh để xem menu / đặt món (ô "Đang đặt tại" ở đầu menu, nút trên trang chi nhánh) */
 @Controller
 public class MenuBranchController {
 
@@ -24,7 +23,6 @@ public class MenuBranchController {
 		this.menuBranchService = menuBranchService;
 	}
 
-	/** Form thường: chọn xong quay lại trang đang xem (back) hoặc trang trước */
 	@PostMapping("/menu/branch")
 	public String choose(@RequestParam(required = false) Integer branchId,
 			@RequestParam(required = false) String back, HttpSession session, HttpServletRequest request) {
@@ -37,7 +35,6 @@ public class MenuBranchController {
 		return "redirect:" + to;
 	}
 
-	/** Trang thanh toán đổi chi nhánh -> menu cũng đổi theo (gọi bằng fetch) */
 	@PostMapping("/menu/branch/ajax")
 	@ResponseBody
 	public ResponseEntity<Void> chooseAjax(@RequestParam(required = false) Integer branchId, HttpSession session) {
@@ -45,7 +42,6 @@ public class MenuBranchController {
 		return ResponseEntity.noContent().build();
 	}
 
-	/** Trình duyệt gửi vị trí -> tự chọn chi nhánh gần nhất (chỉ khi khách chưa chọn / chưa từ chối) */
 	@PostMapping("/menu/branch/nearest")
 	@ResponseBody
 	public java.util.Map<String, Object> nearest(@RequestParam double lat, @RequestParam double lng, HttpSession session) {
@@ -53,7 +49,6 @@ public class MenuBranchController {
 		return b == null ? java.util.Map.of("chosen", false) : java.util.Map.of("chosen", true, "branchId", b.getId());
 	}
 
-	/** Dữ liệu dùng chung cho các trang có menu: chi nhánh đang xem + món / topping hết ở đó */
 	@ControllerAdvice(assignableTypes = { HomeController.class, ProductPageController.class,
 			UserPageController.class, BranchDetailController.class, BranchPageController.class })
 	public static class Advice {
@@ -69,7 +64,6 @@ public class MenuBranchController {
 			model.addAttribute("menuBranch", b);
 			model.addAttribute("menuBranchLocked", menuBranchService.locked(session));
 			model.addAttribute("menuBranchAuto", menuBranchService.auto(session));
-			// Chưa chọn và chưa bấm "Chọn khi thanh toán" -> trang hỏi vị trí để tự chọn chi nhánh gần nhất
 			model.addAttribute("menuBranchAsk", b == null && !menuBranchService.locked(session)
 					&& !Boolean.TRUE.equals(session.getAttribute(MenuBranchService.SESSION_NONE)));
 			model.addAttribute("menuBranches", menuBranchService.openBranches());

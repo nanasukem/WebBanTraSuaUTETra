@@ -1,11 +1,7 @@
-/* ============================================================
-   order-live.js - Trang "Đơn hàng của tôi" tự cập nhật khi quán đổi trạng thái
-   Cần: live-socket.js nạp trước. Thẻ <div data-live-orders data-order-id="..."> trên trang.
-   ============================================================ */
 (() => {
     const box = document.querySelector('[data-live-orders]');
     if (!box || !window.LiveSocket) return;
-    const orderId = Number(box.dataset.orderId || 0); // 0 = trang danh sách
+    const orderId = Number(box.dataset.orderId || 0);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
         (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -27,7 +23,6 @@
 
     LiveSocket.subscribe('/user/queue/orders', (ev) => {
         toast(ev);
-        // Đang xem đúng đơn đó (hoặc đang ở danh sách) -> tải lại cho thấy trạng thái mới
         if (!orderId || ev.orderId === orderId) setTimeout(() => location.reload(), 1500);
     });
 })();

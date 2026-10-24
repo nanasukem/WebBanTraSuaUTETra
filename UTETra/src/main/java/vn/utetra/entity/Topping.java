@@ -16,7 +16,7 @@ public class Topping {
 	private Integer id;
 
 	@Column(nullable = false, length = 100, unique = true)
-	private String name; // Trân châu đen, Thạch phô mai, Pudding trứng...
+	private String name;
 
 	@Column(nullable = false)
 	private BigDecimal price;

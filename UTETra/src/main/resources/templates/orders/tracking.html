@@ -2,13 +2,6 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/user-layout :: main('Theo dõi đơn hàng - UTETra', ~{::#tracking-content})}">
 
-<!--
-	THEO DÕI ĐƠN /orders/{id}/tracking (USER).
-	Thanh tiến trình nhảy NGAY khi quán / shipper đổi trạng thái, không cần tải lại trang:
-	server đẩy WebSocket tới /user/queue/orders (OrderNotifier) -> static/js/order-tracking.js cập nhật giao diện.
-	Giao tận nơi: Đơn mới -> Đang pha chế (đã xác nhận) -> Pha xong -> Đã lấy hàng -> Đang giao -> Đã giao
-	Đến lấy     : Đơn mới -> Đang pha chế -> Đã xong, chờ bạn đến lấy -> Đã nhận món
--->
 <body>
 	<div id="tracking-content"
 		th:with="flow=${order.pickup} ? 'PENDING,CONFIRMED,READY,DELIVERED' : 'PENDING,CONFIRMED,READY,PICKED_UP,DELIVERING,DELIVERED',
@@ -39,12 +32,10 @@
 			<h1 class="h4 fw-bold text-success mb-0">Theo dõi đơn #<span th:text="${order.id}">1</span></h1>
 			<span id="trkBadge" class="badge" th:classappend="${order.badgeClass}" th:text="${order.status == 'CANCELLED'} ? (${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ' : 'Đã huỷ')) : ${order.statusLabel}">Chờ xác nhận</span>
 			<span class="small text-muted ms-auto"><span id="trkLive" class="trk-live me-1"></span><span id="trkLiveText">Đang kết nối...</span></span>
-			<!-- Quán chưa nhận đơn thì khách còn huỷ được (đơn đã trả trước sẽ tự hoàn tiền) -->
 			<a id="trkCancel" th:if="${order.canCancel}" th:href="@{|/orders/${order.id}#huy-don|}"
 				class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Huỷ đơn</a>
 		</div>
 
-		<!-- THANH TIẾN TRÌNH -->
 		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" id="trkBox"
 			th:attr="data-order-id=${order.id}, data-status=${order.status}, data-flow=${flow}">
 
@@ -70,7 +61,6 @@
 		</section>
 
 		<div class="row g-3">
-			<!-- NHẬT KÝ CẬP NHẬT -->
 			<div class="col-lg-6">
 				<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 h-100">
 					<h2 class="h6 fw-bold text-success mb-3"><i class="bi bi-clock-history me-1"></i> Cập nhật trạng thái</h2>
@@ -84,7 +74,6 @@
 				</section>
 			</div>
 
-			<!-- THÔNG TIN ĐƠN -->
 			<div class="col-lg-6">
 				<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 h-100">
 					<h2 class="h6 fw-bold text-success mb-3"><i class="bi bi-receipt me-1"></i> Thông tin đơn</h2>
@@ -94,7 +83,12 @@
 						<span th:text="${order.receiverName} + ' · ' + ${order.receiverPhone}"></span><br>
 						<span class="text-muted" th:text="${order.deliveryAddress}"></span></div>
 					<div class="small mb-2" th:if="${order.pickup}"><i class="bi bi-bag me-1"></i> Đến lấy tại cửa hàng</div>
-					<div class="small mb-2" th:if="${order.carrierName}"><i class="bi bi-truck me-1"></i> <span th:text="${order.carrierName}"></span></div>
+					<div class="small mb-2" th:if="${order.shipperName != null and {'PICKED_UP','DELIVERING','DELIVERED'}.contains(order.status)}">
+						<i class="bi bi-scooter me-1"></i> Shipper: <b th:text="${order.shipperName}"></b>
+						<a th:if="${order.shipperPhone}" th:href="'tel:' + ${order.shipperPhone}" class="ms-1 text-decoration-none"
+							th:text="'· ' + ${order.shipperPhone}"></a></div>
+					<div class="small mb-2 text-muted" th:if="${!order.pickup and order.shipperName == null and {'PENDING','CONFIRMED','READY'}.contains(order.status)}">
+						<i class="bi bi-scooter me-1"></i> Shipper của quán sẽ nhận đơn khi món pha xong</div>
 					<div class="small mb-2 fw-semibold text-success" th:if="${order.etaLabel}"><i class="bi bi-clock me-1"></i> <span th:text="${order.etaLabel}">Dự kiến giao lúc 14:20 - 14:30</span></div>
 					<div class="border-top pt-2 mt-2 small">
 						<div class="d-flex justify-content-between" th:each="it : ${order.items}">

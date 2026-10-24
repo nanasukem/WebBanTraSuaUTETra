@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Tình trạng món theo chi nhánh. Không có dòng = món đang bán ở chi nhánh đó */
 @Entity
 @Table(name = "BranchProducts", uniqueConstraints = @UniqueConstraint(columnNames = { "branch_id", "product_id" }))
 @Getter

@@ -9,11 +9,6 @@ import vn.utetra.entity.Carrier;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.repository.CarrierRepository;
 
-/**
- * PHÍ GIAO HÀNG của chuỗi (không có đối tác vận chuyển, chỉ có Shipper UTETra của quán).
- * Admin chỉnh ở /admin/shipping-fee: phí đồng giá cho {@value #BASE_KM} km đầu + phí mỗi km thêm.
- * Lưu ở 1 dòng "Shipper UTETra" của bảng Carriers (đơn hàng và tài khoản shipper gắn với dòng này).
- */
 @Service
 @Transactional(readOnly = true)
 public class ShippingFeeService {
@@ -30,7 +25,6 @@ public class ShippingFeeService {
 		this.carrierRepository = carrierRepository;
 	}
 
-	/** Dòng cấu hình Shipper UTETra (chưa có thì null -> dùng phí mặc định) */
 	public Carrier shipper() {
 		return carrierRepository.findByNameContainingIgnoreCaseOrderByIdAsc(SHIPPER_NAME).stream().findFirst()
 				.orElseGet(() -> carrierRepository.findAll().stream().findFirst().orElse(null));
@@ -46,14 +40,12 @@ public class ShippingFeeService {
 		return c == null || c.getPerKmFee() == null ? DEFAULT_PER_KM_FEE : c.getPerKmFee();
 	}
 
-	/** Phí giao theo quãng đường: <= 3 km đồng giá, mỗi km vượt (làm tròn lên) cộng phí mỗi km */
 	public BigDecimal feeFor(BigDecimal distanceKm) {
 		double diffKm = distanceKm.subtract(BigDecimal.valueOf(BASE_KM)).doubleValue();
 		int extraKm = (int) Math.max(0, Math.ceil(diffKm));
 		return baseFee().add(perKmFee().multiply(BigDecimal.valueOf(extraKm)));
 	}
 
-	/** Admin đổi phí giao (áp dụng cho đơn đặt sau khi lưu; đơn cũ giữ nguyên phí đã chốt) */
 	@Transactional
 	public Carrier update(BigDecimal baseFee, BigDecimal perKmFee) {
 		check(baseFee, "Phí " + BASE_KM + " km đầu");

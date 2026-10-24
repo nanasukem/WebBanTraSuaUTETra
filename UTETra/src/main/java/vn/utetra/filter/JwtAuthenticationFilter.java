@@ -33,10 +33,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		this.userRepository = userRepository;
 	}
 
-	/**
-	 * Bỏ qua lọc JWT cho các tài nguyên tĩnh và các đường dẫn công khai giúp trang
-	 * Thymeleaf tự do tải CSS/JS và hiển thị giao diện đầy đủ.
-	 */
 	@Override
 	protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
 		String path = request.getServletPath();
@@ -51,12 +47,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 		String jwt = null;
 
-		// 1. Kiểm tra Header "Authorization: Bearer <token>"
 		final String authHeader = request.getHeader("Authorization");
 		if (authHeader != null && authHeader.startsWith("Bearer ")) {
 			jwt = authHeader.substring(7);
 		} else {
-			// 2. Nếu không có header, đọc từ Cookie "JWT_TOKEN" (Phục vụ Thymeleaf)
 			if (request.getCookies() != null) {
 				for (Cookie cookie : request.getCookies()) {
 					if ("JWT_TOKEN".equals(cookie.getName())) {
@@ -80,7 +74,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 						authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 						SecurityContextHolder.getContext().setAuthentication(authToken);
 
-						// 3. ĐỒNG BỘ ĐỐI TƯỢNG USER VÀO HTTP SESSION CHO THYMELEAF
 						HttpSession session = request.getSession(true);
 						if (session.getAttribute("user") == null) {
 							userRepository.findByUsername(username)
@@ -89,8 +82,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 					}
 				}
 			} catch (Exception e) {
-				// Nếu JWT lỗi hoặc hết hạn -> Xóa cookie JWT_TOKEN ngay lập tức để tránh lặp
-				// lỗi
 				Cookie cookie = new Cookie("JWT_TOKEN", null);
 				cookie.setPath("/");
 				cookie.setMaxAge(0);

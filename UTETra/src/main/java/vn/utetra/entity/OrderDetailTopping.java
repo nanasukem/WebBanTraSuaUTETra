@@ -7,7 +7,6 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
-/** Bảng OrderDetailToppings - topping đi kèm 1 ly, lưu giá lúc đặt */
 @Entity
 @Table(name = "OrderDetailToppings")
 @Getter

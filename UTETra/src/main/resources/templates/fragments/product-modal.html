@@ -1,11 +1,3 @@
-<!--
-  Modal chọn món: Size / % đường / % đá / Topping / số lượng.
-  CÁCH DÙNG trong trang menu:
-  1) Controller đưa topping vào model:  model.addAttribute("toppings", ...danh sách topping...);
-  2) Chèn modal ở cuối <body>:  <div th:replace="~{fragments/product-modal :: productModal}"></div>
-  3) Mỗi món có 1 nút mở modal (xem ví dụ ở Bước 8)
-  4) Nạp script:  <script th:src="@{/js/cart.js}"></script>
--->
 <div th:fragment="productModal" class="modal fade" id="productModal" tabindex="-1" aria-labelledby="pmName" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
         <div class="modal-content">
@@ -23,7 +15,6 @@
                     </div>
 
                     <div class="col-md-7">
-                        <!-- Topping mua riêng (danh mục Topping): ẩn khối này, chỉ chọn số lượng -->
                         <div class="alert alert-success small py-2 d-none" id="pmToppingNotice">
                             <i class="bi bi-plus-circle-dotted me-1"></i> Topping mua riêng · 1 phần, không chọn size / đường / đá
                         </div>

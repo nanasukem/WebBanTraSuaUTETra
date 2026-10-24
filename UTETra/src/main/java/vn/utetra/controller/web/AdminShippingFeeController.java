@@ -13,7 +13,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.service.ShippingFeeService;
 
-/** Admin cài đặt phí giao hàng của chuỗi (Shipper UTETra) - thay cho trang "đối tác giao hàng" cũ */
 @Controller
 @RequestMapping("/admin/shipping-fee")
 public class AdminShippingFeeController {
@@ -29,7 +28,6 @@ public class AdminShippingFeeController {
 		model.addAttribute("baseKm", ShippingFeeService.BASE_KM);
 		model.addAttribute("baseFee", shippingFeeService.baseFee());
 		model.addAttribute("perKmFee", shippingFeeService.perKmFee());
-		// Ví dụ để Admin dễ hình dung
 		model.addAttribute("examples", java.util.List.of(2, 3, 5, 8, 12).stream()
 				.map(km -> new Object[] { km, shippingFeeService.feeFor(BigDecimal.valueOf(km)) }).toList());
 		return "admin/shipping-fee";

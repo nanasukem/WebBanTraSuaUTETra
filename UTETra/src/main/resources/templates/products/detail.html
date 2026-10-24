@@ -2,17 +2,9 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org"
 	th:replace="~{layout/user-layout :: main(${product.name} + ' - UTETra', ~{::#product-detail})}">
 
-<!--
-	TRANG CHI TIẾT SẢN PHẨM /products/{id} - ai cũng xem được.
-	- USER: nút tim (thích), chọn món (modal size/đường/đá/topping), nhắc đánh giá nếu đã mua (đánh giá ở /orders/{id}/review),
-	        mở trang này = ghi vào "Sản phẩm đã xem"
-	- Guest: nút đặt món / thích dẫn tới đăng nhập
-	- Manager/Admin: chỉ xem
--->
 <body>
 	<div id="product-detail" th:with="price=${#numbers.formatDecimal(product.basePrice, 0, 'POINT', 0, 'COMMA')}">
 
-		<!-- Đường dẫn -->
 		<nav aria-label="breadcrumb" class="mb-3">
 			<ol class="breadcrumb mb-0">
 				<li class="breadcrumb-item"><a th:href="@{/}" class="link-success">Trang chủ</a></li>
@@ -25,7 +17,6 @@
 
 		<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
 
-		<!-- ===================== THÔNG TIN MÓN ===================== -->
 		<section class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4">
 			<div class="row g-4">
 				<div class="col-md-5">
@@ -43,7 +34,6 @@
 					<div class="small text-muted mb-1" th:text="${product.categoryName}">Trà sữa</div>
 					<h1 class="h2 fw-bold mb-2" th:text="${product.name}">Tên món</h1>
 
-					<!-- Sao · đã bán · lượt thích -->
 					<div class="d-flex flex-wrap align-items-center gap-3 mb-3 small">
 						<a href="#danh-gia" class="text-decoration-none text-dark">
 							<span class="text-warning" th:text="${#strings.repeat('★', product.fullStars())} + ${#strings.repeat('☆', 5 - product.fullStars())}">★★★★☆</span>
@@ -58,7 +48,6 @@
 
 					<div class="fs-3 fw-bold text-success mb-3" th:text="${price} + ' đ'">35.000 đ</div>
 
-					<!-- Giá theo size -->
 					<div class="mb-3" th:unless="${#lists.isEmpty(product.sizes)}">
 						<div class="small fw-semibold mb-2">Giá theo size</div>
 						<div class="d-flex flex-wrap gap-2">
@@ -82,7 +71,6 @@
 						Bạn đổi chi nhánh ở đầu trang Thực đơn để đặt.
 					</div>
 
-					<!-- Nút -->
 					<div class="mt-auto d-flex flex-wrap gap-2">
 						<button th:if="${isBuyer and product.available and !menuOutIds.contains(product.id)}" type="button" class="btn btn-success btn-lg px-4 js-open-product"
 							th:attr="data-id=${product.id}, data-name=${product.name}, data-price=${product.basePrice},
@@ -105,12 +93,10 @@
 			</div>
 		</section>
 
-		<!-- ===================== ĐÁNH GIÁ ===================== -->
 		<section id="danh-gia" class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" style="scroll-margin-top: 90px;">
 			<h2 class="h5 fw-bold mb-3"><i class="bi bi-star-fill text-warning me-1"></i> Đánh giá sản phẩm</h2>
 
 			<div class="row g-4">
-				<!-- Tổng quan -->
 				<div class="col-lg-4">
 					<div class="text-center border rounded-4 p-3 mb-3">
 						<div class="display-5 fw-bold text-warning"
@@ -127,7 +113,6 @@
 					</div>
 				</div>
 
-				<!-- Danh sách đánh giá -->
 				<div class="col-lg-8">
 					<p class="text-muted" th:if="${#lists.isEmpty(reviews)}">Chưa có đánh giá nào. Hãy là người đầu tiên!</p>
 
@@ -166,7 +151,6 @@
 			</div>
 		</section>
 
-		<!-- ===================== VIẾT ĐÁNH GIÁ ===================== -->
 		<section id="viet-danh-gia" class="bg-white rounded-4 shadow-sm p-3 p-md-4 mb-4" style="scroll-margin-top: 90px;"
 			th:unless="${cardMode == 'view'}">
 			<h2 class="h5 fw-bold mb-3"><i class="bi bi-pencil-square text-success me-1"></i> Đánh giá của bạn</h2>
@@ -180,7 +164,6 @@
 			<p class="text-success mb-0" th:if="${isBuyer and !#lists.isEmpty(purchased) and #lists.isEmpty(pendingItems)}">
 				<i class="bi bi-check-circle me-1"></i> Bạn đã đánh giá các ly đã mua của món này (hoặc đã quá hạn 30 ngày). Cảm ơn bạn!</p>
 
-			<!-- Đã mua, chưa đánh giá: dẫn tới trang đánh giá cả đơn (kiểu Shopee) -->
 			<div th:if="${isBuyer and !#lists.isEmpty(pendingItems)}">
 				<p class="mb-2">Bạn đã mua món này và chưa đánh giá. Chia sẻ cảm nhận của bạn nhé!</p>
 				<div class="d-flex flex-wrap gap-2">
@@ -191,7 +174,6 @@
 			</div>
 		</section>
 
-		<!-- ===================== MÓN CÙNG DANH MỤC ===================== -->
 		<section class="mb-4" th:unless="${#lists.isEmpty(related)}">
 			<h2 class="h5 fw-bold mb-3">Món cùng danh mục</h2>
 			<div class="row g-3">
@@ -201,7 +183,6 @@
 			</div>
 		</section>
 
-		<!-- MODAL CHỌN MÓN -->
 		<div th:replace="~{fragments/product-modal :: productModal}"></div>
 
 		<script th:src="@{/js/favorite.js}"></script>

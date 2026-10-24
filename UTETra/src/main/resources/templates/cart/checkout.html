@@ -80,7 +80,6 @@
 	font-size: 1.2rem;
 }
 
-
 .selected-chip {
 	display: flex;
 	gap: .5rem;
@@ -129,10 +128,8 @@
 		</div>
 
 		<div id="co-page" class="row g-4 d-none">
-			<!-- ===== CỘT TRÁI: LỰA CHỌN ===== -->
 			<div class="col-lg-7">
 
-				<!-- 1. Hình thức nhận hàng -->
 				<div class="card co-card mb-3">
 					<div class="card-body">
 						<div class="co-title">Hình thức nhận hàng</div>
@@ -156,7 +153,6 @@
 					</div>
 				</div>
 
-				<!-- 2a. Giao tận nơi: địa chỉ + phí giao theo khoảng cách -->
 				<div id="sec-delivery" class="card co-card mb-3">
 					<div class="card-body">
 						<div class="d-flex justify-content-between align-items-center">
@@ -173,7 +169,6 @@
 					</div>
 				</div>
 
-				<!-- 2b. Đến lấy: người đến lấy -->
 				<div id="sec-pickup" class="card co-card mb-3 d-none">
 					<div class="card-body">
 						<div class="co-title">Người đến lấy</div>
@@ -192,7 +187,6 @@
 					</div>
 				</div>
 
-				<!-- 3. Chi nhánh -->
 				<div class="card co-card mb-3">
 					<div class="card-body">
 						<div class="d-flex justify-content-between align-items-center">
@@ -208,7 +202,6 @@
 					</div>
 				</div>
 
-				<!-- 4. Mã giảm giá -->
 				<div class="card co-card mb-3">
 					<div class="card-body">
 						<div class="co-title mb-1">Mã giảm giá</div>
@@ -227,7 +220,6 @@
 					</div>
 				</div>
 
-				<!-- 5. Thanh toán -->
 				<div class="card co-card mb-3">
 					<div class="card-body">
 						<div class="co-title">Phương thức thanh toán</div>
@@ -265,7 +257,6 @@
 					</div>
 				</div>
 
-				<!-- 6. Ghi chú -->
 				<div class="card co-card mb-3">
 					<div class="card-body">
 						<div class="co-title">Ghi chú cho quán</div>
@@ -275,7 +266,6 @@
 				</div>
 			</div>
 
-			<!-- ===== CỘT PHẢI: TÓM TẮT ===== -->
 			<div class="col-lg-5">
 				<div class="card co-card position-sticky" style="top: 90px">
 					<div class="card-body">
@@ -327,7 +317,6 @@
 			</div>
 		</div>
 
-		<!-- Modal thêm / sửa địa chỉ kiểu Shopee (dùng chung) + Leaflet + address-book.js -->
 		<th:block th:replace="~{fragments/address-modal :: addressModal}"></th:block>
 
 		<script th:src="@{/js/checkout.js}"></script>

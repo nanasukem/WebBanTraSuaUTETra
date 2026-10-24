@@ -105,7 +105,6 @@ public class VoucherServiceImpl implements VoucherService {
 	private static final Map<String, String> STATUS_BADGE = Map.of("RUNNING", "text-bg-success", "UPCOMING",
 			"text-bg-info", "SOLD_OUT", "text-bg-warning", "OFF", "text-bg-secondary", "ENDED", "text-bg-light border");
 
-	/** RUNNING | UPCOMING | ENDED | SOLD_OUT | OFF */
 	static String voucherStatus(Voucher v, LocalDateTime now) {
 		if (!Boolean.TRUE.equals(v.getIsActive())) return "OFF";
 		if (v.getEndDate() != null && v.getEndDate().isBefore(now)) return "ENDED";
@@ -187,7 +186,7 @@ public class VoucherServiceImpl implements VoucherService {
 	public void delete(Integer id) {
 		Voucher v = findById(id);
 		if (v.getUsedCount() > 0) {
-			v.setIsActive(false); // đã gắn với đơn hàng -> không xoá được, chỉ tắt
+			v.setIsActive(false);
 		} else {
 			voucherRepository.delete(v);
 		}
@@ -216,7 +215,6 @@ public class VoucherServiceImpl implements VoucherService {
 				.filter(v -> v.getApplyTo() == VoucherApplyTo.PRODUCT).toList();
 	}
 
-	// ================= KIỂM TRA CHUNG =================
 	@Override
 	@Transactional(readOnly = true, noRollbackFor = BusinessException.class)
 	public BigDecimal calculateDiscount(String code, Integer branchId, BigDecimal itemsTotal) {
@@ -240,7 +238,6 @@ public class VoucherServiceImpl implements VoucherService {
 			throw new BusinessException(
 					"Đơn tối thiểu " + v.getMinOrderValue().toPlainString() + "đ mới dùng được voucher này");
 
-		// Chỉ giảm trên tiền món (PRODUCT)
 		BigDecimal base = itemsTotal;
 
 		BigDecimal discount;
@@ -251,29 +248,25 @@ public class VoucherServiceImpl implements VoucherService {
 		} else {
 			discount = v.getDiscountValue();
 		}
-		return discount.min(base); // không giảm quá số tiền gốc
+		return discount.min(base);
 	}
 
-	// ================= KIỂM TRA ĐẦY ĐỦ KHI ĐẶT HÀNG (v2 + v3) =================
 	@Override
 	@Transactional(readOnly = true, noRollbackFor = BusinessException.class)
 	public BigDecimal calculateDiscount(String code, Integer branchId, Integer userId, PaymentMethod paymentMethod,
 			BigDecimal itemsTotal) {
-		BigDecimal discount = calculateDiscount(code, branchId, itemsTotal); // kiểm tra chung trước
+		BigDecimal discount = calculateDiscount(code, branchId, itemsTotal);
 		Voucher v = voucherRepository.findByCodeIgnoreCase(code.trim())
 				.orElseThrow(() -> new BusinessException("Mã voucher không tồn tại"));
 
-		// v3: mã chỉ dành cho 1 phương thức thanh toán
 		if (v.getPaymentMethod() != null && v.getPaymentMethod() != paymentMethod) {
 			throw new BusinessException("Mã " + v.getCode() + " chỉ áp dụng khi thanh toán bằng "
 					+ paymentLabel(v.getPaymentMethod()));
 		}
-		// v2: theo người dùng
 		if (userId != null) checkUser(v, userId);
 		return discount;
 	}
 
-	/** Lượt mỗi người / tài khoản mới / hạng tối thiểu */
 	private void checkUser(Voucher v, Integer userId) {
 		if (v.getPerUserLimit() != null) {
 			long used = voucherUsageRepository.countByVoucherIdAndUserId(v.getId(), userId);
@@ -303,7 +296,6 @@ public class VoucherServiceImpl implements VoucherService {
 		};
 	}
 
-	// ================= GHI NHẬN ĐÃ DÙNG =================
 	@Override
 	@Transactional
 	public void markUsed(Integer voucherId) {
@@ -342,7 +334,7 @@ public class VoucherServiceImpl implements VoucherService {
 		v.setCode(req.getCode().trim().toUpperCase());
 		v.setName(req.getName().trim());
 		v.setBranch(branch);
-		v.setApplyTo(VoucherApplyTo.PRODUCT); // Chỉ áp dụng giảm tiền món
+		v.setApplyTo(VoucherApplyTo.PRODUCT);
 		v.setDiscountType(req.getDiscountType());
 		v.setDiscountValue(req.getDiscountValue());
 		v.setMaxDiscount(req.getDiscountType() == DiscountType.PERCENT ? req.getMaxDiscount() : null);

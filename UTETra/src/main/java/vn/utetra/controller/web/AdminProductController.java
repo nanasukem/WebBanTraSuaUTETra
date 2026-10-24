@@ -23,13 +23,11 @@ public class AdminProductController {
 	private final AdminProductService adminProductService;
 	private final vn.utetra.repository.BranchProductRepository branchProductRepository;
 
-	// Danh sách và tìm kiếm sản phẩm
 	@GetMapping
 	public String index(@RequestParam(required = false) String keyword,
 			@RequestParam(required = false) Integer categoryId, @RequestParam(required = false) String status,
 			Model model) {
 
-		// Topping mua riêng nằm ở tab Topping (/admin/toppings), không hiện ở tab Đồ uống
 		List<Product> all = adminProductService.getAllProducts();
 		java.util.Set<Integer> toppingCategoryIds = all.stream().filter(Product::isToppingItem)
 				.filter(p -> p.getCategory() != null).map(p -> p.getCategory().getId())
@@ -59,7 +57,6 @@ public class AdminProductController {
 				.filter(c -> !toppingCategoryIds.contains(c.getId())).toList());
 		model.addAttribute("keyword", keyword);
 
-		// Chi nhánh nào đang báo hết món nào (Manager bật / tắt) - Admin chỉ xem
 		java.util.Map<Integer, List<String>> outAt = new java.util.HashMap<>();
 		for (Object[] r : branchProductRepository.findAllUnavailable()) {
 			outAt.computeIfAbsent((Integer) r[0], k -> new java.util.ArrayList<>()).add((String) r[1]);
@@ -71,7 +68,6 @@ public class AdminProductController {
 		return "admin/products/index";
 	}
 
-	// Hiển thị form thêm
 	@GetMapping("/create")
 	public String createForm(Model model) {
 		model.addAttribute("form", new ProductFormDto());
@@ -81,7 +77,6 @@ public class AdminProductController {
 		return "admin/products/form";
 	}
 
-	// Xử lý thêm sản phẩm
 	@PostMapping("/create")
 	public String create(@ModelAttribute("form") ProductFormDto form, Model model,
 			RedirectAttributes redirectAttributes) {
@@ -106,7 +101,6 @@ public class AdminProductController {
 		}
 	}
 
-	// Hiển thị form sửa
 	@GetMapping("/{id}/edit")
 	public String editForm(@PathVariable Integer id, Model model, RedirectAttributes redirectAttributes) {
 
@@ -137,7 +131,6 @@ public class AdminProductController {
 		}
 	}
 
-	// Xử lý sửa sản phẩm
 	@PostMapping("/{id}/edit")
 	public String update(@PathVariable Integer id, @ModelAttribute("form") ProductFormDto form, Model model,
 			RedirectAttributes redirectAttributes) {
@@ -146,7 +139,6 @@ public class AdminProductController {
 			ProductDto dto = toProductDto(form);
 			dto.setId(id);
 
-			// null nghĩa là không thay đổi trạng thái hiện tại
 			dto.setIsAvailable(null);
 
 			adminProductService.updateProduct(id, dto);
@@ -166,7 +158,6 @@ public class AdminProductController {
 		}
 	}
 
-	// Bật / tắt sản phẩm
 	@PostMapping("/{id}/availability")
 	public String toggleAvailability(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 
@@ -190,7 +181,6 @@ public class AdminProductController {
 		return "redirect:/admin/products";
 	}
 
-	// Xóa sản phẩm
 	@PostMapping("/{id}/delete")
 	public String delete(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
 
@@ -241,7 +231,6 @@ public class AdminProductController {
 			return e.getMessage();
 		}
 
-		// Ghi chi tiết lỗi vào console để chẩn đoán
 		e.printStackTrace();
 		return fallback;
 	}

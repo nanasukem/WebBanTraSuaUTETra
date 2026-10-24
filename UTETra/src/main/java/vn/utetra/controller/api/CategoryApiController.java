@@ -17,8 +17,6 @@ public class CategoryApiController {
 		this.productService = productService;
 	}
 
-	// Lấy toàn bộ danh mục đồ uống
-	// GET /api/categories
 	@GetMapping
 	public ResponseEntity<List<Category>> getAllCategories() {
 		List<Category> categories = productService.getAllCategories();

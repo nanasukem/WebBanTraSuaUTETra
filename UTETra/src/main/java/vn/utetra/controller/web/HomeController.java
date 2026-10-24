@@ -50,13 +50,8 @@ public class HomeController {
 
 	private static final int PAGE_SIZE = 20;
 
-	/** Đề - Guest: trang chủ hiện sản phẩm bán TRÊN 10 */
 	private static final int GUEST_MIN_SOLD = 10;
 
-	/**
-	 * Trang chủ User: mỗi trang của khối "20 món nhất" hiện 8 món (20 món = 3
-	 * trang)
-	 */
 	private static final int HIGHLIGHT_PAGE_SIZE = 8;
 
 	private final UserRepository userRepository;
@@ -141,9 +136,7 @@ public class HomeController {
 		}
 		User user = userOptional.get();
 		session.setAttribute("user", user);
-		// Mật khẩu tạm do Admin đặt -> bắt buộc đổi trước khi làm gì khác
 		if (Boolean.TRUE.equals(user.getMustChangePassword())) {
-			// Mật khẩu tạm quá 72 giờ: hết hạn, phải nhờ Admin cấp lại
 			if (user.getTempPasswordExpiresAt() != null && user.getTempPasswordExpiresAt().isBefore(java.time.LocalDateTime.now())) {
 				session.invalidate();
 				SecurityContextHolder.clearContext();
@@ -162,7 +155,6 @@ public class HomeController {
 		};
 	}
 
-	/** Trang chủ Guest: chỉ món bán trên 10 ly, nhiều nhất trước, phân trang */
 	private String guestHome(int page, Model model) {
 		page = Math.max(page, 0);
 		Page<Product> productPage = productRepository
@@ -175,8 +167,6 @@ public class HomeController {
 					GUEST_MIN_SOLD, PageRequest.of(page, PAGE_SIZE));
 		}
 
-		// BỔ SUNG: Đưa danh sách chi nhánh và điểm đánh giá sao trung bình ra trang chủ
-		// cho Guest
 		List<Branch> branches = branchRepository.findAll();
 		Map<Integer, Map<String, Object>> branchReviewSummaries = new HashMap<>();
 		for (Branch b : branches) {
@@ -197,10 +187,6 @@ public class HomeController {
 		return "home";
 	}
 
-	/**
-	 * Trang chủ trưng bày: USER (có đơn hàng + đặt món) hoặc MANAGER/ADMIN (chỉ
-	 * xem)
-	 */
 	private String userHome(User user, String role, Model model) {
 		boolean isBuyer = "USER".equals(role);
 		model.addAttribute("me", user);
@@ -220,8 +206,6 @@ public class HomeController {
 
 		model.addAttribute("categories", categoryCards());
 
-		// BỔ SUNG: Đưa danh sách chi nhánh và điểm đánh giá sao trung bình ra trang chủ
-		// cho User
 		List<Branch> branches = branchRepository.findAll();
 		Map<Integer, Map<String, Object>> branchReviewSummaries = new HashMap<>();
 		for (Branch b : branches) {
@@ -238,8 +222,7 @@ public class HomeController {
 		model.addAttribute("isBuyer", isBuyer);
 		model.addAttribute("isGuest", false);
 		model.addAttribute("cardMode", cardModeOf(role));
-		return "user/home"; // Lưu ý: Nếu user dùng template riêng, bạn có thể bổ sung tương tự cho file
-							// user/home.html nếu cần
+		return "user/home";
 	}
 
 	@GetMapping("/menu/highlight/{type}")
@@ -265,7 +248,6 @@ public class HomeController {
 		}
 		page = Math.max(page, 0);
 
-		// Gồm cả món Admin ngừng bán (hiện nhãn "Ngừng bán", xếp sau)
 		Page<Product> productPage = productRepository.menuProductsPaged(id, sortBy, PageRequest.of(page, PAGE_SIZE));
 		if (productPage.getTotalPages() > 0 && page >= productPage.getTotalPages()) {
 			page = productPage.getTotalPages() - 1;
@@ -330,7 +312,6 @@ public class HomeController {
 			sortBy = "default";
 		}
 
-		// Gồm cả món Admin ngừng bán: vẫn hiện trên menu với nhãn "Ngừng bán" (xếp cuối danh mục), xoá mới mất
 		List<Product> products = productRepository.menuProducts(keyword.isEmpty() ? null : keyword, null,
 				"default".equals(sortBy) ? "id" : sortBy);
 		if ("default".equals(sortBy)) {

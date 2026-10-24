@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 
-<!--
-	Header dùng chung cho trang khách (layout main + user-layout).
-	Menu trái (mọi vai trò): Trang chủ · Thực đơn · Chi nhánh
-	- Guest  : Đăng nhập / Đăng ký
-	- USER   : Đơn hàng, Giỏ hàng, menu tài khoản
-	- MANAGER/ADMIN: chỉ xem (không mua), nút vàng quay về trang quản lý / quản trị
--->
 <header th:fragment="header"
 	class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm py-2 sticky-top"
 	th:with="roleName=${session.user != null and session.user.role != null ? session.user.role.name : ''},
@@ -19,21 +12,17 @@
 
 	<div class="container px-4">
 
-		<!-- Logo: về trang chủ -->
 		<a th:href="@{/}"
 			class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2">
 			<i class="bi bi-cup-hot-fill fs-3 text-warning"></i> <span>UTETra</span>
 		</a>
 
-		<!-- Chuông thông báo (đã đăng nhập): luôn hiện, kể cả trên điện thoại khi menu đang gập.
-		     Màn hình lớn: nằm cuối hàng, cạnh nút tài khoản -->
 		<th:block th:if="${!isGuest}">
 			<div class="ms-auto me-2 order-lg-3 ms-lg-2 me-lg-0">
 				<div th:replace="~{fragments/notification-bell :: bell('light')}"></div>
 			</div>
 		</th:block>
 
-		<!-- Nút menu trên thiết bị nhỏ -->
 		<button class="navbar-toggler" type="button" data-bs-toggle="collapse"
 			data-bs-target="#navbarMain" aria-controls="navbarMain"
 			aria-expanded="false" aria-label="Mở menu">
@@ -44,58 +33,47 @@
 
 			<div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3 w-100">
 
-				<!-- ===================== MENU BÊN TRÁI: Trang chủ · Thực đơn · Chi nhánh ===================== -->
 				<ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-					<!-- Trang chủ (trưng bày): Guest -> món bán trên 10; USER -> trang chủ của mình; Manager/Admin -> trang chủ chế độ chỉ xem -->
 					<li class="nav-item"><a class="nav-link fw-semibold" th:href="@{/}">
 							<i class="bi bi-house-door me-1"></i> Trang chủ
 					</a></li>
 
-					<!-- Thực đơn: ai cũng xem được, không cần đăng nhập -->
 					<li class="nav-item"><a class="nav-link fw-semibold" th:href="@{/menu}">
 							<i class="bi bi-journal-richtext me-1"></i> Thực đơn
 					</a></li>
 
-					<!-- Chi nhánh: các chi nhánh đang hoạt động của chuỗi -->
 					<li class="nav-item"><a class="nav-link fw-semibold" th:href="@{/branches}">
 							<i class="bi bi-shop me-1"></i> Chi nhánh
 					</a></li>
 
 				</ul>
 
-				<!-- ===================== KHU VỰC BÊN PHẢI ===================== -->
 				<div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2">
 
-					<!-- ADMIN: quay về trang quản trị -->
 					<a th:if="${isAdmin}" th:href="@{/admin/dashboard}"
 						class="btn btn-warning btn-sm fw-bold"> <i
 						class="bi bi-speedometer2 me-1"></i> Về trang quản trị
 					</a>
 
-					<!-- MANAGER: quay về trang quản lý chi nhánh -->
 					<a th:if="${isManager}" th:href="@{/manager/dashboard}"
 						class="btn btn-warning btn-sm fw-bold"> <i
 						class="bi bi-speedometer2 me-1"></i> Về trang quản lý
 					</a>
 
-					<!-- USER: đơn hàng -->
 					<a th:if="${isBuyer}" th:href="@{/orders}"
 						class="btn btn-outline-light btn-sm fw-bold"> <i
 						class="bi bi-receipt me-1"></i> Đơn hàng
 					</a>
 
-					<!-- USER: giỏ hàng. Số ly do cart.js cập nhật vào #cart-count -->
 					<a th:if="${isBuyer}" th:href="@{/cart}"
 						class="btn btn-light btn-sm fw-bold position-relative"> <i
 						class="bi bi-cart3 me-1"></i> Giỏ hàng <span id="cart-count"
 						class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
 					</a>
 
-					<!-- Không phải người mua: giữ 1 thẻ #cart-count ẩn để cart.js không bị thiếu phần tử -->
 					<span th:unless="${isBuyer}" id="cart-count" class="d-none">0</span>
 
-					<!-- ĐÃ ĐĂNG NHẬP: menu tài khoản -->
 					<div th:if="${!isGuest}" class="dropdown">
 
 						<button
@@ -108,7 +86,6 @@
 
 						<ul class="dropdown-menu dropdown-menu-end shadow">
 
-							<!-- USER -->
 							<th:block th:if="${isBuyer}">
 								<li><a class="dropdown-item" th:href="@{/orders}">
 										<i class="bi bi-receipt me-2"></i> Đơn hàng của tôi
@@ -127,7 +104,6 @@
 								</a></li>
 							</th:block>
 
-							<!-- MANAGER -->
 							<th:block th:if="${isManager}">
 								<li><a class="dropdown-item" th:href="@{/manager/dashboard}">
 										<i class="bi bi-speedometer2 me-2"></i> Tổng quan chi nhánh
@@ -137,7 +113,6 @@
 								</a></li>
 							</th:block>
 
-							<!-- ADMIN -->
 							<th:block th:if="${isAdmin}">
 								<li><a class="dropdown-item" th:href="@{/admin/dashboard}">
 										<i class="bi bi-speedometer2 me-2"></i> Trang quản trị
@@ -156,7 +131,6 @@
 						</ul>
 					</div>
 
-					<!-- GUEST: đăng nhập / đăng ký -->
 					<div th:if="${isGuest}" class="d-flex align-items-center gap-2">
 						<a th:href="@{/auth/login}"
 							class="btn btn-outline-light btn-sm fw-bold px-3"> <i

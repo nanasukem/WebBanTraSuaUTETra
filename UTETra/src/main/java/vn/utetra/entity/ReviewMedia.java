@@ -22,5 +22,5 @@ public class ReviewMedia {
 	private String cloudinaryId;
 
 	@Column(name = "media_type", nullable = false, length = 10)
-	private String mediaType; // IMAGE, VIDEO
+	private String mediaType;
 }

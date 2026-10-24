@@ -9,12 +9,10 @@
 
 <title th:text="${title}">UTETra</title>
 
-<!-- Bootstrap -->
 <link
 	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
 	rel="stylesheet">
 
-<!-- Bootstrap Icons -->
 <link
 	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
 	rel="stylesheet">
@@ -48,15 +46,12 @@ main {
 
 <body class="d-flex flex-column min-vh-100 bg-light">
 
-	<!-- Header -->
 	<div th:replace="~{fragments/header :: header}"></div>
 
-	<!-- Nội dung trang -->
 	<main class="container py-4 flex-grow-1">
 		<div th:replace="${content}"></div>
 	</main>
 
-	<!-- Footer -->
 	<footer class="site-footer py-4">
 		<div class="container">
 			<div class="row g-3">
@@ -71,6 +66,8 @@ main {
 				<div class="col-md-6 text-md-end">
 					<a th:href="@{/}">Trang chủ</a> <span class="mx-2">|</span> <a
 						th:href="@{/menu}">Thực đơn</a>
+					<p class="small mt-2 mb-0"><i class="bi bi-telephone-fill me-1"></i>Hotline CSKH:
+						<a href="tel:19001234" class="fw-bold" th:text="${T(vn.utetra.service.OrderIssueService).ADMIN_HOTLINE}">1900 1234</a></p>
 					<p class="small mt-2 mb-0">© 2026 UTETra. All rights reserved.
 					</p>
 				</div>
@@ -78,12 +75,10 @@ main {
 		</div>
 	</footer>
 
-	<!-- JavaScript -->
 	<script
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 	<script th:src="@{/js/cart.js}"></script>
 
-	<!-- CUỘN MƯỢT: link tới 1 khối trên CHÍNH trang đang mở (vd #ban-chay, /menu#san-pham-moi) thì cuộn mượt, không tải lại -->
 	<script>
 		document.addEventListener('click', function (e) {
 			const a = e.target.closest('a[href*="#"]');
@@ -98,7 +93,6 @@ main {
 		});
 	</script>
 
-	<!-- Chuông thông báo (chỉ khi đã đăng nhập) -->
 	<th:block th:if="${session.user != null}"><th:block th:replace="~{fragments/notification-bell :: scripts}"></th:block></th:block>
 </body>
 </html>

@@ -9,7 +9,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/** Dữ liệu form Thêm/Sửa voucher */
 @Data
 public class VoucherReq {
 
@@ -21,7 +20,6 @@ public class VoucherReq {
 	@Size(max = 150, message = "Tên tối đa 150 ký tự")
 	private String name;
 
-	/** null = voucher toàn chuỗi; có giá trị = voucher riêng 1 chi nhánh */
 	private Integer branchId;
 
 	@NotNull(message = "Chọn loại áp dụng")

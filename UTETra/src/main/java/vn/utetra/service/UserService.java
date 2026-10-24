@@ -10,12 +10,6 @@ import vn.utetra.exception.BusinessException;
 import vn.utetra.exception.ResourceNotFoundException;
 import vn.utetra.repository.UserRepository;
 
-/**
- * Trang Profile của khách:
- * - Cập nhật thông tin cá nhân: họ tên, số điện thoại, ảnh đại diện (Cloudinary).
- *   Email / tên đăng nhập không đổi ở đây (email đã xác thực OTP lúc đăng ký).
- * - Đổi mật khẩu: phải nhập đúng mật khẩu hiện tại; mật khẩu mới tối thiểu 6 ký tự, khác mật khẩu cũ.
- */
 @Service
 @Transactional(readOnly = true)
 public class UserService {
@@ -40,7 +34,6 @@ public class UserService {
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
 	}
 
-	/** Cập nhật họ tên + số điện thoại (+ ảnh đại diện nếu có chọn file) */
 	@Transactional
 	public User updateProfile(Integer userId, String fullName, String phone, MultipartFile avatar) {
 		User u = getProfile(userId);
@@ -82,7 +75,6 @@ public class UserService {
 		return userRepository.saveAndFlush(u);
 	}
 
-	/** Đổi mật khẩu */
 	@Transactional
 	public void changePassword(Integer userId, String currentPassword, String newPassword, String confirmPassword) {
 		User u = getProfile(userId);

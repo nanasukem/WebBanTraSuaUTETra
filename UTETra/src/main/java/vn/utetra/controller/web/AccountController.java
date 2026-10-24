@@ -15,12 +15,6 @@ import vn.utetra.service.EmailService;
 import vn.utetra.service.NotificationService;
 import vn.utetra.service.UserService;
 
-/**
- * ĐỔI MẬT KHẨU cho mọi tài khoản đã đăng nhập (Admin, Manager, Shipper, khách): /account/change-password.
- * - Tài khoản đang dùng mật khẩu tạm do Admin đặt (must_change_password) bị đưa vào trang này ngay sau đăng nhập
- *   và không vào được trang nào khác cho tới khi đổi xong (ForceChangePasswordInterceptor).
- * - Đổi xong: gửi email xác nhận + thông báo trên chuông.
- */
 @Controller
 public class AccountController {
 
@@ -39,17 +33,11 @@ public class AccountController {
 		this.notificationService = notificationService;
 	}
 
-	// ================= TÀI KHOẢN CỦA TÔI (Admin / Manager / Shipper) =================
-
-	/**
-	 * /account?tab=info|password - nhân viên tự sửa họ tên, số điện thoại, ảnh đại diện và đổi mật khẩu.
-	 * Email, tên đăng nhập, vai trò, chi nhánh chỉ xem (do Admin quản lý). Khách hàng dùng /user/profile.
-	 */
 	@GetMapping("/account")
 	public String account(@RequestParam(defaultValue = "info") String tab, HttpSession session, Model model) {
 		User u = sessionUser(session);
 		if (u == null) return "redirect:/auth/login";
-		if (Boolean.TRUE.equals(u.getMustChangePassword())) return "redirect:/account/change-password"; // mật khẩu tạm: đổi trước
+		if (Boolean.TRUE.equals(u.getMustChangePassword())) return "redirect:/account/change-password";
 		String role = roleOf(u);
 		if ("USER".equals(role)) return "redirect:/user/profile";
 		User fresh = userRepository.findById(u.getId()).orElse(u);
@@ -79,7 +67,7 @@ public class AccountController {
 		if (u == null) return "redirect:/auth/login";
 		try {
 			User saved = userService.updateProfile(u.getId(), fullName, phone, avatar);
-			session.setAttribute("user", saved); // thanh menu hiện tên mới ngay
+			session.setAttribute("user", saved);
 			ra.addFlashAttribute("successMessage", "Đã cập nhật thông tin cá nhân");
 		} catch (BusinessException e) {
 			ra.addFlashAttribute("errorMessage", e.getMessage());
@@ -87,7 +75,6 @@ public class AccountController {
 		return "redirect:/account?tab=info";
 	}
 
-	/** Trang đổi mật khẩu riêng: chỉ dùng khi BẮT BUỘC đổi mật khẩu tạm (lần đăng nhập đầu) */
 	@GetMapping("/account/change-password")
 	public String form(HttpSession session, Model model) {
 		User u = sessionUser(session);
@@ -127,7 +114,6 @@ public class AccountController {
 				"Đã gửi email xác nhận tới " + fresh.getEmail(), null);
 
 		ra.addFlashAttribute("successMessage", "Đã đổi mật khẩu. Email xác nhận đã gửi tới " + fresh.getEmail() + ".");
-		// Lần đầu (mật khẩu tạm) -> vào trang làm việc theo vai trò; tự đổi -> ở lại trang Tài khoản
 		return forced ? "redirect:/login-success" : "redirect:/account?tab=password";
 	}
 
