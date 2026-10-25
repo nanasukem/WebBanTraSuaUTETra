@@ -27,6 +27,10 @@ public class AdminProductServiceImpl implements AdminProductService {
 	private final CategoryRepository categoryRepository;
 	private final ToppingService toppingService;
 	private final CloudinaryService cloudinaryService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.OrderDetailRepository orderDetailRepository;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.ReviewRepository reviewRepository;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -137,15 +141,25 @@ public class AdminProductServiceImpl implements AdminProductService {
 					+ "\" là topping bán riêng, hãy sửa / bật tắt ở trang Quản lý topping.");
 		}
 
+		long orders = orderDetailRepository.countByProduct_Id(id);
+		long reviews = reviewRepository.countByProduct_Id(id);
+		if (orders > 0 || reviews > 0) {
+			throw new IllegalArgumentException("Món \"" + product.getName() + "\" đã có trong " + orders
+					+ " đơn hàng" + (reviews > 0 ? " và " + reviews + " đánh giá" : "")
+					+ " nên không xoá được (để hoá đơn cũ còn nguyên). Hãy tắt \"Đang bán\" để ngừng bán món này.");
+		}
+
 		String imageUrl = product.getImageCloudinaryId();
 
 		productRepository.delete(product);
+		productRepository.flush();
 
 		if (imageUrl != null && !imageUrl.isBlank()) {
 			try {
 				cloudinaryService.deleteImage(imageUrl);
 			} catch (Exception e) {
-				System.err.println("Khong the xoa anh san pham tren Cloudinary: " + e.getMessage());
+				org.slf4j.LoggerFactory.getLogger(AdminProductServiceImpl.class)
+						.warn("Không xoá được ảnh sản phẩm trên Cloudinary: {}", e.getMessage());
 			}
 		}
 	}

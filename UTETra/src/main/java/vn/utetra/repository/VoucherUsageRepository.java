@@ -9,6 +9,8 @@ public interface VoucherUsageRepository extends JpaRepository<VoucherUsage, Inte
 
 	long countByVoucherIdAndUserId(Integer voucherId, Integer userId);
 
+	long countByVoucherId(Integer voucherId);
+
 	List<VoucherUsage> findByOrderId(Integer orderId);
 
 }

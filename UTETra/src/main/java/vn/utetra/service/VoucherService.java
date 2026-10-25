@@ -25,7 +25,7 @@ public interface VoucherService {
 
 	void toggleActive(Integer id);
 
-	void delete(Integer id);
+	boolean delete(Integer id);
 
 	VoucherReq toReq(Voucher v);
 

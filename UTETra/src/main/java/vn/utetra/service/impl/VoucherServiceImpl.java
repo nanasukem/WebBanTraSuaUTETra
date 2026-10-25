@@ -202,13 +202,17 @@ public class VoucherServiceImpl implements VoucherService {
 
 	@Override
 	@Transactional
-	public void delete(Integer id) {
+	public boolean delete(Integer id) {
 		Voucher v = findById(id);
-		if (v.getUsedCount() > 0) {
+		boolean used = (v.getUsedCount() != null && v.getUsedCount() > 0)
+				|| orderRepository.countByProductVoucher_Id(id) > 0 || voucherUsageRepository.countByVoucherId(id) > 0;
+		if (used) {
 			v.setIsActive(false);
-		} else {
-			voucherRepository.delete(v);
+			voucherRepository.save(v);
+			return false;
 		}
+		voucherRepository.delete(v);
+		return true;
 	}
 
 	@Override

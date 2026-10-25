@@ -136,12 +136,11 @@ public class AdminVoucherController {
 
 		Voucher voucher = voucherService.findById(id);
 
-		boolean wasUsed = voucher.getUsedCount() != null && voucher.getUsedCount() > 0;
+		boolean deleted = voucherService.delete(id);
 
-		voucherService.delete(id);
-
-		redirectAttributes.addFlashAttribute("successMessage",
-				wasUsed ? "Voucher đã được sử dụng nên chỉ được tắt." : "Xóa voucher thành công.");
+		redirectAttributes.addFlashAttribute("successMessage", deleted ? "Đã xoá voucher " + voucher.getCode() + "."
+				: "Voucher " + voucher.getCode()
+						+ " đã từng được dùng trong đơn hàng nên không xoá được (để hoá đơn cũ còn nguyên). Hệ thống đã tắt voucher này.");
 
 		return "redirect:/admin/vouchers";
 	}

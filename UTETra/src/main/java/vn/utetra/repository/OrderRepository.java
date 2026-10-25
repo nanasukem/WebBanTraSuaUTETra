@@ -82,6 +82,8 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
 	long countByBranch_Id(Integer branchId);
 
+	long countByProductVoucher_Id(Integer voucherId);
+
 	long countByBranch_IdAndStatusIn(Integer branchId, Collection<OrderStatus> statuses);
 
 	@Query("SELECT o.id FROM Order o WHERE o.shipper.id = :shipperId AND o.status IN :statuses ORDER BY o.id")

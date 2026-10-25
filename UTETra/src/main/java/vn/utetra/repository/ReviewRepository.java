@@ -8,6 +8,8 @@ import vn.utetra.entity.Review;
 
 public interface ReviewRepository extends JpaRepository<Review, Integer> {
 
+	long countByProduct_Id(Integer productId);
+
 	List<Review> findByProductIdOrderByCreatedAtDescIdDesc(Integer productId);
 
 	boolean existsByOrderDetailId(Integer orderDetailId);

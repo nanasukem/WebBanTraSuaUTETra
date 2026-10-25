@@ -532,4 +532,14 @@ class Week4ServiceTest {
 		assertTrue(branchRepository.findById(b.getId()).isEmpty());
 		assertNull(userRepository.findByUsername("shipper2").orElseThrow().getBranch(), "shipper về chưa phân công");
 	}
+
+	@Test
+	void xoaMon_daCoDon_thiChan_vaKhongXoaAnh() {
+		org.mockito.Mockito.clearInvocations(cloudinaryService);
+		IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> adminProductService.deleteProduct(1));
+		assertTrue(e.getMessage().contains("Đang bán"), e.getMessage());
+		assertTrue(productRepository.findById(1).isPresent(), "món có đơn vẫn còn");
+		org.mockito.Mockito.verify(cloudinaryService, org.mockito.Mockito.never())
+				.deleteImage(org.mockito.ArgumentMatchers.anyString());
+	}
 }

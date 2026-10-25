@@ -299,4 +299,17 @@ class Week1ServiceTest {
 		Voucher sauXoa = voucherService.findById(v.getId());
 		assertFalse(sauXoa.getIsActive(), "Voucher đã dùng chỉ được tắt, không xoá");
 	}
+
+	@Test
+	void voucher_xoa_tungGanVoiDonDaHuy_thiChiTat() {
+		Voucher v = voucherService.create(voucherReq("JUNITDEL3"));
+		em.createNativeQuery("UPDATE Orders SET product_voucher_id = :v WHERE id = 1").setParameter("v", v.getId())
+				.executeUpdate();
+		em.clear();
+		assertFalse(voucherService.delete(v.getId()), "đơn còn trỏ tới voucher thì chỉ tắt");
+		em.flush();
+		em.clear();
+		assertFalse(voucherService.findById(v.getId()).getIsActive());
+		assertTrue(voucherService.delete(voucherService.create(voucherReq("JUNITDEL4")).getId()), "chưa ai dùng thì xoá");
+	}
 }

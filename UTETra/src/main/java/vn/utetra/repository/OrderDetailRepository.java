@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 import vn.utetra.entity.enums.OrderStatus;
 
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, Integer> {
+
+	long countByProduct_Id(Integer productId);
 	List<OrderDetail> findByOrderId(Integer orderId);
 
 	@Query("SELECT d FROM OrderDetail d WHERE d.order.user.id = :userId AND d.order.status = :status "
