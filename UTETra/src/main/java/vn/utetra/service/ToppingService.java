@@ -69,7 +69,7 @@ public class ToppingService {
 		for (Object[] r : branchToppingRepository.findAllUnavailable()) {
 			outAt.computeIfAbsent((Integer) r[0], k -> new java.util.ArrayList<>()).add((String) r[1]);
 		}
-		return toppingRepository.findAll().stream().sorted(Comparator.comparing(Topping::getId))
+		return toppingRepository.findAll().stream().sorted(Comparator.comparing(Topping::getId).reversed())
 				.map(t -> {
 					Product p = productRepository.findByTopping_Id(t.getId()).orElse(null);
 					return new ToppingRow(t, p, usedAsAddOn(t.getId()), p == null ? 0 : soldAlone(p.getId()),

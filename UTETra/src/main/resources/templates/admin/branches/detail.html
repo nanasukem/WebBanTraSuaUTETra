@@ -526,6 +526,10 @@
 				</a> <a th:href="@{/admin/branches}" class="btn btn-outline-secondary">
 					<i class="bi bi-list-ul me-1"></i> Danh sách
 				</a>
+				<button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+					data-bs-target="#deleteBranchModal">
+					<i class="bi bi-trash me-1"></i> Xoá chi nhánh
+				</button>
 			</div>
 		</div>
 
@@ -817,6 +821,31 @@
 			</span> <a th:href="@{/admin/branches}" class="btn btn-outline-secondary">
 				<i class="bi bi-arrow-left me-1"></i> Về danh sách chi nhánh
 			</a>
+		</div>
+
+		<div class="modal fade" id="deleteBranchModal" tabindex="-1" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+					<form th:action="@{/admin/branches/{id}/delete(id=${branch.id})}" method="post">
+						<div class="modal-header">
+							<h5 class="modal-title text-danger"><i class="bi bi-trash me-1"></i> Xoá chi nhánh</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+						</div>
+						<div class="modal-body">
+							<p class="mb-2">Xoá vĩnh viễn chi nhánh <b th:text="${branch.name}">Tên chi nhánh</b>?</p>
+							<ul class="small text-muted mb-0">
+								<li>Chỉ xoá được chi nhánh <b>chưa có đơn hàng nào</b>. Chi nhánh đã bán thì chuyển sang Tạm ngưng để giữ lịch sử.</li>
+								<li>Tồn kho và voucher riêng của chi nhánh bị xoá theo.</li>
+								<li>Shipper của chi nhánh chuyển về "Chưa phân công".</li>
+							</ul>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Huỷ</button>
+							<button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i> Xoá</button>
+						</div>
+					</form>
+				</div>
+			</div>
 		</div>
 
 	</main>

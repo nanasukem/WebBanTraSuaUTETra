@@ -29,6 +29,10 @@ public class BranchServiceImpl implements BranchService {
 	private final BranchRepository branchRepository;
 	private final UserRepository userRepository;
 	private final CloudinaryService cloudinaryService;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.OrderRepository orderRepository;
+	@org.springframework.beans.factory.annotation.Autowired
+	private vn.utetra.repository.VoucherRepository voucherRepository;
 
 	public BranchServiceImpl(BranchRepository branchRepository, UserRepository userRepository,
 			CloudinaryService cloudinaryService) {
@@ -144,6 +148,36 @@ public class BranchServiceImpl implements BranchService {
 		checkTransition(branch.getStatus(), newStatus);
 		branch.setStatus(newStatus);
 		branchRepository.save(branch);
+	}
+
+	@Override
+	@Transactional
+	public String delete(Integer id) {
+		Branch branch = findById(id);
+		long orders = orderRepository.countByBranch_Id(id);
+		if (orders > 0) {
+			throw new BusinessException("Chi nhánh \"" + branch.getName() + "\" đã có " + orders
+					+ " đơn hàng nên không xoá được (để giữ lịch sử đơn và doanh thu). Hãy chuyển sang Tạm ngưng để ngừng nhận đơn.");
+		}
+		List<User> staff = userRepository.findByBranch_Id(id);
+		for (User u : staff) {
+			u.setBranch(null);
+		}
+		userRepository.saveAll(staff);
+		voucherRepository.deleteAll(voucherRepository.findByBranch_IdOrderByCreatedAtDesc(id));
+		String image = branch.getImageCloudinaryId();
+		String name = branch.getName();
+		branchRepository.delete(branch);
+		branchRepository.flush();
+		if (image != null && !image.isBlank()) {
+			try {
+				cloudinaryService.deleteImage(image);
+			} catch (Exception ignored) {
+			}
+		}
+		return staff.isEmpty() ? "Đã xoá chi nhánh \"" + name + "\""
+				: "Đã xoá chi nhánh \"" + name + "\". " + staff.size()
+						+ " shipper của chi nhánh chuyển về \"Chưa phân công\", hãy phân công lại.";
 	}
 
 	@Override

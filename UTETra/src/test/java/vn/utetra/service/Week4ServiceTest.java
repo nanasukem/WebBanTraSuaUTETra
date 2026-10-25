@@ -505,4 +505,31 @@ class Week4ServiceTest {
 		assertTrue(e2.getMessage().contains("đã được dùng"));
 		assertTrue(userRepository.findByUsername("khachmoi_junit").isEmpty(), "lỗi thì không tạo tài khoản");
 	}
+
+	@Autowired BranchService branchService;
+	@Autowired vn.utetra.repository.BranchRepository branchRepository;
+
+	@Test
+	void xoaChiNhanh_daCoDonThiChan_chuaCoDonThiXoaDuoc() {
+		BusinessException e = assertThrows(BusinessException.class, () -> branchService.delete(1));
+		assertTrue(e.getMessage().contains("Tạm ngưng"));
+		assertTrue(branchRepository.findById(1).isPresent(), "chi nhánh có đơn vẫn còn");
+
+		vn.utetra.entity.Branch b = new vn.utetra.entity.Branch();
+		b.setName("Chi nhánh tạo nhầm");
+		b.setAddress("76 đường 1B");
+		b.setStatus(vn.utetra.entity.enums.BranchStatus.APPROVED);
+		b.setOwner(userRepository.findByUsername("manager3").orElseThrow());
+		b = branchRepository.saveAndFlush(b);
+		User s2 = userRepository.findByUsername("shipper2").orElseThrow();
+		s2.setBranch(b);
+		userRepository.saveAndFlush(s2);
+
+		String msg = branchService.delete(b.getId());
+		em.flush();
+		em.clear();
+		assertTrue(msg.contains("Chưa phân công"));
+		assertTrue(branchRepository.findById(b.getId()).isEmpty());
+		assertNull(userRepository.findByUsername("shipper2").orElseThrow().getBranch(), "shipper về chưa phân công");
+	}
 }

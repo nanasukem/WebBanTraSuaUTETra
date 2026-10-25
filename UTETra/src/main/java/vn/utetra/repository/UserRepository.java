@@ -46,6 +46,8 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
 	List<User> findByRole_Name(String roleName);
 
+	List<User> findByBranch_Id(Integer branchId);
+
 	@Query("SELECT u FROM User u WHERE u.role.name = 'SHIPPER' AND u.branch.id = :branchId ORDER BY u.fullName")
 	List<User> findShippersOfBranch(@Param("branchId") Integer branchId);
 
@@ -53,7 +55,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 			    SELECT u FROM User u
 			    JOIN FETCH u.role
 			    LEFT JOIN FETCH u.carrier
-			    ORDER BY u.createdAt DESC
+			    ORDER BY u.createdAt DESC, u.id DESC
 			""")
 	List<User> findAllForAdmin();
 
@@ -72,7 +74,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 			       OR LOWER(COALESCE(u.fullName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
 			       OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
 			       OR LOWER(COALESCE(u.phone, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-			    ORDER BY u.createdAt DESC
+			    ORDER BY u.createdAt DESC, u.id DESC
 			""")
 	List<User> searchForAdmin(@Param("keyword") String keyword);
 }

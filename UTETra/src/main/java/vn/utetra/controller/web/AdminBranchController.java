@@ -43,9 +43,14 @@ public class AdminBranchController {
 	}
 
 	@GetMapping("/{id}")
-	public String detail(@PathVariable Integer id, Model model) {
+	public String detail(@PathVariable Integer id, Model model, RedirectAttributes ra) {
 
-		model.addAttribute("branch", branchService.findById(id));
+		vn.utetra.entity.Branch branch = branchService.findOptional(id).orElse(null);
+		if (branch == null) {
+			ra.addFlashAttribute("error", "Không tìm thấy chi nhánh #" + id + " (có thể đã bị xoá)");
+			return "redirect:/admin/branches";
+		}
+		model.addAttribute("branch", branch);
 		model.addAttribute("branchShippers", userService.shippersOfBranch(id));
 
 		return "admin/branches/detail";
@@ -81,9 +86,14 @@ public class AdminBranchController {
 	}
 
 	@GetMapping("/{id}/edit")
-	public String editForm(@PathVariable Integer id, Model model) {
+	public String editForm(@PathVariable Integer id, Model model, RedirectAttributes ra) {
 
-		model.addAttribute("branchReq", branchService.toReq(branchService.findById(id)));
+		vn.utetra.entity.Branch branch = branchService.findOptional(id).orElse(null);
+		if (branch == null) {
+			ra.addFlashAttribute("error", "Không tìm thấy chi nhánh #" + id + " (có thể đã bị xoá)");
+			return "redirect:/admin/branches";
+		}
+		model.addAttribute("branchReq", branchService.toReq(branch));
 
 		return formView(model, id);
 	}
@@ -107,6 +117,17 @@ public class AdminBranchController {
 			model.addAttribute("error", e.getMessage());
 
 			return formView(model, id);
+		}
+	}
+
+	@PostMapping("/{id}/delete")
+	public String delete(@PathVariable Integer id, RedirectAttributes ra) {
+		try {
+			ra.addFlashAttribute("success", branchService.delete(id));
+			return "redirect:/admin/branches";
+		} catch (BusinessException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+			return "redirect:/admin/branches/" + id;
 		}
 	}
 

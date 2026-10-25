@@ -30,6 +30,8 @@ public interface BranchService {
 
 	void changeStatus(Integer id, BranchStatus newStatus);
 
+	String delete(Integer id);
+
 	BranchReq toReq(Branch branch);
 
 	List<User> findManagers();

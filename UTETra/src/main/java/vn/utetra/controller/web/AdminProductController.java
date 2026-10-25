@@ -30,7 +30,8 @@ public class AdminProductController {
 		java.util.Set<Integer> toppingCategoryIds = all.stream().filter(Product::isToppingItem)
 				.filter(p -> p.getCategory() != null).map(p -> p.getCategory().getId())
 				.collect(java.util.stream.Collectors.toSet());
-		List<Product> products = all.stream().filter(p -> !p.isToppingItem()).toList();
+		List<Product> products = all.stream().filter(p -> !p.isToppingItem())
+				.sorted(java.util.Comparator.comparing(Product::getId).reversed()).toList();
 
 		if (keyword != null && !keyword.isBlank()) {
 			String search = keyword.trim().toLowerCase();
