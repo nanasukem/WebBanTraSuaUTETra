@@ -12,7 +12,9 @@ import vn.utetra.service.AuthenticationService;
 import vn.utetra.service.JwtService;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,6 +64,8 @@ public class AuthApiController {
 			UserDetails userDetails = userDetailsService.loadUserByUsername(authenticatedUser.getUsername());
 			String jwtToken = jwtService.generateToken(userDetails);
 
+			SecurityContextHolder.clearContext();
+
 			Map<String, Object> response = new HashMap<>();
 			response.put("token", jwtToken);
 			response.put("expiresIn", jwtService.getExpirationTime());
@@ -96,12 +100,17 @@ public class AuthApiController {
 	}
 
 	@PostMapping("/logout")
-	public ResponseEntity<?> logout(HttpServletResponse response) {
+	public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
 		Cookie jwtCookie = new Cookie("JWT_TOKEN", null);
 		jwtCookie.setPath("/");
 		jwtCookie.setHttpOnly(true);
 		jwtCookie.setMaxAge(0);
 		response.addCookie(jwtCookie);
+
+		HttpSession session = request.getSession(false);
+		if (session != null) {
+			session.invalidate();
+		}
 
 		SecurityContextHolder.clearContext();
 

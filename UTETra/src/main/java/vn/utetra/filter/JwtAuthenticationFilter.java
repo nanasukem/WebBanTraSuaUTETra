@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import vn.utetra.entity.User;
 import vn.utetra.repository.UserRepository;
 import vn.utetra.service.JwtService;
 
@@ -38,25 +39,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		String path = request.getServletPath();
 		return path.startsWith("/css/") || path.startsWith("/js/") || path.startsWith("/images/")
 				|| path.startsWith("/webjars/") || path.equals("/favicon.ico") || path.equals("/")
-				|| path.startsWith("/menu") || path.startsWith("/auth/");
+				|| path.startsWith("/menu") || path.startsWith("/auth/") || path.startsWith("/api/auth/");
 	}
 
 	@Override
 	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
 			@NonNull FilterChain filterChain) throws ServletException, IOException {
 
+		String path = request.getRequestURI().substring(request.getContextPath().length());
 		String jwt = null;
+		boolean hasBearerHeader = false;
 
 		final String authHeader = request.getHeader("Authorization");
 		if (authHeader != null && authHeader.startsWith("Bearer ")) {
-			jwt = authHeader.substring(7);
-		} else {
-			if (request.getCookies() != null) {
-				for (Cookie cookie : request.getCookies()) {
-					if ("JWT_TOKEN".equals(cookie.getName())) {
-						jwt = cookie.getValue();
-						break;
-					}
+			hasBearerHeader = true;
+			jwt = authHeader.substring(7).trim();
+		} else if (request.getCookies() != null) {
+			for (Cookie cookie : request.getCookies()) {
+				if ("JWT_TOKEN".equals(cookie.getName())) {
+					jwt = cookie.getValue();
+					break;
 				}
 			}
 		}
@@ -65,7 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			try {
 				final String username = jwtService.extractUsername(jwt);
 
-				if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+				if (username != null && (hasBearerHeader || SecurityContextHolder.getContext().getAuthentication() == null)) {
 					UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
 					if (jwtService.isTokenValid(jwt, userDetails)) {
@@ -75,19 +77,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 						SecurityContextHolder.getContext().setAuthentication(authToken);
 
 						HttpSession session = request.getSession(true);
-						if (session.getAttribute("user") == null) {
+						Object sessionUser = session.getAttribute("user");
+						if (!(sessionUser instanceof User u) || !username.equals(u.getUsername())) {
 							userRepository.findByUsername(username)
 									.ifPresent(user -> session.setAttribute("user", user));
 						}
+					} else {
+						SecurityContextHolder.clearContext();
 					}
 				}
 			} catch (Exception e) {
 				Cookie cookie = new Cookie("JWT_TOKEN", null);
 				cookie.setPath("/");
+				cookie.setHttpOnly(true);
 				cookie.setMaxAge(0);
 				response.addCookie(cookie);
 				SecurityContextHolder.clearContext();
 			}
+		} else if (hasBearerHeader || (path.startsWith("/api/") && !path.startsWith("/api/auth/"))) {
+			SecurityContextHolder.clearContext();
 		}
 
 		filterChain.doFilter(request, response);
