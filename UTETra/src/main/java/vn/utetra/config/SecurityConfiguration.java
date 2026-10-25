@@ -37,8 +37,7 @@ public class SecurityConfiguration {
 	private final UserDetailsService userDetailsService;
 
 	public SecurityConfiguration(JwtAuthenticationFilter jwtAuthenticationFilter,
-			AuthenticationProvider authenticationProvider,
-			JwtService jwtService,
+			AuthenticationProvider authenticationProvider, JwtService jwtService,
 			UserDetailsService userDetailsService) {
 		this.authenticationProvider = authenticationProvider;
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -64,7 +63,9 @@ public class SecurityConfiguration {
 								"/webjars/**", "/favicon.ico", "/error")
 						.permitAll()
 
-						.requestMatchers("/menu", "/menu/**", "/category/**", "/branches", "/branches/**", "/products/**", "/api/reviews/**").permitAll()
+						.requestMatchers("/menu", "/menu/**", "/category/**", "/branches", "/branches/**",
+								"/products/**", "/api/reviews/**", "/api/guest/**")
+						.permitAll()
 
 						.requestMatchers("/payment/vnpay/return", "/payment/vnpay/ipn", "/payment/momo/return",
 								"/payment/momo/ipn")
@@ -84,41 +85,37 @@ public class SecurityConfiguration {
 
 						.anyRequest().authenticated())
 
-				.exceptionHandling(ex -> ex
-						.authenticationEntryPoint((request, response, authException) -> {
-							String uri = request.getRequestURI().substring(request.getContextPath().length());
-							if (uri.startsWith("/api/")) {
-								response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-								response.setContentType("application/json;charset=UTF-8");
-								response.getWriter().write("{\"error\":\"Vui lòng đăng nhập hoặc đính kèm JWT Token hợp lệ\"}");
-							} else {
-								response.sendRedirect(request.getContextPath() + "/auth/login");
-							}
-						})
-						.accessDeniedHandler((request, response, accessDeniedException) -> {
-							String uri = request.getRequestURI().substring(request.getContextPath().length());
-							if (uri.startsWith("/api/")) {
-								Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-								if (auth == null || auth instanceof AnonymousAuthenticationToken) {
-									response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-									response.setContentType("application/json;charset=UTF-8");
-									response.getWriter().write("{\"error\":\"Vui lòng đăng nhập hoặc đính kèm JWT Token hợp lệ\"}");
-								} else {
-									response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-									response.setContentType("application/json;charset=UTF-8");
-									response.getWriter().write("{\"error\":\"Bạn không có quyền truy cập tài nguyên này\"}");
-								}
-							} else {
-								response.sendError(HttpServletResponse.SC_FORBIDDEN);
-							}
-						}))
+				.exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+					String uri = request.getRequestURI().substring(request.getContextPath().length());
+					if (uri.startsWith("/api/")) {
+						response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+						response.setContentType("application/json;charset=UTF-8");
+						response.getWriter().write("{\"error\":\"Vui lòng đăng nhập hoặc đính kèm JWT Token hợp lệ\"}");
+					} else {
+						response.sendRedirect(request.getContextPath() + "/auth/login");
+					}
+				}).accessDeniedHandler((request, response, accessDeniedException) -> {
+					String uri = request.getRequestURI().substring(request.getContextPath().length());
+					if (uri.startsWith("/api/")) {
+						Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+						if (auth == null || auth instanceof AnonymousAuthenticationToken) {
+							response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+							response.setContentType("application/json;charset=UTF-8");
+							response.getWriter()
+									.write("{\"error\":\"Vui lòng đăng nhập hoặc đính kèm JWT Token hợp lệ\"}");
+						} else {
+							response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+							response.setContentType("application/json;charset=UTF-8");
+							response.getWriter().write("{\"error\":\"Bạn không có quyền truy cập tài nguyên này\"}");
+						}
+					} else {
+						response.sendError(HttpServletResponse.SC_FORBIDDEN);
+					}
+				}))
 
-				.formLogin(form -> form
-						.loginPage("/auth/login")
-						.loginProcessingUrl("/auth/login")
+				.formLogin(form -> form.loginPage("/auth/login").loginProcessingUrl("/auth/login")
 						.successHandler((request, response, authentication) -> {
-							UserDetails userDetails = (authentication.getPrincipal() instanceof UserDetails ud)
-									? ud
+							UserDetails userDetails = (authentication.getPrincipal() instanceof UserDetails ud) ? ud
 									: userDetailsService.loadUserByUsername(authentication.getName());
 							String token = jwtService.generateToken(userDetails);
 
@@ -129,9 +126,7 @@ public class SecurityConfiguration {
 							response.addCookie(jwtCookie);
 
 							response.sendRedirect(request.getContextPath() + "/login-success");
-						})
-						.failureUrl("/auth/login?error=true")
-						.permitAll())
+						}).failureUrl("/auth/login?error=true").permitAll())
 
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
