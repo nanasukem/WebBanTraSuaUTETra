@@ -31,70 +31,68 @@
 
 		<div class="collapse navbar-collapse order-lg-2" id="navbarMain">
 
-			<div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3 w-100">
+			<div
+				class="d-flex flex-column flex-lg-row align-items-lg-center gap-3 w-100">
 
 				<ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-					<li class="nav-item"><a class="nav-link fw-semibold" th:href="@{/}">
-							<i class="bi bi-house-door me-1"></i> Trang chủ
+					<li class="nav-item"><a class="nav-link fw-semibold"
+						th:href="@{/}"> <i class="bi bi-house-door me-1"></i> Trang
+							chủ
 					</a></li>
 
-					<li class="nav-item"><a class="nav-link fw-semibold" th:href="@{/menu}">
-							<i class="bi bi-journal-richtext me-1"></i> Thực đơn
+					<li class="nav-item"><a class="nav-link fw-semibold"
+						th:href="@{/menu}"> <i class="bi bi-journal-richtext me-1"></i>
+							Thực đơn
 					</a></li>
 
-					<li class="nav-item"><a class="nav-link fw-semibold" th:href="@{/branches}">
-							<i class="bi bi-shop me-1"></i> Chi nhánh
+					<li class="nav-item"><a class="nav-link fw-semibold"
+						th:href="@{/branches}"> <i class="bi bi-shop me-1"></i> Chi
+							nhánh
 					</a></li>
 
 				</ul>
 
-				<div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2">
+				<div
+					class="d-flex flex-column flex-lg-row align-items-lg-center gap-2">
 
 					<a th:if="${isAdmin}" th:href="@{/admin/dashboard}"
 						class="btn btn-warning btn-sm fw-bold"> <i
 						class="bi bi-speedometer2 me-1"></i> Về trang quản trị
-					</a>
-
-					<a th:if="${isManager}" th:href="@{/manager/dashboard}"
+					</a> <a th:if="${isManager}" th:href="@{/manager/dashboard}"
 						class="btn btn-warning btn-sm fw-bold"> <i
 						class="bi bi-speedometer2 me-1"></i> Về trang quản lý
-					</a>
-
-					<a th:if="${isBuyer}" th:href="@{/orders}"
+					</a> <a th:if="${isBuyer}" th:href="@{/orders}"
 						class="btn btn-outline-light btn-sm fw-bold"> <i
 						class="bi bi-receipt me-1"></i> Đơn hàng
-					</a>
-
-					<a th:if="${isBuyer}" th:href="@{/cart}"
+					</a> <a th:if="${isBuyer}" th:href="@{/cart}"
 						class="btn btn-light btn-sm fw-bold position-relative"> <i
 						class="bi bi-cart3 me-1"></i> Giỏ hàng <span id="cart-count"
 						class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
-					</a>
-
-					<span th:unless="${isBuyer}" id="cart-count" class="d-none">0</span>
+					</a> <span th:unless="${isBuyer}" id="cart-count" class="d-none">0</span>
 
 					<div th:if="${!isGuest}" class="dropdown">
 
 						<button
-							class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2"
+							class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center justify-content-center gap-2 w-100"
 							type="button" data-bs-toggle="dropdown" aria-expanded="false">
 							<i class="bi bi-person-circle fs-5"></i> <span
 								th:text="${session.user.fullName != null and !#strings.isEmpty(session.user.fullName)
-								         ? session.user.fullName : session.user.username}">Tài khoản</span>
+								         ? session.user.fullName : session.user.username}">Tài
+								khoản</span>
 						</button>
 
 						<ul class="dropdown-menu dropdown-menu-end shadow">
 
 							<th:block th:if="${isBuyer}">
-								<li><a class="dropdown-item" th:href="@{/orders}">
-										<i class="bi bi-receipt me-2"></i> Đơn hàng của tôi
-								</a></li>
-								<li><a class="dropdown-item" th:href="@{/cart}">
-										<i class="bi bi-cart3 me-2"></i> Giỏ hàng
-								</a></li>
 								<li><a class="dropdown-item" th:href="@{/user/profile}">
 										<i class="bi bi-person me-2"></i> Hồ sơ cá nhân
+								</a></li>
+								<li><a class="dropdown-item" th:href="@{/orders}"> <i
+										class="bi bi-receipt me-2"></i> Đơn hàng của tôi
+								</a></li>
+								<li><a class="dropdown-item" th:href="@{/cart}"> <i
+										class="bi bi-cart3 me-2"></i> Giỏ hàng
 								</a></li>
 								<li><a class="dropdown-item" th:href="@{/user/favorites}">
 										<i class="bi bi-heart me-2"></i> Sản phẩm yêu thích
@@ -105,8 +103,9 @@
 							</th:block>
 
 							<th:block th:if="${isManager}">
-								<li><a class="dropdown-item" th:href="@{/manager/dashboard}">
-										<i class="bi bi-speedometer2 me-2"></i> Tổng quan chi nhánh
+								<li><a class="dropdown-item"
+									th:href="@{/manager/dashboard}"> <i
+										class="bi bi-speedometer2 me-2"></i> Tổng quan chi nhánh
 								</a></li>
 								<li><a class="dropdown-item" th:href="@{/manager/orders}">
 										<i class="bi bi-bell me-2"></i> Quầy đơn hàng
