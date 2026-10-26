@@ -33,12 +33,14 @@ public class AuthenticationService {
 	private final AuthenticationManager authenticationManager;
 	private final EmailService emailService;
 	private final NotificationService notificationService;
+	private final RefreshTokenService refreshTokenService;
 
 	public AuthenticationService(UserRepository userRepository, RoleRepository roleRepository,
 			OtpCodeRepository otpCodeRepository, PasswordEncoder passwordEncoder,
 			AuthenticationManager authenticationManager, EmailService emailService,
-			NotificationService notificationService) {
+			NotificationService notificationService, RefreshTokenService refreshTokenService) {
 		this.notificationService = notificationService;
+		this.refreshTokenService = refreshTokenService;
 		this.userRepository = userRepository;
 		this.roleRepository = roleRepository;
 		this.otpCodeRepository = otpCodeRepository;
@@ -195,6 +197,7 @@ public class AuthenticationService {
 				.orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
 		user.setPassword(passwordEncoder.encode(newPassword));
 		userRepository.save(user);
+		refreshTokenService.revokeAllForUser(user.getId());
 
 		return true;
 	}

@@ -29,6 +29,10 @@
 				<span th:case="'tempExpired'">Mật khẩu tạm đã hết hạn (quá 72 giờ). Vui lòng liên hệ quản trị viên để được cấp lại.</span>
 				<span th:case="*">Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.</span>
 			</div>
+			<div th:if="${sessionExpired != null and param.signedOut == null and param.error == null and param.logout == null}"
+				class="alert alert-warning py-2 small" role="alert">
+				<i class="bi bi-clock-history me-1"></i> Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.
+			</div>
 			<div th:if="${param.logout != null}" class="alert alert-success py-2"
 				role="alert">
 				<i class="bi bi-check-circle-fill me-1"></i> Bạn đã đăng xuất thành

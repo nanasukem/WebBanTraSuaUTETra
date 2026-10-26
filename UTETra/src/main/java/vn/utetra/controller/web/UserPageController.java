@@ -3,6 +3,7 @@ package vn.utetra.controller.web;
 import java.security.Principal;
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import org.springframework.stereotype.Controller;
@@ -14,11 +15,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import vn.utetra.config.AuthCookies;
 import vn.utetra.entity.User;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.service.AddressService;
 import vn.utetra.service.CurrentUserService;
 import vn.utetra.service.FavoriteService;
+import vn.utetra.service.RefreshTokenService;
 import vn.utetra.service.UserService;
 import vn.utetra.service.ViewedProductService;
 
@@ -32,11 +35,13 @@ public class UserPageController {
 	private final FavoriteService favoriteService;
 	private final ViewedProductService viewedProductService;
 	private final vn.utetra.service.MemberService memberService;
+	private final RefreshTokenService refreshTokenService;
 
 	public UserPageController(CurrentUserService currentUserService, UserService userService,
 			AddressService addressService, FavoriteService favoriteService, ViewedProductService viewedProductService,
-			vn.utetra.service.MemberService memberService) {
+			vn.utetra.service.MemberService memberService, RefreshTokenService refreshTokenService) {
 		this.memberService = memberService;
+		this.refreshTokenService = refreshTokenService;
 		this.currentUserService = currentUserService;
 		this.userService = userService;
 		this.addressService = addressService;
@@ -78,10 +83,12 @@ public class UserPageController {
 	public String changePassword(@RequestParam(name = "currentPassword", required = false) String currentPassword,
 			@RequestParam(name = "newPassword", required = false) String newPassword,
 			@RequestParam(name = "confirmPassword", required = false) String confirmPassword, Principal principal,
-			HttpSession session, RedirectAttributes ra) {
+			HttpSession session, HttpServletResponse response, RedirectAttributes ra) {
 		Integer userId = currentUserService.requireUserId(principal, session);
 		try {
 			userService.changePassword(userId, currentPassword, newPassword, confirmPassword);
+			refreshTokenService.issueForUserId(userId).ifPresent(refresh -> AuthCookies.set(response,
+					AuthCookies.REFRESH, refresh, refreshTokenService.getExpirationTime()));
 			session.setAttribute("user", userService.getProfile(userId));
 			ra.addFlashAttribute("success", "Đã đổi mật khẩu. Lần đăng nhập sau dùng mật khẩu mới");
 		} catch (BusinessException e) {

@@ -10,13 +10,15 @@ import vn.utetra.dto.request.RegisterRequest;
 import vn.utetra.entity.User;
 import vn.utetra.service.AuthenticationService;
 import vn.utetra.service.JwtService;
+import vn.utetra.service.RefreshTokenService;
+import vn.utetra.config.AuthCookies;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -25,12 +27,14 @@ public class AuthApiController {
 	private final AuthenticationService authenticationService;
 	private final JwtService jwtService;
 	private final UserDetailsService userDetailsService;
+	private final RefreshTokenService refreshTokenService;
 
 	public AuthApiController(AuthenticationService authenticationService, JwtService jwtService,
-			UserDetailsService userDetailsService) {
+			UserDetailsService userDetailsService, RefreshTokenService refreshTokenService) {
 		this.authenticationService = authenticationService;
 		this.jwtService = jwtService;
 		this.userDetailsService = userDetailsService;
+		this.refreshTokenService = refreshTokenService;
 	}
 
 	@PostMapping("/signup")
@@ -69,6 +73,8 @@ public class AuthApiController {
 			Map<String, Object> response = new HashMap<>();
 			response.put("token", jwtToken);
 			response.put("expiresIn", jwtService.getExpirationTime());
+			response.put("refreshToken", refreshTokenService.issue(authenticatedUser));
+			response.put("refreshExpiresIn", refreshTokenService.getExpirationTime());
 			response.put("username", authenticatedUser.getUsername());
 			response.put("role", authenticatedUser.getRole().getName());
 
@@ -76,6 +82,23 @@ public class AuthApiController {
 		} catch (Exception e) {
 			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
 		}
+	}
+
+	@PostMapping("/refresh")
+	public ResponseEntity<?> refresh(@RequestBody(required = false) Map<String, String> body) {
+		String raw = body == null ? null : body.get("refreshToken");
+		Optional<RefreshTokenService.Rotation> rotation = refreshTokenService.rotate(raw, false);
+		if (rotation.isEmpty()) {
+			return ResponseEntity.status(401)
+					.body(Map.of("error", "Refresh token không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại"));
+		}
+		UserDetails userDetails = userDetailsService.loadUserByUsername(rotation.get().user().getUsername());
+		Map<String, Object> response = new HashMap<>();
+		response.put("token", jwtService.generateToken(userDetails));
+		response.put("expiresIn", jwtService.getExpirationTime());
+		response.put("refreshToken", rotation.get().newToken());
+		response.put("refreshExpiresIn", refreshTokenService.getExpirationTime());
+		return ResponseEntity.ok(response);
 	}
 
 	@PostMapping("/forgot-password")
@@ -100,12 +123,12 @@ public class AuthApiController {
 	}
 
 	@PostMapping("/logout")
-	public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
-		Cookie jwtCookie = new Cookie("JWT_TOKEN", null);
-		jwtCookie.setPath("/");
-		jwtCookie.setHttpOnly(true);
-		jwtCookie.setMaxAge(0);
-		response.addCookie(jwtCookie);
+	public ResponseEntity<?> logout(@RequestBody(required = false) Map<String, String> body,
+			HttpServletRequest request, HttpServletResponse response) {
+		refreshTokenService.revoke(body == null ? null : body.get("refreshToken"));
+		refreshTokenService.revoke(AuthCookies.read(request, AuthCookies.REFRESH));
+		AuthCookies.clear(response, AuthCookies.ACCESS);
+		AuthCookies.clear(response, AuthCookies.REFRESH);
 
 		HttpSession session = request.getSession(false);
 		if (session != null) {

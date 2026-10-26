@@ -11,6 +11,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import vn.utetra.config.AuthCookies;
 import vn.utetra.dto.request.LoginRequest;
 import vn.utetra.dto.request.RegisterRequest;
 import vn.utetra.entity.User;
@@ -34,8 +35,13 @@ public class AuthController {
 	}
 
 	@GetMapping("/login")
-	public String loginPage(Model model) {
+	public String loginPage(Model model, HttpServletRequest request, HttpServletResponse response) {
 		model.addAttribute("loginRequest", new LoginRequest());
+		if (request.getAttribute("sessionExpired") != null
+				|| AuthCookies.read(request, AuthCookies.EXPIRED_FLAG) != null) {
+			model.addAttribute("sessionExpired", true);
+			AuthCookies.clear(response, AuthCookies.EXPIRED_FLAG);
+		}
 		return "auth/login";
 	}
 

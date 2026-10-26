@@ -2,7 +2,6 @@ package vn.utetra.config;
 
 import java.util.List;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.annotation.Bean;
@@ -26,6 +25,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import vn.utetra.filter.JwtAuthenticationFilter;
 import vn.utetra.service.JwtService;
+import vn.utetra.service.RefreshTokenService;
 
 @Configuration
 @EnableWebSecurity
@@ -35,14 +35,16 @@ public class SecurityConfiguration {
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 	private final JwtService jwtService;
 	private final UserDetailsService userDetailsService;
+	private final RefreshTokenService refreshTokenService;
 
 	public SecurityConfiguration(JwtAuthenticationFilter jwtAuthenticationFilter,
 			AuthenticationProvider authenticationProvider, JwtService jwtService,
-			UserDetailsService userDetailsService) {
+			UserDetailsService userDetailsService, RefreshTokenService refreshTokenService) {
 		this.authenticationProvider = authenticationProvider;
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
 		this.jwtService = jwtService;
 		this.userDetailsService = userDetailsService;
+		this.refreshTokenService = refreshTokenService;
 	}
 
 	@Bean
@@ -119,19 +121,25 @@ public class SecurityConfiguration {
 									: userDetailsService.loadUserByUsername(authentication.getName());
 							String token = jwtService.generateToken(userDetails);
 
-							Cookie jwtCookie = new Cookie("JWT_TOKEN", token);
-							jwtCookie.setHttpOnly(true);
-							jwtCookie.setPath("/");
-							jwtCookie.setMaxAge((int) (jwtService.getExpirationTime() / 1000));
-							response.addCookie(jwtCookie);
+							AuthCookies.set(response, AuthCookies.ACCESS, token, jwtService.getExpirationTime());
+
+							refreshTokenService.revoke(AuthCookies.read(request, AuthCookies.REFRESH));
+							refreshTokenService.issueForUsername(userDetails.getUsername())
+									.ifPresent(refresh -> AuthCookies.set(response, AuthCookies.REFRESH, refresh,
+											refreshTokenService.getExpirationTime()));
+
+							AuthCookies.clear(response, AuthCookies.EXPIRED_FLAG);
 
 							response.sendRedirect(request.getContextPath() + "/login-success");
 						}).failureUrl("/auth/login?error=true").permitAll())
 
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
-				.logout(logout -> logout.logoutUrl("/auth/logout").logoutSuccessUrl("/auth/login?logout")
-						.invalidateHttpSession(true).clearAuthentication(true).deleteCookies("JWT_TOKEN", "JSESSIONID")
+				.logout(logout -> logout.logoutUrl("/auth/logout")
+						.addLogoutHandler((request, response, authentication) -> refreshTokenService
+								.revoke(AuthCookies.read(request, AuthCookies.REFRESH)))
+						.logoutSuccessUrl("/auth/login?logout").invalidateHttpSession(true).clearAuthentication(true)
+						.deleteCookies(AuthCookies.ACCESS, AuthCookies.REFRESH, "JSESSIONID")
 						.permitAll())
 
 				.authenticationProvider(authenticationProvider)

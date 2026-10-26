@@ -20,16 +20,20 @@ import vn.utetra.entity.ActivityLog;
 import vn.utetra.entity.User;
 import vn.utetra.repository.ActivityLogRepository;
 import vn.utetra.repository.UserRepository;
+import vn.utetra.service.RefreshTokenService;
 
 @Configuration
 public class ForceChangePasswordInterceptor implements HandlerInterceptor, WebMvcConfigurer {
 
 	private final UserRepository userRepository;
 	private final ActivityLogRepository activityLogRepository;
+	private final RefreshTokenService refreshTokenService;
 
-	public ForceChangePasswordInterceptor(UserRepository userRepository, ActivityLogRepository activityLogRepository) {
+	public ForceChangePasswordInterceptor(UserRepository userRepository, ActivityLogRepository activityLogRepository,
+			RefreshTokenService refreshTokenService) {
 		this.userRepository = userRepository;
 		this.activityLogRepository = activityLogRepository;
+		this.refreshTokenService = refreshTokenService;
 	}
 
 	@Override
@@ -55,6 +59,9 @@ public class ForceChangePasswordInterceptor implements HandlerInterceptor, WebMv
 		else if (Boolean.TRUE.equals(db.getMustChangePassword()) && db.getTempPasswordExpiresAt() != null
 				&& db.getTempPasswordExpiresAt().isBefore(LocalDateTime.now())) reason = "tempExpired";
 		if (reason != null) {
+			refreshTokenService.revoke(AuthCookies.read(request, AuthCookies.REFRESH));
+			AuthCookies.clear(response, AuthCookies.ACCESS);
+			AuthCookies.clear(response, AuthCookies.REFRESH);
 			session.invalidate();
 			SecurityContextHolder.clearContext();
 			return deny(request, response, "/auth/login?signedOut=" + reason);

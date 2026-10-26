@@ -23,12 +23,14 @@ public class UserService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final CloudinaryService cloudinaryService;
+	private final RefreshTokenService refreshTokenService;
 
 	public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-			CloudinaryService cloudinaryService) {
+			CloudinaryService cloudinaryService, RefreshTokenService refreshTokenService) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.cloudinaryService = cloudinaryService;
+		this.refreshTokenService = refreshTokenService;
 	}
 
 	public java.util.Optional<User> findByUsername(String username) {
@@ -130,5 +132,6 @@ public class UserService {
 		}
 		u.setPassword(passwordEncoder.encode(newPassword));
 		userRepository.saveAndFlush(u);
+		refreshTokenService.revokeAllForUser(u.getId());
 	}
 }

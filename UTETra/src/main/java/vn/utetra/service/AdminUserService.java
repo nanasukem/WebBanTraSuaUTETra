@@ -47,13 +47,15 @@ public class AdminUserService {
 	private final ShippingFeeService shippingFeeService;
 	private final NotificationService notificationService;
 	private final EmailService emailService;
+	private final RefreshTokenService refreshTokenService;
 
 	@PersistenceContext
 	private EntityManager em;
 
 	public AdminUserService(UserRepository userRepository, RoleRepository roleRepository,
 			BranchRepository branchRepository, OrderRepository orderRepository, PasswordEncoder passwordEncoder,
-			ShippingFeeService shippingFeeService, NotificationService notificationService, EmailService emailService) {
+			ShippingFeeService shippingFeeService, NotificationService notificationService, EmailService emailService,
+			RefreshTokenService refreshTokenService) {
 		this.userRepository = userRepository;
 		this.roleRepository = roleRepository;
 		this.branchRepository = branchRepository;
@@ -62,6 +64,7 @@ public class AdminUserService {
 		this.shippingFeeService = shippingFeeService;
 		this.notificationService = notificationService;
 		this.emailService = emailService;
+		this.refreshTokenService = refreshTokenService;
 	}
 
 	@Transactional(readOnly = true)
@@ -288,6 +291,7 @@ public class AdminUserService {
 		user.setMustChangePassword(true);
 		user.setTempPasswordExpiresAt(LocalDateTime.now().plusHours(TEMP_PASSWORD_HOURS));
 		userRepository.save(user);
+		refreshTokenService.revokeAllForUser(user.getId());
 		notificationService.create(user, null, "USER", "Mật khẩu của bạn đã được Admin đặt lại",
 				"Đăng nhập bằng mật khẩu tạm (đã gửi qua email) rồi đặt mật khẩu mới.", null);
 		boolean daGui = emailTempPassword(user, newPassword, false);
@@ -424,6 +428,9 @@ public class AdminUserService {
 
 		user.setIsActive(!active);
 		userRepository.save(user);
+		if (active) {
+			refreshTokenService.revokeAllForUser(user.getId());
+		}
 		return active ? "Đã khóa tài khoản " + user.getUsername() + "." + traDon
 				: "Đã mở khóa tài khoản " + user.getUsername() + ".";
 	}

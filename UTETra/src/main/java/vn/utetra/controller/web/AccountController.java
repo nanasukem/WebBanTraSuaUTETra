@@ -7,11 +7,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import vn.utetra.config.AuthCookies;
 import vn.utetra.entity.User;
 import vn.utetra.exception.BusinessException;
 import vn.utetra.service.EmailService;
 import vn.utetra.service.NotificationService;
+import vn.utetra.service.RefreshTokenService;
 import vn.utetra.service.UserService;
 
 @Controller
@@ -21,10 +24,13 @@ public class AccountController {
 	private final EmailService emailService;
 	private final NotificationService notificationService;
 	private final vn.utetra.service.BranchService branchService;
+	private final RefreshTokenService refreshTokenService;
 
 	public AccountController(UserService userService, EmailService emailService,
-			NotificationService notificationService, vn.utetra.service.BranchService branchService) {
+			NotificationService notificationService, vn.utetra.service.BranchService branchService,
+			RefreshTokenService refreshTokenService) {
 		this.userService = userService;
+		this.refreshTokenService = refreshTokenService;
 		this.branchService = branchService;
 		this.emailService = emailService;
 		this.notificationService = notificationService;
@@ -85,11 +91,14 @@ public class AccountController {
 
 	@PostMapping("/account/change-password")
 	public String change(@RequestParam String currentPassword, @RequestParam String newPassword,
-			@RequestParam String confirmPassword, HttpSession session, RedirectAttributes ra) {
+			@RequestParam String confirmPassword, HttpSession session, HttpServletResponse response,
+			RedirectAttributes ra) {
 		User u = sessionUser(session);
 		if (u == null) return "redirect:/auth/login";
 		try {
 			userService.changePassword(u.getId(), currentPassword, newPassword, confirmPassword);
+			refreshTokenService.issueForUserId(u.getId()).ifPresent(refresh -> AuthCookies.set(response,
+					AuthCookies.REFRESH, refresh, refreshTokenService.getExpirationTime()));
 		} catch (BusinessException e) {
 			ra.addFlashAttribute("errorMessage", e.getMessage());
 			return Boolean.TRUE.equals(u.getMustChangePassword()) ? "redirect:/account/change-password"
