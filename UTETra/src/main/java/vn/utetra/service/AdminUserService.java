@@ -65,6 +65,49 @@ public class AdminUserService {
 	}
 
 	@Transactional(readOnly = true)
+	public Map<String, Object> apiDashboard(String adminUsername) {
+		long totalUsers = 0;
+		long activeUsers = 0;
+		for (User u : userRepository.findAll()) {
+			totalUsers++;
+			if (Boolean.TRUE.equals(u.getIsActive())) {
+				activeUsers++;
+			}
+		}
+		Map<String, Object> response = new java.util.LinkedHashMap<>();
+		response.put("adminUsername", adminUsername);
+		response.put("totalUsers", totalUsers);
+		response.put("activeUsers", activeUsers);
+		response.put("lockedUsers", totalUsers - activeUsers);
+		return response;
+	}
+
+	@Transactional(readOnly = true)
+	public List<Map<String, Object>> apiUsers() {
+		List<Map<String, Object>> result = new ArrayList<>();
+		for (User u : userRepository.findAll()) {
+			result.add(toSafeUserMap(u));
+		}
+		return result;
+	}
+
+	@Transactional(readOnly = true)
+	public java.util.Optional<Map<String, Object>> apiUser(Integer id) {
+		return userRepository.findById(id).map(this::toSafeUserMap);
+	}
+
+	private Map<String, Object> toSafeUserMap(User u) {
+		Map<String, Object> map = new java.util.LinkedHashMap<>();
+		map.put("id", u.getId());
+		map.put("username", u.getUsername());
+		map.put("fullName", u.getFullName());
+		map.put("email", u.getEmail());
+		map.put("role", u.getRole() != null ? u.getRole().getName() : null);
+		map.put("isActive", u.getIsActive());
+		return map;
+	}
+
+	@Transactional(readOnly = true)
 	public List<vn.utetra.entity.Role> roles() {
 		return roleRepository.findAll();
 	}
