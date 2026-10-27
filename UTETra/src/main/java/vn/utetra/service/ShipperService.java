@@ -24,7 +24,7 @@ import vn.utetra.repository.OrderRepository;
 @Transactional(readOnly = true)
 public class ShipperService {
 
-	public static final List<String> TABS = List.of("READY", "SHIPPING", "DELIVERED");
+	public static final List<String> TABS = List.of("READY", "SHIPPING", "DELIVERED", "FAILED");
 
 	private final OrderRepository orderRepository;
 	private final OrderFlowService orderFlowService;
@@ -35,11 +35,11 @@ public class ShipperService {
 	}
 
 	public record Board(String tab, List<Order> orders, int readyCount, int shippingCount, int deliveredCount,
-			long doneToday, long doneMonth, long doneTotal) {
+			long doneToday, long doneMonth, long doneTotal, int failedCount) {
 	}
 
 	public record Stats(List<Order> orders, long countToday, long countMonth, long countYear, long countAll,
-			BigDecimal codTotal, BigDecimal shipTotal) {
+			BigDecimal codTotal, BigDecimal shipTotal, List<Order> failed) {
 	}
 
 	public static String normalizeTab(String tab) {
@@ -68,6 +68,12 @@ public class ShipperService {
 				.sorted(Comparator.comparing(Order::getDeliveredAt, Comparator.nullsLast(Comparator.reverseOrder())))
 				.toList();
 
+		List<Order> failed = allDelivery.stream()
+				.filter(o -> o.getStatus() == OrderStatus.RETURNED && o.getShipper() != null
+						&& o.getShipper().getId().equals(shipper.getId()))
+				.sorted(Comparator.comparing(Order::getDeliveredAt, Comparator.nullsLast(Comparator.reverseOrder())))
+				.toList();
+
 		LocalDateTime todayStart = LocalDate.now().atStartOfDay();
 		LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
 		List<Order> mineDone = delivered.stream()
@@ -76,10 +82,11 @@ public class ShipperService {
 		List<Order> display = switch (currentTab) {
 		case "SHIPPING" -> shipping;
 		case "DELIVERED" -> delivered;
+		case "FAILED" -> failed;
 		default -> ready;
 		};
 		return new Board(currentTab, display, ready.size(), shipping.size(), delivered.size(),
-				countSince(mineDone, todayStart), countSince(mineDone, monthStart), mineDone.size());
+				countSince(mineDone, todayStart), countSince(mineDone, monthStart), mineDone.size(), failed.size());
 	}
 
 	public Stats stats(User shipper, DateRange range) {
@@ -93,7 +100,9 @@ public class ShipperService {
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
 		return new Stats(orders, countSince(all, today.atStartOfDay()),
 				countSince(all, today.withDayOfMonth(1).atStartOfDay()),
-				countSince(all, today.withDayOfYear(1).atStartOfDay()), all.size(), cod, ship);
+				countSince(all, today.withDayOfYear(1).atStartOfDay()), all.size(), cod, ship,
+				orderRepository.findByShipper_IdAndStatusOrderByDeliveredAtDesc(shipper.getId(), OrderStatus.RETURNED)
+						.stream().filter(o -> range.contains(o.getDeliveredAt())).toList());
 	}
 
 	public List<Order> delivering(Integer shipperId) {
@@ -105,12 +114,18 @@ public class ShipperService {
 
 	@Transactional
 	public void updateStatus(User shipper, Integer id, OrderStatus status) {
+		updateStatus(shipper, id, status, null);
+	}
+
+	@Transactional
+	public void updateStatus(User shipper, Integer id, OrderStatus status, String reason) {
 		Order order = orderRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + id));
 		if (order.getDeliveryType() != DeliveryType.DELIVERY) {
 			throw new BusinessException("Đơn #" + id + " là đơn khách tự đến lấy tại quán");
 		}
-		if (status != OrderStatus.PICKED_UP && status != OrderStatus.DELIVERING && status != OrderStatus.DELIVERED) {
+		if (status != OrderStatus.PICKED_UP && status != OrderStatus.DELIVERING && status != OrderStatus.DELIVERED
+				&& status != OrderStatus.RETURNED) {
 			throw new BusinessException("Trạng thái cập nhật của Shipper không hợp lệ");
 		}
 		if (shipper.getBranch() == null) {
@@ -122,11 +137,14 @@ public class ShipperService {
 		if (order.getShipper() != null && !order.getShipper().getId().equals(shipper.getId())) {
 			throw new BusinessException("Đơn #" + id + " đã do shipper " + order.getShipper().getFullName() + " nhận");
 		}
+		if (status == OrderStatus.RETURNED && order.getShipper() == null) {
+			throw new BusinessException("Đơn #" + id + " chưa có shipper nhận");
+		}
 		if (order.getShipper() == null) {
 			order.setShipper(shipper);
 			orderRepository.saveAndFlush(order);
 		}
-		orderFlowService.updateStatus(id, status, null);
+		orderFlowService.updateStatus(id, status, status == OrderStatus.RETURNED ? reason : null);
 	}
 
 	private static boolean openFor(Order o, User shipper) {

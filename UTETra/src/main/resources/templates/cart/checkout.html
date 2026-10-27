@@ -223,19 +223,21 @@
 				<div class="card co-card mb-3">
 					<div class="card-body">
 						<div class="co-title">Phương thức thanh toán</div>
-						<label class="option-card active"> <input
+						<label class="option-card" th:classappend="${codBlocked} ? 'opacity-50' : 'active'"> <input
 							class="form-check-input mt-1" type="radio" name="paymentMethod"
-							value="COD" checked>
+							value="COD" th:checked="${!codBlocked}" th:disabled="${codBlocked}">
 							<div>
 								<div class="fw-semibold">
 									<i class="bi bi-cash-coin text-success me-1"></i> Thanh toán
 									khi nhận hàng (COD)
 								</div>
-								<div class="small text-muted">Trả tiền mặt khi nhận món</div>
+								<div class="small text-muted" th:unless="${codBlocked}">Trả tiền mặt khi nhận món</div>
+								<div class="small text-danger" th:if="${codBlocked}"
+									th:text="|Không khả dụng: bạn đã có ${failedDeliveries} đơn giao thất bại / không đến lấy, vui lòng thanh toán trước bằng VNPAY hoặc MoMo|"></div>
 							</div>
-						</label> <label class="option-card"> <input
+						</label> <label class="option-card" th:classappend="${codBlocked} ? 'active'"> <input
 							class="form-check-input mt-1" type="radio" name="paymentMethod"
-							value="VNPAY">
+							value="VNPAY" th:checked="${codBlocked}">
 							<div>
 								<div class="fw-semibold">
 									<i class="bi bi-credit-card text-primary me-1"></i> VNPAY

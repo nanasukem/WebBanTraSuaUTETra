@@ -45,8 +45,9 @@ public class AdminDashboardService {
 		List<Order> real = orderRepository.findAll().stream().filter(o -> o.getStatus() != OrderStatus.AWAITING_PAYMENT)
 				.toList();
 		List<Order> delivered = real.stream().filter(o -> o.getStatus() == OrderStatus.DELIVERED).toList();
-		BigDecimal revenue = delivered.stream().map(Order::getSalesAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-		BigDecimal ship = delivered.stream().map(Order::getShippingFee).filter(Objects::nonNull)
+		List<Order> paidOut = real.stream().filter(Order::countsAsRevenue).toList();
+		BigDecimal revenue = paidOut.stream().map(Order::getSalesAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal ship = paidOut.stream().map(Order::getShippingFee).filter(Objects::nonNull)
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
 
 		var users = userRepository.findAll();

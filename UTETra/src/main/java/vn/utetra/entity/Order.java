@@ -128,6 +128,13 @@ public class Order {
 		return getSalesAmount().subtract(ship);
 	}
 
+	public boolean countsAsRevenue() {
+		return status == vn.utetra.entity.enums.OrderStatus.DELIVERED
+				|| (status == vn.utetra.entity.enums.OrderStatus.RETURNED
+						&& paymentMethod != vn.utetra.entity.enums.PaymentMethod.COD
+						&& paymentStatus == vn.utetra.entity.enums.PaymentStatus.PAID);
+	}
+
 	public BigDecimal getSalesAmount() {
 		BigDecimal total = totalAmount == null ? BigDecimal.ZERO : totalAmount;
 		BigDecimal rf = refundAmount == null ? BigDecimal.ZERO : refundAmount;

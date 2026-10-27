@@ -62,6 +62,8 @@
 						<b class="text-danger" th:text="${#numbers.formatDecimal(stats.codTotal(), 0, 'POINT', 0, 'COMMA')} + 'đ'">0đ</b></div>
 					<div><span class="text-muted">Tổng phí ship:</span>
 						<b th:text="${#numbers.formatDecimal(stats.shipTotal(), 0, 'POINT', 0, 'COMMA')} + 'đ'">0đ</b></div>
+					<div><span class="text-muted">Giao thất bại:</span>
+						<b class="text-danger" th:text="${stats.failed().size()}">0</b></div>
 				</div>
 
 				<div class="table-responsive">
@@ -106,6 +108,47 @@
 						</tbody>
 					</table>
 				</div>
+			</div>
+		</div>
+
+		<div class="card border-0 shadow-sm mt-3">
+			<div class="card-header bg-white py-3 fw-bold"><i class="bi bi-x-octagon me-1 text-danger"></i>Đơn giao thất bại
+				<span class="badge text-bg-danger ms-1" th:text="${stats.failed().size()}">0</span></div>
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0">
+					<thead class="table-light">
+						<tr>
+							<th>Đơn</th>
+							<th>Báo thất bại lúc</th>
+							<th>Chi nhánh</th>
+							<th>Khách nhận</th>
+							<th>Lý do</th>
+							<th>Thanh toán</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr th:if="${#lists.isEmpty(stats.failed())}">
+							<td colspan="6" class="text-center text-muted py-4">Không có đơn giao thất bại trong kỳ này</td>
+						</tr>
+						<tr th:each="o : ${stats.failed()}" style="cursor: pointer;"
+							th:onclick="|location.href='@{/admin/orders/{id}(id=${o.id})}'|">
+							<td><a class="fw-semibold text-decoration-none" th:href="@{/admin/orders/{id}(id=${o.id})}" th:text="'#' + ${o.id}">#1</a></td>
+							<td class="small text-nowrap" th:text="${o.deliveredAt != null} ? ${#temporals.format(o.deliveredAt, 'HH:mm dd/MM/yyyy')} : '—'"></td>
+							<td class="small" th:text="${o.branch != null ? o.branch.name : '—'}"></td>
+							<td>
+								<div th:text="${o.receiverName}"></div>
+								<div class="small text-muted" th:text="${o.receiverPhone}"></div>
+							</td>
+							<td class="small text-danger" th:text="${o.cancelReason}"></td>
+							<td class="small">
+								<span th:if="${o.paymentMethod.name() == 'COD'}" class="text-muted">COD, không thu tiền</span>
+								<span th:unless="${o.paymentMethod.name() == 'COD'}" class="text-success" th:text="'Đã trả ' + ${o.paymentMethod.name()}"></span>
+								<span th:if="${o.paymentStatus != null and (o.paymentStatus.name() == 'REFUNDED' or o.paymentStatus.name() == 'REFUND_PENDING')}"
+									class="badge text-bg-warning ms-1" th:text="${o.paymentStatus.name() == 'REFUNDED'} ? 'Đã hoàn tiền' : 'Đang hoàn tiền'"></span>
+							</td>
+						</tr>
+					</tbody>
+				</table>
 			</div>
 		</div>
 	</div>

@@ -29,7 +29,7 @@
 			<div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-3">
 				<div class="small text-muted">Đã hoàn thành</div><div class="fs-3 fw-bold text-success" th:text="${mo.countDelivered()}">0</div></div></div></div>
 			<div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-3">
-				<div class="small text-muted">Đã huỷ</div><div class="fs-3 fw-bold text-danger" th:text="${mo.countCancelled()}">0</div></div></div></div>
+				<div class="small text-muted">Đã huỷ / Giao thất bại</div><div class="fs-3 fw-bold text-danger" th:text="|${mo.countCancelled()} / ${mo.countFailed()}|">0</div></div></div></div>
 			<div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-3">
 				<div class="small text-muted">Tổng đơn đã xử lý</div><div class="fs-3 fw-bold" th:text="${mo.countAll()}">0</div></div></div></div>
 		</div>
@@ -44,7 +44,7 @@
 						class="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap gap-2">
 						<div>
 							<b th:text="'#' + ${o.id}">#13</b>
-							<span class="badge text-bg-primary ms-1" th:text="${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, o.deliveryType.name() == 'PICKUP')}"></span>
+							<span class="badge ms-1" th:classappend="${T(vn.utetra.service.impl.OrderFlowServiceImpl).badgeClass(o.status)}" th:text="${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, o.deliveryType.name() == 'PICKUP')}"></span>
 							<div class="small text-muted" th:text="${o.receiverName} + ' · ' + ${#temporals.format(o.createdAt, 'HH:mm dd/MM/yyyy')}"></div>
 						</div>
 						<span class="small">
@@ -63,7 +63,7 @@
 
 				<div class="d-flex flex-wrap gap-4 small mb-2">
 					<div><span class="text-muted">Số đơn trong kỳ:</span> <b th:text="${mo.inRange().size()}">0</b></div>
-					<div><span class="text-muted">Tổng thu đơn đã giao:</span>
+					<div><span class="text-muted">Tổng thu (đã trừ tiền hoàn):</span>
 						<b class="text-success" th:text="${#numbers.formatDecimal(mo.revenue(), 0, 'POINT', 0, 'COMMA')} + 'đ'">0đ</b></div>
 				</div>
 
@@ -98,8 +98,13 @@
 								</td>
 								<td class="small" th:text="${o.deliveryType.name() == 'PICKUP'} ? 'Đến lấy' : 'Giao tận nơi'"></td>
 								<td><span class="badge"
-										th:classappend="${o.status.name() == 'DELIVERED'} ? 'text-bg-success' : (${o.status.name() == 'CANCELLED'} ? 'text-bg-danger' : 'text-bg-primary')"
-										th:text="${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, o.deliveryType.name() == 'PICKUP')}"></span></td>
+										th:classappend="${T(vn.utetra.service.impl.OrderFlowServiceImpl).badgeClass(o.status)}"
+										th:text="${o.status.name() == 'CANCELLED'} ? ${T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(o.cancelledBy, false)} : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(o.status, o.deliveryType.name() == 'PICKUP')}"></span>
+									<div class="small text-muted mt-1" th:if="${o.cancelReason != null and (o.status.name() == 'CANCELLED' or o.status.name() == 'RETURNED')}" th:text="${o.cancelReason}"></div>
+									<span th:if="${o.paymentStatus != null and (o.paymentStatus.name() == 'REFUNDED' or o.paymentStatus.name() == 'REFUND_PENDING')}"
+										class="badge text-bg-warning mt-1" th:text="${o.paymentStatus.name() == 'REFUNDED'} ? 'Đã hoàn tiền' : 'Đang hoàn tiền'"></span>
+									<span th:if="${o.refundAmount != null and o.refundAmount.signum() > 0 and o.paymentStatus != null and o.paymentStatus.name() == 'PAID'}"
+										class="badge text-bg-warning mt-1" th:text="'Hoàn ' + ${#numbers.formatDecimal(o.refundAmount, 0, 'POINT', 0, 'COMMA')} + 'đ'"></span></td>
 								<td class="text-end fw-semibold" th:text="${#numbers.formatDecimal(o.totalAmount, 0, 'POINT', 0, 'COMMA')} + 'đ'"></td>
 							</tr>
 						</tbody>

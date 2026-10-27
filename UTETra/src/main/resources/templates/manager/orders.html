@@ -126,10 +126,15 @@
 			<div class="modal-dialog modal-dialog-centered">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h5 class="modal-title">Huỷ đơn #<span id="vo-cancel-id"></span></h5>
+						<h5 class="modal-title"><span id="vo-cancel-title">Từ chối đơn</span> #<span id="vo-cancel-id"></span></h5>
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
 					</div>
 					<div class="modal-body">
+						<div id="vo-noshow" class="d-none">
+							<p class="mb-0">Món đã pha xong. Xác nhận <b>khách không đến lấy món</b> và huỷ đơn?</p>
+							<input type="hidden" id="vo-noshow-reason" th:value="${noShowReason}">
+						</div>
+						<div id="vo-reasons">
 						<div class="form-check mb-1" th:each="r, s : ${cancelReasons}">
 							<input class="form-check-input" type="radio" name="vo-reason" th:id="|vo-reason-${s.index}|"
 								th:value="${r}">
@@ -141,11 +146,12 @@
 						</div>
 						<textarea id="vo-reason-text" class="form-control form-control-sm mt-2" rows="2" maxlength="200"
 							placeholder="Ghi rõ lý do (nếu chọn Lý do khác)"></textarea>
+						</div>
 						<div id="vo-cancel-error" class="small text-danger mt-2"></div>
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-light" data-bs-dismiss="modal">Đóng</button>
-						<button type="button" class="btn btn-danger" id="vo-cancel-confirm">Huỷ đơn</button>
+						<button type="button" class="btn btn-danger" id="vo-cancel-confirm">Xác nhận</button>
 					</div>
 				</div>
 			</div>

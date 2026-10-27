@@ -38,6 +38,16 @@
 		<div th:if="${success}" class="alert alert-success"
 			th:text="${success}"></div>
 		<div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+		<div th:if="${order.status == 'RETURNED'}" class="alert alert-danger">
+			<i class="bi bi-exclamation-octagon me-1"></i> <b th:text="${order.pickup} ? 'Khách không đến lấy món.' : 'Giao thất bại.'">Giao thất bại.</b>
+			<span th:if="${order.cancelReason}">Lý do: <b th:text="${order.cancelReason}"></b></span>
+			<form th:if="${order.payment.method != 'COD' and order.payment.status == 'PAID'}" method="post" class="mt-2"
+				th:action="@{/manager/orders/{id}/refund-failed(id=${order.id})}"
+				onsubmit="return confirm('Hoàn toàn bộ tiền đơn này cho khách?');">
+				<span class="small d-block mb-1">Khách đã thanh toán trước. Lỗi do khách nên hệ thống không tự hoàn; quán có thể chủ động hoàn nếu muốn.</span>
+				<button type="submit" class="btn btn-sm btn-outline-danger">Hoàn tiền cho khách</button>
+			</form>
+		</div>
 		<div th:if="${order.status == 'CANCELLED'}"
 			class="alert alert-secondary">
 			<i class="bi bi-x-circle me-1"></i> <b
@@ -317,8 +327,15 @@
 						<form th:if="${card.canCancel}" method="post"
 							class="border-top pt-2 mt-2"
 							th:action="@{/manager/orders/{id}/status(id=${order.id})}">
-							<input type="hidden" name="status" value="CANCELLED">
-							<div class="small fw-semibold text-danger mb-1">Huỷ đơn
+							<input type="hidden" name="status" th:value="${card.status == 'READY'} ? 'RETURNED' : 'CANCELLED'">
+							<th:block th:if="${card.status == 'READY'}">
+							<input type="hidden" name="reason" th:value="${noShowReason}">
+							<div class="small text-muted mb-1">Khách không đến lấy: đơn trả trước không tự hoàn tiền, đơn trả tại quầy không tính doanh thu.</div>
+							<button type="submit" class="btn btn-outline-danger w-100"
+								onclick="return confirm('Xác nhận khách không đến lấy món?')">Khách không đến lấy</button>
+							</th:block>
+							<th:block th:unless="${card.status == 'READY'}">
+							<div class="small fw-semibold text-danger mb-1">Từ chối đơn
 								(bắt buộc lý do)</div>
 							<div class="form-check" th:each="r, s : ${cancelReasons}">
 								<input class="form-check-input" type="radio" name="reason"
@@ -336,7 +353,8 @@
 								class="form-control form-control-sm mt-1" rows="2"
 								maxlength="200" placeholder="Ghi rõ lý do (nếu chọn Lý do khác)"></textarea>
 							<button type="submit" class="btn btn-outline-danger w-100 mt-2"
-								onclick="return confirm('Huỷ đơn này?')">Huỷ đơn</button>
+								onclick="return confirm('Từ chối đơn này?')">Từ chối đơn</button>
+							</th:block>
 						</form>
 					</div>
 				</div>

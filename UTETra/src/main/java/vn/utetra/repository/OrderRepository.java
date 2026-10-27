@@ -18,6 +18,11 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Integer> {
 
+	String REVENUE = "(o.status = :status OR (o.status = vn.utetra.entity.enums.OrderStatus.RETURNED "
+			+ "AND o.paymentMethod <> vn.utetra.entity.enums.PaymentMethod.COD "
+			+ "AND o.paymentStatus = vn.utetra.entity.enums.PaymentStatus.PAID))";
+
+
 	List<Order> findByUserIdOrderByCreatedAtDesc(Integer userId);
 
 	List<Order> findByBranchIdAndStatusOrderByCreatedAtDesc(Integer branchId, OrderStatus status);
@@ -38,6 +43,8 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			@Param("since") LocalDateTime since);
 
 	boolean existsByUserIdAndStatusNot(Integer userId, OrderStatus status);
+
+	long countByUserIdAndStatus(Integer userId, OrderStatus status);
 
 	List<Order> findByUserIdAndStatusInOrderByCreatedAtDesc(Integer userId, Collection<OrderStatus> statuses);
 
@@ -66,7 +73,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	List<Order> findByStatusAndDeliveredAtGreaterThanEqualAndDeliveredAtLessThanOrderByDeliveredAtAsc(
 			OrderStatus status, LocalDateTime start, LocalDateTime end);
 
-	@Query("SELECT COALESCE(SUM(o.totalAmount - o.refundAmount), 0) FROM Order o " + "WHERE o.status = :status "
+	@Query("SELECT COALESCE(SUM(o.totalAmount - o.refundAmount), 0) FROM Order o " + "WHERE " + REVENUE + " "
 			+ "AND o.deliveredAt >= :start " + "AND o.deliveredAt < :end")
 	BigDecimal sumRevenueByStatusAndDeliveredAt(@Param("status") OrderStatus status,
 			@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
@@ -90,7 +97,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 	List<Integer> findOpenOrderIdsOfShipper(@Param("shipperId") Integer shipperId,
 			@Param("statuses") Collection<OrderStatus> statuses);
 
-	@Query("SELECT COALESCE(SUM(o.totalAmount - o.refundAmount), 0) FROM Order o WHERE o.status = :status "
+	@Query("SELECT COALESCE(SUM(o.totalAmount - o.refundAmount), 0) FROM Order o WHERE " + REVENUE + " "
 			+ "AND o.deliveredAt >= :start AND o.deliveredAt < :end AND (:branchId IS NULL OR o.branch.id = :branchId)")
 	BigDecimal sumRevenueOfBranch(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
@@ -106,7 +113,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
 
 	@Query(value = "SELECT CAST(o.delivered_at AS DATE) AS ngay, SUM(o.total_amount - o.refund_amount) AS doanh_thu, "
-			+ "SUM(o.shipping_fee) AS phi_ship, COUNT(*) AS so_don FROM Orders o WHERE o.status = 'DELIVERED' "
+			+ "SUM(o.shipping_fee) AS phi_ship, COUNT(*) AS so_don FROM Orders o WHERE (o.status = 'DELIVERED' OR (o.status = 'RETURNED' AND o.payment_method <> 'COD' AND o.payment_status = 'PAID')) "
 			+ "AND o.delivered_at >= :start AND o.delivered_at < :end AND (:branchId = 0 OR o.branch_id = :branchId) "
 			+ "GROUP BY CAST(o.delivered_at AS DATE) ORDER BY ngay", nativeQuery = true)
 	List<Object[]> revenueByDay(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
@@ -114,7 +121,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
 	@Query("SELECT YEAR(o.deliveredAt), MONTH(o.deliveredAt), COALESCE(SUM(o.totalAmount - o.refundAmount), 0), "
 			+ "COALESCE(SUM(o.shippingFee), 0), COUNT(o) "
-			+ "FROM Order o WHERE o.status = :status AND o.deliveredAt >= :start AND o.deliveredAt < :end "
+			+ "FROM Order o WHERE " + REVENUE + " AND o.deliveredAt >= :start AND o.deliveredAt < :end "
 			+ "AND (:branchId IS NULL OR o.branch.id = :branchId) "
 			+ "GROUP BY YEAR(o.deliveredAt), MONTH(o.deliveredAt) ORDER BY YEAR(o.deliveredAt), MONTH(o.deliveredAt)")
 	List<Object[]> revenueByMonth(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
@@ -122,24 +129,24 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
 	@Query("SELECT o.branch.id, o.branch.name, COALESCE(SUM(o.totalAmount - o.refundAmount), 0), "
 			+ "COALESCE(SUM(o.shippingFee), 0), COUNT(o) "
-			+ "FROM Order o WHERE o.status = :status AND o.deliveredAt >= :start AND o.deliveredAt < :end "
+			+ "FROM Order o WHERE " + REVENUE + " AND o.deliveredAt >= :start AND o.deliveredAt < :end "
 			+ "GROUP BY o.branch.id, o.branch.name ORDER BY COALESCE(SUM(o.totalAmount - o.refundAmount), 0) DESC")
 	List<Object[]> revenueByBranch(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end);
 
 	@Query("SELECT COALESCE(SUM(o.totalAmount - o.refundAmount), 0), COALESCE(SUM(o.shippingFee), 0), COUNT(o) "
-			+ "FROM Order o WHERE o.status = :status AND o.deliveredAt >= :start AND o.deliveredAt < :end "
+			+ "FROM Order o WHERE " + REVENUE + " AND o.deliveredAt >= :start AND o.deliveredAt < :end "
 			+ "AND (:branchId IS NULL OR o.branch.id = :branchId)")
 	List<Object[]> summaryOfBranch(@Param("status") OrderStatus status, @Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
 
-	@Query("SELECT o FROM Order o WHERE o.status = :status AND o.shippingFee > 0 AND o.deliveredAt >= :start "
+	@Query("SELECT o FROM Order o WHERE " + REVENUE + " AND o.shippingFee > 0 AND o.deliveredAt >= :start "
 			+ "AND o.deliveredAt < :end AND (:branchId IS NULL OR o.branch.id = :branchId) ORDER BY o.deliveredAt DESC")
 	org.springframework.data.domain.Page<Order> findShippedBetween(@Param("status") OrderStatus status,
 			@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, @Param("branchId") Integer branchId,
 			org.springframework.data.domain.Pageable pageable);
 
-	@Query("SELECT o FROM Order o WHERE o.status = :status AND o.shippingFee > 0 "
+	@Query("SELECT o FROM Order o WHERE " + REVENUE + " AND o.shippingFee > 0 "
 			+ "AND (:branchId IS NULL OR o.branch.id = :branchId) ORDER BY o.deliveredAt DESC")
 	List<Order> findLatestShipped(@Param("status") OrderStatus status, @Param("branchId") Integer branchId,
 			org.springframework.data.domain.Pageable pageable);

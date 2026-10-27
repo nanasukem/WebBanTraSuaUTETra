@@ -64,7 +64,7 @@
 
 							<div class="col-12 col-md-6">
 								<div class="text-muted small">Trạng thái đơn hàng</div>
-								<span class="badge bg-primary"
+								<span class="badge" th:classappend="${order.status == null} ? 'text-bg-secondary' : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).badgeClass(order.status)}"
 									th:text="${order.status == null ? 'Chưa xác định' : (order.status.name() == 'CANCELLED' ? T(vn.utetra.service.impl.OrderFlowServiceImpl).cancelledByLabel(order.cancelledBy, false) : T(vn.utetra.service.impl.OrderFlowServiceImpl).statusLabel(order.status, order.deliveryType != null and order.deliveryType.name() == 'PICKUP'))}"></span>
 							</div>
 
@@ -87,7 +87,7 @@
 									<small class="d-block mt-1" th:with="m=${order.manager != null ? order.manager : order.branch.owner}">
 										<span class="text-muted">Manager xử lý đơn:</span>
 										<th:block th:if="${m != null}">
-											<a th:href="@{/admin/users/{id}/orders(id=${m.id})}" class="fw-semibold text-decoration-none"
+											<a th:href="@{/admin/users/{id}(id=${m.id})}" class="fw-semibold text-decoration-none"
 												th:text="${m.fullName}"></a>
 											<span class="text-muted" th:if="${m.phone}" th:text="' · ' + ${m.phone}"></span>
 											<span th:if="${order.branch.owner == null or order.branch.owner.id != m.id}"
@@ -111,8 +111,12 @@
 								</th:block>
 							</div>
 
+							<div class="col-12" th:if="${order.status != null and (order.status.name() == 'RETURNED' or order.status.name() == 'CANCELLED') and order.cancelReason != null}">
+								<div class="text-muted small" th:text="${order.status.name() == 'RETURNED'} ? 'Lý do thất bại' : 'Lý do huỷ'">Lý do</div>
+								<div class="text-danger fw-semibold" th:text="${order.cancelReason}"></div>
+							</div>
 							<div class="col-12 col-md-6" th:if="${order.deliveredAt != null}">
-								<div class="text-muted small">Thời gian giao thành công</div>
+								<div class="text-muted small" th:text="${order.status.name() == 'RETURNED'} ? 'Thời gian ghi nhận thất bại' : 'Thời gian giao thành công'">Thời gian giao thành công</div>
 								<div
 									th:text="${#temporals.format(order.deliveredAt, 'HH:mm dd/MM/yyyy')}"></div>
 							</div>
@@ -156,7 +160,9 @@
 
 							<div class="col-12 col-md-6">
 								<div class="text-muted small">Tài khoản khách hàng</div>
-								<div th:text="${order.user != null ? order.user.username : '—'}"></div>
+								<a th:if="${order.user != null}" th:href="@{/admin/users/{id}(id=${order.user.id})}"
+									class="fw-semibold text-decoration-none" th:text="${order.user.username}"></a>
+								<div th:if="${order.user == null}">—</div>
 							</div>
 
 							<div class="col-12 col-md-6">
@@ -414,7 +420,7 @@
 							</select>
 							<textarea name="reason" class="form-control mb-3" rows="2"
 								maxlength="200"
-								placeholder="Lý do huỷ (bắt buộc nếu chọn Huỷ đơn)"></textarea>
+								placeholder="Lý do (bắt buộc nếu chọn Huỷ đơn hoặc Giao thất bại; đơn đến lấy đã pha xong sẽ ghi là khách không đến lấy)"></textarea>
 
 							<button type="submit" class="btn btn-primary w-100">
 								<i class="bi bi-check-circle me-1"></i> Cập nhật trạng thái

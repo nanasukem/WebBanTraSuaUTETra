@@ -44,7 +44,8 @@
 				<span th:if="${order.status == 'CANCELLED'}"><i class="bi bi-x-circle me-1"></i>
 					<b th:text="${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ đơn này.' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ đơn này.' : 'Đơn đã huỷ.')">Đơn đã huỷ.</b>
 					<span th:if="${order.cancelReason}" th:text="'Lý do: ' + ${order.cancelReason}"></span></span>
-				<span th:if="${order.status == 'RETURNED'}"><i class="bi bi-arrow-counterclockwise me-1"></i> Đơn đã trả hàng - hoàn tiền.</span>
+				<span th:if="${order.status == 'RETURNED'}"><i class="bi bi-exclamation-octagon me-1"></i> <b th:text="${order.pickup} ? 'Bạn không đến lấy đơn này.' : 'Giao không thành công.'">Giao không thành công.</b>
+					<span th:if="${order.cancelReason}" th:text="'Lý do: ' + ${order.cancelReason}"></span></span>
 			</div>
 
 			<div class="trk" id="trkBar">

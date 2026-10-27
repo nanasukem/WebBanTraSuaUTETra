@@ -10,7 +10,7 @@
 		userLocation: null,
 		askedGps: false,
 		productCode: null,
-		paymentMethod: 'COD',
+		paymentMethod: (document.querySelector('input[name=paymentMethod]:checked') || { value: 'COD' }).value,
 		canOrder: false,
 	};
 

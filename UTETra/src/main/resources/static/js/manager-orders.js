@@ -139,7 +139,7 @@
 			<button type="button" class="btn btn-sm ${a.style} flex-grow-1 fw-semibold" data-id="${o.id}" data-to="${a.to}">
 				${esc(a.label)}</button>`).join('');
 		const cancel = o.canCancel
-			? `<button type="button" class="btn btn-sm btn-outline-danger" data-cancel="${o.id}">Huỷ</button>` : '';
+			? `<button type="button" class="btn btn-sm btn-outline-danger" data-cancel="${o.id}" data-noshow="${o.status === 'READY' ? 1 : 0}">${o.status === 'READY' ? 'Khách không đến' : 'Từ chối'}</button>` : '';
 		return `
 		<div class="card vo-card mb-2 ${highlight.has(o.id) ? 'vo-new' : ''}" data-order="${o.id}">
 			<div class="card-body p-2">
@@ -190,13 +190,18 @@
 			return;
 		}
 		const cancelBtn = e.target.closest('button[data-cancel]');
-		if (cancelBtn) openCancel(Number(cancelBtn.dataset.cancel));
+		if (cancelBtn) openCancel(Number(cancelBtn.dataset.cancel), cancelBtn.dataset.noshow === '1');
 	});
 
 	let cancelId = null;
 	let cancelModal = null;
-	function openCancel(orderId) {
+	let cancelNoShow = false;
+	function openCancel(orderId, noShow) {
 		cancelId = orderId;
+		cancelNoShow = noShow;
+		$('vo-noshow').classList.toggle('d-none', !noShow);
+		$('vo-reasons').classList.toggle('d-none', noShow);
+		$('vo-cancel-title').textContent = noShow ? 'Khách không đến lấy đơn' : 'Từ chối đơn';
 		$('vo-cancel-id').textContent = orderId;
 		$('vo-cancel-error').textContent = '';
 		$('vo-reason-text').value = '';
@@ -209,6 +214,7 @@
 		const picked = document.querySelector('input[name=vo-reason]:checked');
 		let reason = picked ? picked.value : '';
 		if (reason === 'OTHER') reason = $('vo-reason-text').value.trim();
+		if (cancelNoShow) reason = $('vo-noshow-reason').value;
 		if (!reason) {
 			$('vo-cancel-error').textContent = 'Vui lòng chọn hoặc ghi lý do huỷ';
 			return;
@@ -216,7 +222,7 @@
 		const btn = $('vo-cancel-confirm');
 		btn.disabled = true;
 		try {
-			await changeStatus(cancelId, 'CANCELLED', reason);
+			await changeStatus(cancelId, cancelNoShow ? 'RETURNED' : 'CANCELLED', reason);
 			cancelModal.hide();
 		} catch (err) {
 			$('vo-cancel-error').textContent = err.message;

@@ -46,6 +46,14 @@
 					th:classappend="${currentTab == 'DELIVERED'} ? 'text-bg-light' : 'text-bg-success'"
 					th:text="${deliveredCount}">0</span>
 			</a></li>
+			<li class="nav-item"><a class="nav-link"
+				th:classappend="${currentTab == 'FAILED'} ? 'active'"
+				th:href="@{/shipper/orders(tab='FAILED')}"> <i
+					class="bi bi-x-octagon me-1"></i>Giao thất bại <span
+					class="badge rounded-pill ms-1"
+					th:classappend="${currentTab == 'FAILED'} ? 'text-bg-light' : 'text-bg-danger'"
+					th:text="${failedCount}">0</span>
+			</a></li>
 		</ul>
 
 		<div th:if="${#lists.isEmpty(orders)}"
@@ -70,6 +78,12 @@
 						<span class="badge text-bg-info ms-1"
 							th:if="${o.status.name() == 'READY' and o.shipper != null and o.shipper.id == shipper.id}">
 							<i class="bi bi-person-check"></i> Quán chỉ định cho bạn</span>
+						<div class="small text-danger mt-1" th:if="${o.status.name() == 'RETURNED'}">
+							<i class="bi bi-exclamation-octagon me-1"></i>Lý do: <b th:text="${o.cancelReason}"></b>
+							<span class="text-muted" th:if="${o.deliveredAt != null}"
+								th:text="' · báo lúc ' + ${#temporals.format(o.deliveredAt, 'HH:mm dd/MM/yyyy')}"></span>
+							<span class="text-muted" th:if="${o.paymentMethod != null and o.paymentMethod.name() == 'COD'}"> · COD: không thu tiền</span>
+						</div>
 						<div class="small text-muted mt-1">
 							<i class="bi bi-shop me-1"></i>Lấy hàng tại: <strong
 								th:text="${o.branch != null ? o.branch.name : 'Chi nhánh'}"></strong>
@@ -167,7 +181,32 @@
 								<i class="bi bi-check-circle-fill me-1"></i>Đã giao thành công
 							</button>
 						</form>
+						<button th:if="${o.status.name() == 'DELIVERING'}" type="button"
+							class="btn btn-outline-danger fw-semibold" data-bs-toggle="collapse"
+							th:attr="data-bs-target='#fail-' + ${o.id}">
+							<i class="bi bi-x-octagon me-1"></i>Giao thất bại
+						</button>
 					</div>
+					<form th:if="${o.status.name() == 'DELIVERING'}" th:id="'fail-' + ${o.id}"
+						class="collapse border rounded p-2 mt-2"
+						th:action="@{/shipper/orders/{id}/status(id=${o.id})}" method="post"
+						onsubmit="return confirm('Xác nhận giao thất bại đơn này?');">
+						<input type="hidden" name="status" value="RETURNED">
+						<div class="small fw-semibold text-danger mb-1">Lý do giao thất bại (bắt buộc)</div>
+						<div class="form-check" th:each="r, s : ${T(vn.utetra.service.impl.OrderFlowServiceImpl).FAILED_DELIVERY_REASONS}">
+							<input class="form-check-input" type="radio" name="reason" required
+								th:id="|fr-${o.id}-${s.index}|" th:value="${r}">
+							<label class="form-check-label small" th:for="|fr-${o.id}-${s.index}|" th:text="${r}"></label>
+						</div>
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="reason" value="OTHER" th:id="|fr-${o.id}-other|">
+							<label class="form-check-label small" th:for="|fr-${o.id}-other|">Lý do khác</label>
+						</div>
+						<textarea name="otherReason" class="form-control form-control-sm mt-1" rows="2" maxlength="200"
+							placeholder="Ghi rõ lý do (nếu chọn Lý do khác)"></textarea>
+						<div class="small text-muted mt-1">Nhớ gọi khách vài lần và chờ khoảng 10 phút trước khi báo thất bại.</div>
+						<button type="submit" class="btn btn-danger btn-sm w-100 mt-2">Xác nhận giao thất bại</button>
+					</form>
 				</div>
 			</div>
 		</div>

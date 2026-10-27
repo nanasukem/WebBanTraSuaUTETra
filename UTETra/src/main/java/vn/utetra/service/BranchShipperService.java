@@ -47,7 +47,7 @@ public class BranchShipperService {
 	}
 
 	public record ShipperDetail(User shipper, boolean inBranch, List<Order> delivering, List<Order> waiting,
-			List<Order> delivered, long deliveredToday, long deliveredMonth) {
+			List<Order> delivered, long deliveredToday, long deliveredMonth, List<Order> failed) {
 	}
 
 	public record ShipperOption(Integer id, String name, String phone, int busy) {
@@ -102,7 +102,10 @@ public class BranchShipperService {
 				delivered.stream().filter(o -> o.getDeliveredAt() != null && !o.getDeliveredAt().isBefore(todayStart))
 						.count(),
 				delivered.stream().filter(o -> o.getDeliveredAt() != null && !o.getDeliveredAt().isBefore(monthStart))
-						.count()));
+						.count(),
+				mine.stream().filter(o -> o.getStatus() == OrderStatus.RETURNED)
+						.sorted(Comparator.comparing(Order::getDeliveredAt, Comparator.nullsLast(Comparator.reverseOrder())))
+						.toList()));
 	}
 
 	public ShipperBox box(Integer orderId) {

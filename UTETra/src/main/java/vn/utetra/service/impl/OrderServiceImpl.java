@@ -300,6 +300,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
+    public long failedDeliveryCount(Integer userId) {
+        return userId == null ? 0 : orderRepository.countByUserIdAndStatus(userId, OrderStatus.RETURNED);
+    }
+
+    @Override
+    public boolean codBlocked(Integer userId) {
+        return failedDeliveryCount(userId) >= vn.utetra.service.impl.OrderFlowServiceImpl.COD_BLOCK_AFTER_FAILED;
+    }
+
+    @Override
+    @Transactional
     public Order placeOrder(Integer userId, CheckoutReq req) {
 
         Calc c = calculate(userId, req, true);
@@ -613,6 +624,11 @@ public class OrderServiceImpl implements OrderService {
         ) {
 
             fail(c, strict, "Phương thức thanh toán không hợp lệ");
+
+        } else if (req.getPaymentMethod() == PaymentMethod.COD && codBlocked(userId)) {
+
+            fail(c, strict, "Bạn đã có " + failedDeliveryCount(userId)
+                    + " đơn giao thất bại / không đến lấy nên không dùng được thanh toán khi nhận hàng (COD). Vui lòng chọn VNPAY hoặc MoMo");
         }
 
         Integer branchId = c.branch == null

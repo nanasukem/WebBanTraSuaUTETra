@@ -14,6 +14,10 @@ public interface OrderService {
 
 	Order placeOrder(Integer userId, CheckoutReq req);
 
+	long failedDeliveryCount(Integer userId);
+
+	boolean codBlocked(Integer userId);
+
 	List<VoucherOptionRes> voucherOptions(Integer userId, CheckoutReq req);
 
 	OrderSummaryRes getOrderSummary(Integer userId, Integer orderId);

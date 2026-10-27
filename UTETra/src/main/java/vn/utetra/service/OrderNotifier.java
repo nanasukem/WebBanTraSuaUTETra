@@ -97,6 +97,30 @@ public class OrderNotifier {
 					title = "Cửa hàng đã huỷ đơn #" + id;
 					message = reason;
 				}
+				case RETURNED -> {
+					if (pickup) {
+						title = "Bạn không đến lấy đơn #" + id;
+						message = "Quán đã pha xong nhưng bạn không đến lấy"
+								+ (o.getPaymentMethod() == vn.utetra.entity.enums.PaymentMethod.COD
+										? ". Lưu ý: không nhận đơn từ " + OrderFlowServiceImpl.COD_BLOCK_AFTER_FAILED
+												+ " lần trở lên sẽ không dùng được thanh toán khi nhận hàng"
+										: ". Đơn đã thanh toán trước, liên hệ quán nếu bạn cần hỗ trợ");
+						notificationService.notifyAdmins(type, "Khách không đến lấy đơn #" + id, branch,
+								"/admin/orders/" + id, "NO_SHOW:" + id);
+						break;
+					}
+					title = "Đơn #" + id + " giao không thành công";
+					message = reason + (o.getPaymentMethod() == vn.utetra.entity.enums.PaymentMethod.COD
+							? ". Lưu ý: giao thất bại từ " + OrderFlowServiceImpl.COD_BLOCK_AFTER_FAILED
+									+ " lần trở lên sẽ không dùng được thanh toán khi nhận hàng (COD)"
+							: ". Đơn đã thanh toán trước, liên hệ quán nếu bạn cần hỗ trợ");
+					String shipperName = o.getShipper() == null ? "Shipper" : "Shipper " + o.getShipper().getFullName();
+					notificationService.create(owner, o, type, "Giao thất bại đơn #" + id,
+							shipperName + " báo: " + o.getCancelReason(), "/manager/orders/" + id);
+					notificationService.notifyAdmins(type, "Giao thất bại đơn #" + id,
+							branch + " · " + shipperName + " báo: " + o.getCancelReason(), "/admin/orders/" + id,
+							"FAILED_DELIVERY:" + id);
+				}
 				default -> { title = "Đơn #" + id + ": " + label; message = branch; }
 			}
 			notificationService.create(customer, o, type, title, message, link);

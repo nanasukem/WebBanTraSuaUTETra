@@ -25,5 +25,7 @@ public interface ManagerOrderService {
 
 	ManagerOrderRes orderCard(Integer managerId, Integer orderId);
 
+	String refundFailedDelivery(Integer managerId, Integer orderId);
+
 	List<vn.utetra.entity.Order> branchOrders(Integer branchId);
 }

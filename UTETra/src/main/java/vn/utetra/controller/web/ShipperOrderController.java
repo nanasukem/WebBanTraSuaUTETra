@@ -38,6 +38,7 @@ public class ShipperOrderController {
 		model.addAttribute("readyCount", board.readyCount());
 		model.addAttribute("shippingCount", board.shippingCount());
 		model.addAttribute("deliveredCount", board.deliveredCount());
+		model.addAttribute("failedCount", board.failedCount());
 		model.addAttribute("doneToday", board.doneToday());
 		model.addAttribute("doneMonth", board.doneMonth());
 		model.addAttribute("doneTotal", board.doneTotal());
@@ -72,12 +73,16 @@ public class ShipperOrderController {
 
 	@PostMapping("/orders/{id}/status")
 	public String updateStatus(@PathVariable Integer id, @RequestParam OrderStatus status,
+			@RequestParam(required = false) String reason, @RequestParam(required = false) String otherReason,
 			Principal principal, HttpSession session, RedirectAttributes ra) {
 		User shipper = currentUserService.requireUser(principal, session);
 		try {
-			shipperService.updateStatus(shipper, id, status);
-			ra.addFlashAttribute("successMessage", OrderStatus.actionText(status, id, null));
-			String nextTab = status == OrderStatus.DELIVERED ? "DELIVERED" : "SHIPPING";
+			String finalReason = "OTHER".equals(reason) ? (otherReason == null ? null : otherReason.trim()) : reason;
+			shipperService.updateStatus(shipper, id, status, finalReason);
+			ra.addFlashAttribute("successMessage", OrderStatus.actionText(status, id,
+					status == OrderStatus.RETURNED ? finalReason : null));
+			String nextTab = status == OrderStatus.DELIVERED ? "DELIVERED"
+					: status == OrderStatus.RETURNED ? "FAILED" : "SHIPPING";
 			return "redirect:/shipper/orders?tab=" + nextTab;
 		} catch (BusinessException | ResourceNotFoundException e) {
 			ra.addFlashAttribute("errorMessage", e.getMessage());

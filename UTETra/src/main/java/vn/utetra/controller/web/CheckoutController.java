@@ -29,7 +29,10 @@ public class CheckoutController {
 	@GetMapping("/checkout")
 	public String checkout(Principal principal, HttpSession session, Model model) {
 
-		model.addAttribute("currentUser", currentUserService.requireUser(principal, session));
+		vn.utetra.entity.User user = currentUserService.requireUser(principal, session);
+		model.addAttribute("currentUser", user);
+		model.addAttribute("codBlocked", orderService.codBlocked(user.getId()));
+		model.addAttribute("failedDeliveries", orderService.failedDeliveryCount(user.getId()));
 
 		return "cart/checkout";
 	}

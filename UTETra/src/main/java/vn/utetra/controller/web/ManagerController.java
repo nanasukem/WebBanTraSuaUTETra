@@ -345,6 +345,7 @@ public class ManagerController {
 		model.addAttribute("delivered", d.delivered());
 		model.addAttribute("deliveredToday", d.deliveredToday());
 		model.addAttribute("deliveredMonth", d.deliveredMonth());
+		model.addAttribute("failed", d.failed());
 
 		return "manager/shippers/detail";
 	}

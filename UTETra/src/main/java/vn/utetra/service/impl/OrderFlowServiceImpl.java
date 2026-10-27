@@ -37,20 +37,26 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 	private static final int REASON_MAX = 255;
 	public static final int REVIEW_DAYS = 30;
+	public static final String NO_SHOW_REASON = "Khách không đến lấy món";
+	public static final int COD_BLOCK_AFTER_FAILED = 2;
+	public static final List<String> FAILED_DELIVERY_REASONS = List.of(
+			"Không liên lạc được với khách",
+			"Khách từ chối nhận hàng",
+			"Sai địa chỉ, không tìm thấy khách");
 
 	private static final Map<OrderStatus, Set<OrderStatus>> DELIVERY_FLOW = Map.of(
 			OrderStatus.AWAITING_PAYMENT, Set.of(OrderStatus.CANCELLED),
 			OrderStatus.PENDING, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
-			OrderStatus.CONFIRMED, Set.of(OrderStatus.READY, OrderStatus.CANCELLED),
-			OrderStatus.READY, Set.of(OrderStatus.PICKED_UP, OrderStatus.CANCELLED),
+			OrderStatus.CONFIRMED, Set.of(OrderStatus.READY),
+			OrderStatus.READY, Set.of(OrderStatus.PICKED_UP),
 			OrderStatus.PICKED_UP, Set.of(OrderStatus.DELIVERING),
-			OrderStatus.DELIVERING, Set.of(OrderStatus.DELIVERED));
+			OrderStatus.DELIVERING, Set.of(OrderStatus.DELIVERED, OrderStatus.RETURNED));
 
 	private static final Map<OrderStatus, Set<OrderStatus>> PICKUP_FLOW = Map.of(
 			OrderStatus.AWAITING_PAYMENT, Set.of(OrderStatus.CANCELLED),
 			OrderStatus.PENDING, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
-			OrderStatus.CONFIRMED, Set.of(OrderStatus.READY, OrderStatus.CANCELLED),
-			OrderStatus.READY, Set.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED));
+			OrderStatus.CONFIRMED, Set.of(OrderStatus.READY),
+			OrderStatus.READY, Set.of(OrderStatus.DELIVERED, OrderStatus.RETURNED));
 
 	private final OrderRepository orderRepository;
 	private final VoucherRepository voucherRepository;
@@ -152,12 +158,24 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		boolean storeKnew = o.getStatus() != OrderStatus.AWAITING_PAYMENT;
 		boolean pickup = isPickup(o);
 		Map<OrderStatus, Set<OrderStatus>> flow = pickup ? PICKUP_FLOW : DELIVERY_FLOW;
+		if (to == OrderStatus.CANCELLED && (o.getStatus() == OrderStatus.CONFIRMED
+				|| o.getStatus() == OrderStatus.READY)) {
+			throw new BusinessException("Đơn #" + o.getId() + " đã được xác nhận nên quán không thể huỷ. "
+					+ "Nếu có sự cố, hãy liên hệ khách; sau khi nhận món khách có thể báo vấn đề để được hoàn tiền hoặc làm lại món");
+		}
 		if (to == null || !flow.getOrDefault(o.getStatus(), Set.of()).contains(to)) {
 			throw new BusinessException("Không thể chuyển đơn #" + o.getId() + " từ \"" + statusLabel(o.getStatus(), pickup)
 					+ "\" sang \"" + (to == null ? "?" : statusLabel(to, pickup)) + "\"");
 		}
 
 		String cleanReason = null;
+		if (to == OrderStatus.RETURNED && pickup) reason = NO_SHOW_REASON;
+		if (to == OrderStatus.RETURNED) {
+			if (reason == null || reason.isBlank()) throw new BusinessException("Vui lòng chọn lý do giao thất bại");
+			cleanReason = reason.trim();
+			if (cleanReason.length() > REASON_MAX)
+				throw new BusinessException("Lý do tối đa " + REASON_MAX + " ký tự");
+		}
 		if (to == OrderStatus.CANCELLED) {
 			if (reason == null || reason.isBlank()) throw new BusinessException("Vui lòng chọn lý do huỷ đơn");
 			cleanReason = reason.trim();
@@ -176,6 +194,10 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 		if (to == OrderStatus.CANCELLED) {
 			o.setCancelReason(cleanReason);
 			o.setCancelledBy(actor);
+		}
+		if (to == OrderStatus.RETURNED) {
+			o.setCancelReason(cleanReason);
+			o.setDeliveredAt(now);
 		}
 		if (to == OrderStatus.DELIVERED) {
 			o.setDeliveredAt(now);
@@ -228,7 +250,7 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 			case DELIVERING -> "Đang giao";
 			case DELIVERED -> pickup ? "Đã nhận món" : "Đã giao";
 			case CANCELLED -> "Đã huỷ";
-			case RETURNED -> "Trả hàng";
+			case RETURNED -> pickup ? "Khách không đến lấy" : "Giao thất bại";
 		};
 	}
 
@@ -324,7 +346,8 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 				money(o.getShippingFee()),
 								money(o.getTotalAmount()), paymentMethodLabel(o.getPaymentMethod()),
 				paymentStatusLabel(o.getPaymentStatus()), o.getCancelReason(),
-				time(o.getCreatedAt()), time(o.getDeliveredAt()), canCustomerCancel(o),
+				time(o.getCreatedAt()), o.getStatus() == OrderStatus.DELIVERED ? time(o.getDeliveredAt()) : null,
+				canCustomerCancel(o),
 				o.getCancelledBy() == null ? null : o.getCancelledBy().name(), paymentInfoBuilder.build(o),
 				orderIssueService.forOrder(o.getId()), orderIssueService.canReport(o),
 				vn.utetra.service.OrderIssueService.deadline(o) == null ? 0

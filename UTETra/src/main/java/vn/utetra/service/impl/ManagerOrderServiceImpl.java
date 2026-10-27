@@ -55,6 +55,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		TABS.put("SHIPPING", new Tab("Đã giao shipper / Đang giao", List.of(OrderStatus.PICKED_UP, OrderStatus.DELIVERING)));
 		TABS.put("DELIVERED", new Tab("Hoàn thành", List.of(OrderStatus.DELIVERED)));
 		TABS.put("CANCELLED", new Tab("Đã huỷ", List.of(OrderStatus.CANCELLED)));
+		TABS.put("FAILED", new Tab("Giao thất bại / Không đến lấy", List.of(OrderStatus.RETURNED)));
 		TABS.put("ISSUE", new Tab("Khách báo vấn đề", List.of()));
 	}
 
@@ -63,11 +64,14 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 	private final OrderFlowService orderFlowService;
 	private final vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder;
 	private final vn.utetra.repository.OrderIssueRepository orderIssueRepository;
+	private final vn.utetra.service.RefundService refundService;
 
 	public ManagerOrderServiceImpl(BranchRepository branchRepository, OrderRepository orderRepository,
 			OrderFlowService orderFlowService, vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder,
-			vn.utetra.repository.OrderIssueRepository orderIssueRepository) {
+			vn.utetra.repository.OrderIssueRepository orderIssueRepository,
+			vn.utetra.service.RefundService refundService) {
 		this.orderIssueRepository = orderIssueRepository;
+		this.refundService = refundService;
 		this.paymentInfoBuilder = paymentInfoBuilder;
 		this.branchRepository = branchRepository;
 		this.orderRepository = orderRepository;
@@ -118,7 +122,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 
 		boolean pickup = o.getDeliveryType() == DeliveryType.PICKUP;
 		boolean shipperStep = to == OrderStatus.PICKED_UP || to == OrderStatus.DELIVERING
-				|| (to == OrderStatus.DELIVERED && !pickup);
+				|| ((to == OrderStatus.DELIVERED || to == OrderStatus.RETURNED) && !pickup);
 		if (shipperStep) {
 			throw new BusinessException("Đơn #" + orderId + " giao tận nơi: các bước Lấy hàng, Đang giao, Đã giao do Shipper cập nhật");
 		}
@@ -135,7 +139,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		Branch branch = branchRepository.findById(id).orElseThrow();
 		String current = tab == null ? "PENDING" : tab.trim().toUpperCase();
 		if (current.equals("PICKED_UP") || current.equals("DELIVERING")) current = "SHIPPING";
-		if (current.equals("RETURNED")) current = "ISSUE";
+		if (current.equals("RETURNED")) current = "FAILED";
 		if (!TABS.containsKey(current)) current = "PENDING";
 
 		Map<OrderStatus, Long> counts = new EnumMap<>(OrderStatus.class);
@@ -179,6 +183,21 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		return toCard(findOwned(managerId, orderId), DAY_HOUR);
 	}
 
+	@Override
+	@Transactional
+	public String refundFailedDelivery(Integer managerId, Integer orderId) {
+		Order o = findOwned(managerId, orderId);
+		if (o.getStatus() != OrderStatus.RETURNED) {
+			throw new BusinessException("Chỉ hoàn tiền thủ công cho đơn giao thất bại hoặc khách không đến lấy");
+		}
+		if (o.getPaymentMethod() == vn.utetra.entity.enums.PaymentMethod.COD
+				|| o.getPaymentStatus() != vn.utetra.entity.enums.PaymentStatus.PAID) {
+			throw new BusinessException("Đơn #" + orderId + " không có khoản thanh toán trước để hoàn");
+		}
+		refundService.refundOrder(o, "Quán hoàn tiền đơn giao thất bại #" + orderId);
+		return "Đã gửi yêu cầu hoàn tiền đơn #" + orderId + " cho khách";
+	}
+
 	private Order findOwned(Integer managerId, Integer orderId) {
 		return orderRepository.findById(orderId)
 				.filter(x -> x.getBranch().getOwner().getId().equals(managerId))
@@ -211,11 +230,15 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 			}
 			case CANCELLED -> hint = OrderFlowServiceImpl.cancelledByLabel(o.getCancelledBy(), false)
 					+ (o.getCancelReason() == null ? "" : ": " + o.getCancelReason());
+			case RETURNED -> hint = (pickup ? "Khách không đến lấy" : "Giao thất bại") + (pickup ? "" : o.getCancelReason() == null ? "" : ": " + o.getCancelReason())
+					+ (o.getPaymentMethod() == vn.utetra.entity.enums.PaymentMethod.COD ? " · Khách chưa trả tiền (COD)"
+							: o.getPaymentStatus() == vn.utetra.entity.enums.PaymentStatus.PAID
+									? " · Khách đã trả trước, không tự hoàn tiền" : "");
 			case DELIVERED -> hint = issue == null ? null
 					: "Khách báo vấn đề: " + issue.getReason().getLabel() + " · " + issue.getStatus().getLabel();
 			default -> { }
 		}
-		boolean canCancel = o.getStatus() == OrderStatus.PENDING || o.getStatus() == OrderStatus.CONFIRMED
+		boolean canCancel = o.getStatus() == OrderStatus.PENDING
 				|| (o.getStatus() == OrderStatus.READY && pickup);
 		String label = o.getStatus() == OrderStatus.CANCELLED
 				? OrderFlowServiceImpl.cancelledByLabel(o.getCancelledBy(), false)

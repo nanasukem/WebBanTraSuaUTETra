@@ -81,7 +81,7 @@
 		if (ev.status === 'CANCELLED' || ev.status === 'RETURNED') {
 			stopped.className = 'alert mb-3 ' + (ev.status === 'CANCELLED' ? 'alert-secondary' : 'alert-danger');
 			stopped.textContent = ev.status === 'CANCELLED'
-				? (ev.statusLabel || 'Đơn đã huỷ') + '. ' + (ev.message || '') : 'Đơn đã trả hàng - hoàn tiền.';
+				? (ev.statusLabel || 'Đơn đã huỷ') + '. ' + (ev.message || '') : (ev.title || 'Giao không thành công') + '. ' + (ev.message || '');
 		}
 		if (ev.status === 'READY' && flow.length === 4) {
 			document.getElementById('trkHint').innerHTML = '<b class="text-success">Món đã xong! Mời bạn đến quán lấy.</b>';

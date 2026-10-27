@@ -118,9 +118,12 @@ public class AdminOrderController {
 	public String updateStatus(@PathVariable Integer id, @RequestParam OrderStatus status,
 			@RequestParam(required = false) String reason, RedirectAttributes redirectAttributes) {
 		try {
-			orderFlowService.updateStatus(id, status,
-					status == OrderStatus.CANCELLED && reason != null && !reason.isBlank()
-							? "UTETra huỷ: " + reason.trim() : reason);
+			Order current = adminOrderService.find(id).orElse(null);
+			String finalReason = status == OrderStatus.RETURNED && current != null
+					&& current.getDeliveryType() == DeliveryType.PICKUP ? OrderFlowServiceImpl.NO_SHOW_REASON
+							: status == OrderStatus.CANCELLED && reason != null && !reason.isBlank()
+									? "UTETra huỷ: " + reason.trim() : reason;
+			orderFlowService.updateStatus(id, status, finalReason);
 			redirectAttributes.addFlashAttribute("successMessage", "Đã cập nhật đơn hàng #" + id + ".");
 		} catch (BusinessException | ResourceNotFoundException e) {
 			redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());

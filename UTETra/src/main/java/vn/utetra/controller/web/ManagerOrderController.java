@@ -24,8 +24,7 @@ public class ManagerOrderController {
 			"Quán hết nguyên liệu / hết món",
 			"Quán đang quá tải, không kịp làm",
 			"Ngoài giờ phục vụ",
-			"Không liên lạc được với khách",
-			"Khách không đến lấy món");
+			"Không liên lạc được với khách");
 	private static final String OTHER = "OTHER";
 
 	private final ManagerOrderService managerOrderService;
@@ -48,6 +47,7 @@ public class ManagerOrderController {
 		Integer managerId = currentUserService.requireUserId(principal, session);
 		model.addAttribute("branches", managerOrderService.myBranches(managerId));
 		model.addAttribute("cancelReasons", CANCEL_REASONS);
+		model.addAttribute("noShowReason", vn.utetra.service.impl.OrderFlowServiceImpl.NO_SHOW_REASON);
 		try {
 			model.addAttribute("branchId", managerOrderService.resolveBranchId(managerId, branchId));
 		} catch (BusinessException | ResourceNotFoundException e) {
@@ -80,6 +80,7 @@ public class ManagerOrderController {
 			model.addAttribute("order", managerOrderService.orderDetail(managerId, id));
 			model.addAttribute("card", managerOrderService.orderCard(managerId, id));
 			model.addAttribute("cancelReasons", CANCEL_REASONS);
+			model.addAttribute("noShowReason", vn.utetra.service.impl.OrderFlowServiceImpl.NO_SHOW_REASON);
 			addShipperInfo(id, model);
 			return "manager/order-detail";
 		} catch (ResourceNotFoundException e) {
@@ -113,6 +114,18 @@ public class ManagerOrderController {
 			managerOrderService.orderCard(managerId, id);
 			orderIssueService.resolve(id, action, amount, note);
 			ra.addFlashAttribute("success", "Đã xử lý báo cáo của khách cho đơn #" + id);
+		} catch (BusinessException | ResourceNotFoundException e) {
+			ra.addFlashAttribute("error", e.getMessage());
+		}
+		return "redirect:/manager/orders/" + id;
+	}
+
+	@PostMapping("/manager/orders/{id}/refund-failed")
+	public String refundFailed(@PathVariable Integer id, Principal principal, HttpSession session,
+			RedirectAttributes ra) {
+		Integer managerId = currentUserService.requireUserId(principal, session);
+		try {
+			ra.addFlashAttribute("success", managerOrderService.refundFailedDelivery(managerId, id));
 		} catch (BusinessException | ResourceNotFoundException e) {
 			ra.addFlashAttribute("error", e.getMessage());
 		}

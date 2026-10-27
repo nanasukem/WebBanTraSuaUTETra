@@ -12,6 +12,7 @@ public enum OrderStatus {
             case DELIVERING -> "Đang giao " + don;
             case DELIVERED -> "Đã giao xong " + don;
             case CANCELLED -> "Huỷ " + don;
+            case RETURNED -> "Giao thất bại " + don;
             default -> "Cập nhật " + don + " sang " + to.name();
         };
         return reason == null || reason.isBlank() ? text : text + " (" + reason.trim() + ")";

@@ -9,7 +9,7 @@ public enum OrderTab {
 	CONFIRMED("Đang chuẩn bị", List.of(OrderStatus.CONFIRMED, OrderStatus.READY)),
 	SHIPPING("Đang giao", List.of(OrderStatus.PICKED_UP, OrderStatus.DELIVERING)),
 	ISSUE("Đang giải quyết", List.of(OrderStatus.DELIVERED)),
-	DELIVERED("Hoàn thành", List.of(OrderStatus.DELIVERED)), CANCELLED("Đã huỷ", List.of(OrderStatus.CANCELLED));
+	DELIVERED("Hoàn thành", List.of(OrderStatus.DELIVERED)), CANCELLED("Đã huỷ / Giao thất bại", List.of(OrderStatus.CANCELLED, OrderStatus.RETURNED));
 
 	private final String label;
 	private final List<OrderStatus> statuses;
