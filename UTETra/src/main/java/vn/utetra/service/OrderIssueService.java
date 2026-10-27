@@ -177,6 +177,7 @@ public class OrderIssueService {
 			case "REFUND" -> {
 				BigDecimal max = o.getTotalAmount();
 				if (amount == null || amount.signum() <= 0) throw new BusinessException("Nhập số tiền hoàn");
+				if (amount.stripTrailingZeros().scale() > 0) throw new BusinessException("Số tiền hoàn phải là số nguyên (đồng)");
 				if (amount.compareTo(max) > 0) {
 					throw new BusinessException("Số tiền hoàn tối đa " + money(max) + "đ (số tiền khách đã trả)");
 				}
