@@ -494,10 +494,10 @@ INSERT INTO Users (username, password, full_name, email, phone, avatar_cloudinar
 INSERT INTO Addresses (user_id, receiver_name, receiver_phone, address_line, province, ward, street, address_type, note, latitude, longitude, is_default) VALUES
  (6, N'Trần Thị Khách', '0900000006', N'KTX Khu B ĐHQG, Phường Đông Hòa, Thành phố Hồ Chí Minh',
      N'Thành phố Hồ Chí Minh', N'Phường Đông Hòa', N'KTX Khu B ĐHQG', 'HOME',   N'Toà B3, gọi trước khi tới', 10.882300, 106.782600, 1),
- (6, N'Trần Thị Khách', '0900000006', N'1 Võ Văn Ngân, Phường Thủ Đức, Thành phố Hồ Chí Minh',
-     N'Thành phố Hồ Chí Minh', N'Phường Thủ Đức',  N'1 Võ Văn Ngân',  'OFFICE', NULL, 10.850700, 106.771900, 0),
- (7, N'Phạm Văn Mua',   '0900000007', N'12 Nguyễn Huệ, Phường Sài Gòn, Thành phố Hồ Chí Minh',
-     N'Thành phố Hồ Chí Minh', N'Phường Sài Gòn',  N'12 Nguyễn Huệ',  'HOME',   NULL, 10.774600, 106.703900, 1);
+ (6, N'Trần Thị Khách', '0900000006', N'Trường Đại học Nông Lâm TP.HCM, Phường Linh Xuân, Thành phố Hồ Chí Minh',
+     N'Thành phố Hồ Chí Minh', N'Phường Linh Xuân',  N'Trường Đại học Nông Lâm TP.HCM',  'OFFICE', N'Cổng chính, gọi khi tới', 10.871200, 106.791800, 0),
+ (7, N'Phạm Văn Mua',   '0900000007', N'Chợ Bến Thành, Phường Bến Thành, Thành phố Hồ Chí Minh',
+     N'Thành phố Hồ Chí Minh', N'Phường Bến Thành',  N'Chợ Bến Thành',  'HOME',   N'Cửa Nam, sạp số 12', 10.772500, 106.698000, 1);
 
 INSERT INTO MemberTiers (name, min_spent, discount_percent, max_discount, sort_order) VALUES
  (N'Thành viên', 0,       0, NULL,  1),
@@ -601,17 +601,17 @@ INSERT INTO CartItemToppings (cart_item_id, topping_id) VALUES (2, 4);
 INSERT INTO Favorites (user_id, product_id) VALUES (6, 1), (6, 7), (7, 1);
 INSERT INTO ViewedProducts (user_id, product_id) VALUES (6, 1), (6, 2), (6, 5), (7, 7);
 
-INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, product_voucher_id, receiver_name, receiver_phone, delivery_address,
+INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, product_voucher_id, receiver_name, receiver_phone, delivery_address, delivery_note,
                     items_total, product_discount, member_discount, member_tier_name, shipping_fee, total_amount,
                     status, payment_method, payment_status, created_at, updated_at, delivered_at)
-VALUES (6, 1, 'DELIVERY', 1, 5, 2, N'Trần Thị Khách', '0900000006', N'KTX Khu B, Dĩ An, Bình Dương',
-        148000, 15000, 0, N'Thành viên', 15000, 148000, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-01 09:15', '2026-09-01 09:55', '2026-09-01 09:55');
+VALUES (6, 1, 'DELIVERY', 1, 5, 2, N'Trần Thị Khách', '0900000006', N'KTX Khu B ĐHQG, Phường Đông Hòa, Thành phố Hồ Chí Minh', N'Toà B3, gọi trước khi tới',
+        148000, 15000, 0, N'Thành viên', 25000, 158000, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-01 09:15', '2026-09-01 09:55', '2026-09-01 09:55');
 
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, receiver_name, receiver_phone, delivery_address,
                     items_total, member_discount, member_tier_name, shipping_fee, total_amount, status, payment_method,
                     cancel_reason, cancelled_by, created_at, updated_at)
-VALUES (6, 2, 'DELIVERY', 1, N'Trần Thị Khách', '0900000006', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM',
-        35000, 0, N'Thành viên', 15000, 50000, 'CANCELLED', 'COD',
+VALUES (6, 1, 'DELIVERY', 1, N'Trần Thị Khách', '0900000006', N'Trường Đại học Nông Lâm TP.HCM, Phường Linh Xuân, Thành phố Hồ Chí Minh',
+        35000, 0, N'Thành viên', 25000, 60000, 'CANCELLED', 'COD',
         N'Quán không xác nhận đơn trong 10 phút', 'SYSTEM', '2026-09-03 10:05', '2026-09-03 10:15');
 
 INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, quantity, unit_price, subtotal) VALUES
@@ -624,7 +624,7 @@ INSERT INTO OrderDetailToppings (order_detail_id, topping_id, price) VALUES (1, 
 INSERT INTO VoucherUsages (voucher_id, user_id, order_id, used_at) VALUES (2, 6, 1, '2026-09-01 09:15');
 
 INSERT INTO Payments (order_id, method, transaction_code, amount, status, paid_at)
-VALUES (1, 'VNPAY', 'VNP14567890', 148000, 'SUCCESS', '2026-09-01 09:16');
+VALUES (1, 'VNPAY', 'VNP14567890', 158000, 'SUCCESS', '2026-09-01 09:16');
 
 INSERT INTO Reviews (user_id, product_id, order_detail_id, rating, content) VALUES
  (6, 1, 1, 5, N'Trà sữa trân châu đường đen rất ngon, trân châu dẻo, vị ngọt vừa phải, giao hàng nhanh, sẽ ủng hộ quán dài dài.');

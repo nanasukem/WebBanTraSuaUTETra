@@ -40,6 +40,7 @@ public class OrderServiceImpl implements OrderService {
 
     public static final int BASE_KM = 3;
     public static final int MAX_KM = 15;
+    public static final int MIN_DELIVERY_METERS = 100;
     public static final String DEFAULT_CARRIER_NAME = "Shipper UTETra";
 
     private final CartService cartService;
@@ -723,6 +724,11 @@ public class OrderServiceImpl implements OrderService {
         double km = distanceKm(b.getLatitude().doubleValue(), b.getLongitude().doubleValue(),
                 a.getLatitude().doubleValue(), a.getLongitude().doubleValue());
         c.distanceKm = BigDecimal.valueOf(km).setScale(1, RoundingMode.HALF_UP);
+        if (km * 1000 < MIN_DELIVERY_METERS) {
+            fail(c, strict, "Địa chỉ nhận hàng trùng với vị trí chi nhánh " + b.getName()
+                    + ", quán không giao tới chính quán. Vui lòng chọn địa chỉ khác hoặc chọn Đến lấy tại quán");
+            return;
+        }
         if (c.distanceKm.doubleValue() > MAX_KM) {
             fail(c, strict, "Địa chỉ cách " + b.getName() + " " + c.distanceKm + " km, quán chỉ giao trong "
                     + MAX_KM + " km. Vui lòng chọn chi nhánh gần hơn hoặc đến lấy tại quán");
