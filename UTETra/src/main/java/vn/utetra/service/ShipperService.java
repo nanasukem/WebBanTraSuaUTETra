@@ -119,7 +119,7 @@ public class ShipperService {
 
 	@Transactional
 	public void updateStatus(User shipper, Integer id, OrderStatus status, String reason) {
-		Order order = orderRepository.findById(id)
+		Order order = orderRepository.findByIdForUpdate(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + id));
 		if (order.getDeliveryType() != DeliveryType.DELIVERY) {
 			throw new BusinessException("Đơn #" + id + " là đơn khách tự đến lấy tại quán");

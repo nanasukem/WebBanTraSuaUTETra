@@ -131,6 +131,7 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 	@Override
 	@Transactional
 	public void cancelByCustomer(Integer userId, Integer orderId, String reason) {
+		orderRepository.findByIdForUpdate(orderId);
 		Order o = findOwned(userId, orderId);
 		if (o.getStatus() != OrderStatus.PENDING && o.getStatus() != OrderStatus.AWAITING_PAYMENT) {
 			throw new BusinessException("Chỉ huỷ được đơn đang Chờ xác nhận. Đơn #" + orderId + " hiện ở trạng thái \""
@@ -142,7 +143,7 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 	@Override
 	@Transactional
 	public void cancelBySystem(Integer orderId, String reason) {
-		Order o = orderRepository.findById(orderId)
+		Order o = orderRepository.findByIdForUpdate(orderId)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + orderId));
 		changeStatus(o, OrderStatus.CANCELLED, reason, CancelledBy.SYSTEM);
 	}
@@ -150,7 +151,7 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 	@Override
 	@Transactional
 	public void updateStatus(Integer orderId, OrderStatus to, String cancelReason) {
-		Order o = orderRepository.findById(orderId)
+		Order o = orderRepository.findByIdForUpdate(orderId)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng #" + orderId));
 		changeStatus(o, to, cancelReason, CancelledBy.STORE);
 	}

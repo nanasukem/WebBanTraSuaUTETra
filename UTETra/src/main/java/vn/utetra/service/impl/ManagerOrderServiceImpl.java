@@ -121,6 +121,7 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 	@Override
 	@Transactional
 	public void changeStatus(Integer managerId, Integer orderId, OrderStatus to, String reason) {
+		orderRepository.findByIdForUpdate(orderId);
 		Order o = findOwned(managerId, orderId);
 
 		boolean pickup = o.getDeliveryType() == DeliveryType.PICKUP;

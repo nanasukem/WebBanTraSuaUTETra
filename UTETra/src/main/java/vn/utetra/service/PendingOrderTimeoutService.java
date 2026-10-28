@@ -33,7 +33,7 @@ public class PendingOrderTimeoutService {
 		return from == null ? null : from.plusMinutes(timeoutMinutes);
 	}
 
-	@Scheduled(fixedDelay = 60_000, initialDelay = 45_000)
+	@Scheduled(fixedDelay = 15_000, initialDelay = 45_000)
 	public void cancelUnconfirmed() {
 		LocalDateTime now = LocalDateTime.now();
 		for (Order o : orderRepository.findByStatus(OrderStatus.PENDING)) {

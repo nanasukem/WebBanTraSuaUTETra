@@ -3,6 +3,7 @@ package vn.utetra.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -15,6 +16,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 public interface OrderRepository extends JpaRepository<Order, Integer> {
 
@@ -22,6 +26,10 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			+ "AND o.paymentMethod <> vn.utetra.entity.enums.PaymentMethod.COD "
 			+ "AND o.paymentStatus = vn.utetra.entity.enums.PaymentStatus.PAID))";
 
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT o FROM Order o WHERE o.id = :id")
+	Optional<Order> findByIdForUpdate(@Param("id") Integer id);
 
 	List<Order> findByUserIdOrderByCreatedAtDescIdDesc(Integer userId);
 

@@ -110,6 +110,7 @@ public class PaymentService {
 
 	@Transactional
 	public void switchToCod(Integer userId, Integer orderId) {
+		orderRepository.findByIdForUpdate(orderId);
 		Order o = owned(userId, orderId);
 		if (o.getStatus() != OrderStatus.AWAITING_PAYMENT || o.getPaymentStatus() != PaymentStatus.UNPAID) {
 			throw new BusinessException("Đơn #" + orderId + " không còn chờ thanh toán");
@@ -215,7 +216,7 @@ public class PaymentService {
 		p.setPaidAt(now);
 		paymentRepository.save(p);
 
-		Order o = p.getOrder();
+		Order o = orderRepository.findByIdForUpdate(p.getOrder().getId()).orElse(p.getOrder());
 		if (o.getStatus() == OrderStatus.AWAITING_PAYMENT && o.getPaymentStatus() == PaymentStatus.UNPAID) {
 			o.setPaymentMethod(PaymentMethod.valueOf(p.getMethod()));
 			o.setPaymentStatus(PaymentStatus.PAID);
@@ -287,7 +288,7 @@ public class PaymentService {
 
 	@Transactional
 	public void expireOrder(Integer orderId) {
-		Order o = orderRepository.findById(orderId).orElse(null);
+		Order o = orderRepository.findByIdForUpdate(orderId).orElse(null);
 		if (o == null || o.getStatus() != OrderStatus.AWAITING_PAYMENT) return;
 		if (LocalDateTime.now().isBefore(deadline(o))) return;
 		for (Payment p : paymentRepository.findByOrderIdAndStatus(orderId, "PENDING")) {
