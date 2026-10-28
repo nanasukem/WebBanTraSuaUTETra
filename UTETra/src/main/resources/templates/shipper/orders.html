@@ -119,6 +119,10 @@
 							<i class="bi bi-geo-alt-fill text-danger me-1"></i><span
 								th:text="${o.deliveryAddress}"></span>
 						</div>
+						<a th:if="${o.deliveryAddress != null and !o.deliveryAddress.isBlank()}" target="_blank"
+							rel="noopener" class="btn btn-sm btn-outline-success mt-2"
+							th:href="'https://www.google.com/maps/dir/?api=1&destination=' + ${#uris.escapeQueryParam(o.deliveryAddress)}"><i
+								class="bi bi-sign-turn-right me-1"></i>Chỉ đường trên Google Maps</a>
 						<div class="small fst-italic text-secondary mt-1"
 							th:if="${o.deliveryNote != null and !o.deliveryNote.isBlank()}">
 							<i class="bi bi-sticky me-1"></i>Ghi chú địa chỉ: <span
