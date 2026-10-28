@@ -24,6 +24,8 @@
 					<label for="username" class="form-label small fw-bold"> Tên
 						đăng nhập (*) </label> <input type="text" id="username"
 						class="form-control" th:field="*{username}"
+						pattern="[A-Za-z0-9_.]{3,50}" minlength="3" maxlength="50"
+						title="3–50 ký tự: chữ không dấu, số, dấu _ hoặc dấu chấm"
 						autocomplete="username" required placeholder="Ví dụ: user123"
 						autofocus>
 				</div>
@@ -31,21 +33,21 @@
 				<div class="mb-3">
 					<label for="password" class="form-label small fw-bold"> Mật
 						khẩu (*) </label> <input type="password" id="password"
-						class="form-control" th:field="*{password}"
+						class="form-control" th:field="*{password}" minlength="6" maxlength="72"
 						autocomplete="new-password" required placeholder="Nhập mật khẩu">
 				</div>
 
 				<div class="mb-3">
 					<label for="fullName" class="form-label small fw-bold"> Họ
-						và tên </label> <input type="text" id="fullName" class="form-control"
-						th:field="*{fullName}" autocomplete="name"
+						và tên (*) </label> <input type="text" id="fullName" class="form-control"
+						th:field="*{fullName}" autocomplete="name" required maxlength="100"
 						placeholder="Nguyễn Văn A">
 				</div>
 
 				<div class="mb-3">
 					<label for="email" class="form-label small fw-bold"> Email
 						(*) </label> <input type="email" id="email" class="form-control"
-						th:field="*{email}" autocomplete="email" required
+						th:field="*{email}" autocomplete="email" required maxlength="100"
 						placeholder="name@example.com">
 				</div>
 

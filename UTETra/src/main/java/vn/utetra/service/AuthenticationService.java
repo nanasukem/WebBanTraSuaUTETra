@@ -73,8 +73,20 @@ public class AuthenticationService {
 		if (!username.matches("[A-Za-z0-9_.]{3,50}")) {
 			throw new RuntimeException("Tên đăng nhập 3–50 ký tự, chỉ gồm chữ không dấu, số, dấu _ hoặc dấu chấm");
 		}
-		if (input.getPassword() == null || input.getPassword().length() < 6) {
-			throw new RuntimeException("Mật khẩu tối thiểu 6 ký tự");
+		if (input.getPassword() == null || input.getPassword().length() < UserService.MIN_PASSWORD) {
+			throw new RuntimeException("Mật khẩu tối thiểu " + UserService.MIN_PASSWORD + " ký tự");
+		}
+		if (input.getPassword().length() > UserService.MAX_PASSWORD) {
+			throw new RuntimeException("Mật khẩu tối đa " + UserService.MAX_PASSWORD + " ký tự");
+		}
+		if (fullName.isEmpty()) {
+			throw new RuntimeException("Vui lòng nhập họ và tên");
+		}
+		if (fullName.length() > 100) {
+			throw new RuntimeException("Họ và tên tối đa 100 ký tự");
+		}
+		if (email.length() > 100) {
+			throw new RuntimeException("Email tối đa 100 ký tự");
 		}
 		if (!email.matches("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$")) {
 			throw new RuntimeException("Email không hợp lệ");
@@ -178,6 +190,12 @@ public class AuthenticationService {
 	}
 
 	public boolean resetPassword(String email, String code, String newPassword) {
+		if (newPassword == null || newPassword.length() < UserService.MIN_PASSWORD) {
+			throw new RuntimeException("Mật khẩu tối thiểu " + UserService.MIN_PASSWORD + " ký tự");
+		}
+		if (newPassword.length() > UserService.MAX_PASSWORD) {
+			throw new RuntimeException("Mật khẩu tối đa " + UserService.MAX_PASSWORD + " ký tự");
+		}
 		OtpCode otpCode = otpCodeRepository
 				.findTopByEmailAndPurposeAndUsedFalseOrderByCreatedAtDesc(email, "RESET_PASSWORD")
 				.orElseThrow(() -> new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn!"));

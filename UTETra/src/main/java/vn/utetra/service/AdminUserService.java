@@ -229,6 +229,7 @@ public class AdminUserService {
 			throw new BusinessException("Tên đăng nhập 3–50 ký tự, chỉ gồm chữ không dấu, số, dấu _ hoặc dấu chấm.");
 		if (userRepository.existsByUsername(u)) throw new BusinessException("Tên đăng nhập \"" + u + "\" đã có người dùng.");
 		if (name.isEmpty() || name.length() > 100) throw new BusinessException("Vui lòng nhập họ tên (tối đa 100 ký tự).");
+		if (mail.length() > 100) throw new BusinessException("Email tối đa 100 ký tự.");
 		if (!mail.matches("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$")) throw new BusinessException("Email không hợp lệ.");
 		if (userRepository.existsByEmail(mail)) throw new BusinessException("Email " + mail + " đã được dùng cho tài khoản khác.");
 		if (tel.isEmpty()) throw new BusinessException("Vui lòng nhập số điện thoại.");
@@ -239,7 +240,10 @@ public class AdminUserService {
 		Branch branch = branchId == null ? null : branchRepository.findById(branchId).orElse(null);
 		if ("SHIPPER".equals(r) && branch == null)
 			throw new BusinessException("Chọn chi nhánh làm việc cho shipper (shipper chỉ nhận đơn giao của chi nhánh đó).");
-		if (password == null || password.length() < 6) throw new BusinessException("Mật khẩu tối thiểu 6 ký tự.");
+		if (password == null || password.length() < UserService.MIN_PASSWORD)
+			throw new BusinessException("Mật khẩu tối thiểu " + UserService.MIN_PASSWORD + " ký tự.");
+		if (password.length() > UserService.MAX_PASSWORD)
+			throw new BusinessException("Mật khẩu tối đa " + UserService.MAX_PASSWORD + " ký tự.");
 		if (!password.equals(confirmPassword)) throw new BusinessException("Mật khẩu nhập lại không khớp.");
 		Role targetRole = roleRepository.findByName(r)
 				.orElseThrow(() -> new BusinessException("Vai trò " + r + " chưa có trong cơ sở dữ liệu."));
@@ -285,7 +289,10 @@ public class AdminUserService {
 	public String resetPassword(Integer id, String newPassword, String confirmPassword, String currentUsername) {
 		User user = get(id);
 		if (isSelf(user, currentUsername)) throw new BusinessException("Đổi mật khẩu của chính bạn ở trang Tài khoản.");
-		if (newPassword == null || newPassword.length() < 6) throw new BusinessException("Mật khẩu mới tối thiểu 6 ký tự.");
+		if (newPassword == null || newPassword.length() < UserService.MIN_PASSWORD)
+			throw new BusinessException("Mật khẩu mới tối thiểu " + UserService.MIN_PASSWORD + " ký tự.");
+		if (newPassword.length() > UserService.MAX_PASSWORD)
+			throw new BusinessException("Mật khẩu mới tối đa " + UserService.MAX_PASSWORD + " ký tự.");
 		if (!newPassword.equals(confirmPassword)) throw new BusinessException("Mật khẩu nhập lại không khớp.");
 		user.setPassword(passwordEncoder.encode(newPassword));
 		user.setMustChangePassword(true);

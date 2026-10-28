@@ -17,6 +17,7 @@ import vn.utetra.repository.UserRepository;
 public class UserService {
 
 	public static final int MIN_PASSWORD = 6;
+	public static final int MAX_PASSWORD = 72;
 	private static final String PHONE_REGEX = "0\\d{9}";
 	private static final long MAX_AVATAR_BYTES = 5L * 1024 * 1024;
 
@@ -121,8 +122,8 @@ public class UserService {
 		if (newPassword == null || newPassword.length() < MIN_PASSWORD) {
 			throw new BusinessException("Mật khẩu mới tối thiểu " + MIN_PASSWORD + " ký tự");
 		}
-		if (newPassword.length() > 100) {
-			throw new BusinessException("Mật khẩu mới tối đa 100 ký tự");
+		if (newPassword.length() > MAX_PASSWORD) {
+			throw new BusinessException("Mật khẩu mới tối đa " + MAX_PASSWORD + " ký tự");
 		}
 		if (!newPassword.equals(confirmPassword)) {
 			throw new BusinessException("Nhập lại mật khẩu mới không khớp");
