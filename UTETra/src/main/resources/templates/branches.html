@@ -63,13 +63,13 @@
 							<i class="bi bi-geo-alt text-danger me-1"></i><span
 								th:text="${b.address}">Địa chỉ</span>
 						</p>
-						<p class="mb-2" th:with="mo=${b.isOpenAt(now)}">
+						<p class="mb-2" th:with="mo=${b.acceptsOrdersAt(now, lastOrderMinutes)}">
 							<i class="bi bi-clock me-1"
 								th:classappend="${mo} ? 'text-success' : 'text-secondary'"></i>
 							<span th:text="${b.hoursLabel}">7:00 - 22:00</span> · <span
 								class="fw-semibold"
 								th:classappend="${mo} ? 'text-success' : 'text-danger'"
-								th:text="${b.openStatusAt(now)}">Đang mở cửa</span>
+								th:text="${b.openStatusAt(now, lastOrderMinutes)}">Đang mở cửa</span>
 						</p>
 						<p class="mb-2"
 							th:if="${b.phone != null and !#strings.isEmpty(b.phone)}">

@@ -39,6 +39,7 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 	public static final int REVIEW_DAYS = 30;
 	public static final String NO_SHOW_REASON = "Khách không đến lấy món";
 	public static final int COD_BLOCK_AFTER_FAILED = 2;
+	public static final int FAILED_REFUND_HOURS = 2;
 	public static final List<String> FAILED_DELIVERY_REASONS = List.of(
 			"Không liên lạc được với khách",
 			"Khách từ chối nhận hàng",
@@ -91,7 +92,7 @@ public class OrderFlowServiceImpl implements OrderFlowService {
 	public List<OrderListRes> myOrders(Integer userId, OrderTab tab) {
 		Set<Integer> dangGiaiQuyet = new HashSet<>(
 				orderIssueRepository.findOrderIdsByUserAndStatus(userId, vn.utetra.entity.enums.IssueStatus.PENDING));
-		return orderRepository.findByUserIdAndStatusInOrderByCreatedAtDesc(userId, tab.getStatuses())
+		return orderRepository.findByUserIdAndStatusInOrderByCreatedAtDescIdDesc(userId, tab.getStatuses())
 				.stream()
 				.filter(o -> tab == OrderTab.ISSUE ? dangGiaiQuyet.contains(o.getId())
 						: tab != OrderTab.DELIVERED || !dangGiaiQuyet.contains(o.getId()))

@@ -42,7 +42,7 @@
 			<div id="trkStopped" class="alert mb-3"
 				th:classappend="${order.status == 'CANCELLED'} ? 'alert-secondary' : (${order.status == 'RETURNED'} ? 'alert-danger' : 'd-none')">
 				<span th:if="${order.status == 'CANCELLED'}"><i class="bi bi-x-circle me-1"></i>
-					<b th:text="${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ đơn này.' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ đơn này.' : 'Đơn đã huỷ.')">Đơn đã huỷ.</b>
+					<b th:text="${order.cancelledBy == 'CUSTOMER'} ? 'Bạn đã huỷ đơn này.' : (${order.cancelledBy == 'STORE'} ? 'Cửa hàng đã huỷ đơn này.' : (${order.cancelledBy == 'SYSTEM'} ? 'Hệ thống đã tự huỷ đơn này.' : 'Đơn đã huỷ.'))">Đơn đã huỷ.</b>
 					<span th:if="${order.cancelReason}" th:text="'Lý do: ' + ${order.cancelReason}"></span></span>
 				<span th:if="${order.status == 'RETURNED'}"><i class="bi bi-exclamation-octagon me-1"></i> <b th:text="${order.pickup} ? 'Bạn không đến lấy đơn này.' : 'Giao không thành công.'">Giao không thành công.</b>
 					<span th:if="${order.cancelReason}" th:text="'Lý do: ' + ${order.cancelReason}"></span></span>

@@ -14,9 +14,9 @@
 					<i class="bi bi-shop" style="font-size: 5rem;"></i>
 				</div>
 				<span class="position-absolute top-0 start-0 m-3 badge rounded-pill px-3 py-2 shadow-sm"
-					th:with="mo=${branch.isOpenAt(now)}" th:classappend="${mo} ? 'text-bg-success' : 'text-bg-secondary'">
+					th:with="mo=${branch.acceptsOrdersAt(now, lastOrderMinutes)}" th:classappend="${mo} ? 'text-bg-success' : 'text-bg-secondary'">
 					<i class="bi" th:classappend="${mo} ? 'bi-door-open' : 'bi-door-closed'"></i>
-					<span th:text="${branch.openStatusAt(now)}">Đang mở cửa · đóng lúc 22:00</span>
+					<span th:text="${branch.openStatusAt(now, lastOrderMinutes)}">Đang mở cửa · đóng lúc 22:00</span>
 				</span>
 			</div>
 

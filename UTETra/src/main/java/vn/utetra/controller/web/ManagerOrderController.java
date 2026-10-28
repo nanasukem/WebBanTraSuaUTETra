@@ -81,6 +81,9 @@ public class ManagerOrderController {
 			model.addAttribute("card", managerOrderService.orderCard(managerId, id));
 			model.addAttribute("cancelReasons", CANCEL_REASONS);
 			model.addAttribute("noShowReason", vn.utetra.service.impl.OrderFlowServiceImpl.NO_SHOW_REASON);
+			java.time.LocalDateTime refundDeadline = managerOrderService.failedRefundDeadline(managerId, id);
+			model.addAttribute("refundDeadline", refundDeadline);
+			model.addAttribute("refundOpen", refundDeadline != null && java.time.LocalDateTime.now().isBefore(refundDeadline));
 			addShipperInfo(id, model);
 			return "manager/order-detail";
 		} catch (ResourceNotFoundException e) {

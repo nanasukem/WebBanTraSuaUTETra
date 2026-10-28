@@ -14,7 +14,7 @@ public interface OrderIssueRepository extends JpaRepository<OrderIssue, Integer>
 
 	boolean existsByOrderId(Integer orderId);
 
-	Page<OrderIssue> findByOrderBranchIdOrderByCreatedAtDesc(Integer branchId, Pageable pageable);
+	Page<OrderIssue> findByOrderBranchIdOrderByCreatedAtDescIdDesc(Integer branchId, Pageable pageable);
 
 	long countByOrderBranchId(Integer branchId);
 

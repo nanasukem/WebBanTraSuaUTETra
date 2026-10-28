@@ -177,7 +177,7 @@
 					<i class="bi bi-exclamation-octagon me-1"></i> <b th:text="${order.pickup} ? 'Bạn không đến lấy đơn này.' : 'Đơn giao không thành công.'">Đơn giao không thành công.</b>
 					<span th:if="${order.cancelReason}">Lý do: <b th:text="${order.cancelReason}"></b></span>
 					<div class="small mt-1" th:if="${order.payment.method == 'COD'}">Giao thất bại hoặc không đến lấy từ 2 lần trở lên sẽ không dùng được thanh toán khi nhận hàng (COD).</div>
-					<div class="small mt-1" th:unless="${order.payment.method == 'COD'}">Đơn đã thanh toán trước. Vui lòng liên hệ quán nếu bạn cần hỗ trợ.</div>
+					<div class="small mt-1" th:unless="${order.payment.method == 'COD'}">Đơn đã thanh toán trước. Vui lòng liên hệ quán trong 2 giờ nếu bạn cần hỗ trợ.</div>
 				</div>
 				<div th:if="${order.status == 'CANCELLED'}"
 					class="alert alert-secondary mb-0">

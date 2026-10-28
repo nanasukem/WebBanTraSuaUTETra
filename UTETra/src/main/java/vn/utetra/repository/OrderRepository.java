@@ -23,11 +23,11 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			+ "AND o.paymentStatus = vn.utetra.entity.enums.PaymentStatus.PAID))";
 
 
-	List<Order> findByUserIdOrderByCreatedAtDesc(Integer userId);
+	List<Order> findByUserIdOrderByCreatedAtDescIdDesc(Integer userId);
 
-	List<Order> findByBranchIdAndStatusOrderByCreatedAtDesc(Integer branchId, OrderStatus status);
+	List<Order> findByBranchIdAndStatusOrderByCreatedAtDescIdDesc(Integer branchId, OrderStatus status);
 
-	List<Order> findByShipperIdAndStatusOrderByCreatedAtDesc(Integer shipperId, OrderStatus status);
+	List<Order> findByShipperIdAndStatusOrderByCreatedAtDescIdDesc(Integer shipperId, OrderStatus status);
 
 	List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime before);
 
@@ -46,7 +46,9 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
 	long countByUserIdAndStatus(Integer userId, OrderStatus status);
 
-	List<Order> findByUserIdAndStatusInOrderByCreatedAtDesc(Integer userId, Collection<OrderStatus> statuses);
+	List<Order> findByStatus(OrderStatus status);
+
+	List<Order> findByUserIdAndStatusInOrderByCreatedAtDescIdDesc(Integer userId, Collection<OrderStatus> statuses);
 
 	@Query("select o.status, count(o) from Order o " + "where o.user.id = :userId group by o.status")
 	List<Object[]> countByStatusOfUser(@Param("userId") Integer userId);
@@ -55,15 +57,15 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
 	List<Order> findTop20ByBranchIdAndStatusInOrderByUpdatedAtDesc(Integer branchId, Collection<OrderStatus> statuses);
 
-	Page<Order> findPageByBranchIdAndStatusOrderByCreatedAtDesc(Integer branchId, OrderStatus status,
+	Page<Order> findPageByBranchIdAndStatusOrderByCreatedAtDescIdDesc(Integer branchId, OrderStatus status,
 			Pageable pageable);
 
-	Page<Order> findPageByBranchIdAndStatusInOrderByCreatedAtDesc(Integer branchId, Collection<OrderStatus> statuses,
+	Page<Order> findPageByBranchIdAndStatusInOrderByCreatedAtDescIdDesc(Integer branchId, Collection<OrderStatus> statuses,
 			Pageable pageable);
 
 	@Query("select o from Order o where o.branch.id = :branchId and o.status in :statuses and not exists "
 			+ "(select i.id from OrderIssue i where i.order = o and i.status = vn.utetra.entity.enums.IssueStatus.PENDING) "
-			+ "order by o.createdAt desc")
+			+ "order by o.createdAt desc, o.id desc")
 	Page<Order> findPageWithoutPendingIssue(@Param("branchId") Integer branchId,
 			@Param("statuses") Collection<OrderStatus> statuses, Pageable pageable);
 
@@ -141,17 +143,17 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 			@Param("end") LocalDateTime end, @Param("branchId") Integer branchId);
 
 	@Query("SELECT o FROM Order o WHERE " + REVENUE + " AND o.shippingFee > 0 AND o.deliveredAt >= :start "
-			+ "AND o.deliveredAt < :end AND (:branchId IS NULL OR o.branch.id = :branchId) ORDER BY o.deliveredAt DESC")
+			+ "AND o.deliveredAt < :end AND (:branchId IS NULL OR o.branch.id = :branchId) ORDER BY o.deliveredAt DESC, o.id DESC")
 	org.springframework.data.domain.Page<Order> findShippedBetween(@Param("status") OrderStatus status,
 			@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, @Param("branchId") Integer branchId,
 			org.springframework.data.domain.Pageable pageable);
 
 	@Query("SELECT o FROM Order o WHERE " + REVENUE + " AND o.shippingFee > 0 "
-			+ "AND (:branchId IS NULL OR o.branch.id = :branchId) ORDER BY o.deliveredAt DESC")
+			+ "AND (:branchId IS NULL OR o.branch.id = :branchId) ORDER BY o.deliveredAt DESC, o.id DESC")
 	List<Order> findLatestShipped(@Param("status") OrderStatus status, @Param("branchId") Integer branchId,
 			org.springframework.data.domain.Pageable pageable);
 
-	List<Order> findByManager_IdOrderByCreatedAtDesc(Integer managerId);
+	List<Order> findByManager_IdOrderByCreatedAtDescIdDesc(Integer managerId);
 
 	List<Order> findByShipper_IdAndStatusOrderByDeliveredAtDesc(Integer shipperId, OrderStatus status);
 }

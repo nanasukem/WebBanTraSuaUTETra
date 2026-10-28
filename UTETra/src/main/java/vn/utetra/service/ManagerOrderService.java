@@ -27,5 +27,7 @@ public interface ManagerOrderService {
 
 	String refundFailedDelivery(Integer managerId, Integer orderId);
 
+	java.time.LocalDateTime failedRefundDeadline(Integer managerId, Integer orderId);
+
 	List<vn.utetra.entity.Order> branchOrders(Integer branchId);
 }

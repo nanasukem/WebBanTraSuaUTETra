@@ -27,6 +27,9 @@ public class BranchServiceImpl implements BranchService {
 	private static final double EARTH_RADIUS_KM = 6371.0;
 
 	private final BranchRepository branchRepository;
+
+	@org.springframework.beans.factory.annotation.Value("${order.last-order-minutes-before-close:15}")
+	private int lastOrderMinutes;
 	private final UserRepository userRepository;
 	private final CloudinaryService cloudinaryService;
 	@org.springframework.beans.factory.annotation.Autowired
@@ -215,7 +218,8 @@ public class BranchServiceImpl implements BranchService {
 		return findApproved().stream()
 				.map(b -> new NearbyBranchRes(b.getId(), b.getName(), b.getAddress(), b.getPhone(), b.getLatitude(),
 						b.getLongitude(), coViTri ? distanceKm(lat, lng, b.getLatitude(), b.getLongitude()) : null,
-						b.isOpenAt(now), b.getHoursLabel(), b.openStatusAt(now)))
+						b.acceptsOrdersAt(now, lastOrderMinutes), b.getHoursLabel(),
+						b.openStatusAt(now, lastOrderMinutes)))
 				.sorted(Comparator
 						.comparing(NearbyBranchRes::distanceKm, Comparator.nullsLast(Comparator.naturalOrder()))
 						.thenComparing(NearbyBranchRes::name))

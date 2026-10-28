@@ -57,6 +57,9 @@ public class OrderServiceImpl implements OrderService {
     private final OrderNotifier orderNotifier;
     private final ToppingService toppingService;
 
+    @org.springframework.beans.factory.annotation.Value("${order.last-order-minutes-before-close:15}")
+    private int lastOrderMinutes;
+
     public OrderServiceImpl(
             CartService cartService,
             VoucherService voucherService,
@@ -448,6 +451,18 @@ public class OrderServiceImpl implements OrderService {
                         strict,
                         "Chi nhánh " + c.branch.getName()
                                 + " hiện không nhận đơn"
+                );
+
+            } else if (c.branch.isOpenAt(java.time.LocalTime.now())
+                    && !c.branch.acceptsOrdersAt(java.time.LocalTime.now(), lastOrderMinutes)) {
+
+                java.time.LocalTime last = c.branch.lastOrderTime(lastOrderMinutes);
+                fail(
+                        c,
+                        strict,
+                        "Chi nhánh " + c.branch.getName() + " đã ngừng nhận đơn từ " + last.getHour() + ":"
+                                + String.format("%02d", last.getMinute()) + " (trước giờ đóng cửa "
+                                + lastOrderMinutes + " phút). Bạn vui lòng chọn chi nhánh khác hoặc quay lại vào ngày mai"
                 );
 
             } else if (!c.branch.isOpenAt(java.time.LocalTime.now())) {

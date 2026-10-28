@@ -41,12 +41,15 @@
 		<div th:if="${order.status == 'RETURNED'}" class="alert alert-danger">
 			<i class="bi bi-exclamation-octagon me-1"></i> <b th:text="${order.pickup} ? 'Khách không đến lấy món.' : 'Giao thất bại.'">Giao thất bại.</b>
 			<span th:if="${order.cancelReason}">Lý do: <b th:text="${order.cancelReason}"></b></span>
-			<form th:if="${order.payment.method != 'COD' and order.payment.status == 'PAID'}" method="post" class="mt-2"
+			<form th:if="${order.payment.method != 'COD' and order.payment.status == 'PAID' and refundOpen}" method="post" class="mt-2"
 				th:action="@{/manager/orders/{id}/refund-failed(id=${order.id})}"
 				onsubmit="return confirm('Hoàn toàn bộ tiền đơn này cho khách?');">
-				<span class="small d-block mb-1">Khách đã thanh toán trước. Lỗi do khách nên hệ thống không tự hoàn; quán có thể chủ động hoàn nếu muốn.</span>
+				<span class="small d-block mb-1">Khách đã thanh toán trước. Lỗi do khách nên hệ thống không tự hoàn; quán có thể chủ động hoàn nếu muốn,
+					hạn chót <b th:text="${#temporals.format(refundDeadline, 'HH:mm dd/MM/yyyy')}"></b> (trong 2 giờ).</span>
 				<button type="submit" class="btn btn-sm btn-outline-danger">Hoàn tiền cho khách</button>
 			</form>
+			<div th:if="${order.payment.method != 'COD' and order.payment.status == 'PAID' and !refundOpen}" class="small mt-2">
+				Đã quá 2 giờ kể từ lúc ghi nhận thất bại, quán không còn hoàn tiền được cho đơn này.</div>
 		</div>
 		<div th:if="${order.status == 'CANCELLED'}"
 			class="alert alert-secondary">

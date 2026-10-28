@@ -70,9 +70,16 @@ public class OrderNotifier {
 			if (storeKnew) notificationService.create(owner, o, type, title, message, "/manager/orders/" + id);
 		} else if (actor == CancelledBy.SYSTEM) {
 			title = "Đơn #" + id + " đã tự huỷ";
+			boolean paidOnline = o.getPaymentMethod() != vn.utetra.entity.enums.PaymentMethod.COD
+					&& o.getPaymentStatus() == vn.utetra.entity.enums.PaymentStatus.PAID;
 			message = (o.getCancelReason() == null ? "Đơn quá hạn thanh toán" : o.getCancelReason())
+					+ (paidOnline ? ". Tiền đã thanh toán sẽ được hoàn tự động" : "")
 					+ ". Mã giảm giá (nếu có) đã được hoàn lại";
 			notificationService.create(customer, o, type, title, message, link);
+			if (storeKnew) {
+				notificationService.create(owner, o, type, "Đơn #" + id + " đã tự huỷ",
+						(o.getCancelReason() == null ? "Hệ thống tự huỷ" : o.getCancelReason()), "/manager/orders/" + id);
+			}
 		} else {
 			switch (o.getStatus()) {
 				case CONFIRMED -> { title = "Quán đã nhận đơn #" + id; message = "Đang pha chế tại " + branch; }
@@ -104,7 +111,7 @@ public class OrderNotifier {
 								+ (o.getPaymentMethod() == vn.utetra.entity.enums.PaymentMethod.COD
 										? ". Lưu ý: không nhận đơn từ " + OrderFlowServiceImpl.COD_BLOCK_AFTER_FAILED
 												+ " lần trở lên sẽ không dùng được thanh toán khi nhận hàng"
-										: ". Đơn đã thanh toán trước, liên hệ quán nếu bạn cần hỗ trợ");
+										: ". Đơn đã thanh toán trước, liên hệ quán trong 2 giờ nếu bạn cần hỗ trợ");
 						notificationService.notifyAdmins(type, "Khách không đến lấy đơn #" + id, branch,
 								"/admin/orders/" + id, "NO_SHOW:" + id);
 						break;
@@ -113,7 +120,7 @@ public class OrderNotifier {
 					message = reason + (o.getPaymentMethod() == vn.utetra.entity.enums.PaymentMethod.COD
 							? ". Lưu ý: giao thất bại từ " + OrderFlowServiceImpl.COD_BLOCK_AFTER_FAILED
 									+ " lần trở lên sẽ không dùng được thanh toán khi nhận hàng (COD)"
-							: ". Đơn đã thanh toán trước, liên hệ quán nếu bạn cần hỗ trợ");
+							: ". Đơn đã thanh toán trước, liên hệ quán trong 2 giờ nếu bạn cần hỗ trợ");
 					String shipperName = o.getShipper() == null ? "Shipper" : "Shipper " + o.getShipper().getFullName();
 					notificationService.create(owner, o, type, "Giao thất bại đơn #" + id,
 							shipperName + " báo: " + o.getCancelReason(), "/manager/orders/" + id);

@@ -16,6 +16,9 @@ import java.util.Map;
 @Controller
 public class BranchDetailController {
 
+	@org.springframework.beans.factory.annotation.Value("${order.last-order-minutes-before-close:15}")
+	private int lastOrderMinutes;
+
 	@Autowired
 	private BranchReviewManagementService reviewService;
 
@@ -42,6 +45,7 @@ public class BranchDetailController {
 		model.addAttribute("avgRating", summary.get("avgRating"));
 		model.addAttribute("totalReviews", summary.get("totalReviews"));
 		model.addAttribute("now", LocalTime.now());
+		model.addAttribute("lastOrderMinutes", lastOrderMinutes);
 
 		return "branches/detail";
 	}

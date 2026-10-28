@@ -65,13 +65,16 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 	private final vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder;
 	private final vn.utetra.repository.OrderIssueRepository orderIssueRepository;
 	private final vn.utetra.service.RefundService refundService;
+	private final vn.utetra.service.PendingOrderTimeoutService pendingOrderTimeoutService;
 
 	public ManagerOrderServiceImpl(BranchRepository branchRepository, OrderRepository orderRepository,
 			OrderFlowService orderFlowService, vn.utetra.service.PaymentInfoBuilder paymentInfoBuilder,
 			vn.utetra.repository.OrderIssueRepository orderIssueRepository,
-			vn.utetra.service.RefundService refundService) {
+			vn.utetra.service.RefundService refundService,
+			vn.utetra.service.PendingOrderTimeoutService pendingOrderTimeoutService) {
 		this.orderIssueRepository = orderIssueRepository;
 		this.refundService = refundService;
+		this.pendingOrderTimeoutService = pendingOrderTimeoutService;
 		this.paymentInfoBuilder = paymentInfoBuilder;
 		this.branchRepository = branchRepository;
 		this.orderRepository = orderRepository;
@@ -162,10 +165,10 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 
 		PageRequest pr = PageRequest.of(Math.max(0, page), PAGE_SIZE);
 		Page<Order> result = "ISSUE".equals(current)
-				? orderIssueRepository.findByOrderBranchIdOrderByCreatedAtDesc(id, pr).map(vn.utetra.entity.OrderIssue::getOrder)
+				? orderIssueRepository.findByOrderBranchIdOrderByCreatedAtDescIdDesc(id, pr).map(vn.utetra.entity.OrderIssue::getOrder)
 				: "DELIVERED".equals(current)
 						? orderRepository.findPageWithoutPendingIssue(id, TABS.get(current).statuses(), pr)
-						: orderRepository.findPageByBranchIdAndStatusInOrderByCreatedAtDesc(id, TABS.get(current).statuses(), pr);
+						: orderRepository.findPageByBranchIdAndStatusInOrderByCreatedAtDescIdDesc(id, TABS.get(current).statuses(), pr);
 		List<ManagerOrderRes> orders = result.getContent().stream().map(o -> toCard(o, DAY_HOUR)).toList();
 
 		return new ManagerHistoryRes(id, branch.getName(), current, TABS.get(current).label(), tabs, orders,
@@ -194,8 +197,24 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 				|| o.getPaymentStatus() != vn.utetra.entity.enums.PaymentStatus.PAID) {
 			throw new BusinessException("Đơn #" + orderId + " không có khoản thanh toán trước để hoàn");
 		}
+		java.time.LocalDateTime deadline = deadlineOf(o);
+		if (deadline == null || java.time.LocalDateTime.now().isAfter(deadline)) {
+			throw new BusinessException("Đã quá " + OrderFlowServiceImpl.FAILED_REFUND_HOURS
+					+ " giờ kể từ lúc giao thất bại, quán không hoàn tiền đơn #" + orderId + " được nữa");
+		}
 		refundService.refundOrder(o, "Quán hoàn tiền đơn giao thất bại #" + orderId);
 		return "Đã gửi yêu cầu hoàn tiền đơn #" + orderId + " cho khách";
+	}
+
+	@Override
+	public java.time.LocalDateTime failedRefundDeadline(Integer managerId, Integer orderId) {
+		Order o = findOwned(managerId, orderId);
+		return o.getStatus() == OrderStatus.RETURNED ? deadlineOf(o) : null;
+	}
+
+	private static java.time.LocalDateTime deadlineOf(Order o) {
+		java.time.LocalDateTime at = o.getDeliveredAt() != null ? o.getDeliveredAt() : o.getUpdatedAt();
+		return at == null ? null : at.plusHours(OrderFlowServiceImpl.FAILED_REFUND_HOURS);
 	}
 
 	private Order findOwned(Integer managerId, Integer orderId) {
@@ -214,7 +233,12 @@ public class ManagerOrderServiceImpl implements ManagerOrderService {
 		vn.utetra.entity.OrderIssue issue = o.getStatus() == OrderStatus.DELIVERED
 				? orderIssueRepository.findByOrderId(o.getId()).orElse(null) : null;
 		switch (o.getStatus()) {
-			case PENDING -> actions.add(new ManagerOrderRes.Action("CONFIRMED", "Nhận đơn & pha chế", "btn-success"));
+			case PENDING -> {
+				actions.add(new ManagerOrderRes.Action("CONFIRMED", "Nhận đơn & pha chế", "btn-success"));
+				LocalDateTime deadline = pendingOrderTimeoutService.deadlineOf(o);
+				hint = deadline == null ? null
+						: "Nhận đơn trước " + deadline.format(HOUR) + ", quá giờ hệ thống tự huỷ";
+			}
 			case CONFIRMED -> {
 				actions.add(new ManagerOrderRes.Action("READY",
 						pickup ? "Pha xong, báo khách đến lấy" : "Pha xong, gọi shipper", "btn-warning"));

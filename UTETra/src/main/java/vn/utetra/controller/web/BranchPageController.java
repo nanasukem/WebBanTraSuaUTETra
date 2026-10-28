@@ -15,6 +15,9 @@ import vn.utetra.service.BranchReviewManagementService;
 @Controller
 public class BranchPageController {
 
+	@org.springframework.beans.factory.annotation.Value("${order.last-order-minutes-before-close:15}")
+	private int lastOrderMinutes;
+
 	private final vn.utetra.service.BranchService branchService;
 	private final BranchReviewManagementService branchReviewManagementService;
 
@@ -37,6 +40,7 @@ public class BranchPageController {
 		model.addAttribute("branches", branches);
 		model.addAttribute("branchReviewSummaries", branchReviewSummaries);
 		model.addAttribute("now", java.time.LocalTime.now());
+		model.addAttribute("lastOrderMinutes", lastOrderMinutes);
 		return "branches";
 	}
 }

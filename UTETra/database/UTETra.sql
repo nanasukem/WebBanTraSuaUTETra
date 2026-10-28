@@ -603,14 +603,16 @@ INSERT INTO ViewedProducts (user_id, product_id) VALUES (6, 1), (6, 2), (6, 5), 
 
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, shipper_id, product_voucher_id, receiver_name, receiver_phone, delivery_address,
                     items_total, product_discount, member_discount, member_tier_name, shipping_fee, total_amount,
-                    status, payment_method, payment_status, delivered_at)
+                    status, payment_method, payment_status, created_at, updated_at, delivered_at)
 VALUES (6, 1, 'DELIVERY', 1, 5, 2, N'Trần Thị Khách', '0900000006', N'KTX Khu B, Dĩ An, Bình Dương',
-        148000, 15000, 0, N'Thành viên', 15000, 148000, 'DELIVERED', 'VNPAY', 'PAID', SYSDATETIME());
+        148000, 15000, 0, N'Thành viên', 15000, 148000, 'DELIVERED', 'VNPAY', 'PAID', '2026-09-01 09:15', '2026-09-01 09:55', '2026-09-01 09:55');
 
 INSERT INTO Orders (user_id, branch_id, delivery_type, carrier_id, receiver_name, receiver_phone, delivery_address,
-                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, status, payment_method)
+                    items_total, member_discount, member_tier_name, shipping_fee, total_amount, status, payment_method,
+                    cancel_reason, cancelled_by, created_at, updated_at)
 VALUES (6, 2, 'DELIVERY', 1, N'Trần Thị Khách', '0900000006', N'1 Võ Văn Ngân, TP. Thủ Đức, TP.HCM',
-        35000, 0, N'Thành viên', 15000, 50000, 'PENDING', 'COD');
+        35000, 0, N'Thành viên', 15000, 50000, 'CANCELLED', 'COD',
+        N'Quán không xác nhận đơn trong 10 phút', 'SYSTEM', '2026-09-03 10:05', '2026-09-03 10:15');
 
 INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, quantity, unit_price, subtotal) VALUES
  (1, 1, 'L', 70, 50,  1, 58000, 58000),
@@ -619,10 +621,10 @@ INSERT INTO OrderDetails (order_id, product_id, size, sugar_level, ice_level, qu
 
 INSERT INTO OrderDetailToppings (order_detail_id, topping_id, price) VALUES (1, 1, 5000), (1, 2, 8000);
 
-INSERT INTO VoucherUsages (voucher_id, user_id, order_id) VALUES (2, 6, 1);
+INSERT INTO VoucherUsages (voucher_id, user_id, order_id, used_at) VALUES (2, 6, 1, '2026-09-01 09:15');
 
 INSERT INTO Payments (order_id, method, transaction_code, amount, status, paid_at)
-VALUES (1, 'VNPAY', 'VNP14567890', 148000, 'SUCCESS', SYSDATETIME());
+VALUES (1, 'VNPAY', 'VNP14567890', 148000, 'SUCCESS', '2026-09-01 09:16');
 
 INSERT INTO Reviews (user_id, product_id, order_detail_id, rating, content) VALUES
  (6, 1, 1, 5, N'Trà sữa trân châu đường đen rất ngon, trân châu dẻo, vị ngọt vừa phải, giao hàng nhanh, sẽ ủng hộ quán dài dài.');

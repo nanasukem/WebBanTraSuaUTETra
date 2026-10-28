@@ -58,7 +58,7 @@ public class AdminOrderService {
 	}
 
 	public ManagerOrders managerOrders(Integer managerId, vn.utetra.dto.DateRange range) {
-		List<Order> all = orderRepository.findByManager_IdOrderByCreatedAtDesc(managerId).stream()
+		List<Order> all = orderRepository.findByManager_IdOrderByCreatedAtDescIdDesc(managerId).stream()
 				.filter(o -> o.getStatus() != OrderStatus.AWAITING_PAYMENT).toList();
 		List<Order> open = all.stream().filter(o -> OPEN_STATUSES.contains(o.getStatus())).toList();
 		List<Order> inRange = all.stream().filter(o -> range.contains(o.getCreatedAt())).toList();
@@ -135,7 +135,7 @@ public class AdminOrderService {
 	}
 
 	public List<Order> recent(int limit) {
-		return orderRepository.findAll(PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"))).getContent();
+		return orderRepository.findAll(PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt", "id"))).getContent();
 	}
 
 	public Optional<Order> find(Integer id) {

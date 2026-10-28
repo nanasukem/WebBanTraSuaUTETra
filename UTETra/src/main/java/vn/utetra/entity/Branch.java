@@ -71,9 +71,30 @@ public class Branch {
 		return hm(openTime) + " - " + hm(closeTime);
 	}
 
-	public String openStatusAt(LocalTime t) {
-		if (openTime != null && openTime.equals(closeTime)) return "Mở cả ngày";
-		return isOpenAt(t) ? "Đang mở cửa · đóng lúc " + hm(closeTime) : "Đã đóng cửa · mở lại lúc " + hm(openTime);
+	public boolean isOpenAllDay() {
+		return openTime != null && openTime.equals(closeTime);
+	}
+
+	public LocalTime lastOrderTime(int minutesBeforeClose) {
+		LocalTime close = closeTime == null ? LocalTime.of(22, 0) : closeTime;
+		return close.minusMinutes(Math.max(0, minutesBeforeClose));
+	}
+
+	public boolean acceptsOrdersAt(LocalTime t, int minutesBeforeClose) {
+		if (isOpenAllDay()) return true;
+		if (!isOpenAt(t)) return false;
+		LocalTime close = closeTime == null ? LocalTime.of(22, 0) : closeTime;
+		int secondsLeft = Math.floorMod(close.toSecondOfDay() - t.toSecondOfDay(), 86400);
+		return secondsLeft > Math.max(0, minutesBeforeClose) * 60;
+	}
+
+	public String openStatusAt(LocalTime t, int minutesBeforeClose) {
+		if (isOpenAllDay()) return "Mở cả ngày";
+		if (acceptsOrdersAt(t, minutesBeforeClose))
+			return "Đang mở cửa · nhận đơn đến " + hm(lastOrderTime(minutesBeforeClose));
+		if (isOpenAt(t))
+			return "Sắp đóng cửa · đã ngừng nhận đơn từ " + hm(lastOrderTime(minutesBeforeClose));
+		return "Đã đóng cửa · mở lại lúc " + hm(openTime);
 	}
 
 	private static String hm(LocalTime t) {
