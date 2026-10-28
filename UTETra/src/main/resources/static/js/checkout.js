@@ -7,6 +7,7 @@
 		addresses: [], branches: [],
 		addressId: null, branchId: null,
 		branchManual: false,
+		manualPicks: 0,
 		userLocation: null,
 		askedGps: false,
 		productCode: null,
@@ -212,6 +213,7 @@
 		box.querySelectorAll('input[name=branch]').forEach((r) => r.addEventListener('change', () => {
 			state.branchId = Number(r.value);
 			state.branchManual = true;
+			state.manualPicks++;
 			renderBranches();
 			refresh();
 			const token = document.querySelector('meta[name="_csrf"]')?.content;
@@ -226,11 +228,12 @@
 		btn.disabled = true;
 		btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang lấy vị trí...';
 		let gotGps = false;
+		const picksAtStart = state.manualPicks;
 
 		const approxTask = AddressBook.approxPosition().then(async (p) => {
 			if (!gotGps) {
 				state.userLocation = { lat: p.lat, lng: p.lng, approx: true };
-				state.branchManual = false;
+				if (showError && state.manualPicks === picksAtStart) state.branchManual = false;
 				if (state.deliveryType === 'PICKUP') { await loadBranches(); refresh(); }
 			}
 			return p;
@@ -240,7 +243,7 @@
 			const pos = await AddressBook.getPosition();
 			gotGps = true;
 			state.userLocation = { lat: pos.lat, lng: pos.lng, approx: false };
-			state.branchManual = false;
+			if (showError && state.manualPicks === picksAtStart) state.branchManual = false;
 			if (state.deliveryType === 'PICKUP') { await loadBranches(); refresh(); }
 		} catch (e) {
 			const p = await approxTask;
