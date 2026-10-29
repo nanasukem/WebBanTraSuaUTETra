@@ -1,3 +1,6 @@
+# Tổng quan về hệ thống UTETra
+UTETra là một nền tảng web thương mại điện tử dành cho mô hình chuỗi cửa hàng đồ uống đa chi nhánh. Dự án được phát triển nhằm tối ưu hóa quy trình từ khâu đặt món trực tuyến của khách hàng, điều phối đơn hàng thời gian thực tại quầy pha chế, vận chuyển nội bộ cho đến công tác quản trị tài chính và báo cáo toàn chuỗi. Bên cạnh đó, hệ thống còn ứng dụng các giải pháp công nghệ hiện đại như xác thực bảo mật, cập nhật trạng thái đơn hàng theo thời gian thực qua giao thức WebSocket và hỗ trợ thanh toán đa kênh linh hoạt nhằm mang đến trải nghiệm liền mạch, minh bạch và tối ưu hóa hiệu quả vận hành cho toàn bộ mô hình kinh doanh.
+
 # Hướng dẫn cài đặt và chạy ứng dụng UTETra
 
 Website chuỗi cửa hàng trà sữa UTETra (Đề 11): Spring Boot + Thymeleaf + Bootstrap 5 + Spring Data JPA + SQL Server + JWT + WebSocket + Cloudinary.
